@@ -1,0 +1,753 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.75rem;
+  /* App base font size — scales instantly via JS */
+  --app-font-size: 16px;
+
+  /* Subject colors */
+  --color-physics: #3b82f6;
+  --color-chemistry: #a855f7;
+  --color-botany: #22c55e;
+  --color-zoology: #f43f5e;
+  --color-general: #64748b;
+
+  /* State colors */
+  --color-studying: #22c55e;
+  --color-paused: #f59e0b;
+  --color-wasting: #ef4444;
+  --color-done: #6b7280;
+
+  /* ===== LIGHT THEME (default) ===== */
+  --bg-app: #f0f2f5;
+  --bg-card: #ffffff;
+  --bg-card-solid: #ffffff;
+  --bg-glass-strong: #ffffff;
+  --text-primary: #1a1a2e;
+  --text-secondary: #475569;   /* slate-600 — was #64748b (too light) */
+  --text-muted: #64748b;       /* slate-500 — was #94a3b8 (nearly invisible) */
+  --border-color: rgba(0, 0, 0, 0.12);
+  --border-card: rgba(15, 23, 42, 0.14);  /* stronger card edges — was 0.06 */
+  --shadow-card: 0 2px 12px -2px rgba(0, 0, 0, 0.08);
+  --shadow-strong: 0 8px 32px -4px rgba(0, 0, 0, 0.14);
+
+  --background: oklch(0.96 0.003 250);
+  --foreground: oklch(0.18 0.005 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.005 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.005 250);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.94 0.005 250);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.94 0.005 250);
+  --muted-foreground: oklch(0.5 0.01 250);
+  --accent: oklch(0.94 0.005 250);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.6 0.05 200);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.97 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.94 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.9 0 0);
+  --sidebar-ring: oklch(0.6 0.05 200);
+}
+
+/* ===== DARK THEME ===== */
+.dark {
+  --bg-app: #0a0b15;
+  --bg-card: #16181f;
+  --bg-card-solid: #16181f;
+  --bg-glass-strong: #1a1d26;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-color: rgba(255, 255, 255, 0.06);
+  --border-card: rgba(255, 255, 255, 0.08);
+  --shadow-card: 0 2px 12px -2px rgba(0, 0, 0, 0.5);
+  --shadow-strong: 0 8px 32px -4px rgba(0, 0, 0, 0.7);
+
+  --background: oklch(0.08 0.005 250);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.14 0.008 250);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.16 0.008 250);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.22 0.01 250);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.22 0.01 250);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.14 0.008 250);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* ===== WARM THEME (light warm cream/amber — like reading a paper book) ===== */
+.warm {
+  --bg-app: #faf3e8;
+  --bg-card: #fff8ed;
+  --bg-card-solid: #fff8ed;
+  --bg-glass-strong: #fffaf2;
+  --text-primary: #3d2b1f;
+  --text-secondary: #6b4f3a;   /* darker warm brown — was #8a6f5a (too faint) */
+  --text-muted: #8a6f5a;       /* was #b09880 (nearly invisible on cream) */
+  --border-color: rgba(61, 43, 31, 0.12);
+  --border-card: rgba(120, 80, 40, 0.22);
+  --shadow-card: 0 2px 12px -2px rgba(120, 80, 40, 0.12);
+  --shadow-strong: 0 8px 32px -4px rgba(120, 80, 40, 0.18);
+
+  --background: oklch(0.96 0.015 70);
+  --foreground: oklch(0.30 0.02 50);
+  --card: oklch(0.98 0.012 70);
+  --card-foreground: oklch(0.30 0.02 50);
+  --popover: oklch(0.98 0.012 70);
+  --popover-foreground: oklch(0.30 0.02 50);
+  --primary: oklch(0.55 0.12 50);
+  --primary-foreground: oklch(0.98 0.01 70);
+  --secondary: oklch(0.93 0.02 70);
+  --secondary-foreground: oklch(0.35 0.02 50);
+  --muted: oklch(0.93 0.02 70);
+  --muted-foreground: oklch(0.55 0.03 50);
+  --accent: oklch(0.90 0.03 60);
+  --accent-foreground: oklch(0.35 0.02 50);
+  --destructive: oklch(0.55 0.22 25);
+  --border: oklch(0.88 0.02 60);
+  --input: oklch(0.90 0.02 60);
+  --ring: oklch(0.60 0.08 50);
+  --chart-1: oklch(0.60 0.15 40);
+  --chart-2: oklch(0.55 0.12 160);
+  --chart-3: oklch(0.50 0.10 220);
+  --chart-4: oklch(0.65 0.18 30);
+  --chart-5: oklch(0.60 0.15 350);
+  --sidebar: oklch(0.97 0.012 70);
+  --sidebar-foreground: oklch(0.30 0.02 50);
+  --sidebar-primary: oklch(0.55 0.12 50);
+  --sidebar-primary-foreground: oklch(0.98 0.01 70);
+  --sidebar-accent: oklch(0.92 0.03 60);
+  --sidebar-accent-foreground: oklch(0.35 0.02 50);
+  --sidebar-border: oklch(0.88 0.02 60);
+  --sidebar-ring: oklch(0.60 0.08 50);
+}
+
+@layer base {
+  html {
+    font-size: var(--app-font-size);
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* ===== GLOBAL THEME ADAPTATION =====
+   * Many components use Tailwind's text-white / bg-white/N classes which
+   * are hardcoded white. In light/warm mode these become invisible.
+   * Instead of editing 200+ lines across 30+ files, we override these
+   * classes globally based on the active theme.
+   *
+   * In light mode (:root without .dark or .warm): text-white → dark text
+   * In warm mode (.warm): text-white → warm cream text
+   * In dark mode (.dark): no change (white is correct)
+   */
+
+  /* Light mode: override all white text/bg to dark equivalents.
+     Applied when html has neither .dark nor .warm class.
+     NOTE: Opacities were boosted (was /30=0.25, /40=0.35, /50=0.45) — those
+     were essentially invisible on a white card. New values give readable
+     secondary/tertiary text without overpowering the primary text. */
+  html:not(.dark):not(.warm) .text-white,
+  html:not(.dark):not(.warm) text-white {
+    color: #1a1a2e !important;
+  }
+  html:not(.dark):not(.warm) .text-white\/90 { color: rgba(26, 26, 46, 0.92) !important; }
+  html:not(.dark):not(.warm) .text-white\/80 { color: rgba(26, 26, 46, 0.82) !important; }
+  html:not(.dark):not(.warm) .text-white\/70 { color: rgba(26, 26, 46, 0.72) !important; }
+  html:not(.dark):not(.warm) .text-white\/60 { color: rgba(26, 26, 46, 0.62) !important; }
+  html:not(.dark):not(.warm) .text-white\/50 { color: rgba(26, 26, 46, 0.58) !important; }
+  html:not(.dark):not(.warm) .text-white\/40 { color: rgba(26, 26, 46, 0.50) !important; }
+  html:not(.dark):not(.warm) .text-white\/30 { color: rgba(26, 26, 46, 0.42) !important; }
+
+  html:not(.dark):not(.warm) .bg-white\/5 { background: rgba(0, 0, 0, 0.03) !important; }
+  html:not(.dark):not(.warm) .bg-white\/10 { background: rgba(0, 0, 0, 0.05) !important; }
+  html:not(.dark):not(.warm) .bg-white\/15 { background: rgba(0, 0, 0, 0.07) !important; }
+  html:not(.dark):not(.warm) .bg-white\/20 { background: rgba(0, 0, 0, 0.08) !important; }
+  html:not(.dark):not(.warm) .bg-white\/30 { background: rgba(0, 0, 0, 0.10) !important; }
+
+  /* Light mode: border-white overrides */
+  html:not(.dark):not(.warm) .border-white\/5 { border-color: rgba(0, 0, 0, 0.05) !important; }
+  html:not(.dark):not(.warm) .border-white\/10 { border-color: rgba(0, 0, 0, 0.08) !important; }
+  html:not(.dark):not(.warm) .border-white\/20 { border-color: rgba(0, 0, 0, 0.12) !important; }
+
+  /* Light mode: ring-white/N overrides */
+  html:not(.dark):not(.warm) .ring-white\/30 { --tw-ring-color: rgba(0, 0, 0, 0.2) !important; }
+
+  /* Warm mode: override white text/bg to warm brown equivalents (light warm theme).
+     Opacities boosted to match light-mode fix — previous values were too faint
+     on the cream card background. */
+  .warm .text-white,
+  .warm text-white {
+    color: #3d2b1f !important;
+  }
+  .warm .text-white\/90 { color: rgba(61, 43, 31, 0.92) !important; }
+  .warm .text-white\/80 { color: rgba(61, 43, 31, 0.82) !important; }
+  .warm .text-white\/70 { color: rgba(107, 79, 58, 0.85) !important; }
+  .warm .text-white\/60 { color: rgba(107, 79, 58, 0.75) !important; }
+  .warm .text-white\/50 { color: rgba(107, 79, 58, 0.68) !important; }
+  .warm .text-white\/40 { color: rgba(107, 79, 58, 0.60) !important; }
+  .warm .text-white\/30 { color: rgba(107, 79, 58, 0.50) !important; }
+
+  .warm .bg-white\/5 { background: rgba(180, 140, 100, 0.05) !important; }
+  .warm .bg-white\/10 { background: rgba(180, 140, 100, 0.08) !important; }
+  .warm .bg-white\/15 { background: rgba(180, 140, 100, 0.10) !important; }
+  .warm .bg-white\/20 { background: rgba(180, 140, 100, 0.12) !important; }
+  .warm .bg-white\/30 { background: rgba(180, 140, 100, 0.15) !important; }
+
+  .warm .border-white\/5 { border-color: rgba(180, 140, 100, 0.10) !important; }
+  .warm .border-white\/10 { border-color: rgba(180, 140, 100, 0.15) !important; }
+  .warm .border-white\/20 { border-color: rgba(180, 140, 100, 0.20) !important; }
+  .warm .ring-white\/30 { --tw-ring-color: rgba(180, 140, 100, 0.25) !important; }
+
+  /* Light mode: black/[opacity] backgrounds should become lighter */
+  html:not(.dark):not(.warm) .bg-black\/60 { background: rgba(0, 0, 0, 0.3) !important; }
+  html:not(.dark):not(.warm) .bg-black\/70 { background: rgba(0, 0, 0, 0.4) !important; }
+
+  /* Warm mode: black/[opacity] backgrounds become warm shadows */
+  .warm .bg-black\/60 { background: rgba(61, 43, 31, 0.3) !important; }
+  .warm .bg-black\/70 { background: rgba(61, 43, 31, 0.4) !important; }
+}
+
+/* ====== App-specific utilities ====== */
+
+/* Glass card — uses CSS variables so it adapts to all themes (light/dark/warm) */
+.glass {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Glass variant — stronger, for modals/sheets */
+.glass-strong {
+  background: var(--bg-glass-strong);
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-strong), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Card Solid — readable card foundation for Study + Syllabus tabs */
+.card-solid {
+  position: relative;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+/* Subject color tint overlay — sits ON TOP of .card-solid's dark base.
+   Pointer-events-none so it never blocks clicks. */
+.card-tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+/* Grid background pattern — theme-aware (uses neutral gray for all themes) */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(128, 128, 128, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(128, 128, 128, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}
+
+/* Text colors that adapt to theme */
+.text-adaptive { color: var(--text-primary); }
+.text-adaptive-muted { color: var(--text-secondary); }
+.bg-adaptive { background-color: var(--bg-app); }
+
+/* Theme-adaptive utility classes — replace hardcoded white/black
+   so components work in light/dark/warm modes.
+   Usage: className="text-t-primary text-t-secondary bg-surface" */
+.text-t-primary { color: var(--text-primary); }
+.text-t-secondary { color: var(--text-secondary); }
+.text-t-muted { color: var(--text-muted); }
+.bg-surface { background: var(--bg-card); }
+.bg-surface-strong { background: var(--bg-glass-strong); }
+.border-surface { border-color: var(--border-card); }
+
+/* White/5-style utilities that adapt — in light mode use black, in dark/warm use white */
+.bg-surface-hover { background: rgba(128, 128, 128, 0.08); }
+.text-adaptive-50 { color: var(--text-primary); opacity: 0.5; }
+.text-adaptive-60 { color: var(--text-primary); opacity: 0.6; }
+.text-adaptive-70 { color: var(--text-primary); opacity: 0.7; }
+.text-adaptive-80 { color: var(--text-primary); opacity: 0.8; }
+.text-adaptive-90 { color: var(--text-primary); opacity: 0.9; }
+
+/* Tabular numbers for timers/counts */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Pulsing animations for state badges */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+.pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-fast {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.04); }
+}
+.pulse-fast {
+  animation: pulse-fast 0.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes flame-flicker {
+  0%, 100% { transform: scale(1) rotate(-2deg); filter: brightness(1); }
+  25% { transform: scale(1.06) rotate(1deg); filter: brightness(1.15); }
+  50% { transform: scale(0.96) rotate(2deg); filter: brightness(0.95); }
+  75% { transform: scale(1.03) rotate(-1deg); filter: brightness(1.1); }
+}
+.flame-flicker {
+  animation: flame-flicker 1.6s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* Outer glow for running cards */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 24px -4px var(--glow-color, rgba(34,197,94,0.4)); }
+  50% { box-shadow: 0 0 36px 0 var(--glow-color, rgba(34,197,94,0.55)); }
+}
+.glow-pulse {
+  animation: glow-pulse 2.5s ease-in-out infinite;
+}
+
+/* Subtle fade-in */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Custom scrollbar */
+.scroll-area::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+.scroll-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Hide scrollbar on horizontal filter rows */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Safe area for bottom nav */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Range slider styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  background: #14b8a6;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  background: #14b8a6;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+/* ====== Phase 3 Animation Polish ====== */
+
+/* Shimmer skeleton loader */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* Tap feedback for all buttons */
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Active scale for tap targets */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 0.1s ease-out;
+}
+
+/* Smooth color transitions on state changes */
+.glass, .glass-strong, .card-solid {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Number pop animation */
+@keyframes number-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.number-pop {
+  animation: number-pop 0.3s ease-out;
+}
+
+/* Slide up entrance */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Scale in entrance */
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.scale-in {
+  animation: scale-in 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Glow ring for active focus */
+@keyframes focus-ring {
+  0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(34, 197, 94, 0.5); }
+}
+.focus-ring {
+  animation: focus-ring 3s ease-in-out infinite;
+}
+
+/* Stagger animation for list items */
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.stagger-in {
+  animation: stagger-in 0.3s ease-out backwards;
+}
+
+/* Progress bar fill animation */
+@keyframes fill-bar {
+  from { width: 0; }
+}
+.fill-bar {
+  animation: fill-bar 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Glassmorphism hover lift */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent text selection on UI elements */
+button, nav, [data-card] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Better focus rings */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(20, 184, 166, 0.5);
+  outline-offset: 2px;
+}
+
+/* ====== Aurora 2.0 overlays — noise + vignette + spotlight ====== */
+
+/* Film-grain noise overlay — kills gradient banding in dark mode and adds
+   a premium tactile feel. Rendered as a fixed full-screen div via AppShell.
+   The SVG fractal noise is generated once and tiled. */
+.aurora-noise {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.dark .aurora-noise {
+  opacity: 0.05;
+}
+
+/* Vignette + center spotlight — focuses the eye on content. Subtle. */
+.aurora-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    radial-gradient(ellipse 100% 80% at 50% 40%, transparent 0%, transparent 50%, rgba(0, 0, 0, 0.35) 100%);
+}
+.dark .aurora-vignette {
+  background:
+    radial-gradient(ellipse 100% 80% at 50% 40%, transparent 0%, transparent 45%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+/* ====== CTA / Chip visibility enhancements ====== */
+
+/* Subject color chips (Physics / Chemistry / etc tags) — bump from /22 → /30
+   background + add a 1px solid colored border so they pop instead of blend.
+   Apply by adding `.chip` class to any small subject-colored pill. */
+.chip {
+  border: 1px solid currentColor;
+  /* The text color (subject color) is set inline by the component, so
+     currentColor picks it up here for the border. */
+}
+
+/* Active card lift — applied via .card-lift class on cards that should
+   "rise" when in an active state (studying / wasting). Combines:
+   - Slight Y translate (lifts off the page)
+   - Stronger drop shadow
+   - Brighter top edge highlight
+   Use together with .glass on the same element. */
+.card-lift {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 32px -6px rgba(0, 0, 0, 0.5),
+    0 4px 12px -2px var(--glow-color, rgba(34, 197, 94, 0.3)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+}
+
+/* ====== Liquid Progress Bar ====== */
+
+/* Wavy gradient flow */
+@keyframes liquid-flow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* Rising bubbles */
+@keyframes bubble-rise {
+  0% {
+    transform: translateY(0) scale(0.5);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  80% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-20px) scale(1);
+    opacity: 0;
+  }
+}
+
+.liquid-bar {
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-fill {
+  background-size: 200% 100%;
+  animation: liquid-flow 3s linear infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-fill::before,
+.liquid-fill::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  animation: bubble-rise 2s ease-out infinite;
+}
+
+.liquid-fill::before {
+  left: 20%;
+  animation-delay: 0s;
+}
+
+.liquid-fill::after {
+  left: 60%;
+  animation-delay: 1s;
+}
+
+/* Shimmer wave on top */
+@keyframes wave-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.liquid-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 50%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  animation: wave-sweep 2.5s ease-in-out infinite;
+}
+
+/* ====== Timer Digit Flip ====== */
+@keyframes digit-flip {
+  0% { transform: rotateX(0deg); }
+  50% { transform: rotateX(90deg); opacity: 0.3; }
+  100% { transform: rotateX(0deg); opacity: 1; }
+}
+
+/* ====== Button Ripple ====== */
+@keyframes ripple {
+  to { transform: scale(4); opacity: 0; }
+}
+
+.ripple-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0);
+  animation: ripple 0.6s ease-out;
+  pointer-events: none;
+}
+
+/* ====== Card entrance stagger ====== */
+@keyframes card-slide-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stagger-card {
+  animation: card-slide-in 0.4s ease-out backwards;
+}

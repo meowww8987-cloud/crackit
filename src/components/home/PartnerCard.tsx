@@ -1,0 +1,714 @@
+'use client';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Users, X, Copy, Check, TrendingUp, Flame, Clock, Trophy, RefreshCw, Target, BookOpen, Play, Pause, ChevronRight } from 'lucide-react';
+import { usePartner } from '@/lib/store/partner';
+import { useHistory } from '@/lib/store/history';
+import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
+import { useTargets } from '@/lib/store/targets';
+import { useTests } from '@/lib/store/tests';
+import { formatHM, todayKey, vibrate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { pushToast } from '@/components/shared/Toast';
+import { PartnerComparisonSheet } from '@/components/partner/PartnerComparisonSheet';
+import { PartnerAvatar } from '@/components/partner/PartnerAvatar';
+import { PartnerProgressRing } from '@/components/partner/PartnerProgressRing';
+import { AnimatedCounter } from '@/components/partner/AnimatedCounter';
+
+// Stable empty array for targets fallback — if we use `|| []` inline in the
+// Zustand selector, it creates a NEW array reference on every call, which
+// causes React's useSyncExternalStore to detect a "change" every render →
+// infinite loop ("getSnapshot should be cached"). Using a module-level
+// constant keeps the reference stable.
+import type { Target as TargetType } from '@/lib/types';
+const EMPTY_TARGETS: TargetType[] = [];
+
+/** Human-readable age from milliseconds — "5s", "3m", "2h", "1d". */
+function formatAge(ms: number | null): string {
+  if (ms === null) return 'unknown';
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+/**
+ * PartnerCard — shows on Home tab when paired with a study partner.
+ * Displays partner's today study time, streak, last subject, test score.
+ * Includes weekly comparison bar.
+ *
+ * If not paired, shows "Connect with a partner" CTA.
+ */
+export function PartnerCard() {
+  const partner = usePartner();
+  const syncData = usePartner((s) => s.syncData);
+  const fetchPartnerData = usePartner((s) => s.fetchPartnerData);
+  const disconnect = usePartner((s) => s.disconnect);
+  const sessions = useHistory((s) => s.sessions);
+  // Reactive active session — MUST be declared BEFORE any early return so
+  // the hook count is consistent across all renders (Rules of Hooks).
+  const myActiveSession = useSession((s) => s.active);
+  // Reactive targets — select byDate (stable object reference) instead of
+  // `byDate[today] || []` which creates a NEW array every render and causes
+  // "getSnapshot should be cached" infinite loop. We derive the array below.
+  const _byDate = useTargets((s) => s.byDate);
+  const _today = todayKey();
+  const myTodayTargets = _byDate[_today] || EMPTY_TARGETS;
+
+  const [showSetup, setShowSetup] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [lastChecked, setLastChecked] = useState<number | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [syncError, setSyncError] = useState<'notfound' | 'error' | null>(null);
+  const [tick, setTick] = useState(0); // re-render every 5s so "Xs ago" stays fresh (value read below)
+  const partnerNameRef = useRef<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  void tick;
+
+  // Track partnerName changes so we can toast when someone joins.
+  useEffect(() => {
+    if (!partnerNameRef.current && partner.partnerName) {
+      // First time we see a partner name — they just joined!
+      pushToast('Partner joined!', `${partner.partnerName} is now your study partner`, 'success');
+    }
+    partnerNameRef.current = partner.partnerName;
+  }, [partner.partnerName]);
+
+  // Manual refresh handler — used by the "Check now" button.
+  const handleManualRefresh = useCallback(async () => {
+    setChecking(true);
+    setSyncError(null);
+    vibrate(8);
+    try {
+      // Force-push OUR data first (so partner sees our latest), then fetch
+      // partner's data. Both happen on manual refresh for maximum freshness.
+      await syncData();
+      const status = await fetchPartnerData();
+      if (status === 'notfound') setSyncError('notfound');
+      else if (status === 'error') setSyncError('error');
+      setLastChecked(Date.now());
+    } finally {
+      setChecking(false);
+    }
+  }, [fetchPartnerData, syncData]);
+
+  // === FETCH partner data (PUSH sync is handled globally by usePartnerSync) ===
+  // This effect ONLY fetches the partner's data for UI display.
+  // The push-to-server logic lives in usePartnerSync (mounted in AppShell)
+  // so it runs on every tab, not just Home.
+  //
+  // Adaptive polling:
+  //  - When WAITING for partner to join: poll every 8 seconds
+  //  - When partner data is STALE (>30s old): poll every 5s (catch their next push fast)
+  //  - When partner IS studying: poll every 5s (see their timer counting up)
+  //  - When partner is idle: poll every 15s (keeps "last seen" fresh)
+  const _partnerStudyingForPoll = partner.partnerLastData?.isStudying || false;
+  const _partnerDataAge = partner.partnerLastData?.updatedAt ? Date.now() - partner.partnerLastData.updatedAt : null;
+  const _partnerDataStale = _partnerDataAge !== null && _partnerDataAge > 30_000;
+  useEffect(() => {
+    if (!partner.code) return;
+    syncData(); // initial push
+    fetchPartnerData().then((status) => {
+      setLastChecked(Date.now());
+      if (status === 'notfound') setSyncError('notfound');
+      else if (status === 'error') setSyncError('error');
+      else setSyncError(null);
+    });
+
+    // Poll faster when data is stale or partner is studying — 3s for real-time feel
+    const intervalMs = !partner.partnerName
+      ? 8_000
+      : (_partnerStudyingForPoll || _partnerDataStale)
+      ? 3_000
+      : 5_000;
+    const i = setInterval(() => {
+      fetchPartnerData().then((status) => {
+        setLastChecked(Date.now());
+        if (status === 'notfound') setSyncError('notfound');
+        else if (status === 'error') setSyncError('error');
+        else setSyncError(null);
+      });
+    }, intervalMs);
+
+    // Re-poll immediately when the tab becomes visible (user came back to the
+    // app — they want fresh data, not stale data from when they left).
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        syncData();
+        fetchPartnerData().then((status) => {
+          setLastChecked(Date.now());
+          if (status === 'notfound') setSyncError('notfound');
+          else if (status === 'error') setSyncError('error');
+          else setSyncError(null);
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(i);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [partner.code, partner.partnerName, _partnerStudyingForPoll, _partnerDataStale, syncData, fetchPartnerData]);
+
+  // Tick every 1s so the "Xs ago" counters update in real-time — makes the
+  // card feel alive instead of jumping in 5s steps.
+  useEffect(() => {
+    const t = setInterval(() => setTick((x) => x + 1), 1_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Push when a session is saved (global hook handles live state, but this
+  // catches the moment a session is committed to history).
+  useEffect(() => {
+    if (partner.code && sessions.length > 0) {
+      syncData();
+    }
+  }, [sessions.length, partner.code, syncData]);
+
+  if (!partner.code) {
+    return (
+      <>
+        <button
+          onClick={() => { setShowSetup(true); vibrate(10); }}
+          className="w-full glass rounded-2xl p-3 flex items-center gap-3 hover:bg-white/[0.07] transition border border-indigo-500/30 dark:border-indigo-500/20"
+        >
+          <div className="w-9 h-9 rounded-lg bg-indigo-500/15 dark:bg-indigo-500/20 flex items-center justify-center shrink-0">
+            <Users size={18} className="text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div className="flex-1 text-left">
+            <div className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Study with a Partner</div>
+            <div className="text-[10px] text-t-muted">Compare study time · stay motivated together</div>
+          </div>
+        </button>
+        <AnimatePresence>
+          {showSetup && <PartnerSetupSheet onClose={() => setShowSetup(false)} />}
+        </AnimatePresence>
+      </>
+    );
+  }
+
+  // === My stats for comparison (mirror of what we sync to the server) ===
+  // myActiveSession and myTodayTargets are declared at the top (before early
+  // return) for Rules of Hooks. Here we just compute derived values.
+  const today = _today;
+  const liveSec = getLiveStudySeconds(myActiveSession);
+  const liveWastedSec = getLiveWastedSeconds(myActiveSession);
+  const savedTodaySec = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.studySeconds, 0);
+  const savedTodayWastedSec = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.wastedSeconds, 0);
+  const myTodaySec = savedTodaySec + (myActiveSession ? liveSec : 0);
+  const myTodayWastedSec = savedTodayWastedSec + (myActiveSession ? liveWastedSec : 0);
+  const myStreak = useHistory.getState().getStreak();
+
+  // My targets (done / total) — myTodayTargets is from the hook at top
+  const myTargetsTotal = myTodayTargets.length;
+  const myTargetsDone = myTodayTargets.filter((t) => t.done).length;
+
+  // My current subject/topic/chapter/lecture
+  const myCurrentSubject = myActiveSession?.subject || null;
+  const myCurrentChapter = myActiveSession?.chapter || null;
+  const myCurrentLecture = myActiveSession?.lecture || null;
+  const myCurrentTopic = myActiveSession?.topic || null;
+  const myIsStudying = !!myActiveSession && !myActiveSession.paused && !myActiveSession.wasting;
+  const myIsPaused = !!myActiveSession && myActiveSession.paused;
+  const myIsWasting = !!myActiveSession && myActiveSession.wasting;
+
+  // My last test score
+  const myTests = useTests.getState().tests;
+  const myLastTest = myTests
+    .filter((t) => t.totalMarks !== undefined)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+  const myLastTestScore = myLastTest?.totalMarks || null;
+
+  const partnerData = partner.partnerLastData;
+  const partnerSec = partnerData?.todaySec || 0;
+  const partnerWastedSec = partnerData?.todayWastedSec || 0;
+  const partnerStreak = partnerData?.streak || 0;
+  const partnerTargetsDone = partnerData?.targetsDone || 0;
+  const partnerTargetsTotal = partnerData?.targetsTotal || 0;
+  const partnerIsStudying = partnerData?.isStudying || false;
+  const partnerIsPaused = partnerData?.isPaused || false;
+  const partnerIsWasting = partnerData?.isWasting || false;
+  const partnerLastSubject = partnerData?.lastSubject || null;
+  const partnerLastChapter = partnerData?.lastChapter || null;
+  const partnerLastLecture = partnerData?.lastLecture || null;
+  const partnerLastTopic = partnerData?.lastTopic || null;
+  const partnerLastTestScore = partnerData?.lastTestScore || null;
+  // Use the SERVER timestamp (partnerLastSeen) for freshness — immune to
+  // client clock skew. Falls back to client-side updatedAt if server time
+  // isn't available yet (e.g., partner never synced).
+  const partnerUpdatedAt = partner.partnerLastSeen ?? partnerData?.updatedAt ?? null;
+
+  // Comparison bar — who's studied more today
+  const maxSec = Math.max(myTodaySec, partnerSec, 1);
+  const myPct = Math.round((myTodaySec / maxSec) * 100);
+  const partnerPct = Math.round((partnerSec / maxSec) * 100);
+
+  // === Freshness indicator ===
+  // How long ago did the partner's data get pushed? If < 30s, show "live".
+  const partnerDataAge = partnerUpdatedAt ? Date.now() - partnerUpdatedAt : null;
+  const partnerIsLive = partnerDataAge !== null && partnerDataAge < 30_000;
+
+  // Status badge for partner
+  const partnerStatusText = partnerIsStudying ? 'Studying now' : partnerIsWasting ? 'Wasting time' : partnerIsPaused ? 'Paused' : 'Idle';
+  const partnerStatusColor = partnerIsStudying ? '#22c55e' : partnerIsWasting ? '#ef4444' : partnerIsPaused ? '#f59e0b' : '#6b7280';
+  const myStatusText = myIsStudying ? 'Studying now' : myIsWasting ? 'Wasting time' : myIsPaused ? 'Paused' : 'Idle';
+  const myStatusColor = myIsStudying ? '#22c55e' : myIsWasting ? '#ef4444' : myIsPaused ? '#f59e0b' : '#6b7280';
+
+  return (
+    <>
+      <div className="glass rounded-2xl p-3 border border-indigo-500/30 dark:border-indigo-500/20">
+        <div className="flex items-center gap-2 mb-3">
+          <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
+          <span className="text-xs font-bold uppercase tracking-wide text-t-secondary">Study Partner</span>
+          {/* Minimal header actions — chevron for full comparison, ⋮ for manage */}
+          <button
+            onClick={() => { vibrate(8); setShowComparison(true); }}
+            className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-t-muted hover:text-t-primary hover:bg-white/5 transition"
+            aria-label="Full comparison"
+          >
+            <ChevronRight size={16} />
+          </button>
+          <button
+            onClick={() => { vibrate(8); setShowSetup(true); }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-t-muted hover:text-t-primary hover:bg-white/5 transition"
+            aria-label="Manage"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
+          </button>
+        </div>
+
+        {/* Partner waiting */}
+        {!partner.partnerName ? (
+          <div className="text-center py-2">
+            {syncError === 'notfound' ? (
+              /* Pair code doesn't exist on server — DB was reset, or the code
+                 was never actually created. Offer a clean reset. */
+              <div className="space-y-3">
+                <div className="text-xs text-red-500 dark:text-red-400 font-semibold">
+                  This pairing code is no longer valid.
+                </div>
+                <div className="text-[10px] text-t-muted">
+                  The code <span className="font-mono font-bold">{partner.code}</span> doesn't
+                  exist on the server anymore (it may have been reset).
+                  Create a new pair to start fresh.
+                </div>
+                <button
+                  onClick={() => { vibrate(10); disconnect(); }}
+                  className="w-full py-2.5 rounded-xl bg-indigo-500 text-white font-semibold text-sm"
+                >
+                  Reset & Create New Pair
+                </button>
+              </div>
+            ) : syncError === 'error' ? (
+              /* Network or server error — show retry. */
+              <div className="space-y-3">
+                <div className="text-xs text-amber-500 dark:text-amber-400 font-semibold">
+                  Couldn't reach the server.
+                </div>
+                <div className="text-[10px] text-t-muted">
+                  Check your internet connection and try again.
+                </div>
+                <button
+                  onClick={handleManualRefresh}
+                  disabled={checking}
+                  className="w-full py-2.5 rounded-xl bg-indigo-500/15 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold text-sm border border-indigo-500/30"
+                >
+                  <RefreshCw size={12} className={checking ? 'animate-spin inline mr-1' : 'inline mr-1'} />
+                  {checking ? 'Retrying...' : 'Retry now'}
+                </button>
+              </div>
+            ) : (
+              /* Normal waiting state — code is valid, polling for partner. */
+              <>
+                <div className="text-xs text-t-secondary mb-2">Share your code with a friend:</div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard?.writeText(partner.code);
+                    setCopied(true);
+                    vibrate(10);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="flex items-center gap-2 mx-auto px-4 py-2 rounded-xl bg-indigo-500/15 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-bold text-lg tracking-widest border border-indigo-500/30 dark:border-indigo-500/25"
+                >
+                  {partner.code}
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                </button>
+                <div className="text-[10px] text-t-muted mt-2 flex items-center justify-center gap-2">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    Checking every 8s
+                  </span>
+                  {lastChecked && (
+                    <span className="text-t-muted/70">
+                      · last check {Math.max(0, Math.floor((Date.now() - lastChecked) / 1000))}s ago
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={handleManualRefresh}
+                  disabled={checking}
+                  className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-700 dark:text-indigo-400 hover:underline disabled:opacity-50"
+                >
+                  <RefreshCw size={11} className={checking ? 'animate-spin' : ''} />
+                  {checking ? 'Checking...' : 'Check now'}
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* === Hero: Avatars + Progress Ring === */}
+            <div className="flex items-center justify-center gap-4 py-2">
+              {/* YOU avatar */}
+              <div className="flex flex-col items-center gap-1.5">
+                <PartnerAvatar
+                  initials={(partner.name || 'Y').slice(0, 2)}
+                  accentColor="#14b8a6"
+                  status={myIsStudying ? 'online' : myIsPaused ? 'idle' : 'offline'}
+                  isStudying={myIsStudying}
+                  subjectColor={myCurrentSubject ? '#3b82f6' : undefined}
+                  size={56}
+                />
+                <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">YOU</div>
+              </div>
+
+              {/* Center progress ring */}
+              <PartnerProgressRing
+                mySec={myTodaySec}
+                partnerSec={partnerSec}
+                myColor="#14b8a6"
+                partnerColor="#8b5cf6"
+                size={110}
+                centerLabel={formatHM(Math.max(myTodaySec, partnerSec))}
+                centerSublabel="today"
+              />
+
+              {/* PARTNER avatar */}
+              <div className="flex flex-col items-center gap-1.5">
+                <PartnerAvatar
+                  initials={(partner.partnerName || 'P').slice(0, 2)}
+                  accentColor="#8b5cf6"
+                  status={partnerIsStudying ? 'online' : partnerIsPaused ? 'idle' : 'offline'}
+                  isStudying={partnerIsStudying}
+                  subjectColor={partnerLastSubject ? '#3b82f6' : undefined}
+                  size={56}
+                />
+                <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider truncate max-w-[60px]">
+                  {(partner.partnerName || 'PARTNER').slice(0, 8)}
+                </div>
+              </div>
+            </div>
+
+            {/* === Live Status Badge === */}
+            <div className="flex items-center justify-center">
+              {partnerDataAge !== null && partnerDataAge < 20_000 ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">Live</span>
+                </div>
+              ) : partnerDataAge !== null && partnerDataAge < 120_000 ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">Last seen {Math.floor(partnerDataAge/1000)}s ago</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <span className="text-[10px] font-semibold text-red-600 dark:text-red-400">Offline · {formatAge(partnerDataAge)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* === Partner studying banner === */}
+            {partnerIsStudying && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center gap-2 text-[11px] bg-green-500/10 rounded-xl px-3 py-2 border border-green-500/20"
+              >
+                <motion.div
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"
+                />
+                <Play size={11} className="text-green-500 shrink-0" />
+                <span className="truncate text-t-secondary">
+                  <strong className="text-green-600 dark:text-green-400">{partner.partnerName}</strong> studying
+                  {partnerLastSubject ? ` · ${partnerLastSubject}` : ''}
+                  {partnerLastChapter ? ` · ${partnerLastChapter}` : ''}
+                </span>
+              </motion.div>
+            )}
+            {partnerIsWasting && !partnerIsStudying && (
+              <div className="flex items-center gap-2 text-[11px] bg-red-500/10 rounded-xl px-3 py-2 border border-red-500/20">
+                <span className="text-red-500">⚠</span>
+                <span className="truncate text-t-secondary">
+                  <strong className="text-red-600 dark:text-red-400">{partner.partnerName}</strong> is wasting time
+                </span>
+              </div>
+            )}
+
+            {/* === Collapsible stats === */}
+            <details className="group">
+              <summary className="flex items-center justify-center gap-1 text-[10px] text-t-muted cursor-pointer hover:text-t-secondary py-1">
+                <span>Stats</span>
+                <ChevronRight size={10} className="group-open:rotate-90 transition-transform" />
+              </summary>
+              <div className="grid grid-cols-3 gap-2 text-center pt-2">
+                <div className="glass rounded-xl p-2">
+                  <div className="flex items-center justify-center gap-0.5 text-[9px] text-t-muted uppercase mb-1">
+                    <Flame size={8} /> Streak
+                  </div>
+                  <div className="text-xs font-bold tabular font-mono">
+                    <span className="text-teal-500 dark:text-teal-400">{myStreak}</span>
+                    <span className="text-t-muted/40 mx-0.5">·</span>
+                    <span className="text-violet-500 dark:text-violet-400">{partnerStreak}</span>
+                  </div>
+                </div>
+                <div className="glass rounded-xl p-2">
+                  <div className="flex items-center justify-center gap-0.5 text-[9px] text-t-muted uppercase mb-1">
+                    <Target size={8} /> Targets
+                  </div>
+                  <div className="text-xs font-bold tabular font-mono">
+                    <span className="text-teal-500 dark:text-teal-400">{myTargetsDone}/{myTargetsTotal}</span>
+                    <span className="text-t-muted/40 mx-0.5">·</span>
+                    <span className="text-violet-500 dark:text-violet-400">{partnerTargetsDone}/{partnerTargetsTotal}</span>
+                  </div>
+                </div>
+                <div className="glass rounded-xl p-2">
+                  <div className="flex items-center justify-center gap-0.5 text-[9px] text-t-muted uppercase mb-1">
+                    <Trophy size={8} /> Test
+                  </div>
+                  <div className="text-xs font-bold tabular font-mono">
+                    <span className="text-teal-500 dark:text-teal-400">{myLastTestScore ?? '—'}</span>
+                    <span className="text-t-muted/40 mx-0.5">·</span>
+                    <span className="text-violet-500 dark:text-violet-400">{partnerLastTestScore ?? '—'}</span>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {showSetup && <PartnerSetupSheet onClose={() => setShowSetup(false)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showComparison && <PartnerComparisonSheet onClose={() => setShowComparison(false)} />}
+      </AnimatePresence>
+    </>
+  );
+}
+
+/**
+ * PartnerSetupSheet — create or join a pair.
+ * Two modes: "Create" (get a code to share) or "Join" (enter friend's code).
+ */
+function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
+  const partner = usePartner();
+  const createPair = usePartner((s) => s.createPair);
+  const joinPair = usePartner((s) => s.joinPair);
+  const disconnect = usePartner((s) => s.disconnect);
+
+  const [mode, setMode] = useState<'menu' | 'create' | 'join'>(partner.code ? 'menu' : 'menu');
+  const [name, setName] = useState(partner.name || '');
+  const [joinCode, setJoinCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleCreate = async () => {
+    if (!name.trim()) return;
+    setLoading(true);
+    setError('');
+    const result = await createPair(name.trim());
+    setLoading(false);
+    if (result.code) {
+      setMode('menu');
+      pushToast('Pair created!', `Share code: ${result.code}`, 'success');
+    } else {
+      setError(result.error || 'Failed to create. Try again.');
+    }
+  };
+
+  const handleJoin = async () => {
+    if (!name.trim() || !joinCode.trim()) return;
+    setLoading(true);
+    setError('');
+    const result = await joinPair(joinCode.trim(), name.trim());
+    setLoading(false);
+    if (result.ok) {
+      onClose();
+      pushToast('Connected!', `You're now study partners`, 'success');
+    } else {
+      setError(result.error || 'Invalid code or pair is full.');
+    }
+  };
+
+  const handleDisconnect = () => {
+    disconnect();
+    onClose();
+    pushToast('Disconnected', 'Partner removed', 'info');
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[60] flex items-end justify-center"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md glass-strong rounded-t-3xl p-5 pb-8"
+      >
+        <div className="w-10 h-1 bg-white/30 rounded-full mx-auto mb-4" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Users size={18} className="text-purple-400" />
+            <h2 className="text-lg font-bold">Study Partner</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+            <X size={16} />
+          </button>
+        </div>
+
+        {partner.code && mode !== 'join' ? (
+          /* Already has a code — show status with clear context + options.
+             This branch covers BOTH "freshly created, waiting for partner"
+             and "stale code from a previous session that needs resetting".
+             If the user clicked "Join a different code" (mode==='join'), we
+             fall through to the join form below instead. */
+          <div className="space-y-3">
+            <div className="glass rounded-xl p-3 text-center">
+              <div className="text-xs text-t-muted mb-1">
+                {partner.isUserB ? "Code you joined with" : "Your pairing code"}
+              </div>
+              <div className="text-2xl font-bold tracking-widest text-indigo-600 dark:text-indigo-400">{partner.code}</div>
+            </div>
+            <div className="glass rounded-xl p-3 text-center">
+              <div className="text-xs text-t-muted">You</div>
+              <div className="text-sm font-bold">{partner.name || '(no name)'}</div>
+              {partner.partnerName && (
+                <>
+                  <div className="text-xs text-t-muted mt-2">Partner</div>
+                  <div className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{partner.partnerName}</div>
+                </>
+              )}
+            </div>
+            {!partner.partnerName && (
+              <div className="text-[10px] text-t-muted bg-white/5 rounded-lg p-2 text-center">
+                {partner.isUserB
+                  ? "Connected to a pair. Waiting for the creator's data..."
+                  : "Share your code with a friend. They tap 'Join with a code' on their device."}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => { setMode('join'); setError(''); }}
+                className="py-2.5 rounded-xl bg-white/5 border border-white/10 text-t-primary font-semibold text-xs"
+              >
+                Join a different code
+              </button>
+              <button
+                onClick={handleDisconnect}
+                className="py-2.5 rounded-xl bg-red-500/15 text-red-500 dark:text-red-400 font-semibold text-xs"
+              >
+                Reset connection
+              </button>
+            </div>
+            <p className="text-[9px] text-t-muted text-center">
+              "Reset connection" clears this device's pairing data so you can create or join a fresh pair.
+            </p>
+          </div>
+        ) : (
+          /* Not paired, OR user chose to join a different code — show create/join menu */
+          <>
+            <div className="space-y-2 mb-4">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-400/50"
+              />
+            </div>
+
+            {mode === 'menu' && (
+              <div className="space-y-2">
+                <button
+                  onClick={() => setMode('create')}
+                  className="w-full p-3 rounded-xl bg-purple-500/15 border border-purple-500/20 text-left"
+                >
+                  <div className="text-sm font-bold text-purple-300">Create a pair</div>
+                  <div className="text-[10px] text-white/40">Get a code to share with your friend</div>
+                </button>
+                <button
+                  onClick={() => setMode('join')}
+                  className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-left"
+                >
+                  <div className="text-sm font-bold">Join with a code</div>
+                  <div className="text-[10px] text-white/40">Enter your friend's 6-char code</div>
+                </button>
+              </div>
+            )}
+
+            {mode === 'create' && (
+              <div className="space-y-3">
+                {error && <div className="text-xs text-red-500 dark:text-red-400 text-center bg-red-500/10 rounded-lg px-3 py-2">{error}</div>}
+                <button
+                  onClick={handleCreate}
+                  disabled={!name.trim() || loading}
+                  className={cn('w-full py-3 rounded-xl font-bold text-sm',
+                    name.trim() && !loading ? 'bg-purple-500 text-white' : 'bg-white/5 text-white/30')}
+                >
+                  {loading ? 'Creating...' : 'Generate Code'}
+                </button>
+                <button onClick={() => setMode('menu')} className="w-full text-xs text-white/40">← Back</button>
+              </div>
+            )}
+
+            {mode === 'join' && (
+              <div className="space-y-3">
+                <input
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  placeholder="ENTER CODE"
+                  maxLength={6}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm font-bold tracking-widest text-center uppercase focus:outline-none focus:border-purple-400/50"
+                />
+                {error && <div className="text-xs text-red-500 dark:text-red-400 text-center bg-red-500/10 rounded-lg px-3 py-2">{error}</div>}
+                <button
+                  onClick={handleJoin}
+                  disabled={!name.trim() || !joinCode.trim() || loading}
+                  className={cn('w-full py-3 rounded-xl font-bold text-sm',
+                    name.trim() && joinCode.trim() && !loading ? 'bg-purple-500 text-white' : 'bg-white/5 text-white/30')}
+                >
+                  {loading ? 'Joining...' : 'Join Pair'}
+                </button>
+                <button
+                  onClick={() => { setMode(partner.code ? 'menu' : 'menu'); setError(''); }}
+                  className="w-full text-xs text-white/40"
+                >
+                  ← Back
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
