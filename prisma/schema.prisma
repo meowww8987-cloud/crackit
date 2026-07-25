@@ -1,12 +1,14 @@
 generator client {
   provider        = "prisma-client-js"
-  // Only generate the SQLite engine — removes ~50MB of unused engine files
-  // (MySQL, PostgreSQL, SQL Server, CockroachDB) from the deployment.
-  binaryTargets   = ["native"]
+  // Generate engines for native (local dev) + Vercel's serverless runtime.
+  // This ensures the Prisma engine works in both environments.
+  binaryTargets   = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  // PostgreSQL — works on Vercel, Netlify, and all serverless platforms.
+  // SQLite doesn't work on serverless (read-only filesystem).
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
