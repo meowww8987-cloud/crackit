@@ -1,5 +1,8 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Only generate the SQLite engine — removes ~50MB of unused engine files
+  // (MySQL, PostgreSQL, SQL Server, CockroachDB) from the deployment.
+  binaryTargets   = ["native"]
 }
 
 datasource db {
