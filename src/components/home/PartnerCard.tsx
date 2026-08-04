@@ -368,23 +368,24 @@ export function PartnerCard() {
         ) : (
           <div className="space-y-3">
             {/* === PAIR NOT FOUND BANNER === */}
-            {/* Shows when the pair code exists in localStorage but NOT on the server.
-                This happens when the DB was reset. User must re-create the pair. */}
+            {/* Only shows when the pair code exists in localStorage but NOT on the server.
+                This is RARE — only happens if the server database was completely reset.
+                Pairs are permanent by design and never auto-delete. */}
             {syncError === 'notfound' && (
-              <div className="space-y-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
-                <div className="text-xs text-red-500 dark:text-red-400 font-bold">
-                  ⚠ Pair not found on server
+              <div className="space-y-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                <div className="text-xs text-amber-500 dark:text-amber-400 font-bold">
+                  ⚠ Server was reset
                 </div>
                 <div className="text-[10px] text-t-muted">
-                  Your pairing code <span className="font-mono font-bold">{partner.code}</span> no longer
-                  exists. The database may have been reset. Both you and your partner need to reset and
-                  create a new pair.
+                  Your pair <span className="font-mono font-bold">{partner.code}</span> was removed
+                  because the server database was reset. This is rare and won't happen again.
+                  Create a new pair with your partner — it will be permanent.
                 </div>
                 <button
                   onClick={() => { vibrate(10); disconnect(); }}
-                  className="w-full py-2 rounded-xl bg-red-500 text-white font-semibold text-xs"
+                  className="w-full py-2 rounded-xl bg-amber-500 text-white font-semibold text-xs"
                 >
-                  Reset Connection
+                  Reset & Create New Pair
                 </button>
               </div>
             )}
