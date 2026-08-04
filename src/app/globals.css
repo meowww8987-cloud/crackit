@@ -226,60 +226,59 @@
 
   /* Light mode: override all white text/bg to dark equivalents.
      Applied when html has neither .dark nor .warm class.
-     NOTE: Opacities were boosted (was /30=0.25, /40=0.35, /50=0.45) — those
-     were essentially invisible on a white card. New values give readable
-     secondary/tertiary text without overpowering the primary text. */
+     CRITICAL: Opacities are HIGH because these are dark-on-white (light theme).
+     Low opacities (0.25-0.45) are invisible on white cards. */
   html:not(.dark):not(.warm) .text-white,
   html:not(.dark):not(.warm) text-white {
-    color: #1a1a2e !important;
+    color: #0f172a !important;  /* slate-900 — near black */
   }
-  html:not(.dark):not(.warm) .text-white\/90 { color: rgba(26, 26, 46, 0.92) !important; }
-  html:not(.dark):not(.warm) .text-white\/80 { color: rgba(26, 26, 46, 0.82) !important; }
-  html:not(.dark):not(.warm) .text-white\/70 { color: rgba(26, 26, 46, 0.72) !important; }
-  html:not(.dark):not(.warm) .text-white\/60 { color: rgba(26, 26, 46, 0.62) !important; }
-  html:not(.dark):not(.warm) .text-white\/50 { color: rgba(26, 26, 46, 0.58) !important; }
-  html:not(.dark):not(.warm) .text-white\/40 { color: rgba(26, 26, 46, 0.50) !important; }
-  html:not(.dark):not(.warm) .text-white\/30 { color: rgba(26, 26, 46, 0.42) !important; }
+  html:not(.dark):not(.warm) .text-white\/90 { color: rgba(15, 23, 42, 0.95) !important; }
+  html:not(.dark):not(.warm) .text-white\/80 { color: rgba(15, 23, 42, 0.88) !important; }
+  html:not(.dark):not(.warm) .text-white\/70 { color: rgba(30, 41, 59, 0.82) !important; }
+  html:not(.dark):not(.warm) .text-white\/60 { color: rgba(30, 41, 59, 0.75) !important; }
+  html:not(.dark):not(.warm) .text-white\/50 { color: rgba(51, 65, 85, 0.72) !important; }
+  html:not(.dark):not(.warm) .text-white\/40 { color: rgba(51, 65, 85, 0.68) !important; }
+  html:not(.dark):not(.warm) .text-white\/30 { color: rgba(71, 85, 105, 0.65) !important; }
 
-  html:not(.dark):not(.warm) .bg-white\/5 { background: rgba(0, 0, 0, 0.03) !important; }
-  html:not(.dark):not(.warm) .bg-white\/10 { background: rgba(0, 0, 0, 0.05) !important; }
-  html:not(.dark):not(.warm) .bg-white\/15 { background: rgba(0, 0, 0, 0.07) !important; }
-  html:not(.dark):not(.warm) .bg-white\/20 { background: rgba(0, 0, 0, 0.08) !important; }
-  html:not(.dark):not(.warm) .bg-white\/30 { background: rgba(0, 0, 0, 0.10) !important; }
+  html:not(.dark):not(.warm) .bg-white\/5 { background: rgba(0, 0, 0, 0.04) !important; }
+  html:not(.dark):not(.warm) .bg-white\/10 { background: rgba(0, 0, 0, 0.06) !important; }
+  html:not(.dark):not(.warm) .bg-white\/15 { background: rgba(0, 0, 0, 0.08) !important; }
+  html:not(.dark):not(.warm) .bg-white\/20 { background: rgba(0, 0, 0, 0.10) !important; }
+  html:not(.dark):not(.warm) .bg-white\/30 { background: rgba(0, 0, 0, 0.14) !important; }
 
-  /* Light mode: border-white overrides */
-  html:not(.dark):not(.warm) .border-white\/5 { border-color: rgba(0, 0, 0, 0.05) !important; }
-  html:not(.dark):not(.warm) .border-white\/10 { border-color: rgba(0, 0, 0, 0.08) !important; }
-  html:not(.dark):not(.warm) .border-white\/20 { border-color: rgba(0, 0, 0, 0.12) !important; }
+  /* Light mode: border-white overrides — BOOSTED for visibility on white cards */
+  html:not(.dark):not(.warm) .border-white\/5 { border-color: rgba(15, 23, 42, 0.10) !important; }
+  html:not(.dark):not(.warm) .border-white\/10 { border-color: rgba(15, 23, 42, 0.15) !important; }
+  html:not(.dark):not(.warm) .border-white\/20 { border-color: rgba(15, 23, 42, 0.22) !important; }
 
   /* Light mode: ring-white/N overrides */
-  html:not(.dark):not(.warm) .ring-white\/30 { --tw-ring-color: rgba(0, 0, 0, 0.2) !important; }
+  html:not(.dark):not(.warm) .ring-white\/30 { --tw-ring-color: rgba(15, 23, 42, 0.25) !important; }
 
   /* Warm mode: override white text/bg to warm brown equivalents (light warm theme).
-     Opacities boosted to match light-mode fix — previous values were too faint
-     on the cream card background. */
+     Opacities HIGH because these are brown-on-cream (warm theme).
+     Low opacities are invisible on cream cards. */
   .warm .text-white,
   .warm text-white {
-    color: #3d2b1f !important;
+    color: #2c1810 !important;  /* dark brown — near black */
   }
-  .warm .text-white\/90 { color: rgba(61, 43, 31, 0.92) !important; }
-  .warm .text-white\/80 { color: rgba(61, 43, 31, 0.82) !important; }
-  .warm .text-white\/70 { color: rgba(107, 79, 58, 0.85) !important; }
-  .warm .text-white\/60 { color: rgba(107, 79, 58, 0.75) !important; }
-  .warm .text-white\/50 { color: rgba(107, 79, 58, 0.68) !important; }
-  .warm .text-white\/40 { color: rgba(107, 79, 58, 0.60) !important; }
-  .warm .text-white\/30 { color: rgba(107, 79, 58, 0.50) !important; }
+  .warm .text-white\/90 { color: rgba(44, 24, 16, 0.95) !important; }
+  .warm .text-white\/80 { color: rgba(44, 24, 16, 0.88) !important; }
+  .warm .text-white\/70 { color: rgba(74, 52, 35, 0.85) !important; }
+  .warm .text-white\/60 { color: rgba(74, 52, 35, 0.78) !important; }
+  .warm .text-white\/50 { color: rgba(107, 79, 58, 0.75) !important; }
+  .warm .text-white\/40 { color: rgba(107, 79, 58, 0.70) !important; }
+  .warm .text-white\/30 { color: rgba(140, 110, 80, 0.65) !important; }
 
-  .warm .bg-white\/5 { background: rgba(180, 140, 100, 0.05) !important; }
-  .warm .bg-white\/10 { background: rgba(180, 140, 100, 0.08) !important; }
+  .warm .bg-white\/5 { background: rgba(180, 140, 100, 0.06) !important; }
+  .warm .bg-white\/10 { background: rgba(180, 140, 100, 0.10) !important; }
   .warm .bg-white\/15 { background: rgba(180, 140, 100, 0.10) !important; }
   .warm .bg-white\/20 { background: rgba(180, 140, 100, 0.12) !important; }
   .warm .bg-white\/30 { background: rgba(180, 140, 100, 0.15) !important; }
 
-  .warm .border-white\/5 { border-color: rgba(180, 140, 100, 0.10) !important; }
-  .warm .border-white\/10 { border-color: rgba(180, 140, 100, 0.15) !important; }
-  .warm .border-white\/20 { border-color: rgba(180, 140, 100, 0.20) !important; }
-  .warm .ring-white\/30 { --tw-ring-color: rgba(180, 140, 100, 0.25) !important; }
+  .warm .border-white\/5 { border-color: rgba(120, 80, 40, 0.18) !important; }
+  .warm .border-white\/10 { border-color: rgba(120, 80, 40, 0.25) !important; }
+  .warm .border-white\/20 { border-color: rgba(120, 80, 40, 0.32) !important; }
+  .warm .ring-white\/30 { --tw-ring-color: rgba(120, 80, 40, 0.35) !important; }
 
   /* Light mode: black/[opacity] backgrounds should become lighter */
   html:not(.dark):not(.warm) .bg-black\/60 { background: rgba(0, 0, 0, 0.3) !important; }
@@ -288,6 +287,29 @@
   /* Warm mode: black/[opacity] backgrounds become warm shadows */
   .warm .bg-black\/60 { background: rgba(61, 43, 31, 0.3) !important; }
   .warm .bg-black\/70 { background: rgba(61, 43, 31, 0.4) !important; }
+
+  /* === Input field contrast fix for light/warm themes ===
+     Many input fields use bg-white/5 + border-white/10 which become nearly
+     invisible on white/cream cards. This ensures inputs always have a
+     visible border and readable text in light/warm modes. */
+  html:not(.dark):not(.warm) input,
+  html:not(.dark):not(.warm) textarea,
+  html:not(.dark):not(.warm) select {
+    color: #0f172a !important;
+  }
+  html:not(.dark):not(.warm) input::placeholder,
+  html:not(.dark):not(.warm) textarea::placeholder {
+    color: rgba(71, 85, 105, 0.5) !important;
+  }
+  .warm input,
+  .warm textarea,
+  .warm select {
+    color: #2c1810 !important;
+  }
+  .warm input::placeholder,
+  .warm textarea::placeholder {
+    color: rgba(140, 110, 80, 0.5) !important;
+  }
 }
 
 /* ====== App-specific utilities ====== */
