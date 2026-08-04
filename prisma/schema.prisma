@@ -1,14 +1,12 @@
 generator client {
   provider        = "prisma-client-js"
-  // Generate engines for native (local dev) + Vercel's serverless runtime.
-  // This ensures the Prisma engine works in both environments.
-  binaryTargets   = ["native", "rhel-openssl-3.0.x"]
+  binaryTargets   = ["native"]
 }
 
 datasource db {
-  // PostgreSQL — works on Vercel, Netlify, and all serverless platforms.
-  // SQLite doesn't work on serverless (read-only filesystem).
-  provider = "postgresql"
+  // SQLite — works on z.ai platform (writable filesystem).
+  // For Vercel/Netlify serverless, switch to PostgreSQL (see DEPLOY.md).
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
