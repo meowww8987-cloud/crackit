@@ -367,7 +367,30 @@ export function PartnerCard() {
           </div>
         ) : (
           <div className="space-y-3">
+            {/* === PAIR NOT FOUND BANNER === */}
+            {/* Shows when the pair code exists in localStorage but NOT on the server.
+                This happens when the DB was reset. User must re-create the pair. */}
+            {syncError === 'notfound' && (
+              <div className="space-y-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+                <div className="text-xs text-red-500 dark:text-red-400 font-bold">
+                  ⚠ Pair not found on server
+                </div>
+                <div className="text-[10px] text-t-muted">
+                  Your pairing code <span className="font-mono font-bold">{partner.code}</span> no longer
+                  exists. The database may have been reset. Both you and your partner need to reset and
+                  create a new pair.
+                </div>
+                <button
+                  onClick={() => { vibrate(10); disconnect(); }}
+                  className="w-full py-2 rounded-xl bg-red-500 text-white font-semibold text-xs"
+                >
+                  Reset Connection
+                </button>
+              </div>
+            )}
+
             {/* === Two progress bars: YOU and PARTNER, each vs their daily goal === */}
+            {syncError !== 'notfound' && (
             <div className="space-y-3">
               {/* YOU bar */}
               <div className="flex items-center gap-2.5">
@@ -433,6 +456,7 @@ export function PartnerCard() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* === Live Status Badge === */}
             <div className="flex items-center justify-center">

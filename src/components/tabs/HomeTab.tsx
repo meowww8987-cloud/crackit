@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Target, TrendingUp, Calendar, FileText, Brain, Clock, ChevronRight } from 'lucide-react';
 import { useHistory } from '@/lib/store/history';
+import { useSession, getLiveStudySeconds } from '@/lib/store/session';
 import { useSettings } from '@/lib/store/settings';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTests } from '@/lib/store/tests';
@@ -44,11 +45,17 @@ export function HomeTab() {
   const timetableSlots = useTimetable((s) => s.slots);
   const recallChallenges = useRecall((s) => s.challenges);
 
+  // Live active session — include in today's total so the ring matches the
+  // partner card (which also includes live session time).
+  const activeSession = useSession((s) => s.active);
+  const liveSec = getLiveStudySeconds(activeSession);
+
   // Compute derived values with useMemo
   const todaySec = useMemo(() => {
     const today = todayKey();
-    return sessions.filter((s) => s.date === today).reduce((a, s) => a + s.studySeconds, 0);
-  }, [sessions]);
+    const saved = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.studySeconds, 0);
+    return saved + (activeSession ? liveSec : 0);
+  }, [sessions, activeSession, liveSec]);
 
   const yestSec = useMemo(() => {
     const d = new Date();
