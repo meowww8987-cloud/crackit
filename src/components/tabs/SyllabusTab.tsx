@@ -418,7 +418,7 @@ export function SyllabusTab() {
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="px-2 pb-2 space-y-1">
+                          <div className="px-2.5 pb-2.5 pt-1 space-y-2">
                             {chLectures.length === 0 && (
                               <p className="text-xs text-t-muted text-center py-3">No lectures yet</p>
                             )}

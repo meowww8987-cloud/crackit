@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Check, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Check, Pencil, Trash2, Play, FileText, BookOpen, RotateCw } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTargets } from '@/lib/store/targets';
@@ -17,11 +17,12 @@ interface Props {
   onEdit: () => void;
 }
 
-const RESOURCES: { key: LectureResource; icon: string; label: string; color: string }[] = [
-  { key: 'lecture', icon: '📺', label: 'Lecture', color: '#14b8a6' },
-  { key: 'dpp', icon: '📝', label: 'DPP', color: '#22c55e' },
-  { key: 'notes', icon: '📖', label: 'Notes', color: '#3b82f6' },
-  { key: 'revision', icon: '🔄', label: 'Revision', color: '#f59e0b' },
+// Modern resource config — using lucide icons instead of emoji for consistency
+const RESOURCES: { key: LectureResource; icon: typeof Play; label: string; color: string; doneColor: string }[] = [
+  { key: 'lecture', icon: Play, label: 'Lecture', color: '#14b8a6', doneColor: '#14b8a6' },
+  { key: 'dpp', icon: FileText, label: 'DPP', color: '#22c55e', doneColor: '#22c55e' },
+  { key: 'notes', icon: BookOpen, label: 'Notes', color: '#3b82f6', doneColor: '#3b82f6' },
+  { key: 'revision', icon: RotateCw, label: 'Revision', color: '#f59e0b', doneColor: '#f59e0b' },
 ];
 
 const ACTIVITIES: ActivityType[] = ['Lecture', 'DPP', 'Notes', 'Revision', 'Custom'];
@@ -41,10 +42,10 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
 
   const doneCount = [lecture.done, lecture.dppDone, lecture.notesDone, lecture.revisionDone].filter(Boolean).length;
   const progressPct = Math.round((doneCount / 4) * 100);
+  const isComplete = progressPct === 100;
 
   const isAddedToday = isAlreadyAdded(subject.name, chapter.name, 'Lecture', `L${lecture.lecNo}`);
   const labelPrefix = lecture.isCustom ? 'C' : 'L';
-  const isEven = index % 2 === 0;
 
   const handleResourceToggle = (resource: LectureResource, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -95,99 +96,132 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="rounded-xl p-2.5 transition-colors"
+      className="rounded-xl p-3 transition-all border"
       style={{
-        borderLeft: `3px solid ${progressPct === 100 ? '#22c55e' : color.hex}`,
-        background: isEven ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
+        borderLeft: `3px solid ${isComplete ? '#22c55e' : color.hex}`,
+        borderColor: 'var(--border-card)',
+        background: isComplete ? 'rgba(34, 197, 94, 0.04)' : 'var(--bg-card)',
       }}
       onTouchStart={handleLongPressStart}
       onTouchEnd={handleLongPressEnd}
       onTouchCancel={handleLongPressEnd}
     >
-      {/* Row 1: +Today mini button + Label + topic + progress */}
-      <div className="flex items-center gap-2 mb-2">
-        {/* +Today mini button (right of lecture number) */}
+      {/* === Header row: +Today + L# + topic + progress === */}
+      <div className="flex items-center gap-2 mb-2.5">
+        {/* +Today button */}
         <button
           onClick={handleAddTodayClick}
           disabled={isAddedToday}
           className={cn(
-            'shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition',
+            'shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition border',
             isAddedToday
-              ? 'bg-green-500/20 text-green-400'
-              : 'bg-white/10 text-white/70 hover:bg-white/20'
+              ? 'bg-green-500/15 text-green-500 dark:text-green-400 border-green-500/30'
+              : 'bg-white/5 text-t-secondary border-white/10 hover:bg-white/10 hover:border-white/20'
           )}
           title={isAddedToday ? 'Already added to today' : 'Add to today targets'}
         >
-          {isAddedToday ? <Check size={12} strokeWidth={3} /> : <Plus size={12} />}
+          {isAddedToday ? <Check size={13} strokeWidth={3} /> : <Plus size={13} />}
         </button>
 
-        <span className={cn('text-[10px] font-bold text-white/40 tabular shrink-0 w-6', lecture.done && 'line-through')}>
+        {/* Lecture number badge */}
+        <div
+          className="shrink-0 px-1.5 py-0.5 rounded-md text-[9px] font-bold tabular"
+          style={{
+            background: isComplete ? 'rgba(34,197,94,0.15)' : `${color.hex}15`,
+            color: isComplete ? '#22c55e' : color.hex,
+          }}
+        >
           {labelPrefix}{lecture.lecNo}
-        </span>
-        <span className={cn('text-xs flex-1 truncate', lecture.done && 'line-through text-white/40')}>
+        </div>
+
+        {/* Topic name */}
+        <span className={cn(
+          'text-sm flex-1 truncate font-medium',
+          isComplete ? 'text-t-muted line-through' : 'text-t-primary'
+        )}>
           {lecture.topic}
         </span>
+
+        {/* Custom badge */}
         {lecture.isCustom && (
-          <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-purple-500/30 text-purple-300">
+          <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-500 dark:text-purple-400 border border-purple-500/20">
             CUSTOM
           </span>
         )}
-        <span className="text-[9px] tabular font-bold shrink-0" style={{ color: progressPct === 100 ? '#22c55e' : '#ffffff60' }}>
+
+        {/* Progress count */}
+        <span
+          className="text-[10px] tabular font-bold shrink-0 px-1.5 py-0.5 rounded-md"
+          style={{
+            color: isComplete ? '#22c55e' : doneCount > 0 ? color.hex : 'var(--text-muted)',
+            background: isComplete ? 'rgba(34,197,94,0.1)' : doneCount > 0 ? `${color.hex}15` : 'transparent',
+          }}
+        >
           {doneCount}/4
         </span>
       </div>
 
-      {/* Row 2: Progress bar */}
-      <div className="h-1 rounded-full bg-white/5 overflow-hidden mb-2">
+      {/* === Progress bar === */}
+      <div className="h-1.5 rounded-full bg-white/5 overflow-hidden mb-2.5">
         <motion.div
           className="h-full rounded-full"
-          style={{ background: progressPct === 100 ? '#22c55e' : color.hex }}
+          style={{
+            background: isComplete
+              ? 'linear-gradient(90deg, #22c55e, #16a34a)'
+              : `linear-gradient(90deg, ${color.hex}, ${color.hex}cc)`,
+          }}
           animate={{ width: `${progressPct}%` }}
           transition={{ duration: 0.3 }}
         />
       </div>
 
-      {/* Row 3: 4 resource toggle buttons */}
-      <div className="flex gap-1.5">
+      {/* === Resource toggle buttons — modern, clear states === */}
+      <div className="grid grid-cols-4 gap-1.5">
         {RESOURCES.map((res) => {
           const isDone =
             res.key === 'lecture' ? lecture.done :
             res.key === 'dpp' ? lecture.dppDone :
             res.key === 'notes' ? lecture.notesDone :
             lecture.revisionDone;
+          const Icon = res.icon;
           return (
             <button
               key={res.key}
               onClick={(e) => handleResourceToggle(res.key, e)}
               className={cn(
-                'flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1 transition border',
-                isDone ? 'text-black' : 'border-white/10 bg-white/[0.03]'
+                'py-2 rounded-lg flex flex-col items-center justify-center gap-0.5 transition border',
+                isDone
+                  ? 'text-black border-transparent'
+                  : 'border-white/10 bg-white/[0.03] text-t-muted hover:bg-white/[0.07] hover:border-white/20'
               )}
-              style={isDone ? { background: res.color, borderColor: res.color } : undefined}
+              style={isDone ? { background: res.doneColor } : undefined}
               title={res.label}
             >
-              <span className="text-[10px]">{res.icon}</span>
-              {isDone && <Check size={9} strokeWidth={3} />}
+              <Icon size={13} fill={isDone ? 'currentColor' : 'none'} />
+              <span className="text-[8px] font-semibold uppercase tracking-wide">{res.label}</span>
+              {isDone && <Check size={9} strokeWidth={3} className="absolute" style={{ marginTop: '-20px', marginRight: '-20px' }} />}
             </button>
           );
         })}
       </div>
 
-      {/* Stats row — time spent, wasted, confidence, done date */}
+      {/* === Stats row — time spent, wasted, confidence, done date === */}
       {((lecture.timeSpentSec && lecture.timeSpentSec > 0) || lecture.doneDate) && (
-        <div className="flex items-center gap-2 mt-1.5 mb-0.5 text-[9px] tabular text-white/40 flex-wrap">
+        <div className="flex items-center gap-3 mt-2.5 text-[10px] tabular text-t-muted flex-wrap">
           {lecture.timeSpentSec && lecture.timeSpentSec > 0 && (
-            <span className="flex items-center gap-0.5">
-              <span style={{ color: '#22c55e' }}>▶</span> {formatHM(lecture.timeSpentSec)}
+            <span className="flex items-center gap-1">
+              <Play size={9} className="text-green-500 dark:text-green-400" fill="currentColor" />
+              <span className="text-t-secondary font-medium">{formatHM(lecture.timeSpentSec)}</span>
             </span>
           )}
           {lecture.timeWastedSec && lecture.timeWastedSec > 0 && (
-            <span className="flex items-center gap-0.5">
-              <span style={{ color: '#ef4444' }}>⚠</span> {formatHM(lecture.timeWastedSec)}
+            <span className="flex items-center gap-1">
+              <span className="text-red-500 dark:text-red-400">⚠</span>
+              <span className="text-red-500 dark:text-red-400 font-medium">{formatHM(lecture.timeWastedSec)}</span>
             </span>
           )}
           {lecture.confidence && lecture.confidence > 0 && (
-            <span className="flex items-center gap-0.5">
+            <span className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((d) => (
                 <span
                   key={d}
@@ -195,41 +229,50 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
                   style={{
                     background: d <= lecture.confidence!
                       ? (lecture.confidence! >= 4 ? '#22c55e' : lecture.confidence! >= 3 ? '#f59e0b' : '#ef4444')
-                      : 'rgba(255,255,255,0.1)',
+                      : 'rgba(128,128,128,0.2)',
                   }}
                 />
               ))}
             </span>
           )}
           {lecture.doneDate && (
-            <span className="ml-auto text-white/30">
+            <span className="ml-auto text-t-muted">
               {new Date(lecture.doneDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
           )}
         </div>
       )}
 
-      {/* Inline Add-to-Today panel (expands when +Today is tapped) */}
+      {/* === Inline Add-to-Today panel === */}
       <AnimatePresence>
         {showAddToday && !isAddedToday && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden mt-2"
+            className="overflow-hidden mt-2.5"
           >
-            <div className="glass rounded-xl p-2.5 space-y-2.5" style={{ borderLeft: `2px solid ${color.hex}` }}>
+            <div
+              className="rounded-xl p-3 space-y-3 border"
+              style={{
+                borderLeft: `2px solid ${color.hex}`,
+                background: 'var(--bg-card)',
+                borderColor: 'var(--border-card)',
+              }}
+            >
               {/* Activity pills */}
               <div>
-                <label className="text-[9px] font-bold text-white/40 uppercase mb-1 block">Activity</label>
+                <label className="text-[9px] font-bold text-t-muted uppercase mb-1.5 block tracking-wide">Activity</label>
                 <div className="flex gap-1 flex-wrap">
                   {ACTIVITIES.map((a) => (
                     <button
                       key={a}
                       onClick={(e) => { e.stopPropagation(); setActivity(a); vibrate(6); }}
                       className={cn(
-                        'px-2 py-1 rounded-full text-[10px] font-medium transition',
-                        activity === a ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/60'
+                        'px-2.5 py-1 rounded-full text-[10px] font-medium transition border',
+                        activity === a
+                          ? 'bg-teal-500 text-black border-teal-500'
+                          : 'bg-white/5 text-t-secondary border-white/10 hover:bg-white/10'
                       )}
                     >
                       {a}
@@ -241,8 +284,8 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               {/* Expected time slider */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[9px] font-bold text-white/40 uppercase">Expected Time</label>
-                  <span className="text-[10px] font-bold tabular text-teal-400">{expectedMinutes} min</span>
+                  <label className="text-[9px] font-bold text-t-muted uppercase tracking-wide">Expected Time</label>
+                  <span className="text-[11px] font-bold tabular text-teal-500 dark:text-teal-400">{expectedMinutes} min</span>
                 </div>
                 <input
                   type="range"
@@ -259,17 +302,17 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               {/* Confirm button */}
               <button
                 onClick={handleConfirmAddToday}
-                className="w-full py-2 rounded-lg text-[10px] font-bold text-black transition active:scale-95"
+                className="w-full py-2.5 rounded-lg text-[11px] font-bold text-black transition active:scale-95 flex items-center justify-center gap-1.5"
                 style={{ background: color.hex }}
               >
-                <Check size={10} className="inline mr-1" /> Add to Today ({expectedMinutes}m)
+                <Check size={11} /> Add to Today ({expectedMinutes}m)
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Long-press actions */}
+      {/* === Long-press actions === */}
       <AnimatePresence>
         {showActions && (
           <motion.div
@@ -278,10 +321,10 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="flex gap-1 mt-1.5 pt-1.5 border-t border-white/5">
+            <div className="flex gap-1.5 mt-2.5 pt-2.5 border-t border-white/10">
               <button
                 onClick={(e) => { e.stopPropagation(); setShowActions(false); onEdit(); }}
-                className="flex-1 py-1 rounded-lg bg-white/5 text-white/60 text-[10px] font-semibold flex items-center justify-center gap-1"
+                className="flex-1 py-1.5 rounded-lg bg-white/5 text-t-secondary text-[10px] font-semibold flex items-center justify-center gap-1 border border-white/10 hover:bg-white/10"
               >
                 <Pencil size={10} /> Edit
               </button>
@@ -294,7 +337,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
                   }
                   setShowActions(false);
                 }}
-                className="flex-1 py-1 rounded-lg bg-red-500/15 text-red-400 text-[10px] font-semibold flex items-center justify-center gap-1"
+                className="flex-1 py-1.5 rounded-lg bg-red-500/10 text-red-500 dark:text-red-400 text-[10px] font-semibold flex items-center justify-center gap-1 border border-red-500/20 hover:bg-red-500/20"
               >
                 <Trash2 size={10} /> Delete
               </button>
