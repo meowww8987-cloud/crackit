@@ -2,11 +2,23 @@
 
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, Plus, Search, ChevronDown, Calendar, Clock, Sigma, Layers } from 'lucide-react';
+import {
+  GraduationCap, Plus, Search, ChevronDown, Calendar, Clock, Sigma,
+  GripVertical, ArrowUp, ArrowDown, Check
+} from 'lucide-react';
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors, DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates,
+  verticalListSortingStrategy, useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTargets } from '@/lib/store/targets';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
-import type { Subject, Lecture, SubjectEntity } from '@/lib/types';
+import type { Subject, Lecture, SubjectEntity, Chapter } from '@/lib/types';
 import { cn, vibrate, isRevisionOverdue, todayKey } from '@/lib/utils';
 import { LectureResourceRow } from '@/components/syllabus/LectureResourceRow';
 import { LectureEditModal } from '@/components/syllabus/LectureEditModal';
@@ -25,10 +37,29 @@ let _showToast: (msg: string, sub?: string) => void = () => {};
 export function setSyllabusToastHandler(fn: (msg: string, sub?: string) => void) { _showToast = fn; }
 
 export function SyllabusTab() {
-  const { subjects, chapters, lectures, deleteChapter } = useSyllabus();
+  const { subjects, chapters, lectures, deleteChapter, reorderChapters } = useSyllabus();
   const [search, setSearch] = useState('');
-  const [subjectFilter, setSubjectFilter] = useState<Subject | 'all'>('all');
-  const [progressFilter, setProgressFilter] = useState<ProgressFilter>('all');
+  const [reorderMode, setReorderMode] = useState(false);
+  // Persist filters to localStorage so they survive page refresh / app reopen
+  const [subjectFilter, setSubjectFilter] = useState<Subject | 'all'>(() => {
+    if (typeof window === 'undefined') return 'all';
+    return (localStorage.getItem('syllabus-subject-filter') as Subject | 'all') || 'all';
+  });
+  const [progressFilter, setProgressFilter] = useState<ProgressFilter>(() => {
+    if (typeof window === 'undefined') return 'all';
+    return (localStorage.getItem('syllabus-progress-filter') as ProgressFilter) || 'all';
+  });
+
+  // Save filters whenever they change
+  const handleSubjectFilter = (f: Subject | 'all') => {
+    setSubjectFilter(f);
+    try { localStorage.setItem('syllabus-subject-filter', f); } catch {}
+  };
+  const handleProgressFilter = (f: ProgressFilter) => {
+    setProgressFilter(f);
+    try { localStorage.setItem('syllabus-progress-filter', f); } catch {}
+  };
+
   const [openChapter, setOpenChapter] = useState<string | null>(null);
   const [editingLecture, setEditingLecture] = useState<Lecture | null>(null);
   const [addChapterFor, setAddChapterFor] = useState<SubjectEntity | null>(null);
@@ -59,12 +90,66 @@ export function SyllabusTab() {
   const matchesSearch = (text: string) =>
     !search || text.toLowerCase().includes(search.toLowerCase());
 
+  // DnD sensors for drag-to-reorder
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Sort chapters by order field (if set), otherwise by createdAt
+  const sortChapters = (list: typeof chapters) => [...list].sort((a, b) => {
+    if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
+    if (a.order !== undefined) return -1;
+    if (b.order !== undefined) return 1;
+    return a.createdAt - b.createdAt;
+  });
+
+  const handleDragEnd = (subjectId: string, event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const subjChapters = sortChapters(chapters.filter((c) => c.subjectId === subjectId));
+    const oldIndex = subjChapters.findIndex((c) => c.id === active.id);
+    const newIndex = subjChapters.findIndex((c) => c.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const newOrder = arrayMove(subjChapters, oldIndex, newIndex).map((c) => c.id);
+    reorderChapters(subjectId, newOrder);
+    vibrate(10);
+  };
+
   return (
     <div className="pt-2 pb-4 space-y-4">
-      {/* === Modern Header — title + search + timeline === */}
+      {/* === Reorder mode banner === */}
+      {reorderMode && (
+        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/30">
+          <GripVertical size={14} className="text-teal-500 shrink-0" />
+          <span className="text-xs text-teal-600 dark:text-teal-400 font-semibold flex-1">
+            Drag chapters to reorder. Tap ✓ when done.
+          </span>
+          <button
+            onClick={() => { setReorderMode(false); vibrate(10); }}
+            className="w-7 h-7 rounded-lg bg-teal-500 text-black flex items-center justify-center"
+          >
+            <Check size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* === Modern Header — title + reorder + timeline === */}
       <div className="flex items-center gap-2">
         <h1 className="text-2xl font-bold tracking-tight">Syllabus</h1>
         <div className="flex-1" />
+        <button
+          onClick={() => { setReorderMode(!reorderMode); vibrate(10); }}
+          className={cn(
+            'shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition',
+            reorderMode
+              ? 'bg-teal-500 text-black'
+              : 'bg-white/5 text-t-muted hover:text-teal-400 hover:bg-white/10'
+          )}
+          title="Reorder chapters"
+        >
+          <GripVertical size={16} />
+        </button>
         <button
           onClick={() => { triggerTimeline(); vibrate(10); }}
           className="shrink-0 w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-t-muted hover:text-teal-400 hover:bg-white/10 transition"
@@ -103,14 +188,14 @@ export function SyllabusTab() {
 
       {/* === Subject filter — single row, colored pills === */}
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-        <FilterPill active={subjectFilter === 'all'} onClick={() => setSubjectFilter('all')}>
+        <FilterPill active={subjectFilter === 'all'} onClick={() => handleSubjectFilter('all')}>
           All
         </FilterPill>
         {SUBJECTS.map((s) => (
           <FilterPill
             key={s}
             active={subjectFilter === s}
-            onClick={() => setSubjectFilter(s)}
+            onClick={() => handleSubjectFilter(s)}
             color={subjectColor(s)}
           >
             {s}
@@ -120,11 +205,11 @@ export function SyllabusTab() {
 
       {/* === Progress filter — compact pills === */}
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-        <FilterPill small active={progressFilter === 'all'} onClick={() => setProgressFilter('all')}>All</FilterPill>
-        <FilterPill small active={progressFilter === 'studying'} onClick={() => setProgressFilter('studying')}>Active</FilterPill>
-        <FilterPill small active={progressFilter === 'next'} onClick={() => setProgressFilter('next')}>Next Up</FilterPill>
-        <FilterPill small active={progressFilter === 'done'} onClick={() => setProgressFilter('done')}>Done</FilterPill>
-        <FilterPill small active={progressFilter === 'overdue'} onClick={() => setProgressFilter('overdue')}>⚠ Overdue</FilterPill>
+        <FilterPill small active={progressFilter === 'all'} onClick={() => handleProgressFilter('all')}>All</FilterPill>
+        <FilterPill small active={progressFilter === 'studying'} onClick={() => handleProgressFilter('studying')}>Active</FilterPill>
+        <FilterPill small active={progressFilter === 'next'} onClick={() => handleProgressFilter('next')}>Next Up</FilterPill>
+        <FilterPill small active={progressFilter === 'done'} onClick={() => handleProgressFilter('done')}>Done</FilterPill>
+        <FilterPill small active={progressFilter === 'overdue'} onClick={() => handleProgressFilter('overdue')}>⚠ Overdue</FilterPill>
       </div>
 
       {/* === Actions — Build + Formula Vault side by side === */}
@@ -184,7 +269,28 @@ export function SyllabusTab() {
                 count={subjChapters.length}
                 onAdd={() => { setAddChapterFor(subj); vibrate(10); }}
               />
-              {subjChapters.map((ch) => {
+              {reorderMode ? (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={(e) => handleDragEnd(subj.id, e)}
+                >
+                  <SortableContext items={sortChapters(subjChapters).map((c) => c.id)} strategy={verticalListSortingStrategy}>
+                    {sortChapters(subjChapters).map((ch) => {
+                      const chLectures = lectures.filter((l) => l.chapterId === ch.id);
+                      return (
+                        <SortableChapterCard
+                          key={ch.id}
+                          chapter={ch}
+                          color={color}
+                          lectureCount={chLectures.length}
+                        />
+                      );
+                    })}
+                  </SortableContext>
+                </DndContext>
+              ) : null}
+              {!reorderMode && subjChapters.map((ch) => {
                 const chLectures = lectures.filter((l) => l.chapterId === ch.id);
                 const chOverdue = chLectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt)).length;
 
@@ -362,6 +468,46 @@ export function SyllabusTab() {
       )}
       {showFormulaVault && (
         <FormulaVaultInline onClose={() => setShowFormulaVault(false)} />
+      )}
+    </div>
+  );
+}
+
+
+/** Sortable chapter card — used in reorder mode */
+function SortableChapterCard({ chapter, color, lectureCount }: {
+  chapter: Chapter;
+  color: { hex: string };
+  lectureCount: number;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: chapter.id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : undefined,
+        opacity: isDragging ? 0.8 : 1,
+      }}
+      className="glass rounded-2xl p-3.5 flex items-center gap-3 mb-2"
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-t-muted hover:text-t-primary touch-none"
+      >
+        <GripVertical size={18} />
+      </button>
+      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color.hex }} />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-t-primary truncate">{chapter.name}</div>
+        <div className="text-[10px] text-t-muted">{lectureCount} lectures</div>
+      </div>
+      {chapter.pyqCount > 0 && (
+        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded tabular" style={{ background: `${color.hex}20`, color: color.hex }}>
+          ⚖ {chapter.pyqCount}m
+        </span>
       )}
     </div>
   );

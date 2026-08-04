@@ -223,6 +223,18 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
           <Toggle value={s.autoDetectWasted} onChange={(v) => update('autoDetectWasted', v)} />
         </div>
       </Row>
+      <Row label="Screen Dim Opacity">
+        <div className="space-y-1.5">
+          <span className="text-[10px] text-white/40">How much the screen dims during focus timer</span>
+          <Slider value={s.screenDimOpacity} min={0} max={80} step={5} onChange={(v) => update('screenDimOpacity', v)} format={(v) => v === 0 ? 'No dim' : `${v}%`} />
+        </div>
+      </Row>
+      <Row label="Landscape Rotation">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-white/70">Allow rotation in full-screen timer</span>
+          <Toggle value={s.allowLandscape} onChange={(v) => update('allowLandscape', v)} />
+        </div>
+      </Row>
     </>
   );
 }

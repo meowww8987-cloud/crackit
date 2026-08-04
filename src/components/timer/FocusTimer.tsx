@@ -27,6 +27,8 @@ export function FocusTimer() {
   const [showPulse, setShowPulse] = useState(false);
   const [showGoalReached, setShowGoalReached] = useState(false);
   const [showBreathing, setShowBreathing] = useState(true); // show on session start
+  // Landscape detection — rotates the timer layout when phone is sideways
+  const [isLandscape, setIsLandscape] = useState(false);
   const lastWastedRef = useRef(0);
   const lastInteractRef = useRef(Date.now());
 
@@ -35,6 +37,24 @@ export function FocusTimer() {
     const i = setInterval(() => setTick((t) => t + 1), 500);
     return () => clearInterval(i);
   }, []);
+
+  // === Landscape detection ===
+  // Rotates the timer layout when phone is sideways (if allowed in settings).
+  // Uses window.orientation + matchMedia for reliable detection.
+  useEffect(() => {
+    if (!settings.allowLandscape) return;
+    const checkOrientation = () => {
+      const landscape = window.innerWidth > window.innerHeight;
+      setIsLandscape(landscape);
+    };
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, [settings.allowLandscape]);
 
   // Watch for wasted seconds increase (returning from background) — show flash
   useEffect(() => {
@@ -334,10 +354,16 @@ export function FocusTimer() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={handleInteraction}
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-between py-12 px-6"
+      className={cn(
+        "fixed inset-0 z-[9999] flex flex-col items-center justify-between py-12 px-6",
+        isLandscape && "flex-row items-center justify-center gap-8 py-6"
+      )}
       style={{
         cursor: dimmed ? 'pointer' : 'default',
-        backgroundColor: '#000000',
+        // Apply screen dim opacity from settings (0 = pure black, 100 = no dim)
+        // When NOT dimmed: pure black + color overlay
+        // When dimmed: black + overlay at reduced opacity (burn protection)
+        backgroundColor: `rgba(0, 0, 0, ${dimmed ? 1 : 1 - (settings.screenDimOpacity / 100)})`,
         backgroundImage: dimmed ? 'none' : bgOverlay,
         transition: 'background-image 800ms ease-in-out, background-color 800ms ease-in-out',
       }}

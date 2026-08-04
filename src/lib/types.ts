@@ -107,6 +107,7 @@ export interface Chapter {
   name: string;
   pyqCount: number;
   createdAt: number;
+  order?: number; // for drag-to-reorder
 }
 
 export interface SubjectEntity {
@@ -356,6 +357,10 @@ export interface Settings {
    * Toggle in Settings → Appearance.
    */
   tutorialMode: boolean;
+  /** Screen dimming opacity during focus timer (0-100). 0 = no dim, 100 = black. */
+  screenDimOpacity: number;
+  /** Allow landscape rotation in focus timer. */
+  allowLandscape: boolean;
 }
 
 // ===== Timetable =====
