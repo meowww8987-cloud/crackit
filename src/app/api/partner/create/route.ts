@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db, ensureDbInitialized } from '@/lib/db';
 
 // POST /api/partner/create — create a new partner pair, get a code
 export async function POST(req: NextRequest) {
   try {
+    await ensureDbInitialized();
     const { name } = await req.json();
     if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 });
 

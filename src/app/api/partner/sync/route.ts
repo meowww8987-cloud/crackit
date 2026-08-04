@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db, ensureDbInitialized } from '@/lib/db';
 
 // POST /api/partner/sync — upload your study data to the pair
 // GET /api/partner/sync?code=XXX&user=A — fetch partner's data
 export async function POST(req: NextRequest) {
   try {
+    await ensureDbInitialized();
     const { code, isUserB, data } = await req.json();
     if (!code) return NextResponse.json({ error: 'Code required' }, { status: 400 });
 
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureDbInitialized();
     const code = req.nextUrl.searchParams.get('code');
     const user = req.nextUrl.searchParams.get('user'); // 'A' or 'B'
     if (!code) return NextResponse.json({ error: 'Code required' }, { status: 400 });
