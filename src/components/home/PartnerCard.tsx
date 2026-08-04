@@ -8,6 +8,7 @@ import { useHistory } from '@/lib/store/history';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
 import { useTargets } from '@/lib/store/targets';
 import { useTests } from '@/lib/store/tests';
+import { useSettings } from '@/lib/store/settings';
 import { formatHM, todayKey, vibrate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { pushToast } from '@/components/shared/Toast';
@@ -59,6 +60,8 @@ export function PartnerCard() {
   const _byDate = useTargets((s) => s.byDate);
   const _today = todayKey();
   const myTodayTargets = _byDate[_today] || EMPTY_TARGETS;
+  // Daily goal (from settings) — used for progress bar fill
+  const dailyGoalHours = useSettings((s) => s.dailyGoalHours);
 
   const [showSetup, setShowSetup] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
@@ -363,45 +366,70 @@ export function PartnerCard() {
             )}
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* === Hero: Avatars + Progress Ring === */}
-            <div className="flex items-center justify-center gap-4 py-2">
-              {/* YOU avatar */}
-              <div className="flex flex-col items-center gap-1.5">
+          <div className="space-y-3">
+            {/* === Two progress bars: YOU and PARTNER, each vs their daily goal === */}
+            <div className="space-y-3">
+              {/* YOU bar */}
+              <div className="flex items-center gap-2.5">
                 <PartnerAvatar
-                  initials={(partner.name || 'Y').slice(0, 2)}
+                  initials={(partner.name || 'Y').charAt(0).toUpperCase()}
                   accentColor="#14b8a6"
                   status={myIsStudying ? 'online' : myIsPaused ? 'idle' : 'offline'}
                   isStudying={myIsStudying}
-                  subjectColor={myCurrentSubject ? '#3b82f6' : undefined}
-                  size={56}
+                  size={40}
                 />
-                <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">YOU</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between text-[10px] mb-0.5">
+                    <span className="font-bold text-teal-600 dark:text-teal-400 uppercase">YOU · {partner.name || 'You'}</span>
+                    <span className="tabular text-t-secondary font-semibold">
+                      {formatHM(myTodaySec)} <span className="text-t-muted font-normal">/ {dailyGoalHours}h</span>
+                    </span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-white/5 overflow-hidden">
+                    <motion.div
+                      animate={{ width: `${Math.min(100, (myTodaySec / (dailyGoalHours * 3600)) * 100)}%` }}
+                      transition={{ duration: 0.5 }}
+                      className="h-full rounded-full bg-gradient-to-r from-teal-500 to-green-500"
+                    />
+                  </div>
+                  {myCurrentSubject && (
+                    <div className="text-[9px] text-t-muted mt-0.5 truncate">
+                      {myCurrentSubject}{myCurrentChapter ? ` · ${myCurrentChapter}` : ''}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Center progress ring */}
-              <PartnerProgressRing
-                mySec={myTodaySec}
-                partnerSec={partnerSec}
-                myColor="#14b8a6"
-                partnerColor="#8b5cf6"
-                size={110}
-                centerLabel={formatHM(Math.max(myTodaySec, partnerSec))}
-                centerSublabel="today"
-              />
-
-              {/* PARTNER avatar */}
-              <div className="flex flex-col items-center gap-1.5">
+              {/* PARTNER bar */}
+              <div className="flex items-center gap-2.5">
                 <PartnerAvatar
-                  initials={(partner.partnerName || 'P').slice(0, 2)}
+                  initials={(partner.partnerName || 'P').charAt(0).toUpperCase()}
                   accentColor="#8b5cf6"
                   status={partnerIsStudying ? 'online' : partnerIsPaused ? 'idle' : 'offline'}
                   isStudying={partnerIsStudying}
-                  subjectColor={partnerLastSubject ? '#3b82f6' : undefined}
-                  size={56}
+                  size={40}
                 />
-                <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider truncate max-w-[60px]">
-                  {(partner.partnerName || 'PARTNER').slice(0, 8)}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between text-[10px] mb-0.5">
+                    <span className="font-bold text-violet-600 dark:text-violet-400 uppercase truncate">
+                      PARTNER · {partner.partnerName || '—'}
+                    </span>
+                    <span className="tabular text-t-secondary font-semibold">
+                      {formatHM(partnerSec)} <span className="text-t-muted font-normal">/ {dailyGoalHours}h</span>
+                    </span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-white/5 overflow-hidden">
+                    <motion.div
+                      animate={{ width: `${Math.min(100, (partnerSec / (dailyGoalHours * 3600)) * 100)}%` }}
+                      transition={{ duration: 0.5 }}
+                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500"
+                    />
+                  </div>
+                  {partnerLastSubject && (
+                    <div className="text-[9px] text-t-muted mt-0.5 truncate">
+                      {partnerLastSubject}{partnerLastChapter ? ` · ${partnerLastChapter}` : ''}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
