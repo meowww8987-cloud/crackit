@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pause, Play, Square, ChevronDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Pause, Play, Square, ChevronDown, AlertTriangle, CheckCircle2, RotateCw } from 'lucide-react';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
 import { useTargets } from '@/lib/store/targets';
 import { useSettings } from '@/lib/store/settings';
@@ -360,10 +360,10 @@ export function FocusTimer() {
       )}
       style={{
         cursor: dimmed ? 'pointer' : 'default',
-        // Apply screen dim opacity from settings (0 = pure black, 100 = no dim)
-        // When NOT dimmed: pure black + color overlay
-        // When dimmed: black + overlay at reduced opacity (burn protection)
-        backgroundColor: `rgba(0, 0, 0, ${dimmed ? 1 : 1 - (settings.screenDimOpacity / 100)})`,
+        // ALWAYS solid black background — never show app behind.
+        backgroundColor: '#000000',
+        // Color overlay on top of black (subject-colored glow).
+        // When dimmed (burn protection), overlay fades out.
         backgroundImage: dimmed ? 'none' : bgOverlay,
         transition: 'background-image 800ms ease-in-out, background-color 800ms ease-in-out',
       }}
@@ -613,6 +613,21 @@ export function FocusTimer() {
           >
             <ChevronDown size={16} /> Min
           </button>
+          {/* Landscape toggle button — manually switch between portrait/landscape layout */}
+          {settings.allowLandscape && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInteraction();
+                setIsLandscape(!isLandscape);
+                vibrate(8);
+              }}
+              className="px-4 py-4 rounded-2xl font-semibold text-sm bg-white/5 text-white/70 active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+              title="Toggle landscape mode"
+            >
+              <RotateCw size={16} className={isLandscape ? 'rotate-90 transition-transform' : 'transition-transform'} />
+            </button>
+          )}
         </div>
       </div>
 
