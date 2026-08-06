@@ -61,24 +61,24 @@
   --color-wasting: #ef4444;
   --color-done: #6b7280;
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.97 0.003 250);
+  --foreground: oklch(0.15 0.005 250);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.15 0.005 250);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.15 0.005 250);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
+  --secondary: oklch(0.94 0.005 250);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
+  --muted: oklch(0.94 0.005 250);
+  --muted-foreground: oklch(0.45 0.01 250);
+  --accent: oklch(0.94 0.005 250);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.88 0 0);
+  --input: oklch(0.90 0 0);
+  --ring: oklch(0.6 0.05 200);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -139,6 +139,82 @@
     @apply bg-background text-foreground;
     font-feature-settings: "tnum" 1;
   }
+
+  /* ===== LIGHT MODE TEXT OVERRIDES =====
+   * Many components use text-white/N (Tailwind). In dark mode this is correct.
+   * In light/warm mode, white text on white cards = invisible.
+   * These rules override text-white/N to dark colors with HIGH opacity. */
+
+  html:not(.dark):not(.warm) .text-white,
+  html:not(.dark):not(.warm) text-white {
+    color: #0f172a !important;
+  }
+  html:not(.dark):not(.warm) .text-white\/90 { color: rgba(15, 23, 42, 0.95) !important; }
+  html:not(.dark):not(.warm) .text-white\/80 { color: rgba(15, 23, 42, 0.88) !important; }
+  html:not(.dark):not(.warm) .text-white\/70 { color: rgba(30, 41, 59, 0.82) !important; }
+  html:not(.dark):not(.warm) .text-white\/60 { color: rgba(30, 41, 59, 0.75) !important; }
+  html:not(.dark):not(.warm) .text-white\/50 { color: rgba(51, 65, 85, 0.72) !important; }
+  html:not(.dark):not(.warm) .text-white\/40 { color: rgba(51, 65, 85, 0.68) !important; }
+  html:not(.dark):not(.warm) .text-white\/30 { color: rgba(71, 85, 105, 0.65) !important; }
+
+  html:not(.dark):not(.warm) .bg-white\/5 { background: rgba(0, 0, 0, 0.04) !important; }
+  html:not(.dark):not(.warm) .bg-white\/10 { background: rgba(0, 0, 0, 0.06) !important; }
+  html:not(.dark):not(.warm) .bg-white\/15 { background: rgba(0, 0, 0, 0.08) !important; }
+  html:not(.dark):not(.warm) .bg-white\/20 { background: rgba(0, 0, 0, 0.10) !important; }
+  html:not(.dark):not(.warm) .bg-white\/30 { background: rgba(0, 0, 0, 0.14) !important; }
+
+  html:not(.dark):not(.warm) .border-white\/5 { border-color: rgba(15, 23, 42, 0.10) !important; }
+  html:not(.dark):not(.warm) .border-white\/10 { border-color: rgba(15, 23, 42, 0.15) !important; }
+  html:not(.dark):not(.warm) .border-white\/20 { border-color: rgba(15, 23, 42, 0.22) !important; }
+
+  html:not(.dark):not(.warm) .ring-white\/30 { --tw-ring-color: rgba(15, 23, 42, 0.25) !important; }
+
+  /* ===== WARM MODE TEXT OVERRIDES ===== */
+  .warm .text-white,
+  .warm text-white {
+    color: #2c1810 !important;
+  }
+  .warm .text-white\/90 { color: rgba(44, 24, 16, 0.95) !important; }
+  .warm .text-white\/80 { color: rgba(44, 24, 16, 0.88) !important; }
+  .warm .text-white\/70 { color: rgba(74, 52, 35, 0.85) !important; }
+  .warm .text-white\/60 { color: rgba(74, 52, 35, 0.78) !important; }
+  .warm .text-white\/50 { color: rgba(107, 79, 58, 0.75) !important; }
+  .warm .text-white\/40 { color: rgba(107, 79, 58, 0.70) !important; }
+  .warm .text-white\/30 { color: rgba(140, 110, 80, 0.65) !important; }
+
+  .warm .bg-white\/5 { background: rgba(180, 140, 100, 0.06) !important; }
+  .warm .bg-white\/10 { background: rgba(180, 140, 100, 0.10) !important; }
+  .warm .bg-white\/15 { background: rgba(180, 140, 100, 0.10) !important; }
+  .warm .bg-white\/20 { background: rgba(180, 140, 100, 0.12) !important; }
+  .warm .bg-white\/30 { background: rgba(180, 140, 100, 0.15) !important; }
+
+  .warm .border-white\/5 { border-color: rgba(120, 80, 40, 0.18) !important; }
+  .warm .border-white\/10 { border-color: rgba(120, 80, 40, 0.25) !important; }
+  .warm .border-white\/20 { border-color: rgba(120, 80, 40, 0.32) !important; }
+  .warm .ring-white\/30 { --tw-ring-color: rgba(120, 80, 40, 0.35) !important; }
+
+  /* ===== INPUT FIELD CONTRAST ===== */
+  html:not(.dark):not(.warm) input,
+  html:not(.dark):not(.warm) textarea,
+  html:not(.dark):not(.warm) select {
+    color: #0f172a !important;
+  }
+  html:not(.dark):not(.warm) input::placeholder,
+  html:not(.dark):not(.warm) textarea::placeholder {
+    color: rgba(71, 85, 105, 0.5) !important;
+  }
+  .warm input, .warm textarea, .warm select {
+    color: #2c1810 !important;
+  }
+  .warm input::placeholder, .warm textarea::placeholder {
+    color: rgba(140, 110, 80, 0.5) !important;
+  }
+
+  /* Light mode: black backgrounds → lighter */
+  html:not(.dark):not(.warm) .bg-black\/60 { background: rgba(0, 0, 0, 0.3) !important; }
+  html:not(.dark):not(.warm) .bg-black\/70 { background: rgba(0, 0, 0, 0.4) !important; }
+  .warm .bg-black\/60 { background: rgba(61, 43, 31, 0.3) !important; }
+  .warm .bg-black\/70 { background: rgba(61, 43, 31, 0.4) !important; }
 }
 
 /* ====== App-specific utilities ====== */
@@ -167,12 +243,41 @@
   background: rgba(20, 22, 30, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow:
-    0 4px 24px -4px rgba(0, 0, 0, 0.5),      /* drop shadow — stronger in dark */
-    inset 0 1px 0 rgba(255, 255, 255, 0.10), /* top inner highlight (bevel) */
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4);       /* bottom inner shadow (bevel) */
+    0 4px 20px -4px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+/* Light mode: glass cards need SOLID background + stronger border */
+html:not(.dark):not(.warm) .glass {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  box-shadow:
+    0 2px 12px -2px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+html:not(.dark):not(.warm) .glass-strong {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  box-shadow:
+    0 8px 32px -4px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.warm .glass {
+  background: #fff8ed;
+  border: 1px solid rgba(120, 80, 40, 0.22);
+  box-shadow:
+    0 2px 12px -2px rgba(120, 80, 40, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.warm .glass-strong {
+  background: #fffaf2;
+  border: 1px solid rgba(120, 80, 40, 0.24);
+  box-shadow:
+    0 8px 32px -4px rgba(120, 80, 40, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
-/* Glass variant — stronger, for modals/sheets that need to feel "above" cards */
+/* Glass variant — stronger, for modals/sheets */
 .glass-strong {
   background: rgba(0, 0, 0, 0.06);
   backdrop-filter: blur(32px) saturate(200%);
