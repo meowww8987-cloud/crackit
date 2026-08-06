@@ -198,7 +198,7 @@ export function HomeTab() {
       {!todayRecall?.completedAt && (
         <button
           onClick={() => triggerRecallChallenge()}
-          className="w-full glass rounded-2xl p-3 flex items-center gap-3 hover:bg-white/[0.07] transition border border-purple-500/20 minimal-hide"
+          className="w-full glass rounded-2xl p-3 flex items-center gap-3 hover:bg-white/[0.07] transition border border-purple-500/20"
         >
           <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
             <Brain size={18} className="text-purple-400" />
@@ -261,19 +261,19 @@ export function HomeTab() {
       <SubjectHealthCard />
 
       {/* Sleep & Energy + Doubts */}
-      <div className="minimal-hide"><SleepAndDoubtCard /></div>
+      <SleepAndDoubtCard />
 
       {/* Weekly Goals */}
-      <div className="minimal-hide"><WeeklyGoalCard /></div>
+      <WeeklyGoalCard />
 
       {/* Predicted Score */}
       <ScorePredictionCard />
 
       {/* Achievement Badges */}
-      <div className="minimal-hide"><AchievementBadges /></div>
+      <AchievementBadges />
 
       {/* Mini Heatmap */}
-      <div className="minimal-hide"><MiniHeatmap /></div>
+      <MiniHeatmap />
 
       {/* Sessions count */}
       <div className="glass rounded-2xl p-4 flex items-center justify-between">
