@@ -389,6 +389,33 @@ button:active:not(:disabled) {
 /* Smooth color transitions on state changes */
 .glass {
   transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* OLED Black mode — pure #000000 backgrounds for battery saving */
+.dark.oled-black, .dark.oled-black body {
+  background-color: #000000 !important;
+}
+.dark.oled-black .glass {
+  background: rgba(0, 0, 0, 0.85) !important;
+}
+.dark.oled-black .bg-\[\#0a0b15\],
+.dark.oled-black .bg-\[\#0f172a\] {
+  background-color: #000000 !important;
+}
+
+/* Minimal mode — hide non-essential UI elements */
+.minimal-mode .minimal-hide {
+  display: none !important;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #14b8a6, #22c55e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Number pop animation */

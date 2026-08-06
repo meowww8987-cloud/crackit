@@ -2,240 +2,338 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Partner } from '@/lib/types';
-import { uid } from '@/lib/utils';
+import { useHistory } from './history';
+import { useTests } from './tests';
+import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from './session';
+import { useTargets } from './targets';
+import { todayKey } from '@/lib/utils';
 
-// Partner sync uses localStorage as a shared "channel" so two browser tabs
-// (or two devices using the same storage) can pair and see each other's status.
-// This keeps the app 100% offline with no backend.
-
-interface PartnerStatus {
-  // Written by each user to a shared key
-  userId: string;
-  name: string;
-  isStudying: boolean;
-  isPaused: boolean;
-  isWasting: boolean;
-  currentSubject: string | null;
-  currentChapter: string | null;
-  todayStudySeconds: number;
+/** Rich partner data payload — synced to server and shown on the other
+ *  device's partner card. Each field is designed for at-a-glance comparison. */
+export interface PartnerSyncPayload {
+  // === Study time ===
+  /** Total seconds studied TODAY (saved sessions + live active session). */
+  todaySec: number;
+  /** Total seconds WASTED today (distractions). */
+  todayWastedSec: number;
+  /** Total seconds studied in the last 7 days. */
+  weekSec: number;
+  /** Current streak in days. */
   streak: number;
-  lastSeen: number;
-  shareChapter: boolean;
+
+  // === Current activity (live) ===
+  /** Subject of the most recent or active session. */
+  lastSubject: string | null;
+  /** Chapter of the most recent or active session. */
+  lastChapter: string | null;
+  /** Lecture name/number of the most recent or active session. */
+  lastLecture: string | null;
+  /** Topic of the most recent or active session. */
+  lastTopic: string | null;
+  /** True if the user is currently in an active (running) study session. */
+  isStudying: boolean;
+  /** True if the active session is paused. */
+  isPaused: boolean;
+  /** True if the active session is in "wasting time" mode. */
+  isWasting: boolean;
+  /** Seconds studied in the CURRENT active session (0 if none active). */
+  currentSessionSec: number;
+
+  // === Today's targets ===
+  /** Number of today's targets marked done. */
+  targetsDone: number;
+  /** Total number of today's targets. */
+  targetsTotal: number;
+
+  // === Tests ===
+  /** Score of the most recent test (/720). */
+  lastTestScore: number | null;
+  /** Number of tests logged in the last 7 days. */
+  weekTestCount: number;
+
+  /** Server-side timestamp of this payload (set by sync route). */
+  updatedAt: number;
 }
 
-interface PartnerStore {
-  // My identity
-  myUserId: string;
-  myName: string;
-  // Pairing
-  partner: Partner | null;
-  myPairCode: string | null; // code I generated for someone to pair with me
-  // Partner's live status (polled)
-  partnerStatus: PartnerStatus | null;
-  // Nudges received
-  nudges: { id: string; from: string; message: string; timestamp: number }[];
-  // Settings
-  shareChapter: boolean;
-
-  // Actions
-  generatePairCode: (myName: string) => string;
-  pairWithCode: (code: string, myName: string) => boolean;
-  unpair: () => void;
-  setShareChapter: (v: boolean) => void;
-  // Broadcast my status to the shared channel
-  broadcastStatus: (status: Partial<PartnerStatus>) => void;
-  // Poll partner's status from the shared channel
-  pollPartnerStatus: () => void;
-  // Send a nudge
-  sendNudge: (message: string) => void;
-  // Mark nudge as read
-  clearNudges: () => void;
+export interface PartnerData {
+  name: string;
+  code: string;
+  isUserB: boolean; // false = user A (created), true = user B (joined)
+  partnerName: string | null;
+  lastSyncAt: number | null;
+  /** Server-side timestamp of when the partner last pushed data.
+   *  Used for accurate online/offline detection (immune to client clock skew). */
+  partnerLastSeen: number | null;
+  partnerLastData: PartnerSyncPayload | null;
 }
 
-const PARTNER_CHANNEL_PREFIX = 'neet-partner-channel-';
-
-function readChannel(code: string): { statusA?: PartnerStatus; statusB?: PartnerStatus; partnerA?: Partner; partnerB?: Partner; nudgesA?: any[]; nudgesB?: any[] } | null {
-  try {
-    const raw = localStorage.getItem(PARTNER_CHANNEL_PREFIX + code);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function writeChannel(code: string, data: any) {
-  try {
-    localStorage.setItem(PARTNER_CHANNEL_PREFIX + code, JSON.stringify(data));
-  } catch {}
+interface PartnerStore extends PartnerData {
+  /** Returns the new code on success, or { error } on failure. */
+  createPair: (name: string) => Promise<{ code?: string; error?: string }>;
+  /** Returns true on success, or { error } on failure. */
+  joinPair: (code: string, name: string) => Promise<{ ok: boolean; error?: string }>;
+  syncData: () => Promise<void>;
+  /** Returns 'ok' | 'notfound' | 'error' so callers can surface failures
+   *  instead of silently swallowing them (which leaves users stuck on the
+   *  "waiting for partner" screen forever if their code is stale). */
+  fetchPartnerData: () => Promise<'ok' | 'notfound' | 'error'>;
+  disconnect: () => void;
 }
 
 export const usePartner = create<PartnerStore>()(
   persist(
     (set, get) => ({
-      myUserId: uid(),
-      myName: 'You',
-      partner: null,
-      myPairCode: null,
-      partnerStatus: null,
-      nudges: [],
-      shareChapter: true,
+      name: '',
+      code: '',
+      isUserB: false,
+      partnerName: null,
+      lastSyncAt: null,
+      partnerLastSeen: null,
+      partnerLastData: null,
 
-      generatePairCode: (myName) => {
-        // Generate a 6-digit code
-        const code = Math.random().toString().slice(2, 8);
-        set({ myPairCode: code, myName });
-        // Initialize the channel with my status slot
-        const existing = readChannel(code);
-        if (!existing) {
-          writeChannel(code, {
-            statusA: { userId: get().myUserId, name: myName, isStudying: false, isPaused: false, isWasting: false, currentSubject: null, currentChapter: null, todayStudySeconds: 0, streak: 0, lastSeen: Date.now(), shareChapter: true },
-            statusB: undefined,
-            partnerA: undefined,
-            partnerB: undefined,
-            nudgesA: [],
-            nudgesB: [],
+      createPair: async (name) => {
+        try {
+          const res = await fetch('/api/partner/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
           });
-        }
-        return code;
-      },
-
-      pairWithCode: (code, myName) => {
-        const channel = readChannel(code);
-        if (!channel) {
-          return false;
-        }
-        // I'm joining as partner B
-        const partner: Partner = {
-          code,
-          name: channel.statusA?.name || 'Partner',
-          pairedAt: Date.now(),
-          shareChapter: channel.statusA?.shareChapter ?? true,
-        };
-        // Write my status to slot B
-        const updated = {
-          ...channel,
-          statusB: { userId: get().myUserId, name: myName, isStudying: false, isPaused: false, isWasting: false, currentSubject: null, currentChapter: null, todayStudySeconds: 0, streak: 0, lastSeen: Date.now(), shareChannel: get().shareChapter, shareChapter: get().shareChapter },
-          partnerB: partner,
-        };
-        writeChannel(code, updated);
-        // Also set partner A's partner reference
-        if (channel.statusA) {
-          const partnerARef: Partner = { code, name: myName, pairedAt: Date.now(), shareChapter: get().shareChapter };
-          writeChannel(code, { ...updated, partnerA: partnerARef });
-        }
-        set({ partner, myName, myPairCode: code });
-        return true;
-      },
-
-      unpair: () => {
-        const code = get().myPairCode || get().partner?.code;
-        if (code) {
-          const channel = readChannel(code);
-          if (channel) {
-            // Clear my slot
-            const isA = channel.statusA?.userId === get().myUserId;
-            if (isA) {
-              writeChannel(code, { ...channel, statusA: undefined, partnerA: undefined });
-            } else {
-              writeChannel(code, { ...channel, statusB: undefined, partnerB: undefined });
-            }
+          const data = await res.json();
+          if (data.error) {
+            console.warn('[partner] createPair server error:', data.error);
+            return { error: data.error };
           }
-        }
-        set({ partner: null, myPairCode: null, partnerStatus: null });
-      },
-
-      setShareChapter: (v) => {
-        set({ shareChapter: v });
-        // Re-broadcast my status with new privacy setting
-        get().broadcastStatus({});
-      },
-
-      broadcastStatus: (status) => {
-        const code = get().myPairCode || get().partner?.code;
-        if (!code) return;
-        const channel = readChannel(code);
-        if (!channel) return;
-        const isA = channel.statusA?.userId === get().myUserId;
-        const myCurrentStatus = isA ? channel.statusA : channel.statusB;
-        if (!myCurrentStatus) return;
-        const newStatus: PartnerStatus = {
-          ...myCurrentStatus,
-          ...status,
-          userId: get().myUserId,
-          name: get().myName,
-          lastSeen: Date.now(),
-          shareChapter: get().shareChapter,
-        };
-        if (isA) {
-          writeChannel(code, { ...channel, statusA: newStatus });
-        } else {
-          writeChannel(code, { ...channel, statusB: newStatus });
-        }
-      },
-
-      pollPartnerStatus: () => {
-        const code = get().myPairCode || get().partner?.code;
-        if (!code) {
-          set({ partnerStatus: null });
-          return;
-        }
-        const channel = readChannel(code);
-        if (!channel) {
-          set({ partnerStatus: null });
-          return;
-        }
-        const isA = channel.statusA?.userId === get().myUserId;
-        const partnerStatus = isA ? channel.statusB : channel.statusA;
-        // Check for nudges
-        const myNudges = isA ? channel.nudgesB : channel.nudgesA;
-        if (myNudges && myNudges.length > 0) {
-          const existingIds = new Set(get().nudges.map((n) => n.id));
-          const newNudges = myNudges.filter((n: any) => !existingIds.has(n.id));
-          if (newNudges.length > 0) {
-            set((s) => ({
-              nudges: [...s.nudges, ...newNudges.map((n: any) => ({ ...n }))].slice(-20),
-            }));
-            // Clear the nudges I've now seen
-            if (isA) {
-              writeChannel(code, { ...channel, nudgesB: [] });
-            } else {
-              writeChannel(code, { ...channel, nudgesA: [] });
-            }
+          if (!data.code) {
+            console.warn('[partner] createPair: no code in response');
+            return { error: 'Server returned no code. Try again.' };
           }
-        }
-        set({ partnerStatus: partnerStatus || null });
-      },
-
-      sendNudge: (message) => {
-        const code = get().myPairCode || get().partner?.code;
-        if (!code) return;
-        const channel = readChannel(code);
-        if (!channel) return;
-        const isA = channel.statusA?.userId === get().myUserId;
-        const nudge = { id: uid(), from: get().myName, message, timestamp: Date.now() };
-        // Send to partner's inbox (opposite slot)
-        if (isA) {
-          const partnerInbox = channel.nudgesB || [];
-          writeChannel(code, { ...channel, nudgesB: [...partnerInbox, nudge] });
-        } else {
-          const partnerInbox = channel.nudgesA || [];
-          writeChannel(code, { ...channel, nudgesA: [...partnerInbox, nudge] });
+          // Clear any previous pair state when creating a fresh pair —
+          // otherwise stale partnerName/partnerLastData from an old pair
+          // would persist into the new one.
+          set({
+            name,
+            code: data.code,
+            isUserB: false,
+            partnerName: null,
+            partnerLastData: null,
+            lastSyncAt: null,
+          });
+          return { code: data.code };
+        } catch (e) {
+          console.warn('[partner] createPair network error:', e);
+          return { error: 'Network error. Check your connection and try again.' };
         }
       },
 
-      clearNudges: () => set({ nudges: [] }),
+      joinPair: async (code, name) => {
+        try {
+          const res = await fetch('/api/partner/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, name }),
+          });
+          const data = await res.json();
+          if (data.error) {
+            console.warn('[partner] joinPair server error:', data.error);
+            return { ok: false, error: data.error };
+          }
+          // Clear previous state — joining as user B with a new partner.
+          set({
+            name,
+            code: code.toUpperCase(),
+            isUserB: true,
+            partnerName: data.partnerName ?? null,
+            partnerLastData: null,
+            lastSyncAt: null,
+          });
+          // CRITICAL: push our initial data to the server immediately so that
+          // user A's next poll sees us. Without this, A would only see our
+          // name after our first periodic sync (which could be minutes away).
+          // Use setTimeout to let state settle before syncData reads it.
+          setTimeout(() => { get().syncData(); }, 0);
+          return { ok: true };
+        } catch (e) {
+          console.warn('[partner] joinPair network error:', e);
+          return { ok: false, error: 'Network error. Check your connection and try again.' };
+        }
+      },
+
+      syncData: async () => {
+        const state = get();
+        if (!state.code) return;
+        const sessions = useHistory.getState().sessions;
+        const tests = useTests.getState().tests;
+        const today = todayKey();
+
+        // === Saved session aggregates (from history) ===
+        const savedTodaySec = sessions
+          .filter((s) => s.date === today)
+          .reduce((a, s) => a + s.studySeconds, 0);
+        const savedTodayWastedSec = sessions
+          .filter((s) => s.date === today)
+          .reduce((a, s) => a + s.wastedSeconds, 0);
+        const weekAgo = Date.now() - 7 * 86400000;
+        const savedWeekSec = sessions
+          .filter((s) => s.endedAt >= weekAgo)
+          .reduce((a, s) => a + s.studySeconds, 0);
+        const streak = useHistory.getState().getStreak();
+
+        // === LIVE active session ===
+        // CRITICAL: include the currently-running session's time so the
+        // partner sees real-time progress. Previously only saved sessions
+        // were synced, so if B studied 1h without stopping, A only saw the
+        // time from B's last SAVED session (could be much smaller).
+        const activeSession = useSession.getState().active;
+        // Debug: log what we're reading from the session store
+        console.log('[partner] syncData reading session:', {
+          hasActive: !!activeSession,
+          paused: activeSession?.paused,
+          wasting: activeSession?.wasting,
+          subject: activeSession?.subject,
+          lastResumeAt: activeSession?.lastResumeAt,
+          studySeconds: activeSession?.studySeconds,
+        });
+        const liveSec = getLiveStudySeconds(activeSession);
+        const liveWastedSec = getLiveWastedSeconds(activeSession);
+        const isStudying = !!activeSession && !activeSession.paused && !activeSession.wasting;
+        const isPaused = !!activeSession && activeSession.paused;
+        const isWasting = !!activeSession && activeSession.wasting;
+
+        // todaySec = saved sessions today + live active session time.
+        const todaySec = savedTodaySec + (activeSession ? liveSec : 0);
+        const todayWastedSec = savedTodayWastedSec + (activeSession ? liveWastedSec : 0);
+
+        // === Current subject/topic/chapter/lecture (prefer active session) ===
+        let lastSubject: string | null = activeSession?.subject || null;
+        let lastChapter: string | null = activeSession?.chapter || null;
+        let lastLecture: string | null = activeSession?.lecture || null;
+        let lastTopic: string | null = activeSession?.topic || null;
+        if (!lastSubject) {
+          const lastSaved = sessions
+            .filter((s) => s.date === today)
+            .sort((a, b) => b.endedAt - a.endedAt)[0];
+          lastSubject = lastSaved?.subject || null;
+          lastChapter = lastSaved?.chapter || null;
+          lastLecture = lastSaved?.lecture || null;
+          lastTopic = lastSaved?.topic || null;
+        }
+
+        // === Today's targets (done / total) ===
+        const todayTargets = useTargets.getState().getTodayTargets();
+        const targetsTotal = todayTargets.length;
+        const targetsDone = todayTargets.filter((t) => t.done).length;
+
+        // === Tests ===
+        const recentTest = tests
+          .filter((t) => t.totalMarks !== undefined)
+          .sort((a, b) => b.date.localeCompare(a.date))[0];
+        const lastTestScore = recentTest?.totalMarks || null;
+        const weekTestCount = tests.filter((t) => {
+          const tDate = new Date(t.date + 'T00:00:00').getTime();
+          return tDate >= weekAgo;
+        }).length;
+
+        const payload: PartnerSyncPayload = {
+          todaySec,
+          todayWastedSec,
+          weekSec: savedWeekSec + (activeSession ? liveSec : 0),
+          streak,
+          lastSubject,
+          lastChapter,
+          lastLecture,
+          lastTopic,
+          isStudying,
+          isPaused,
+          isWasting,
+          currentSessionSec: activeSession ? liveSec : 0,
+          targetsDone,
+          targetsTotal,
+          lastTestScore,
+          weekTestCount,
+          updatedAt: Date.now(),
+        };
+
+        try {
+          const res = await fetch('/api/partner/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: state.code, isUserB: state.isUserB, data: payload }),
+            cache: 'no-store',
+          });
+          if (!res.ok) {
+            console.warn('[partner] syncData POST failed:', res.status, 'for code', state.code);
+          } else {
+            set({ lastSyncAt: Date.now() });
+            // Verbose diagnostic — helps verify pushes are actually happening.
+            // Check DevTools console for this log to confirm your device is pushing.
+            console.log('[partner] syncData OK — pushed', {
+              code: state.code,
+              isUserB: state.isUserB,
+              todaySec,
+              isStudying,
+              lastSubject,
+              updatedAt: payload.updatedAt,
+            });
+          }
+        } catch (e) {
+          console.warn('[partner] syncData network error:', e);
+        }
+      },
+
+      fetchPartnerData: async () => {
+        const state = get();
+        if (!state.code) return 'error';
+        const user = state.isUserB ? 'B' : 'A';
+        try {
+          // cache: 'no-store' + _t timestamp — PREVENTS browser HTTP caching.
+          // Without this, the browser caches the GET response and "refresh"
+          // returns stale data (partner appears offline until hard reload).
+          const res = await fetch(
+            `/api/partner/sync?code=${encodeURIComponent(state.code)}&user=${user}&_t=${Date.now()}`,
+            { cache: 'no-store' }
+          );
+          if (res.status === 404) {
+            // Pair doesn't exist on server anymore — DB was reset, or the
+            // code was never valid. Caller should show a "reset" UI.
+            console.warn('[partner] Pair not found on server for code:', state.code);
+            return 'notfound';
+          }
+          if (!res.ok) {
+            console.warn('[partner] sync fetch failed:', res.status);
+            return 'error';
+          }
+          const data = await res.json();
+          if (data.error) {
+            console.warn('[partner] sync returned error:', data.error);
+            return 'error';
+          }
+          // Convert server ISO string to epoch ms for client-side age calculation
+          const serverLastSeen = data.lastSeen
+            ? new Date(data.lastSeen).getTime()
+            : null;
+          set({
+            // Only update partnerName if server has a real value; otherwise
+            // preserve any existing local value (avoids flicker during polls).
+            partnerName: data.partnerName ?? state.partnerName,
+            partnerLastData: data.data ?? null,
+            // Use the SERVER timestamp for freshness — immune to client clock
+            // skew. This is what drives the "online / Xs ago / offline" badge.
+            partnerLastSeen: serverLastSeen,
+          });
+          return 'ok';
+        } catch (e) {
+          console.warn('[partner] sync network error:', e);
+          return 'error';
+        }
+      },
+
+      disconnect: () => {
+        set({
+          name: '', code: '', isUserB: false, partnerName: null,
+          lastSyncAt: null, partnerLastSeen: null, partnerLastData: null,
+        });
+      },
     }),
-    {
-      name: 'neet-partner',
-      partialize: (s) => ({
-        myUserId: s.myUserId,
-        myName: s.myName,
-        partner: s.partner,
-        myPairCode: s.myPairCode,
-        shareChapter: s.shareChapter,
-      }),
-    }
+    { name: 'neet-partner' }
   )
 );

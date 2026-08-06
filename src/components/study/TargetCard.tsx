@@ -278,6 +278,11 @@ export function TargetCard({
             : color.hex
           : `${color.hex}80`,
         ['--glow-color' as string]: stateGlow,
+        // Smart color-coded glow: when THIS card is the active studying card,
+        // add a stronger outer glow in the subject color.
+        boxShadow: isThisActive && !active!.paused && !active!.wasting
+          ? `0 0 24px -4px ${color.hex}80, 0 4px 16px -2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.16)`
+          : undefined,
       }}
       // onClick removed — tap-to-open-detail is now handled in onCardPointerUp
       // (after long-press logic decides if it was a tap or a drag attempt)

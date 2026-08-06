@@ -254,6 +254,12 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
           <Toggle value={s.allowLandscape} onChange={(v) => update('allowLandscape', v)} />
         </div>
       </Row>
+      <Row label="Minimal Mode">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-white/70">Hide non-essential UI for deep focus</span>
+          <Toggle value={s.minimalMode} onChange={(v) => update('minimalMode', v)} />
+        </div>
+      </Row>
     </>
   );
 }
@@ -291,6 +297,12 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
               {t}
             </button>
           ))}
+        </div>
+      </Row>
+      <Row label="OLED Black (Battery Saver)">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-white/70">Pure black backgrounds in dark mode</span>
+          <Toggle value={s.oledBlack} onChange={(v) => update('oledBlack', v)} />
         </div>
       </Row>
       <Row label="3D Background">

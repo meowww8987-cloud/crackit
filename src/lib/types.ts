@@ -360,6 +360,10 @@ export interface Settings {
   screenDimOpacity: number;
   /** Allow landscape rotation in focus timer. */
   allowLandscape: boolean;
+  /** Minimal mode — hides non-essential UI (streak, partner, coach, badges) */
+  minimalMode: boolean;
+  /** OLED Black — uses pure #000000 for dark mode backgrounds */
+  oledBlack: boolean;
 }
 
 // ===== Timetable =====

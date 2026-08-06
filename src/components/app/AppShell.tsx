@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon } from 'lucide-react';
+import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff } from 'lucide-react';
 import { useNav, type TabKey, TAB_ORDER } from '@/lib/store/nav';
 import { useSession } from '@/lib/store/session';
 import { cn, vibrate } from '@/lib/utils';
@@ -32,6 +32,7 @@ import { PaperTestPicker } from '@/components/tests/PaperTestPicker';
 import { TutorialManager } from '@/components/shared/TutorialManager';
 import { configureSounds } from '@/lib/sounds';
 import { useSettings } from '@/lib/store/settings';
+import { subjectColor } from '@/lib/colors';
 
 // Global state for showing the active recall challenge (avoids prop drilling)
 let _showRecallChallenge: () => void = () => {};
@@ -54,6 +55,8 @@ const TABS: { key: TabKey; label: string; icon: typeof Home }[] = [
 export function AppShell() {
   const { activeTab, setTab, swipeToTab } = useNav();
   const { active, focusOpen, pendingMoodSession, tick } = useSession();
+  const minimalMode = useSettings((s) => s.minimalMode);
+  const oledBlack = useSettings((s) => s.oledBlack);
   const [navVisible, setNavVisible] = useState(true);
   const [showRecall, setShowRecall] = useState(false);
   const [showFreeStudy, setShowFreeStudy] = useState(false);
@@ -78,7 +81,23 @@ export function AppShell() {
     // Restore session on app load — auto-pause if was running
     useSession.getState().restoreSession();
 
-    // === Back button prevention ===
+    // Apply OLED Black + Minimal Mode on mount + when they change
+    import('@/lib/store/settings').then(({ applyOledBlack, applyMinimalMode }) => {
+      applyOledBlack(useSettings.getState().oledBlack);
+      applyMinimalMode(useSettings.getState().minimalMode);
+    });
+
+    // Apply OLED Black when setting changes
+  useEffect(() => {
+    import('@/lib/store/settings').then(({ applyOledBlack }) => applyOledBlack(oledBlack));
+  }, [oledBlack]);
+
+  // Apply Minimal Mode when setting changes
+  useEffect(() => {
+    import('@/lib/store/settings').then(({ applyMinimalMode }) => applyMinimalMode(minimalMode));
+  }, [minimalMode]);
+
+  // === Back button prevention ===
     // On PWA / mobile, a single back press should NOT exit the app.
     // Strategy: push a dummy history state on mount, then intercept popstate.
     // First back press: show "Press back again to exit" toast, re-push state.
@@ -253,6 +272,21 @@ export function AppShell() {
       {/* Aurora 2.0 — animated multi-layer gradient background with parallax
           depth + subject-aware brightness boost when a session is running. */}
       <GradientMesh />
+
+      {/* === Adaptive Subject Glow ===
+          When a session is active, adds a subtle colored tint to the entire screen
+          based on the current subject (Physics=blue, Chem=purple, Botany=green, Zoology=red).
+          Barely visible — like a mood light. */}
+      {active && !active.paused && (
+        <div
+          className="fixed inset-0 pointer-events-none transition-opacity duration-1000"
+          style={{
+            zIndex: 2,
+            opacity: 0.04,
+            background: `radial-gradient(circle at 50% 30%, ${subjectColor(active.subject).hex}, transparent 70%)`,
+          }}
+        />
+      )}
 
       {/* 3D NEET scene — atoms / DNA / molecules / cells, subject-aware.
           Sits above the aurora but below the grid/noise/vignette overlays.
@@ -481,15 +515,25 @@ export function AppShell() {
 }
 
 function TopBar() {
+  const minimalMode = useSettings((s) => s.minimalMode);
+  const setMinimalMode = useSettings((s) => (s as any).set);
   return (
-    <div className="absolute top-0 left-0 right-0 z-30 h-13 px-4 py-2.5 flex items-center pointer-events-none">
+    <div className="absolute top-0 left-0 right-0 z-30 h-13 px-4 py-2.5 flex items-center justify-between pointer-events-none">
       <div className="flex items-center gap-1.5 pointer-events-auto">
         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-400 to-green-500 flex items-center justify-center text-xs font-bold text-black shadow-lg shadow-teal-500/20">
           N
         </div>
-        <span className="text-sm font-semibold tracking-tight text-adaptive">NEET 2027</span>
+        <span className="text-sm font-semibold tracking-tight gradient-text">NEET 2027</span>
       </div>
-      {/* Settings button removed — use the dedicated Settings tab in bottom nav */}
+      {/* Minimal Mode eye toggle — quick switch for deep focus */}
+      <button
+        onClick={() => { vibrate(10); setMinimalMode('minimalMode', !minimalMode); }}
+        className="pointer-events-auto w-9 h-9 rounded-lg glass flex items-center justify-center text-adaptive-muted hover:text-adaptive active:scale-95 transition"
+        aria-label="Toggle minimal mode"
+        title="Minimal Mode"
+      >
+        {minimalMode ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
     </div>
   );
 }

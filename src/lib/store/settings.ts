@@ -44,6 +44,10 @@ const DEFAULTS: Settings = {
   screenDimOpacity: 30,
   // Allow landscape rotation in focus timer
   allowLandscape: true,
+  // Minimal mode — hides non-essential UI for deep focus
+  minimalMode: false,
+  // OLED Black — pure #000000 backgrounds for battery saving
+  oledBlack: false,
 };
 
 const TEXT_SIZE_PX = { S: 14, M: 16, L: 18, XL: 20 };
@@ -101,9 +105,30 @@ export function applyTextSize(size: Settings['textSize']) {
 
 export function applyTheme(theme: 'dark' | 'light') {
   if (typeof document === 'undefined') return;
+  const el = document.documentElement;
   if (theme === 'dark') {
-    document.documentElement.classList.add('dark');
+    el.classList.add('dark');
   } else {
-    document.documentElement.classList.remove('dark');
+    el.classList.remove('dark');
+  }
+}
+
+export function applyOledBlack(enabled: boolean) {
+  if (typeof document === 'undefined') return;
+  const el = document.documentElement;
+  if (enabled) {
+    el.classList.add('oled-black');
+  } else {
+    el.classList.remove('oled-black');
+  }
+}
+
+export function applyMinimalMode(enabled: boolean) {
+  if (typeof document === 'undefined') return;
+  const el = document.documentElement;
+  if (enabled) {
+    el.classList.add('minimal-mode');
+  } else {
+    el.classList.remove('minimal-mode');
   }
 }
