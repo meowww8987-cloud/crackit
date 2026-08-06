@@ -41,7 +41,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var raw = localStorage.getItem('neet-settings');
+                  var theme = 'dark';
+                  if (raw) {
+                    var parsed = JSON.parse(raw);
+                    theme = parsed?.state?.appTheme || 'dark';
+                  }
+                  var el = document.documentElement;
+                  el.classList.remove('dark', 'warm', 'light-mode-adapt', 'warm-mode-adapt');
+                  if (theme === 'dark') el.classList.add('dark');
+                  else if (theme === 'warm') el.classList.add('warm', 'warm-mode-adapt');
+                  else el.classList.add('light-mode-adapt');
+                } catch(e) {
+                  document.documentElement.classList.add('dark');
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="antialiased bg-background text-foreground overscroll-none">
         {children}
         <Toaster />
