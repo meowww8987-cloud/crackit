@@ -117,7 +117,8 @@ export function applyTheme(theme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest'
     el.classList.add('light-mode-adapt');
   } else {
     // ocean, forest, lavender, rose, gold are dark-based themes
-    el.classList.add(theme);
+    // MUST add 'dark' class too so all .dark .glass, .dark .card-solid, etc. apply
+    el.classList.add('dark', theme);
   }
 }
 

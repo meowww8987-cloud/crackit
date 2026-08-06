@@ -316,7 +316,10 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
       </Row>
       <Row label="Focus Session Theme">
         <div className="grid grid-cols-2 gap-2">
-          {THEMES.map((t) => (
+          {([
+            { v: 'dark', label: 'Dark', emoji: '🌙' },
+            { v: 'light', label: 'Light', emoji: '☀️' },
+          ] as const).map((t) => (
             <button
               key={t.v}
               onClick={() => update('focusTheme', t.v)}

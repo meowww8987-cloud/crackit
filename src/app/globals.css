@@ -403,67 +403,84 @@
 /* ===== MIDNIGHT GOLD THEME ===== */
 .gold {
   --bg-app: #000000;
-  --bg-card: #0a0a0a;
-  --bg-card-solid: #0a0a0a;
-  --bg-glass-strong: #050505;
-  --text-primary: #fef3c7;
+  --bg-card: #000000;
+  --bg-card-solid: #000000;
+  --bg-glass-strong: #000000;
+  --text-primary: #fde68a;
   --text-secondary: #fbbf24;
-  --text-muted: #525252;
-  --border-color: rgba(251, 191, 36, 0.15);
-  --border-card: rgba(251, 191, 36, 0.20);
-  --shadow-card: 0 2px 12px -2px rgba(0, 0, 0, 0.6);
-  --shadow-strong: 0 8px 32px -4px rgba(0, 0, 0, 0.8);
+  --text-muted: #92400e;
+  --border-color: rgba(251, 191, 36, 0.25);
+  --border-card: rgba(251, 191, 36, 0.30);
+  --shadow-card: 0 2px 12px -2px rgba(251, 191, 36, 0.08);
+  --shadow-strong: 0 8px 32px -4px rgba(251, 191, 36, 0.12);
 
-  --background: oklch(0.05 0.01 80);
-  --foreground: oklch(0.92 0.02 80);
-  --card: oklch(0.1 0.01 80);
-  --card-foreground: oklch(0.92 0.02 80);
-  --popover: oklch(0.1 0.01 80);
-  --popover-foreground: oklch(0.92 0.02 80);
-  --primary: oklch(0.75 0.15 80);
-  --primary-foreground: oklch(0.05 0.01 80);
-  --secondary: oklch(0.15 0.01 80);
-  --secondary-foreground: oklch(0.88 0.02 80);
-  --muted: oklch(0.15 0.01 80);
-  --muted-foreground: oklch(0.55 0.01 80);
-  --accent: oklch(0.2 0.02 80);
-  --accent-foreground: oklch(0.88 0.02 80);
+  --background: oklch(0.02 0 0);
+  --foreground: oklch(0.85 0.08 85);
+  --card: oklch(0.03 0 0);
+  --card-foreground: oklch(0.85 0.08 85);
+  --popover: oklch(0.03 0 0);
+  --popover-foreground: oklch(0.85 0.08 85);
+  --primary: oklch(0.75 0.18 85);
+  --primary-foreground: oklch(0.02 0 0);
+  --secondary: oklch(0.06 0.01 85);
+  --secondary-foreground: oklch(0.80 0.06 85);
+  --muted: oklch(0.06 0.01 85);
+  --muted-foreground: oklch(0.45 0.03 85);
+  --accent: oklch(0.08 0.02 85);
+  --accent-foreground: oklch(0.80 0.06 85);
   --destructive: oklch(0.65 0.2 25);
-  --border: oklch(0.2 0.02 80);
-  --input: oklch(0.15 0.01 80);
-  --ring: oklch(0.6 0.1 80);
+  --border: oklch(0.15 0.03 85);
+  --input: oklch(0.06 0.01 85);
+  --ring: oklch(0.65 0.12 85);
 }
-.gold .text-white, .gold text-white { color: #fef3c7 !important; }
-.gold .text-white\/90 { color: rgba(254, 243, 199, 0.95) !important; }
-.gold .text-white\/80 { color: rgba(254, 243, 199, 0.88) !important; }
+/* Gold theme: ALL text is gold */
+.gold .text-white, .gold text-white { color: #fde68a !important; }
+.gold .text-white\/90 { color: rgba(253, 230, 138, 0.95) !important; }
+.gold .text-white\/80 { color: rgba(253, 230, 138, 0.88) !important; }
 .gold .text-white\/70 { color: rgba(251, 191, 36, 0.85) !important; }
 .gold .text-white\/60 { color: rgba(251, 191, 36, 0.78) !important; }
 .gold .text-white\/50 { color: rgba(251, 191, 36, 0.68) !important; }
 .gold .text-white\/40 { color: rgba(251, 191, 36, 0.55) !important; }
 .gold .text-white\/30 { color: rgba(251, 191, 36, 0.42) !important; }
-.gold .bg-white\/5 { background: rgba(251, 191, 36, 0.06) !important; }
-.gold .bg-white\/10 { background: rgba(251, 191, 36, 0.10) !important; }
-.gold .bg-white\/15 { background: rgba(251, 191, 36, 0.14) !important; }
-.gold .bg-white\/20 { background: rgba(251, 191, 36, 0.18) !important; }
+/* Gold theme: backgrounds are pure black with gold tint */
+.gold .bg-white\/5 { background: rgba(251, 191, 36, 0.04) !important; }
+.gold .bg-white\/10 { background: rgba(251, 191, 36, 0.08) !important; }
+.gold .bg-white\/15 { background: rgba(251, 191, 36, 0.12) !important; }
+.gold .bg-white\/20 { background: rgba(251, 191, 36, 0.16) !important; }
+/* Gold theme: borders are gold */
 .gold .border-white\/5 { border-color: rgba(251, 191, 36, 0.15) !important; }
-.gold .border-white\/10 { border-color: rgba(251, 191, 36, 0.22) !important; }
-.gold .border-white\/20 { border-color: rgba(251, 191, 36, 0.30) !important; }
+.gold .border-white\/10 { border-color: rgba(251, 191, 36, 0.25) !important; }
+.gold .border-white\/20 { border-color: rgba(251, 191, 36, 0.35) !important; }
+/* Gold theme: cards are PURE BLACK with gold borders */
 .gold .glass {
-  background: rgba(10, 10, 10, 0.82);
-  border: 1px solid rgba(251, 191, 36, 0.20);
-  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(251, 191, 36, 0.08);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  background: #000000;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  box-shadow: 0 4px 20px -4px rgba(251, 191, 36, 0.10), inset 0 1px 0 rgba(251, 191, 36, 0.06);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
 }
 .gold .glass-strong {
-  background: rgba(5, 5, 5, 0.95);
-  border: 1px solid rgba(251, 191, 36, 0.25);
-  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(251, 191, 36, 0.12);
+  background: #000000;
+  border: 1px solid rgba(251, 191, 36, 0.30);
+  box-shadow: 0 8px 32px -4px rgba(251, 191, 36, 0.15), inset 0 1px 0 rgba(251, 191, 36, 0.08);
 }
 .gold .card-solid {
-  background: #0a0a0a;
-  border: 1px solid rgba(251, 191, 36, 0.20);
-  box-shadow: 0 2px 12px -2px rgba(0, 0, 0, 0.5);
+  background: #000000;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  box-shadow: 0 2px 12px -2px rgba(251, 191, 36, 0.08);
+}
+/* Gold theme: gradient text is gold */
+.gold .gradient-text {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+/* Gold theme: grid pattern is gold */
+.gold .grid-bg {
+  background-image:
+    linear-gradient(rgba(251, 191, 36, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(251, 191, 36, 0.03) 1px, transparent 1px);
 }
 .gold .bg-black\/60 { background: rgba(0, 0, 0, 0.6) !important; }
 .gold .bg-black\/70 { background: rgba(0, 0, 0, 0.7) !important; }

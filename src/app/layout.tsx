@@ -59,7 +59,7 @@ export default function RootLayout({
                   if (theme === 'dark') el.classList.add('dark');
                   else if (theme === 'warm') el.classList.add('warm', 'warm-mode-adapt');
                   else if (theme === 'light') el.classList.add('light-mode-adapt');
-                  else el.classList.add(theme); // ocean, forest, lavender, rose, gold
+                  else el.classList.add('dark', theme); // ocean/forest/lavender/rose/gold = dark + theme accent
                 } catch(e) {
                   document.documentElement.classList.add('dark');
                 }
