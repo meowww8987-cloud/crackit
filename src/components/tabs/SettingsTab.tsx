@@ -117,11 +117,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.2.0</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.3.0</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.3.0</strong> — 5 new themes (Ocean, Forest, Lavender, Rose, Gold), card-solid light mode fix</div>
             <div><strong className="text-white/70">v2.2.0</strong> — Minimal Mode, OLED Black, Adaptive Subject Glow, Glassmorphism, Gradient Text, Smart Borders</div>
             <div><strong className="text-white/70">v2.1.0</strong> — Landscape rotation, partner sync fixes, syllabus redesign</div>
             <div><strong className="text-white/70">v2.0.0</strong> — Study partner feature, modern UI overhaul, drag-to-reorder</div>
