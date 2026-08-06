@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pause, Play, Square, ChevronDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Pause, Play, Square, ChevronDown, AlertTriangle, CheckCircle2, RotateCw } from 'lucide-react';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
 import { useTargets } from '@/lib/store/targets';
 import { useSettings } from '@/lib/store/settings';
+import { usePartner } from '@/lib/store/partner';
 import { subjectColor } from '@/lib/colors';
 import { cn, formatClock, formatHM, vibrate } from '@/lib/utils';
 import { FlipTimer } from '@/components/timer/FlipTimer';
@@ -14,6 +15,8 @@ export function FocusTimer() {
   const { active, pause, resume, toggleWasting, stop, setFocusOpen, bumpInteraction } = useSession();
   const toggleTargetDone = useTargets((s) => s.toggleDone);
   const settings = useSettings();
+  const partnerSyncData = usePartner((s) => s.syncData);
+  const partnerCode = usePartner((s) => s.code);
   const color = active ? subjectColor(active.subject) : null;
 
   // Local state for live ticking + burn protection
@@ -22,6 +25,8 @@ export function FocusTimer() {
   const [timerPos, setTimerPos] = useState({ x: 0, y: 0 });
   const [wasteFlash, setWasteFlash] = useState<number | null>(null); // seconds wasted on return
   const [showPulse, setShowPulse] = useState(false);
+  // Landscape detection — rotates the timer layout when phone is sideways
+  const [isLandscape, setIsLandscape] = useState(false);
   const lastWastedRef = useRef(0);
   const lastInteractRef = useRef(Date.now());
 
@@ -30,6 +35,22 @@ export function FocusTimer() {
     const i = setInterval(() => setTick((t) => t + 1), 500);
     return () => clearInterval(i);
   }, []);
+
+  // === Landscape detection ===
+  useEffect(() => {
+    if (!settings.allowLandscape) return;
+    const checkOrientation = () => {
+      const landscape = window.innerWidth > window.innerHeight;
+      setIsLandscape(landscape);
+    };
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, [settings.allowLandscape]);
 
   // Watch for wasted seconds increase (returning from background) — show flash
   useEffect(() => {
@@ -213,12 +234,28 @@ export function FocusTimer() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={handleInteraction}
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-between py-12 px-6"
+      className={cn(
+        "fixed inset-0 z-[9999] flex flex-col items-center justify-between py-12 px-6"
+      )}
       style={{
         cursor: dimmed ? 'pointer' : 'default',
+        // ALWAYS solid black background — never show app behind.
         backgroundColor: '#000000',
+        // Color overlay on top of black (subject-colored glow).
+        // When dimmed (burn protection), overlay fades out.
         backgroundImage: dimmed ? 'none' : bgOverlay,
         transition: 'background-image 800ms ease-in-out, background-color 800ms ease-in-out',
+        // === Landscape rotation ===
+        transform: isLandscape ? 'rotate(90deg)' : 'rotate(0deg)',
+        transformOrigin: 'center center',
+        width: isLandscape ? '100vh' : '100vw',
+        height: isLandscape ? '100vw' : '100vh',
+        display: 'flex',
+        flexDirection: isLandscape ? 'row' : 'column',
+        alignItems: 'center',
+        justifyContent: isLandscape ? 'center' : 'space-between',
+        gap: isLandscape ? '2rem' : undefined,
+        padding: isLandscape ? '1.5rem 3rem' : '3rem 1.5rem',
       }}
     >
       {/* Wasted time flash — shows when returning from background */}
@@ -348,7 +385,8 @@ export function FocusTimer() {
           transition={{ type: 'spring', stiffness: 60, damping: 20 }}
           className="transition-opacity duration-1000"
           style={{
-            opacity: dimmed ? 0.08 : 1,
+            // When dimmed: reduce opacity based on user's screenDimOpacity setting.
+            opacity: dimmed ? Math.max(0.05, 1 - (settings.screenDimOpacity / 100)) : 1,
             filter: dimmed ? 'drop-shadow(0 0 40px rgba(255,255,255,0.1))' : 'none',
           }}
         >
@@ -458,6 +496,22 @@ export function FocusTimer() {
             className="px-5 py-4 rounded-2xl font-semibold text-sm bg-white/5 text-white/70 active:scale-[0.98] transition flex items-center justify-center gap-1.5"
           >
             <ChevronDown size={16} /> Min
+          </button>
+          {/* Landscape toggle button — manually switch between portrait/landscape layout */}
+          {settings.allowLandscape && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInteraction();
+                setIsLandscape(!isLandscape);
+                vibrate(8);
+              }}
+              className="px-4 py-4 rounded-2xl font-semibold text-sm bg-white/5 text-white/70 active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+              title="Toggle landscape mode"
+            >
+              <RotateCw size={16} className={isLandscape ? 'rotate-90 transition-transform' : 'transition-transform'} />
+            </button>
+          )}
           </button>
         </div>
       </div>

@@ -39,6 +39,11 @@ const DEFAULTS: Settings = {
   animationIntensity: 60,
   // Tutorial mode — shows one-time coach marks for every major feature
   tutorialMode: false,
+  // Screen dimming opacity during focus timer (0-100%)
+  // 0 = no dim, 100 = full black. Default 8 = subtle dim.
+  screenDimOpacity: 8,
+  // Allow landscape rotation in focus timer
+  allowLandscape: true,
 };
 
 const TEXT_SIZE_PX = { S: 14, M: 16, L: 18, XL: 20 };

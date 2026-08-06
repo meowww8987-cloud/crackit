@@ -91,7 +91,23 @@ export function SettingsTab() {
         );
       })}
 
-      <p className="text-center text-xs text-white/30 pt-2">Phase 1 · Full settings coming in Phase 3</p>
+      {/* Version info + expandable changelog */}
+      <div className="glass rounded-2xl p-3 mt-4">
+        <details className="group">
+          <summary className="flex items-center justify-between cursor-pointer text-xs">
+            <span className="text-white/40">
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.1.0</span>
+            </span>
+            <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
+          </summary>
+          <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.1.0</strong> — Landscape rotation, partner sync fixes, syllabus redesign</div>
+            <div><strong className="text-white/70">v2.0.0</strong> — Study partner feature, modern UI overhaul, drag-to-reorder</div>
+            <div><strong className="text-white/70">v1.5.0</strong> — Focus timer, burn protection, PWA support</div>
+            <div><strong className="text-white/70">v1.0.0</strong> — Initial release: targets, syllabus, tests, history</div>
+          </div>
+        </details>
+      </div>
     </div>
   );
 }
@@ -210,8 +226,17 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
         </div>
       </Row>
       {s.burnProtection && (
-        <Row label="Dim Delay">
-          <Slider value={s.dimDelay} min={3} max={30} step={1} onChange={(v) => update('dimDelay', v)} format={(v) => `${v}s`} />
+        <Row label="Screen Dimming">
+          <div className="space-y-3">
+            <div>
+              <span className="text-[10px] text-white/40 uppercase tracking-wide">When to dim (idle delay)</span>
+              <Slider value={s.dimDelay} min={3} max={30} step={1} onChange={(v) => update('dimDelay', v)} format={(v) => `${v}s idle`} />
+            </div>
+            <div>
+              <span className="text-[10px] text-white/40 uppercase tracking-wide">How much to dim (opacity)</span>
+              <Slider value={s.screenDimOpacity} min={0} max={95} step={5} onChange={(v) => update('screenDimOpacity', v)} format={(v) => v === 0 ? 'No dim' : `${v}% dim`} />
+            </div>
+          </div>
         </Row>
       )}
       <Row label="Distraction Taunt Interval">
@@ -221,6 +246,12 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
         <div className="flex items-center justify-between">
           <span className="text-sm text-white/70">Detect tab switches as wasted</span>
           <Toggle value={s.autoDetectWasted} onChange={(v) => update('autoDetectWasted', v)} />
+        </div>
+      </Row>
+      <Row label="Landscape Rotation">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-white/70">Allow rotation in full-screen timer</span>
+          <Toggle value={s.allowLandscape} onChange={(v) => update('allowLandscape', v)} />
         </div>
       </Row>
     </>
