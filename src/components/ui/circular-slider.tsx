@@ -20,6 +20,11 @@ interface Props {
   color: string;
   /** Optional label to render in the center. */
   centerLabel?: React.ReactNode;
+  /** Optional canvas size override. When stacking multiple CircularSliders
+   *  concentrically, ALL rings must share the same canvas size + center so
+   *  they're perfectly concentric. Pass the OUTER ring's canvas size here
+   *  for every ring. If omitted, canvas = (radius + padding) * 2 as before. */
+  canvasSize?: number;
   /** Disabled state. */
   disabled?: boolean;
   /** Aria label for accessibility. */
@@ -66,6 +71,7 @@ export function CircularSlider({
   strokeWidth,
   color,
   centerLabel,
+  canvasSize,
   disabled = false,
   ariaLabel,
   onChange,
@@ -79,8 +85,11 @@ export function CircularSlider({
   const SWEEP_DEG = 360;
   const START_DEG = -90; // 12 o'clock
 
+  // Canvas size + center. When canvasSize is provided (concentric stacking),
+  // use it directly so all rings share the same center. Otherwise compute
+  // from this ring's own radius (standalone usage).
   const padding = strokeWidth / 2 + 8;
-  const size = (radius + padding) * 2;
+  const size = canvasSize ?? (radius + padding) * 2;
   const cx = size / 2;
   const cy = size / 2;
 

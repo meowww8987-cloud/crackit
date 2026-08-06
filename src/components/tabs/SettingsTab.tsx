@@ -119,11 +119,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.4.2</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.4.3</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.4.3</strong> — Fix concentric rings having different centers (each ring computed its own canvas size from its own radius → misaligned). Now both rings share the same canvasSize so they're perfectly concentric.</div>
             <div><strong className="text-white/70">v2.4.2</strong> — Widen Pomodoro ring gap: outer 65 / inner 30 (no overlap), tighten hit-zones so both rings are independently slidable</div>
             <div><strong className="text-white/70">v2.4.1</strong> — Rebuild Pomodoro widget: full 360° circles (no chopped arcs), big Work ring + small Break ring, vertical layout, compact legend below</div>
             <div><strong className="text-white/70">v2.4.0</strong> — Rebuilt TargetCard (cleaner info hierarchy, activity icons, remaining time), fixed drag-and-drop with dedicated drag handle, sister-card indicators (1/N badge + left-edge bar)</div>
@@ -285,7 +286,10 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
           <label className="text-xs font-bold text-white/85 uppercase tracking-wide">Pomodoro Cycle</label>
         </div>
         <div className="rounded-2xl bg-white/5 border border-white/10 p-3 flex flex-col items-center gap-2">
-          {/* Stacked circular sliders — centered, full width available */}
+          {/* Stacked circular sliders — centered, full width available.
+              BOTH rings get the SAME canvasSize so they share the same center
+              coordinate. Without this, each ring computes its own canvas from
+              its own radius → different centers → rings look off-center / overlapping. */}
           <div className="relative" style={{ width: CANVAS, height: CANVAS }}>
             {/* Outer ring: WORK (large) */}
             <div className="absolute inset-0">
@@ -297,6 +301,7 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
                 radius={OUTER_R}
                 strokeWidth={STROKE}
                 color={WORK_COLOR}
+                canvasSize={CANVAS}
                 ariaLabel="Pomodoro work duration in minutes"
                 onChange={(v) => update('pomodoroWork', v)}
                 onCommit={(v) => update('pomodoroWork', v)}
@@ -312,6 +317,7 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
                 radius={INNER_R}
                 strokeWidth={STROKE}
                 color={BREAK_COLOR}
+                canvasSize={CANVAS}
                 ariaLabel="Pomodoro break duration in minutes"
                 onChange={(v) => update('pomodoroBreak', v)}
                 onCommit={(v) => update('pomodoroBreak', v)}
