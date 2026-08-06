@@ -329,6 +329,28 @@ html:not(.dark):not(.warm) .glass-strong {
   background: rgba(18, 20, 28, 0.94);
   border-color: rgba(255, 255, 255, 0.08);
 }
+/* Light mode: card-solid must be WHITE with visible border */
+html:not(.dark):not(.warm) .card-solid {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  box-shadow:
+    0 2px 12px -2px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+/* Warm mode: card-solid must be CREAM with visible border */
+.warm .card-solid {
+  background: #fff8ed;
+  border: 1px solid rgba(120, 80, 40, 0.22);
+  box-shadow:
+    0 2px 12px -2px rgba(120, 80, 40, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+/* In light/warm mode, card-tint mix-blend-mode must change from overlay to normal */
+html:not(.dark):not(.warm) .card-tint,
+.warm .card-tint {
+  mix-blend-mode: normal;
+  opacity: 0.5;
+}
 
 /* Subject color tint overlay — sits ON TOP of .card-solid's dark base.
    Pointer-events-none so it never blocks clicks. */
