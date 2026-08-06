@@ -119,11 +119,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.4.3</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.5.0</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.5.0</strong> — Sleep tracking with persistent banner + drag-to-wake + browser notification; Micro-break exercises (box breathing, 20-20-20, stretch); Study Pact with partner</div>
             <div><strong className="text-white/70">v2.4.3</strong> — Fix concentric rings having different centers (each ring computed its own canvas size from its own radius → misaligned). Now both rings share the same canvasSize so they're perfectly concentric.</div>
             <div><strong className="text-white/70">v2.4.2</strong> — Widen Pomodoro ring gap: outer 65 / inner 30 (no overlap), tighten hit-zones so both rings are independently slidable</div>
             <div><strong className="text-white/70">v2.4.1</strong> — Rebuild Pomodoro widget: full 360° circles (no chopped arcs), big Work ring + small Break ring, vertical layout, compact legend below</div>

@@ -16,6 +16,7 @@ import { ScorePredictionCard } from '@/components/home/ScorePredictionCard';
 import { MiniHeatmap } from '@/components/home/MiniHeatmap';
 import { CoachCard } from '@/components/home/CoachCard';
 import { PartnerCard } from '@/components/home/PartnerCard';
+import { PactCard } from '@/components/partner/PactCard';
 import { WeeklyGoalCard } from '@/components/home/WeeklyGoalCard';
 import { NextTestCard, TestDayMode } from '@/components/home/NextTestCard';
 import { useMounted } from '@/lib/hooks/useMounted';
@@ -24,6 +25,8 @@ import { NumberMorph } from '@/components/shared/NumberMorph';
 import { StreakFlame } from '@/components/shared/StreakFlame';
 import { useDailyLog } from '@/lib/store/dailyLog';
 import { SleepLogSheet } from '@/components/dailylog/SleepLogSheet';
+import { SleepBanner } from '@/components/dailylog/SleepBanner';
+import { useSleep } from '@/lib/store/sleep';
 import { useDoubts } from '@/lib/store/doubts';
 import { getSubjectHealthScores } from '@/lib/healthScore';
 
@@ -136,6 +139,10 @@ export function HomeTab() {
       </motion.div>
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-sm text-white/50 -mt-2" suppressHydrationWarning>{longDate()}</motion.p>
 
+      {/* === Sleep Banner — persistent at top. When sleeping, shows live
+          timer + drag-to-wake. When awake, shows "Going to sleep?" button. === */}
+      <SleepBanner />
+
       {/* Countdown Card */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -243,6 +250,9 @@ export function HomeTab() {
       {/* === Study with Friend — compare with a friend === */}
       <PartnerCard />
 
+      {/* === Study Pact — mutual commitment (only shows if paired) === */}
+      <PactCard />
+
       {/* === AI Study Coach === */}
       <CoachCard />
 
@@ -346,6 +356,12 @@ function SleepAndDoubtCard() {
   const [showSleep, setShowSleep] = useState(false);
   const pendingDoubts = useDoubts((s) => s.getPendingCount());
   const resolvedDoubts = useDoubts((s) => s.doubts.filter(d => d.status === 'resolved').length);
+  // Real sleep data from the new sleep store
+  const todaySleepSec = useSleep((s) => s.getDurationForDate(todayKey()));
+  const avgSleepHours = useSleep((s) => s.getAverageHours(7));
+
+  const todaySleepHours = todaySleepSec / 3600;
+  const hasTodaySleep = todaySleepSec > 0;
 
   return (
     <>
@@ -355,15 +371,20 @@ function SleepAndDoubtCard() {
             <span className="text-sm">😴</span>
             <span className="text-[10px] font-bold text-white/50">Sleep</span>
           </div>
-          {todayLog ? (
+          {hasTodaySleep ? (
+            <>
+              <div className="text-lg font-bold tabular text-indigo-400">{todaySleepHours.toFixed(1)}h</div>
+              <div className="text-[9px] text-white/40">7-day avg: {avgSleepHours.toFixed(1)}h</div>
+            </>
+          ) : todayLog ? (
             <>
               <div className="text-lg font-bold tabular text-indigo-400">{todayLog.sleepHours}h</div>
-              <div className="text-[9px] text-white/40">{'⚡'.repeat(todayLog.energyLevel)}</div>
+              <div className="text-[9px] text-white/40">{'⚡'.repeat(todayLog.energyLevel)} · manual</div>
             </>
           ) : (
             <>
               <div className="text-sm font-semibold text-white/50">Log sleep</div>
-              <div className="text-[9px] text-white/30">Tap to log</div>
+              <div className="text-[9px] text-white/30">Tap banner to start</div>
             </>
           )}
         </button>

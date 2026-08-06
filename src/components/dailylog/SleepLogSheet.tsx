@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Moon, Zap, X } from 'lucide-react';
+import { Moon, Zap, X, Bed, Sunrise } from 'lucide-react';
 import { useDailyLog } from '@/lib/store/dailyLog';
-import { cn, vibrate } from '@/lib/utils';
+import { useSleep } from '@/lib/store/sleep';
+import { cn, formatHM, vibrate, dateKey, addDays } from '@/lib/utils';
 
 interface Props { onClose: () => void; }
 
@@ -12,6 +13,26 @@ export function SleepLogSheet({ onClose }: Props) {
   const logToday = useDailyLog((s) => s.logToday);
   const [sleepHours, setSleepHours] = useState(7);
   const [energyLevel, setEnergyLevel] = useState(3);
+
+  // Real sleep data from the new sleep store
+  const sleepHistory = useSleep((s) => s.history);
+  const avgHours = useSleep((s) => s.getAverageHours(7));
+
+  // Build last 7 days view
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(new Date(), -(6 - i));
+    const key = dateKey(d);
+    const entries = sleepHistory.filter((e) => e.date === key);
+    const totalSec = entries.reduce((sum, e) => sum + (e.durationSec || 0), 0);
+    return {
+      key,
+      label: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2),
+      date: d.getDate(),
+      hours: totalSec / 3600,
+      entries,
+    };
+  });
+  const maxHours = Math.max(...last7Days.map((d) => d.hours), 8);
 
   const handleSave = () => { vibrate([10, 30, 10]); logToday(sleepHours, energyLevel); onClose(); };
 
@@ -30,21 +51,49 @@ export function SleepLogSheet({ onClose }: Props) {
           </div>
         </div>
         <div className="overflow-y-auto scroll-area px-5 py-5 space-y-6">
+          {/* === Real sleep tracking summary === */}
+          {sleepHistory.length > 0 && (
+            <div className="rounded-2xl bg-indigo-500/10 border border-indigo-500/20 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-indigo-300/60 font-semibold">7-day average</div>
+                  <div className="text-2xl font-bold tabular text-indigo-300">{avgHours.toFixed(1)}h</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] uppercase tracking-wide text-indigo-300/60 font-semibold">Tracked</div>
+                  <div className="text-2xl font-bold tabular text-indigo-300">{sleepHistory.length}</div>
+                  <div className="text-[9px] text-indigo-300/50">nights</div>
+                </div>
+              </div>
+              {/* Last 7 days bar chart */}
+              <div className="flex items-end justify-between gap-1.5 h-20 mt-2">
+                {last7Days.map((d) => (
+                  <div key={d.key} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="text-[8px] text-white/40 tabular">{d.hours > 0 ? d.hours.toFixed(1) : '—'}</div>
+                    <div className="w-full flex-1 flex items-end">
+                      <div
+                        className="w-full rounded-t bg-gradient-to-t from-indigo-500 to-purple-400 transition-all"
+                        style={{
+                          height: `${(d.hours / maxHours) * 100}%`,
+                          minHeight: d.hours > 0 ? '4px' : '2px',
+                          opacity: d.hours > 0 ? 1 : 0.2,
+                        }}
+                      />
+                    </div>
+                    <div className="text-[8px] text-white/50 font-semibold">{d.label}</div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-indigo-300/60 mt-2 text-center">
+                Use the banner at the top of Home to track sleep automatically.
+              </p>
+            </div>
+          )}
+
+          {/* === Manual log (energy level only — sleep is auto-tracked now) === */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-semibold text-white/60 flex items-center gap-1.5"><Moon size={12} /> Sleep Hours</label>
-              <span className="text-2xl font-bold tabular text-indigo-400">{sleepHours}h</span>
-            </div>
-            <div className="flex gap-1.5">
-              {[3, 4, 5, 6, 7, 8, 9, 10].map((h) => (
-                <button key={h} onClick={() => { setSleepHours(h); vibrate(6); }}
-                  className={cn('flex-1 py-2.5 rounded-lg text-xs font-bold transition', sleepHours === h ? 'bg-indigo-500 text-white' : 'bg-white/5 text-white/50')}>{h}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-semibold text-white/60 flex items-center gap-1.5"><Zap size={12} /> Energy Level</label>
+              <label className="text-xs font-semibold text-white/60 flex items-center gap-1.5"><Zap size={12} /> Energy Level (now)</label>
               <span className="text-sm font-bold" style={{ color: energyLevel >= 4 ? '#22c55e' : energyLevel >= 3 ? '#f59e0b' : '#ef4444' }}>
                 {['', 'Exhausted', 'Tired', 'Okay', 'Good', 'Energized'][energyLevel]}
               </span>
@@ -59,6 +108,18 @@ export function SleepLogSheet({ onClose }: Props) {
                   }}>
                   <span className="text-lg">{'⚡'.repeat(lvl)}</span><span className="text-[8px] text-white/40">{lvl}</span>
                 </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-xs font-semibold text-white/60 flex items-center gap-1.5"><Moon size={12} /> Manual sleep hours (backup)</label>
+              <span className="text-2xl font-bold tabular text-indigo-400">{sleepHours}h</span>
+            </div>
+            <div className="flex gap-1.5">
+              {[3, 4, 5, 6, 7, 8, 9, 10].map((h) => (
+                <button key={h} onClick={() => { setSleepHours(h); vibrate(6); }}
+                  className={cn('flex-1 py-2.5 rounded-lg text-xs font-bold transition', sleepHours === h ? 'bg-indigo-500 text-white' : 'bg-white/5 text-white/50')}>{h}</button>
               ))}
             </div>
           </div>

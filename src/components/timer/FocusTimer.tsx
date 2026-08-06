@@ -10,6 +10,7 @@ import { usePartner } from '@/lib/store/partner';
 import { subjectColor } from '@/lib/colors';
 import { cn, formatClock, formatHM, vibrate } from '@/lib/utils';
 import { FlipTimer } from '@/components/timer/FlipTimer';
+import { BreakExercise } from '@/components/timer/BreakExercise';
 
 export function FocusTimer() {
   const { active, pause, resume, toggleWasting, stop, setFocusOpen, bumpInteraction } = useSession();
@@ -29,6 +30,21 @@ export function FocusTimer() {
   const [isLandscape, setIsLandscape] = useState(false);
   const lastWastedRef = useRef(0);
   const lastInteractRef = useRef(Date.now());
+
+  // === Break Exercise — shown when user pauses after a full work block ===
+  // Tracks the study seconds at the moment of pause. If the user studied
+  // >= pomodoroWork minutes before pausing, show the BreakExercise modal
+  // for pomodoroBreak minutes. Only fires once per work-block.
+  const [showBreakExercise, setShowBreakExercise] = useState(false);
+  const studiedBeforePauseRef = useRef(0);
+  const breakExerciseShownRef = useRef(false); // prevent re-trigger for same block
+
+  // Reset the "shown" flag when session resumes (new work block starts)
+  useEffect(() => {
+    if (active && !active.paused && !active.wasting) {
+      breakExerciseShownRef.current = false;
+    }
+  }, [active?.paused, active?.wasting]);
 
   // Live ticking — 500ms for smooth display
   useEffect(() => {
@@ -454,8 +470,26 @@ export function FocusTimer() {
             e.stopPropagation();
             handleInteraction();
             vibrate(12);
-            if (isPaused) resume();
-            else pause();
+            if (isPaused) {
+              resume();
+            } else {
+              // Capture study seconds before pausing — used to decide if
+              // we should show the BreakExercise modal (only after a full
+              // pomodoroWork block).
+              const studiedSec = getLiveStudySeconds(active);
+              const workSec = settings.pomodoroWork * 60;
+              pause();
+              // Show break exercise if user completed a full work block
+              // AND we haven't already shown it for this block.
+              if (
+                studiedSec >= workSec &&
+                !breakExerciseShownRef.current &&
+                !settings.reduceAnimations
+              ) {
+                breakExerciseShownRef.current = true;
+                setShowBreakExercise(true);
+              }
+            }
           }}
           className="w-full py-4 rounded-2xl font-bold text-base bg-white/10 text-white backdrop-blur-md active:scale-[0.98] transition flex items-center justify-center gap-2"
         >
@@ -533,6 +567,16 @@ export function FocusTimer() {
         </div>
       </div>
       </div>
+
+      {/* === Break Exercise modal — shown after completing a full work block === */}
+      <AnimatePresence>
+        {showBreakExercise && active && (
+          <BreakExercise
+            durationSec={settings.pomodoroBreak * 60}
+            onClose={() => setShowBreakExercise(false)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

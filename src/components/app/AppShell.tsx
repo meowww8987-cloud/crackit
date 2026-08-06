@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff } from 'lucide-react';
 import { useNav, type TabKey, TAB_ORDER } from '@/lib/store/nav';
 import { useSession } from '@/lib/store/session';
-import { cn, vibrate } from '@/lib/utils';
+import { cn, vibrate, todayKey } from '@/lib/utils';
 import { FocusTimer } from '@/components/timer/FocusTimer';
 import { FloatingWidget } from '@/components/widget/FloatingWidget';
 import { MoodPicker } from '@/components/timer/MoodPicker';
@@ -19,6 +19,7 @@ import { SettingsTab } from '@/components/tabs/SettingsTab';
 import { ActiveRecallChallenge } from '@/components/recall/ActiveRecallChallenge';
 import { FreeStudyPicker } from '@/components/study/FreeStudyPicker';
 import { useHistory } from '@/lib/store/history';
+import { usePartner } from '@/lib/store/partner';
 import { PWARegister } from '@/components/pwa/PWARegister';
 import { ToastContainer, pushToast } from '@/components/shared/Toast';
 import { ProgressTimeline } from '@/components/timeline/ProgressTimeline';
@@ -83,6 +84,26 @@ export function AppShell() {
 
     // Restore session on app load — auto-pause if was running
     useSession.getState().restoreSession();
+
+    // === Pact midnight rollover — finalize yesterday's pact if needed ===
+    // Reads yesterday's study seconds (mine + partner's) and decides if the
+    // pact was successful (both hit target). Updates streak accordingly.
+    import('@/lib/store/pact').then(({ usePact }) => {
+      const pact = usePact.getState();
+      if (pact.activePactDate && pact.activePactDate !== todayKey()) {
+        // Active pact is from a previous day — finalize it
+        const yesterdayKey = pact.activePactDate;
+        const mySec = useHistory.getState().sessions
+          .filter((s) => s.date === yesterdayKey)
+          .reduce((a, s) => a + s.studySeconds, 0);
+        // Partner's seconds for that day — we only have the LATEST synced
+        // value, which may be from today. Best effort: use the current
+        // partnerSec if the pact was yesterday (the partner's todaySec
+        // at midnight is approximately their final yesterday total).
+        const partnerSec = usePartner.getState().partnerLastData?.todaySec || 0;
+        pact.finalizeYesterday(mySec, partnerSec);
+      }
+    });
   }, []);
 
   // Apply OLED Black + Minimal Mode on mount
