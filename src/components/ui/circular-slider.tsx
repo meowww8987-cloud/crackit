@@ -120,6 +120,8 @@ export function CircularSlider({
     if (disabled) return;
     // Only respond if the pointer is near THIS ring's radius — prevents
     // hijacking clicks meant for a ring layered below in concentric setups.
+    // Tolerance is tight (strokeWidth/2 + 4) so two stacked rings with a
+    // 35px gap between them have non-overlapping grab zones.
     const svg = svgRef.current;
     if (svg) {
       const rect = svg.getBoundingClientRect();
@@ -128,7 +130,7 @@ export function CircularSlider({
       const px = (e.clientX - rect.left) * scaleX;
       const py = (e.clientY - rect.top) * scaleY;
       const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
-      const tolerance = strokeWidth / 2 + 10;
+      const tolerance = strokeWidth / 2 + 4;
       if (Math.abs(dist - radius) > tolerance) {
         return; // Not near this ring — pass through
       }
@@ -240,15 +242,15 @@ export function CircularSlider({
         style={{ touchAction: 'none' as const }}
       >
         {/* Transparent wider hit-zone — a full circle so the user can grab
-            anywhere near the ring. pointerEvents='stroke' + 'visiblePainted'
-            ensures only the ring stroke captures events, not the empty center. */}
+            anywhere near the ring. strokeWidth + 8 (was + 14) keeps the grab
+            zone tight enough that two stacked rings don't collide. */}
         <circle
           cx={cx}
           cy={cy}
           r={radius}
           fill="none"
           stroke="transparent"
-          strokeWidth={strokeWidth + 14}
+          strokeWidth={strokeWidth + 8}
           style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
         />
         {/* Track — full circle */}
@@ -283,11 +285,13 @@ export function CircularSlider({
             style={{ pointerEvents: 'none' }}
           />
         )}
-        {/* Thumb — wider transparent hit circle + visible colored circle */}
+        {/* Thumb — wider transparent hit circle + visible colored circle.
+            Hit zone reduced from +6 to +3 so two stacked rings' thumbs don't
+            collide when both arcs end in the same quadrant. */}
         <circle
           cx={thumb.x}
           cy={thumb.y}
-          r={thumbRadius + 6}
+          r={thumbRadius + 3}
           fill="transparent"
           style={{ pointerEvents: 'all', cursor: 'grab' }}
         />

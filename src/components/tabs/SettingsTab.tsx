@@ -119,11 +119,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.4.1</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.4.2</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.4.2</strong> — Widen Pomodoro ring gap: outer 65 / inner 30 (no overlap), tighten hit-zones so both rings are independently slidable</div>
             <div><strong className="text-white/70">v2.4.1</strong> — Rebuild Pomodoro widget: full 360° circles (no chopped arcs), big Work ring + small Break ring, vertical layout, compact legend below</div>
             <div><strong className="text-white/70">v2.4.0</strong> — Rebuilt TargetCard (cleaner info hierarchy, activity icons, remaining time), fixed drag-and-drop with dedicated drag handle, sister-card indicators (1/N badge + left-edge bar)</div>
             <div><strong className="text-white/70">v2.3.5</strong> — Fix light mode text visibility (all text-white/N opacity levels), compact Pomodoro widget, fix concentric ring overlap + pointer pass-through</div>
@@ -266,14 +267,14 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
   const WORK_COLOR = '#14b8a6';   // teal — focus
   const BREAK_COLOR = '#f59e0b';  // amber — rest
 
-  // Ring geometry — BIG Work ring, SMALL Break ring, clear gap between them.
-  // Outer radius 60, inner radius 36 (gap = 24px, stroke 8). This makes the
-  // Work ring visually dominant (it's the main focus of a Pomodoro cycle)
-  // and the Break ring clearly nested inside.
-  const OUTER_R = 60;
-  const INNER_R = 36;
+  // Ring geometry — BIG Work ring (radius 65), SMALL Break ring (radius 30).
+  // Gap = 35px (was 24px) so the two rings NEVER overlap and their thumbs can
+  // be grabbed independently even when both arcs end in the same quadrant.
+  // Stroke 8, canvas = (65 + 4 + 8) * 2 = 154.
+  const OUTER_R = 65;
+  const INNER_R = 30;
   const STROKE = 8;
-  const CANVAS = (OUTER_R + STROKE / 2 + 8) * 2;  // = 136
+  const CANVAS = (OUTER_R + STROKE / 2 + 8) * 2;  // = 154
 
   return (
     <>
