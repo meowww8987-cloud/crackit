@@ -55,10 +55,11 @@ export default function RootLayout({
                     theme = parsed?.state?.appTheme || 'dark';
                   }
                   var el = document.documentElement;
-                  el.classList.remove('dark', 'warm', 'light-mode-adapt', 'warm-mode-adapt');
+                  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'lavender', 'rose', 'gold', 'light-mode-adapt', 'warm-mode-adapt');
                   if (theme === 'dark') el.classList.add('dark');
                   else if (theme === 'warm') el.classList.add('warm', 'warm-mode-adapt');
-                  else el.classList.add('light-mode-adapt');
+                  else if (theme === 'light') el.classList.add('light-mode-adapt');
+                  else el.classList.add(theme); // ocean, forest, lavender, rose, gold
                 } catch(e) {
                   document.documentElement.classList.add('dark');
                 }

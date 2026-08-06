@@ -281,36 +281,49 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
 }
 
 function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
+  const THEMES = [
+    { v: 'dark', label: 'Dark', emoji: '🌙', desc: 'Deep navy', color: '#0a0b15' },
+    { v: 'light', label: 'Light', emoji: '☀️', desc: 'Bright white', color: '#f0f2f5' },
+    { v: 'warm', label: 'Warm', emoji: '🔥', desc: 'Sepia cream', color: '#faf3e8' },
+    { v: 'ocean', label: 'Ocean', emoji: '🌊', desc: 'Deep blue', color: '#0c1929' },
+    { v: 'forest', label: 'Forest', emoji: '🌿', desc: 'Deep green', color: '#0a1410' },
+    { v: 'lavender', label: 'Lavender', emoji: '💜', desc: 'Deep purple', color: '#0f0a14' },
+    { v: 'rose', label: 'Rose', emoji: '🌸', desc: 'Dark pink', color: '#140a0e' },
+    { v: 'gold', label: 'Gold', emoji: '✨', desc: 'Black + gold', color: '#000000' },
+  ] as const;
+
   return (
     <>
       <Row label="App Theme">
         <div className="grid grid-cols-2 gap-2">
-          {(['dark', 'light'] as const).map((t) => (
+          {THEMES.map((t) => (
             <button
-              key={t}
-              onClick={() => update('appTheme', t)}
+              key={t.v}
+              onClick={() => update('appTheme', t.v)}
               className={cn(
-                'py-2 rounded-xl text-sm font-semibold capitalize',
-                s.appTheme === t ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/60'
+                'py-2.5 rounded-xl text-sm font-semibold flex flex-col items-center gap-0.5 transition border-2',
+                s.appTheme === t.v ? 'border-teal-500 bg-teal-500/10' : 'border-transparent bg-white/5'
               )}
             >
-              {t}
+              <span className="text-lg">{t.emoji}</span>
+              <span className={s.appTheme === t.v ? 'text-teal-400' : 'text-white/70'}>{t.label}</span>
+              <span className={cn('text-[9px]', s.appTheme === t.v ? 'text-teal-400/60' : 'text-white/30')}>{t.desc}</span>
             </button>
           ))}
         </div>
       </Row>
       <Row label="Focus Session Theme">
         <div className="grid grid-cols-2 gap-2">
-          {(['dark', 'light'] as const).map((t) => (
+          {THEMES.map((t) => (
             <button
-              key={t}
-              onClick={() => update('focusTheme', t)}
+              key={t.v}
+              onClick={() => update('focusTheme', t.v)}
               className={cn(
-                'py-2 rounded-xl text-sm font-semibold capitalize',
-                s.focusTheme === t ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/60'
+                'py-2 rounded-xl text-sm font-semibold capitalize flex items-center justify-center gap-1.5 transition',
+                s.focusTheme === t.v ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/60'
               )}
             >
-              {t}
+              <span>{t.emoji}</span> {t.label}
             </button>
           ))}
         </div>

@@ -103,13 +103,21 @@ export function applyTextSize(size: Settings['textSize']) {
   document.documentElement.style.setProperty('--app-font-size', `${TEXT_SIZE_PX[size]}px`);
 }
 
-export function applyTheme(theme: 'dark' | 'light') {
+export function applyTheme(theme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'lavender' | 'rose' | 'gold') {
   if (typeof document === 'undefined') return;
   const el = document.documentElement;
+  // Remove all theme classes
+  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'lavender', 'rose', 'gold', 'light-mode-adapt', 'warm-mode-adapt');
+  // Add the selected theme
   if (theme === 'dark') {
     el.classList.add('dark');
+  } else if (theme === 'warm') {
+    el.classList.add('warm', 'warm-mode-adapt');
+  } else if (theme === 'light') {
+    el.classList.add('light-mode-adapt');
   } else {
-    el.classList.remove('dark');
+    // ocean, forest, lavender, rose, gold are dark-based themes
+    el.classList.add(theme);
   }
 }
 
