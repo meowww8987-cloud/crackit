@@ -14,6 +14,8 @@ import { triggerRecallChallenge } from '@/components/app/AppShell';
 import { AchievementBadges } from '@/components/shared/AchievementBadges';
 import { ScorePredictionCard } from '@/components/home/ScorePredictionCard';
 import { MiniHeatmap } from '@/components/home/MiniHeatmap';
+import { CoachCard } from '@/components/home/CoachCard';
+import { PartnerCard } from '@/components/home/PartnerCard';
 import { WeeklyGoalCard } from '@/components/home/WeeklyGoalCard';
 import { NextTestCard, TestDayMode } from '@/components/home/NextTestCard';
 import { useMounted } from '@/lib/hooks/useMounted';
@@ -237,6 +239,12 @@ export function HomeTab() {
           On test day, NextTestCard returns null and TestDayMode renders instead
           (TestDayMode is placed above the Rings so it's the first thing seen). */}
       <NextTestCard />
+
+      {/* === AI Study Coach === */}
+      <CoachCard />
+
+      {/* === Study Partner — compare with a friend === */}
+      <PartnerCard />
 
       {/* Today's Schedule */}
       {todaySlots.length > 0 && (

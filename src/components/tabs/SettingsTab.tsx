@@ -40,7 +40,8 @@ export function SettingsTab() {
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     s.set(key, value);
     if (key === 'textSize') applyTextSize(value as Settings['textSize']);
-    if (key === 'appTheme') applyTheme(value as 'dark' | 'light');
+    if (key === 'appTheme') applyTheme(value as Settings['appTheme']);
+    if (key === 'focusTheme') applyTheme(value as Settings['focusTheme']);
   };
 
   return (
