@@ -78,7 +78,7 @@ export function PartnerCard() {
   useEffect(() => {
     if (!partnerNameRef.current && partner.partnerName) {
       // First time we see a partner name — they just joined!
-      pushToast('Partner joined!', `${partner.partnerName} is now your study partner`, 'success');
+      pushToast('Friend joined!', `${partner.partnerName} is now your study friend`, 'success');
     }
     partnerNameRef.current = partner.partnerName;
   }, [partner.partnerName]);
@@ -186,7 +186,7 @@ export function PartnerCard() {
             <Users size={18} className="text-indigo-600 dark:text-indigo-400" />
           </div>
           <div className="flex-1 text-left">
-            <div className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Study with a Partner</div>
+            <div className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Study with Friend</div>
             <div className="text-[10px] text-t-muted">Compare study time · stay motivated together</div>
           </div>
         </button>
@@ -269,7 +269,7 @@ export function PartnerCard() {
       <div className="glass rounded-2xl p-3 border border-indigo-500/30 dark:border-indigo-500/20">
         <div className="flex items-center gap-2 mb-3">
           <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
-          <span className="text-xs font-bold uppercase tracking-wide text-t-secondary">Study Partner</span>
+          <span className="text-xs font-bold uppercase tracking-wide text-t-secondary">Study with Friend</span>
           {/* Minimal header actions — chevron for full comparison, ⋮ for manage */}
           <button
             onClick={() => { vibrate(8); setShowComparison(true); }}
@@ -599,7 +599,7 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
     setLoading(false);
     if (result.ok) {
       onClose();
-      pushToast('Connected!', `You're now study partners`, 'success');
+      pushToast('Connected!', `You're now study friends`, 'success');
     } else {
       setError(result.error || 'Invalid code or pair is full.');
     }
@@ -632,7 +632,7 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Users size={18} className="text-purple-400" />
-            <h2 className="text-lg font-bold">Study Partner</h2>
+            <h2 className="text-lg font-bold">Study with Friend</h2>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
             <X size={16} />

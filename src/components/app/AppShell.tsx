@@ -33,6 +33,7 @@ import { TutorialManager } from '@/components/shared/TutorialManager';
 import { configureSounds } from '@/lib/sounds';
 import { useSettings } from '@/lib/store/settings';
 import { subjectColor } from '@/lib/colors';
+import { usePartnerSync } from '@/hooks/usePartnerSync';
 
 // Global state for showing the active recall challenge (avoids prop drilling)
 let _showRecallChallenge: () => void = () => {};
@@ -57,6 +58,8 @@ export function AppShell() {
   const { active, focusOpen, pendingMoodSession, tick } = useSession();
   const minimalMode = useSettings((s) => s.minimalMode);
   const oledBlack = useSettings((s) => s.oledBlack);
+  // === Global partner sync — runs on ALL tabs so live data is always fresh ===
+  usePartnerSync();
   const [navVisible, setNavVisible] = useState(true);
   const [showRecall, setShowRecall] = useState(false);
   const [showFreeStudy, setShowFreeStudy] = useState(false);

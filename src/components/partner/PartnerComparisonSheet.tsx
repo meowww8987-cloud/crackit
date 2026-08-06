@@ -122,7 +122,7 @@ export function PartnerComparisonSheet({ onClose }: Props) {
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
             <Trophy size={20} className="text-violet-600 dark:text-violet-400" />
-            <h2 className="text-lg font-bold">Partner Comparison</h2>
+            <h2 className="text-lg font-bold">Study with Friend</h2>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-t-secondary hover:bg-white/10">
             <X size={16} />

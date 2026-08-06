@@ -240,11 +240,11 @@ export function HomeTab() {
           (TestDayMode is placed above the Rings so it's the first thing seen). */}
       <NextTestCard />
 
+      {/* === Study with Friend — compare with a friend === */}
+      <PartnerCard />
+
       {/* === AI Study Coach === */}
       <CoachCard />
-
-      {/* === Study Partner — compare with a friend === */}
-      <PartnerCard />
 
       {/* Today's Schedule */}
       {todaySlots.length > 0 && (
