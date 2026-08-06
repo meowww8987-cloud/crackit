@@ -5,11 +5,21 @@ const globalForPrisma = globalThis as unknown as {
   __dbInitialized: boolean | undefined
 }
 
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function createPrismaClient() {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    console.error('[db] DATABASE_URL environment variable is not set!');
+  }
+  if (url && !url.startsWith('postgresql://') && !url.startsWith('postgres://')) {
+    console.error('[db] DATABASE_URL must start with postgresql:// or postgres://');
+    console.error('[db] Current DATABASE_URL starts with:', url.substring(0, 20));
+  }
+  return new PrismaClient({
     log: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['query', 'error', 'warn'],
-  })
+  });
+}
+
+export const db = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
 
@@ -22,6 +32,16 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
  */
 export async function ensureDbInitialized() {
   if (globalForPrisma.__dbInitialized) return;
+
+  // Verify DATABASE_URL is set before attempting any DB operations
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error('DATABASE_URL environment variable is not set. Please add it in Vercel → Settings → Environment Variables.');
+  }
+  if (!url.startsWith('postgresql://') && !url.startsWith('postgres://')) {
+    throw new Error(`DATABASE_URL must start with postgresql:// or postgres://. Current value starts with: "${url.substring(0, 30)}..."`);
+  }
+
   try {
     // Create PartnerPair table if it doesn't exist (PostgreSQL syntax)
     await db.$executeRaw`CREATE TABLE IF NOT EXISTS "PartnerPair" (
@@ -37,8 +57,10 @@ export async function ensureDbInitialized() {
     )`;
     await db.$executeRaw`CREATE UNIQUE INDEX IF NOT EXISTS "PartnerPair_code_key" ON "PartnerPair"("code")`;
     globalForPrisma.__dbInitialized = true;
-  } catch (e) {
-    console.error('[db] Initialization error:', e);
-    globalForPrisma.__dbInitialized = true;
+    console.log('[db] Tables initialized successfully');
+  } catch (e: any) {
+    console.error('[db] Initialization error:', e?.message || e);
+    // Don't set __dbInitialized to true if it failed — let it retry next request
+    throw e;
   }
 }

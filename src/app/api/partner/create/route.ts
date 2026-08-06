@@ -26,13 +26,7 @@ export async function POST(req: NextRequest) {
     // Log the full error for debugging — check Vercel function logs to see this
     console.error('[partner/create] Error:', e?.message || e);
 
-    // If the table doesn't exist, return a helpful message
-    if (e?.message?.includes('does not exist') || e?.message?.includes('relation')) {
-      return NextResponse.json({
-        error: 'Database table not created. Run "npx prisma db push" to create tables.',
-      }, { status: 500 });
-    }
-
+    // Return the ACTUAL error message so the user can see what's wrong
     return NextResponse.json({
       error: e?.message || 'Failed to create pair',
     }, { status: 500 });

@@ -355,8 +355,7 @@ export function FocusTimer() {
       exit={{ opacity: 0 }}
       onClick={handleInteraction}
       className={cn(
-        "fixed inset-0 z-[9999] flex flex-col items-center justify-between py-12 px-6",
-        isLandscape && "flex-row items-center justify-center gap-8 py-6"
+        "fixed inset-0 z-[9999] flex flex-col items-center justify-between py-12 px-6"
       )}
       style={{
         cursor: dimmed ? 'pointer' : 'default',
@@ -366,6 +365,21 @@ export function FocusTimer() {
         // When dimmed (burn protection), overlay fades out.
         backgroundImage: dimmed ? 'none' : bgOverlay,
         transition: 'background-image 800ms ease-in-out, background-color 800ms ease-in-out',
+        // === Landscape rotation ===
+        // When isLandscape is true, rotate the entire container 90 degrees.
+        // This makes the phone's physical portrait orientation display landscape content.
+        transform: isLandscape ? 'rotate(90deg)' : 'rotate(0deg)',
+        transformOrigin: 'center center',
+        // Swap width/height when rotated so it fills the screen
+        width: isLandscape ? '100vh' : '100vw',
+        height: isLandscape ? '100vw' : '100vh',
+        // When rotated, use landscape flex direction
+        display: 'flex',
+        flexDirection: isLandscape ? 'row' : 'column',
+        alignItems: 'center',
+        justifyContent: isLandscape ? 'center' : 'space-between',
+        gap: isLandscape ? '2rem' : undefined,
+        padding: isLandscape ? '1.5rem 3rem' : '3rem 1.5rem',
       }}
     >
       {/* Wasted time flash — shows when returning from background */}
