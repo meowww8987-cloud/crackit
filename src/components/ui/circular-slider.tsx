@@ -8,7 +8,7 @@ interface Props {
   value: number;
   /** Minimum value (mapped to angle 0°). */
   min: number;
-  /** Maximum value (mapped to angle 270° — leaves a 90° gap at the bottom). */
+  /** Maximum value (mapped to angle 360° — full circle). */
   max: number;
   /** Step size — value is rounded to nearest multiple of step. */
   step: number;
@@ -33,24 +33,29 @@ interface Props {
 
 /**
  * CircularSlider — a radial slider where the user drags a thumb ALONG THE
- * CIRCUMFERENCE of a ring, not along a straight line.
+ * CIRCUMFERENCE of a full circle (360°).
  *
  * Geometry:
- *  - Active arc spans 270° (from -225° to +45° in standard SVG coords, leaving
- *    a 90° gap at the bottom so the start/end don't meet).
- *  - Angle 0 (start) is at the bottom-left of the gap.
- *  - Dragging clockwise from there increases the value.
+ *  - Full 360° circle (no gap, no chopped arcs — clean look).
+ *  - Start angle = -90° (top / 12 o'clock in SVG coords).
+ *  - Sweeping clockwise increases the value.
+ *  - Track = a full `<circle>` element (always complete).
+ *  - Value fill = a `<path>` arc from start to current angle (or a full
+ *    circle when value === max).
  *
  * Interaction:
- *  - pointerdown anywhere on the ring or thumb begins dragging
- *  - pointermove updates the value based on the angle from the center to the
- *    pointer position (snapped to the ring's radius)
+ *  - pointerdown anywhere near the ring begins dragging
+ *  - pointermove updates the value based on the angle from center to pointer
  *  - pointerup ends the drag and fires onCommit
- *  - Touch is supported via pointer events
+ *  - Touch supported via pointer events
+ *
+ * Concentric stacking:
+ *  - The SVG's onPointerDown checks if the pointer is near THIS ring's radius
+ *    (within ±strokeWidth/2 + 10). If not, it returns early so the event
+ *    passes through to any ring layered below.
  *
  * Accessibility:
- *  - The SVG has role="slider" and responds to ArrowLeft/ArrowRight (step -/+)
- *    and Home/End (min/max).
+ *  - role="slider" + ArrowLeft/Right (step -/+) + Home/End (min/max).
  */
 export function CircularSlider({
   value,
@@ -70,13 +75,11 @@ export function CircularSlider({
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragging, setDragging] = useState(false);
 
-  // Total swept angle = 270° (3π/2). Start angle = 135° from positive x-axis
-  // (in SVG coords, where +y is down), so the gap is centered at the bottom.
-  // Easier mental model: start at "7 o'clock", sweep clockwise to "5 o'clock".
-  const SWEEP_DEG = 270;
-  const START_DEG = 135;  // SVG: 0° = right, 90° = down. 135° = bottom-left.
+  // Full circle: sweep = 360°, start at top (-90° in SVG coords where 0° = right).
+  const SWEEP_DEG = 360;
+  const START_DEG = -90; // 12 o'clock
 
-  const padding = strokeWidth / 2 + 8;  // 8px extra for thumb overhang
+  const padding = strokeWidth / 2 + 8;
   const size = (radius + padding) * 2;
   const cx = size / 2;
   const cy = size / 2;
@@ -84,51 +87,39 @@ export function CircularSlider({
   const pct = (value - min) / (max - min);
   const valueAngleDeg = START_DEG + pct * SWEEP_DEG;
 
-  // Convert an angle (in degrees, SVG convention) to a point on the ring.
+  // Convert an angle (degrees, SVG convention: 0° = right, 90° = down) to a point.
   const angleToPoint = useCallback((deg: number, r: number = radius) => {
     const rad = (deg * Math.PI) / 180;
     return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
   }, [cx, cy, radius]);
 
-  // Convert a pointer position (clientX/Y) to a value, snapped to step.
+  // Convert a pointer position (clientX/Y) to a stepped, clamped value.
   const pointerToValue = useCallback((clientX: number, clientY: number): number => {
     const svg = svgRef.current;
     if (!svg) return value;
     const rect = svg.getBoundingClientRect();
-    // Scale: bounding rect may not match SVG's intrinsic size.
     const scaleX = size / rect.width;
     const scaleY = size / rect.height;
     const px = (clientX - rect.left) * scaleX;
     const py = (clientY - rect.top) * scaleY;
-    // Angle from center to pointer, in SVG degrees (atan2 with +y down).
+    // Angle from center to pointer (atan2 returns radians, -π to π).
+    // In SVG coords (+y down), atan2(dy, dx) gives degrees where 0° = right,
+    // 90° = down, -90° = up. This is what we want.
     const deg = (Math.atan2(py - cy, px - cx) * 180) / Math.PI;
-    // Normalize so that START_DEG = 0% of sweep. We need to find the offset
-    // within the [START_DEG, START_DEG + SWEEP_DEG) range, accounting for
-    // wraparound at 360°.
+    // Normalize so START_DEG (-90°, i.e. top) = 0% of sweep.
     let offset = deg - START_DEG;
     // Wrap to [0, 360)
     offset = ((offset % 360) + 360) % 360;
-    // If the pointer is in the bottom gap (offset > SWEEP_DEG), snap to the
-    // nearest end (0 or SWEEP_DEG).
-    if (offset > SWEEP_DEG) {
-      // Distance from 0 (start) vs SWEEP_DEG (end)
-      const distFromStart = 360 - offset;
-      const distFromEnd = offset - SWEEP_DEG;
-      offset = distFromStart < distFromEnd ? 0 : SWEEP_DEG;
-    }
     const ratio = offset / SWEEP_DEG;
     const raw = min + ratio * (max - min);
-    // Snap to step
     const stepped = Math.round(raw / step) * step;
     return Math.max(min, Math.min(max, stepped));
   }, [cx, cy, size, min, max, step, value]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (disabled) return;
-    // Check if the pointer is near the ring (within a tolerance band).
-    // This prevents the SVG's onPointerDown from firing when the user clicks
-    // the empty center of the ring — which would otherwise hijack clicks meant
-    // for a ring layered below in a concentric setup.
+    // Only respond if the pointer is near THIS ring's radius — prevents
+    // hijacking clicks meant for a ring layered below in concentric setups.
     const svg = svgRef.current;
     if (svg) {
       const rect = svg.getBoundingClientRect();
@@ -137,11 +128,9 @@ export function CircularSlider({
       const px = (e.clientX - rect.left) * scaleX;
       const py = (e.clientY - rect.top) * scaleY;
       const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
-      // Only respond if the pointer is within ±(strokeWidth/2 + 10) of the ring radius
       const tolerance = strokeWidth / 2 + 10;
       if (Math.abs(dist - radius) > tolerance) {
-        // Not near this ring — let the event pass through to any ring below
-        return;
+        return; // Not near this ring — pass through
       }
     }
     e.preventDefault();
@@ -183,7 +172,6 @@ export function CircularSlider({
     }
   }, [disabled, value, step, min, max, onChange, onCommit]);
 
-  // Cleanup if component unmounts mid-drag
   useEffect(() => {
     if (!dragging) return;
     const cleanup = () => setDragging(false);
@@ -195,20 +183,34 @@ export function CircularSlider({
     };
   }, [dragging]);
 
-  // Compute SVG arc paths
-  const trackStart = angleToPoint(START_DEG);
-  const trackEnd = angleToPoint(START_DEG + SWEEP_DEG);
-  // For the track (background), we draw a 270° arc.
-  // SVG arc flag: largeArcFlag = 1 if arc > 180°, sweepFlag = 1 for clockwise.
-  const trackPath = `M ${trackStart.x} ${trackStart.y} A ${radius} ${radius} 0 1 1 ${trackEnd.x} ${trackEnd.y}`;
+  // === SVG geometry ===
+  // Track = full circle (use <circle> element — always clean, no arc math).
+  // Value fill = arc path from START_DEG to valueAngleDeg.
+  //   - If pct >= 0.999 (value === max), draw a full circle instead (SVG can't
+  //     draw a 360° arc with a single A command — it needs two 180° arcs or a
+  //     <circle>).
+  //   - If pct <= 0, draw nothing.
+  //   - Otherwise, draw an arc. largeArcFlag = 1 if the arc spans > 180°.
 
-  // For the value arc (the colored fill), draw from start to current angle.
+  const startPoint = angleToPoint(START_DEG);
   const valueEnd = angleToPoint(valueAngleDeg);
-  const valueLargeArc = pct * SWEEP_DEG > 180 ? 1 : 0;
-  // Edge case: if value === min, draw nothing (zero-length arc is invalid).
-  const valuePath = pct <= 0
-    ? ''
-    : `M ${trackStart.x} ${trackStart.y} A ${radius} ${radius} 0 ${valueLargeArc} 1 ${valueEnd.x} ${valueEnd.y}`;
+  const valueSweepDeg = pct * SWEEP_DEG;
+  const valueLargeArc = valueSweepDeg > 180 ? 1 : 0;
+
+  // Build the value arc path. When the arc is a full circle (pct >= 0.999),
+  // use two semicircle arcs to avoid the SVG "can't draw 360° with one A" issue.
+  let valuePath: string;
+  let useFullCircle = false;
+  if (pct <= 0) {
+    valuePath = '';
+  } else if (pct >= 0.999) {
+    // Full circle — draw as two 180° arcs
+    const mid = angleToPoint(START_DEG + 180);
+    valuePath = `M ${startPoint.x} ${startPoint.y} A ${radius} ${radius} 0 1 1 ${mid.x} ${mid.y} A ${radius} ${radius} 0 1 1 ${startPoint.x} ${startPoint.y}`;
+    useFullCircle = true;
+  } else {
+    valuePath = `M ${startPoint.x} ${startPoint.y} A ${radius} ${radius} 0 ${valueLargeArc} 1 ${valueEnd.x} ${valueEnd.y}`;
+  }
 
   // Thumb position
   const thumb = angleToPoint(valueAngleDeg);
@@ -237,30 +239,30 @@ export function CircularSlider({
         className={cn('outline-none cursor-pointer', dragging && 'cursor-grabbing')}
         style={{ touchAction: 'none' as const }}
       >
-        {/* Transparent wider hit-zone path so the user can grab anywhere near
-            the ring (not just on the thin stroke). pointerEvents='stroke' means
-            only clicks ON the ring path itself trigger events — the empty center
-            passes through to any ring layered below. This is critical when two
-            CircularSliders are stacked concentrically. */}
-        <path
-          d={trackPath}
+        {/* Transparent wider hit-zone — a full circle so the user can grab
+            anywhere near the ring. pointerEvents='stroke' + 'visiblePainted'
+            ensures only the ring stroke captures events, not the empty center. */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={radius}
           fill="none"
           stroke="transparent"
           strokeWidth={strokeWidth + 14}
-          strokeLinecap="round"
           style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
         />
-        {/* Track */}
-        <path
-          d={trackPath}
+        {/* Track — full circle */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={radius}
           fill="none"
           stroke="var(--ring-track, rgba(255,255,255,0.10))"
           strokeWidth={strokeWidth}
-          strokeLinecap="round"
           style={{ pointerEvents: 'none' }}
         />
-        {/* Value fill */}
-        {valuePath && (
+        {/* Value fill — arc path (or full circle when value === max) */}
+        {valuePath && !useFullCircle && (
           <path
             d={valuePath}
             fill="none"
@@ -270,8 +272,18 @@ export function CircularSlider({
             style={{ pointerEvents: 'none' }}
           />
         )}
-        {/* Thumb — also draggable. Slightly wider hit area via a transparent
-            circle behind it. */}
+        {useFullCircle && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            style={{ pointerEvents: 'none' }}
+          />
+        )}
+        {/* Thumb — wider transparent hit circle + visible colored circle */}
         <circle
           cx={thumb.x}
           cy={thumb.y}

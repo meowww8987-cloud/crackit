@@ -119,11 +119,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.4.0</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.4.1</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.4.1</strong> — Rebuild Pomodoro widget: full 360° circles (no chopped arcs), big Work ring + small Break ring, vertical layout, compact legend below</div>
             <div><strong className="text-white/70">v2.4.0</strong> — Rebuilt TargetCard (cleaner info hierarchy, activity icons, remaining time), fixed drag-and-drop with dedicated drag handle, sister-card indicators (1/N badge + left-edge bar)</div>
             <div><strong className="text-white/70">v2.3.5</strong> — Fix light mode text visibility (all text-white/N opacity levels), compact Pomodoro widget, fix concentric ring overlap + pointer pass-through</div>
             <div><strong className="text-white/70">v2.3.4</strong> — Slidable concentric Pomodoro rings (drag around the ring, not a straight slider), theme-aware range slider track + thumb</div>
@@ -256,34 +257,36 @@ function GoalsSection({ s, update }: { s: Settings; update: <K extends keyof Set
 }
 
 function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
-  // Pomodoro visualization: TWO CONCENTRIC CIRCULAR SLIDERS.
-  //   Outer ring = Work duration (teal)  — drag the thumb around the ring to set.
-  //   Inner ring = Break duration (amber) — drag the thumb around the ring to set.
-  // Each ring sweeps 270° (90° gap at the bottom). Thumb color matches the ring
-  // color so the user can't confuse them. Center label shows the current cycle.
+  // Pomodoro visualization: TWO CONCENTRIC FULL-CIRCLE SLIDERS.
+  //   Outer ring = Work duration (teal)    — LARGE radius (the main focus)
+  //   Inner ring = Break duration (amber)  — SMALL radius (clearly nested inside)
+  // Both are full 360° circles (no gap, no chopped arcs). The big size
+  // difference (Work 60, Break 36 — gap = 24px) makes it instantly obvious
+  // which ring is which without reading the label.
   const WORK_COLOR = '#14b8a6';   // teal — focus
   const BREAK_COLOR = '#f59e0b';  // amber — rest
 
-  // Ring geometry — increased gap between outer and inner so they don't
-  // visually overlap. Outer radius 50, inner radius 32 (gap = 18px > stroke 7).
-  // Stroke reduced to 7 for a slimmer, more elegant look.
-  const OUTER_R = 50;
-  const INNER_R = 32;
-  const STROKE = 7;
-  const CANVAS = (OUTER_R + STROKE / 2 + 8) * 2;  // = 124
+  // Ring geometry — BIG Work ring, SMALL Break ring, clear gap between them.
+  // Outer radius 60, inner radius 36 (gap = 24px, stroke 8). This makes the
+  // Work ring visually dominant (it's the main focus of a Pomodoro cycle)
+  // and the Break ring clearly nested inside.
+  const OUTER_R = 60;
+  const INNER_R = 36;
+  const STROKE = 8;
+  const CANVAS = (OUTER_R + STROKE / 2 + 8) * 2;  // = 136
 
   return (
     <>
-      {/* === Pomodoro Cycle — concentric circular sliders (compact) === */}
+      {/* === Pomodoro Cycle — vertical layout, ring on top, legend below === */}
       <div>
         <div className="flex items-center gap-2 mb-2">
           <span className="inline-block w-1 h-3.5 rounded-full bg-gradient-to-b from-teal-400 to-teal-500/60" />
           <label className="text-xs font-bold text-white/85 uppercase tracking-wide">Pomodoro Cycle</label>
         </div>
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
-          {/* Stacked circular sliders */}
-          <div className="relative shrink-0" style={{ width: CANVAS, height: CANVAS }}>
-            {/* Outer ring: WORK */}
+        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 flex flex-col items-center gap-2">
+          {/* Stacked circular sliders — centered, full width available */}
+          <div className="relative" style={{ width: CANVAS, height: CANVAS }}>
+            {/* Outer ring: WORK (large) */}
             <div className="absolute inset-0">
               <CircularSlider
                 value={s.pomodoroWork}
@@ -298,7 +301,7 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
                 onCommit={(v) => update('pomodoroWork', v)}
               />
             </div>
-            {/* Inner ring: BREAK */}
+            {/* Inner ring: BREAK (small) */}
             <div className="absolute inset-0">
               <CircularSlider
                 value={s.pomodoroBreak}
@@ -313,28 +316,29 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
                 onCommit={(v) => update('pomodoroBreak', v)}
               />
             </div>
-            {/* Center label */}
+            {/* Center label — shows the work/break values in their colors */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <div className="text-base font-bold tabular leading-none">
+              <div className="text-lg font-bold tabular leading-none">
                 <span style={{ color: WORK_COLOR }}>{s.pomodoroWork}</span>
-                <span className="text-white/40 mx-0.5">/</span>
+                <span className="text-white/30 mx-0.5 text-sm">/</span>
                 <span style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}</span>
               </div>
-              <div className="text-[7px] text-white/45 leading-none mt-1 uppercase tracking-wide">min</div>
+              <div className="text-[8px] text-white/45 leading-none mt-1 uppercase tracking-widest">min</div>
             </div>
           </div>
 
-          {/* Legend chips — compact, beside the rings */}
-          <div className="flex-1 min-w-0 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: WORK_COLOR }} />
+          {/* Compact legend — single horizontal row below the ring */}
+          <div className="flex items-center justify-center gap-4 w-full">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: WORK_COLOR }} />
               <span className="text-[10px] uppercase tracking-wide text-white/55 font-semibold">Work</span>
-              <span className="text-xs font-bold tabular ml-auto" style={{ color: WORK_COLOR }}>{s.pomodoroWork}m</span>
+              <span className="text-[11px] font-bold tabular" style={{ color: WORK_COLOR }}>{s.pomodoroWork}m</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: BREAK_COLOR }} />
+            <div className="w-px h-3 bg-white/15" />
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: BREAK_COLOR }} />
               <span className="text-[10px] uppercase tracking-wide text-white/55 font-semibold">Break</span>
-              <span className="text-xs font-bold tabular ml-auto" style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}m</span>
+              <span className="text-[11px] font-bold tabular" style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}m</span>
             </div>
           </div>
         </div>
