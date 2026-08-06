@@ -234,9 +234,7 @@ export function FocusTimer() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={handleInteraction}
-      className={cn(
-        "fixed inset-0 z-[9999] flex flex-col items-center justify-between py-12 px-6"
-      )}
+      className="fixed inset-0 z-[9999]"
       style={{
         cursor: dimmed ? 'pointer' : 'default',
         // ALWAYS solid black background — never show app behind.
@@ -245,19 +243,23 @@ export function FocusTimer() {
         // When dimmed (burn protection), overlay fades out.
         backgroundImage: dimmed ? 'none' : bgOverlay,
         transition: 'background-image 800ms ease-in-out, background-color 800ms ease-in-out',
-        // === Landscape rotation ===
-        transform: isLandscape ? 'rotate(90deg)' : 'rotate(0deg)',
-        transformOrigin: 'center center',
-        width: isLandscape ? '100vh' : '100vw',
-        height: isLandscape ? '100vw' : '100vh',
+      }}
+    >
+      {/* === Inner wrapper for landscape rotation === */}
+      {/* The outer div stays fixed inset-0 (always fills screen, always black). */}
+      {/* The inner div rotates its CONTENT without breaking the full-screen layout. */}
+      <div style={{
+        width: '100%',
+        height: '100%',
         display: 'flex',
         flexDirection: isLandscape ? 'row' : 'column',
         alignItems: 'center',
         justifyContent: isLandscape ? 'center' : 'space-between',
         gap: isLandscape ? '2rem' : undefined,
         padding: isLandscape ? '1.5rem 3rem' : '3rem 1.5rem',
-      }}
-    >
+        transform: isLandscape ? 'rotate(90deg)' : 'none',
+        transformOrigin: 'center center',
+      }}>
       {/* Wasted time flash — shows when returning from background */}
       {wasteFlash !== null && (
         <motion.div
@@ -385,8 +387,10 @@ export function FocusTimer() {
           transition={{ type: 'spring', stiffness: 60, damping: 20 }}
           className="transition-opacity duration-1000"
           style={{
-            // When dimmed: reduce opacity based on user's screenDimOpacity setting.
-            opacity: dimmed ? Math.max(0.05, 1 - (settings.screenDimOpacity / 100)) : 1,
+            // When dimmed: timer retains screenDimOpacity% of its visibility.
+            // 80% = timer stays at 80% opacity (clearly visible)
+            // 0% = timer fades to near-invisible (max 0.05 clamp)
+            opacity: dimmed ? Math.max(0.05, settings.screenDimOpacity / 100) : 1,
             filter: dimmed ? 'drop-shadow(0 0 40px rgba(255,255,255,0.1))' : 'none',
           }}
         >
@@ -513,6 +517,7 @@ export function FocusTimer() {
             </button>
           )}
         </div>
+      </div>
       </div>
     </motion.div>
   );

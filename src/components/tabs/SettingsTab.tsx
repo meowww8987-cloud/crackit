@@ -233,8 +233,8 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
               <Slider value={s.dimDelay} min={3} max={30} step={1} onChange={(v) => update('dimDelay', v)} format={(v) => `${v}s idle`} />
             </div>
             <div>
-              <span className="text-[10px] text-white/40 uppercase tracking-wide">How much to dim (opacity)</span>
-              <Slider value={s.screenDimOpacity} min={0} max={95} step={5} onChange={(v) => update('screenDimOpacity', v)} format={(v) => v === 0 ? 'No dim' : `${v}% dim`} />
+              <span className="text-[10px] text-white/40 uppercase tracking-wide">Timer visibility when dimmed</span>
+              <Slider value={s.screenDimOpacity} min={5} max={100} step={5} onChange={(v) => update('screenDimOpacity', v)} format={(v) => `${v}% visible`} />
             </div>
           </div>
         </Row>

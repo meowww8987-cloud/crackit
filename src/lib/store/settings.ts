@@ -40,8 +40,8 @@ const DEFAULTS: Settings = {
   // Tutorial mode — shows one-time coach marks for every major feature
   tutorialMode: false,
   // Screen dimming opacity during focus timer (0-100%)
-  // 0 = no dim, 100 = full black. Default 8 = subtle dim.
-  screenDimOpacity: 8,
+  // Percentage of timer visibility when dimmed. 100 = fully visible, 5 = barely visible.
+  screenDimOpacity: 30,
   // Allow landscape rotation in focus timer
   allowLandscape: true,
 };
