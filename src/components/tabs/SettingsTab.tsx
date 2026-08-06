@@ -21,6 +21,7 @@ import { useSettings, applyTextSize, applyTheme } from '@/lib/store/settings';
 import { cn, vibrate } from '@/lib/utils';
 import type { Settings } from '@/lib/types';
 import { TimetableEditor } from '@/components/timetable/TimetableEditor';
+import { CircularSlider } from '@/components/ui/circular-slider';
 
 type SectionKey = 'goals' | 'focus' | 'appearance' | 'notifications' | 'timetable' | 'data';
 
@@ -118,11 +119,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.3.3</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.3.4</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.3.4</strong> — Slidable concentric Pomodoro rings (drag around the ring, not a straight slider), theme-aware range slider track + thumb</div>
             <div><strong className="text-white/70">v2.3.3</strong> — Pomodoro concentric rings, side-by-side date inputs, dim settings, Focus Timer labels, distinct section headers, bar visibility</div>
             <div><strong className="text-white/70">v2.3.2</strong> — Theme polish (Gold/Rose rebuild), bar visibility, 5 partner status states, Toggle fix</div>
             <div><strong className="text-white/70">v2.3.0</strong> — 5 new themes (Ocean, Forest, Lavender, Rose, Gold), card-solid light mode fix</div>
@@ -252,97 +254,97 @@ function GoalsSection({ s, update }: { s: Settings; update: <K extends keyof Set
 }
 
 function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
-  // Pomodoro visualization: outer ring = work duration, inner ring = break duration.
-  // Each ring's fill represents that duration's value relative to its max range.
-  // Work: 15-90 min (range = 75), Break: 5-30 min (range = 25).
-  // Distinct colors: work = teal/green (focus), break = amber/orange (rest).
-  const workPct = Math.round(((s.pomodoroWork - 15) / (90 - 15)) * 100);
-  const breakPct = Math.round(((s.pomodoroBreak - 5) / (30 - 5)) * 100);
+  // Pomodoro visualization: TWO CONCENTRIC CIRCULAR SLIDERS.
+  //   Outer ring = Work duration (teal)  — drag the thumb around the ring to set.
+  //   Inner ring = Break duration (amber) — drag the thumb around the ring to set.
+  // Each ring sweeps 270° (90° gap at the bottom). Thumb color matches the ring
+  // color so the user can't confuse them. Center label shows the current cycle.
   const WORK_COLOR = '#14b8a6';   // teal — focus
   const BREAK_COLOR = '#f59e0b';  // amber — rest
 
+  // Both rings share the same SVG canvas size; only the radius differs so they
+  // stack concentrically. Outer radius 52, inner radius 36, stroke 8.
+  const OUTER_R = 52;
+  const INNER_R = 36;
+  const STROKE = 8;
+  // Canvas size = 2 * (outer radius + padding). Matches CircularSlider's internal math.
+  const CANVAS = (OUTER_R + STROKE / 2 + 8) * 2;
+
   return (
     <>
-      {/* === Pomodoro Visualization — concentric rings === */}
+      {/* === Pomodoro Cycle — concentric circular sliders === */}
       <div>
-        <label className="text-xs font-semibold text-white/60 mb-2 block">Pomodoro Cycle</label>
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
-          {/* Concentric SVG rings */}
-          <div className="relative w-24 h-24 shrink-0">
-            <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
-              {/* Outer ring track */}
-              <circle cx="48" cy="48" r="42" fill="none" stroke="var(--ring-track)" strokeWidth="6" />
-              {/* Outer ring fill = WORK */}
-              <motion.circle
-                cx="48" cy="48" r="42" fill="none" stroke={WORK_COLOR} strokeWidth="6" strokeLinecap="round"
-                initial={false}
-                animate={{ strokeDasharray: `${(workPct / 100) * 263.89} 263.89` }}
-                transition={{ duration: 0.4 }}
+        <label className="text-xs font-bold text-white/85 uppercase tracking-wide mb-2 flex items-center gap-2">
+          <span className="inline-block w-1 h-3.5 rounded-full bg-gradient-to-b from-teal-400 to-teal-500/60" />
+          Pomodoro Cycle
+        </label>
+        <div className="rounded-2xl bg-white/5 border border-white/10 p-4 flex flex-col items-center gap-3">
+          {/* Stacked circular sliders — both absolutely positioned in a fixed-size box */}
+          <div className="relative" style={{ width: CANVAS, height: CANVAS }}>
+            {/* Outer ring: WORK */}
+            <div className="absolute inset-0">
+              <CircularSlider
+                value={s.pomodoroWork}
+                min={15}
+                max={90}
+                step={5}
+                radius={OUTER_R}
+                strokeWidth={STROKE}
+                color={WORK_COLOR}
+                ariaLabel="Pomodoro work duration in minutes"
+                onChange={(v) => update('pomodoroWork', v)}
+                onCommit={(v) => update('pomodoroWork', v)}
+                centerLabel={null}
               />
-              {/* Inner ring track */}
-              <circle cx="48" cy="48" r="30" fill="none" stroke="var(--ring-track)" strokeWidth="6" />
-              {/* Inner ring fill = BREAK */}
-              <motion.circle
-                cx="48" cy="48" r="30" fill="none" stroke={BREAK_COLOR} strokeWidth="6" strokeLinecap="round"
-                initial={false}
-                animate={{ strokeDasharray: `${(breakPct / 100) * 188.50} 188.50` }}
-                transition={{ duration: 0.4 }}
+            </div>
+            {/* Inner ring: BREAK */}
+            <div className="absolute inset-0">
+              <CircularSlider
+                value={s.pomodoroBreak}
+                min={5}
+                max={30}
+                step={5}
+                radius={INNER_R}
+                strokeWidth={STROKE}
+                color={BREAK_COLOR}
+                ariaLabel="Pomodoro break duration in minutes"
+                onChange={(v) => update('pomodoroBreak', v)}
+                onCommit={(v) => update('pomodoroBreak', v)}
+                centerLabel={null}
               />
-            </svg>
-            {/* Center label */}
+            </div>
+            {/* Center label — overlaid on top of both rings */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <div className="text-[8px] uppercase tracking-wider text-white/40 leading-none">Cycle</div>
-              <div className="text-[11px] font-bold tabular leading-tight mt-0.5">
-                {s.pomodoroWork}<span className="text-white/40 mx-0.5">/</span>{s.pomodoroBreak}
+              <div className="text-[8px] uppercase tracking-widest text-white/40 font-bold">Cycle</div>
+              <div className="text-base font-bold tabular leading-tight mt-0.5">
+                <span style={{ color: WORK_COLOR }}>{s.pomodoroWork}</span>
+                <span className="text-white/40 mx-0.5">/</span>
+                <span style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}</span>
               </div>
-              <div className="text-[7px] text-white/40 leading-none mt-0.5">min work/break</div>
+              <div className="text-[7px] text-white/40 leading-none mt-0.5 uppercase tracking-wide">work/break min</div>
             </div>
           </div>
 
-          {/* Sliders next to rings */}
-          <div className="flex-1 min-w-0 space-y-3">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="flex items-center gap-1.5 text-[11px] font-semibold">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: WORK_COLOR }} />
-                  Work Duration
-                </span>
-                <span className="text-[11px] tabular font-bold" style={{ color: WORK_COLOR }}>{s.pomodoroWork} min</span>
+          {/* Legend + value chips */}
+          <div className="grid grid-cols-2 gap-2 w-full mt-1">
+            <div className="rounded-xl bg-white/5 border border-white/10 px-2.5 py-1.5 flex items-center gap-2">
+              <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: WORK_COLOR }} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[9px] uppercase tracking-wide text-white/50 font-semibold">Outer · Work</div>
+                <div className="text-xs font-bold tabular" style={{ color: WORK_COLOR }}>{s.pomodoroWork} min</div>
               </div>
-              <input
-                type="range" min={15} max={90} step={5} value={s.pomodoroWork}
-                onChange={(e) => update('pomodoroWork', Number(e.target.value))}
-                className="w-full"
-                style={{ accentColor: WORK_COLOR }}
-              />
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="flex items-center gap-1.5 text-[11px] font-semibold">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: BREAK_COLOR }} />
-                  Break Duration
-                </span>
-                <span className="text-[11px] tabular font-bold" style={{ color: BREAK_COLOR }}>{s.pomodoroBreak} min</span>
+            <div className="rounded-xl bg-white/5 border border-white/10 px-2.5 py-1.5 flex items-center gap-2">
+              <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: BREAK_COLOR }} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[9px] uppercase tracking-wide text-white/50 font-semibold">Inner · Break</div>
+                <div className="text-xs font-bold tabular" style={{ color: BREAK_COLOR }}>{s.pomodoroBreak} min</div>
               </div>
-              <input
-                type="range" min={5} max={30} step={5} value={s.pomodoroBreak}
-                onChange={(e) => update('pomodoroBreak', Number(e.target.value))}
-                className="w-full"
-                style={{ accentColor: BREAK_COLOR }}
-              />
             </div>
           </div>
-        </div>
-        {/* Legend */}
-        <div className="flex items-center justify-center gap-4 mt-2">
-          <span className="flex items-center gap-1.5 text-[10px] text-white/60">
-            <span className="inline-block w-2 h-2 rounded-full" style={{ background: WORK_COLOR }} />
-            Outer = Work ({s.pomodoroWork}m)
-          </span>
-          <span className="flex items-center gap-1.5 text-[10px] text-white/60">
-            <span className="inline-block w-2 h-2 rounded-full" style={{ background: BREAK_COLOR }} />
-            Inner = Break ({s.pomodoroBreak}m)
-          </span>
+          <p className="text-[10px] text-white/45 leading-snug text-center">
+            Drag the <strong style={{ color: WORK_COLOR }}>teal</strong> thumb for work, the <strong style={{ color: BREAK_COLOR }}>amber</strong> thumb for break.
+          </p>
         </div>
       </div>
 

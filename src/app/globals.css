@@ -66,6 +66,11 @@
   --ring-track: rgba(15, 23, 42, 0.14);
   --ring-outer: #94a3b8;
   --bar-track: rgba(15, 23, 42, 0.10);
+  /* Card background — used as the thumb border color on circular sliders
+     so the thumb "pops" off the ring instead of blending into it.
+     Mirrors --card but as a raw rgb/hex string (no oklch) because SVG
+     stroke doesn't always render oklch correctly on older browsers. */
+  --card-bg: #ffffff;
 
   --background: oklch(0.97 0.003 250);
   --foreground: oklch(0.15 0.005 250);
@@ -104,6 +109,7 @@
   --ring-track: rgba(255, 255, 255, 0.10);
   --ring-outer: #9ca3af;
   --bar-track: rgba(255, 255, 255, 0.08);
+  --card-bg: #14161e;
   --background: oklch(0.08 0.005 250);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.14 0.008 250);
@@ -142,6 +148,7 @@
   --ring-track: rgba(45, 212, 191, 0.20);
   --ring-outer: #5eead4;
   --bar-track: rgba(20, 184, 166, 0.18);
+  --card-bg: #042f2e;
   --bg-app: #042f2e;
   --bg-card: #042f2e;
   --bg-card-solid: #042f2e;
@@ -222,6 +229,7 @@
   --ring-track: rgba(74, 222, 128, 0.20);
   --ring-outer: #86efac;
   --bar-track: rgba(34, 197, 94, 0.18);
+  --card-bg: #022c22;
   --bg-app: #022c22;
   --bg-card: #022c22;
   --bg-card-solid: #022c22;
@@ -302,6 +310,7 @@
   --ring-track: rgba(192, 132, 252, 0.20);
   --ring-outer: #d8b4fe;
   --bar-track: rgba(168, 85, 247, 0.18);
+  --card-bg: #1e0a3c;
   --bg-app: #1e0a3c;
   --bg-card: #1e0a3c;
   --bg-card-solid: #1e0a3c;
@@ -382,6 +391,7 @@
   --ring-track: rgba(190, 24, 93, 0.22);
   --ring-outer: #be185d;
   --bar-track: rgba(190, 24, 93, 0.18);
+  --card-bg: #ffffff;
   --bg-app: #fce7f3;
   --bg-card: #ffffff;
   --bg-card-solid: #ffffff;
@@ -482,6 +492,7 @@ html.rose body {
   --ring-track: rgba(251, 191, 36, 0.22);
   --ring-outer: #fbbf24;
   --bar-track: rgba(251, 191, 36, 0.18);
+  --card-bg: #000000;
   --bg-app: #0a0805;
   --bg-card: #000000;
   --bg-card-solid: #000000;
@@ -671,6 +682,7 @@ html.gold img[src="/logo.svg"] {
     --ring-track: rgba(15, 23, 42, 0.16);
     --ring-outer: #64748b;
     --bar-track: rgba(15, 23, 42, 0.12);
+    --card-bg: #ffffff;
   }
   .warm .bg-black\/60 { background: rgba(61, 43, 31, 0.3) !important; }
   .warm .bg-black\/70 { background: rgba(61, 43, 31, 0.4) !important; }
@@ -678,6 +690,7 @@ html.gold img[src="/logo.svg"] {
     --ring-track: rgba(120, 80, 40, 0.22);
     --ring-outer: #92593a;
     --bar-track: rgba(120, 80, 40, 0.18);
+    --card-bg: #fff8ed;
   }
 }
 
@@ -921,12 +934,16 @@ html:not(.dark):not(.warm) .card-tint,
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Range slider styling */
+/* Range slider styling — theme-aware.
+ * Default track is white-on-dark (for dark themes). Light/warm/rose modes
+ * override below so the track + thumb border are visible on white cards.
+ * accent-color (set inline via style={{accentColor}}) drives the fill color.
+ */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   height: 6px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bar-track, rgba(255, 255, 255, 0.10));
   border-radius: 999px;
   outline: none;
 }
@@ -948,7 +965,42 @@ input[type="range"]::-moz-range-thumb {
   border: 2px solid #fff;
   border-radius: 50%;
   cursor: pointer;
-  border: none;
+}
+
+/* Light mode — slider track + thumb border must be DARK to be visible on white */
+html:not(.dark):not(.warm) input[type="range"] {
+  background: rgba(15, 23, 42, 0.18);
+}
+html:not(.dark):not(.warm) input[type="range"]::-webkit-slider-thumb {
+  border-color: #0f172a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+html:not(.dark):not(.warm) input[type="range"]::-moz-range-thumb {
+  border-color: #0f172a;
+}
+
+/* Warm mode — sepia background */
+.warm input[type="range"] {
+  background: rgba(120, 80, 40, 0.22);
+}
+.warm input[type="range"]::-webkit-slider-thumb {
+  border-color: #2c1810;
+  box-shadow: 0 2px 8px rgba(120, 80, 40, 0.30);
+}
+.warm input[type="range"]::-moz-range-thumb {
+  border-color: #2c1810;
+}
+
+/* Rose theme — pink background, dark pink thumb border */
+.rose input[type="range"] {
+  background: rgba(190, 24, 93, 0.20);
+}
+.rose input[type="range"]::-webkit-slider-thumb {
+  border-color: #831843;
+  box-shadow: 0 2px 8px rgba(190, 24, 93, 0.25);
+}
+.rose input[type="range"]::-moz-range-thumb {
+  border-color: #831843;
 }
 
 /* ====== Phase 3 Animation Polish ====== */
