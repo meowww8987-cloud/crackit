@@ -343,17 +343,27 @@ export function FocusTimer() {
         )}
       </AnimatePresence>
 
-      {/* Top section: labels — HIDDEN when dimmed */}
+      {/* Top section: labels — HIDDEN when dimmed.
+          Improved contrast: bumped label opacity from /40 → /70, sizes up. */}
       <div className={cn('text-center transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
-        <div className="text-xs text-white/40 uppercase tracking-widest mb-1">
-          {active.mode === 'free' ? 'Free Study' : 'Focus Session'}
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 mb-2">
+          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color.hex }} />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">
+            {active.mode === 'free' ? 'Free Study' : 'Focus Session'}
+          </span>
         </div>
-        <div className="flex items-center justify-center gap-2 text-sm">
-          <span className="font-semibold" style={{ color: color.hex }}>{active.subject}</span>
-          <span className="text-white/30">·</span>
-          <span className="text-white/70">{active.chapter}</span>
+        <div className="flex items-center justify-center gap-2 text-base">
+          <span className="font-bold" style={{ color: color.hex }}>{active.subject}</span>
+          {active.chapter && (
+            <>
+              <span className="text-white/30">·</span>
+              <span className="text-white/85 font-medium">{active.chapter}</span>
+            </>
+          )}
         </div>
-        <div className="text-xs text-white/40 mt-0.5">{active.topic}</div>
+        {active.topic && (
+          <div className="text-xs text-white/65 mt-0.5">{active.topic}</div>
+        )}
       </div>
 
       {/* Center: massive timer */}
@@ -364,12 +374,13 @@ export function FocusTimer() {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: dimmed ? 0 : 1 }}
           transition={{ duration: 1 }}
-          className="mb-6 px-3 py-1 rounded-full text-xs font-bold tracking-wide"
+          className="mb-6 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg"
           style={{
             background: isWasting ? '#ef4444' : isPaused ? '#f59e0b' : '#22c55e',
             color: '#000',
             pointerEvents: dimmed ? 'none' : 'auto',
             transition: 'background-color 600ms ease-in-out',
+            boxShadow: dimmed ? 'none' : `0 4px 16px -4px ${isWasting ? '#ef4444' : isPaused ? '#f59e0b' : '#22c55e'}80`,
           }}
         >
           {isPaused ? (
@@ -381,15 +392,12 @@ export function FocusTimer() {
           )}
         </motion.div>
 
-        {/* Timer — dims to 8% but stays barely visible */}
+        {/* Timer — dims to screenDimOpacity% but stays barely visible */}
         <motion.div
           animate={{ x: timerPos.x, y: timerPos.y }}
           transition={{ type: 'spring', stiffness: 60, damping: 20 }}
           className="transition-opacity duration-1000"
           style={{
-            // When dimmed: timer retains screenDimOpacity% of its visibility.
-            // 80% = timer stays at 80% opacity (clearly visible)
-            // 0% = timer fades to near-invisible (max 0.05 clamp)
             opacity: dimmed ? Math.max(0.05, settings.screenDimOpacity / 100) : 1,
             filter: dimmed ? 'drop-shadow(0 0 40px rgba(255,255,255,0.1))' : 'none',
           }}
@@ -403,11 +411,17 @@ export function FocusTimer() {
               transition: 'color 600ms ease-in-out, text-shadow 600ms ease-in-out',
             }}
           />
+          {/* Timer label — small caption so the meaning is unambiguous */}
+          {!dimmed && (
+            <div className="text-center mt-1 text-[10px] uppercase tracking-widest text-white/50 font-semibold">
+              {isPaused ? 'Paused at' : isWasting ? 'Wasting for' : 'Studied for'}
+            </div>
+          )}
         </motion.div>
 
         {/* Wasted display — HIDDEN when dimmed */}
         {!isWasting && wastedSec > 0 && (
-          <div className={cn('mt-4 text-sm text-red-400/70 tabular transition-opacity duration-1000', dimmed ? 'opacity-0' : 'opacity-100')}>
+          <div className={cn('mt-4 text-sm text-red-400/85 tabular font-semibold transition-opacity duration-1000', dimmed ? 'opacity-0' : 'opacity-100')}>
             Wasted: {formatHM(wastedSec)}
           </div>
         )}
@@ -415,11 +429,11 @@ export function FocusTimer() {
         {/* Expected time progress — HIDDEN when dimmed */}
         {active.expectedMinutes && (
           <div className={cn('mt-6 w-64 transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
-            <div className="flex justify-between text-[10px] text-white/40 mb-1 tabular">
-              <span>{formatHM(studySec)}</span>
+            <div className="flex justify-between text-[11px] text-white/65 mb-1 tabular font-medium">
+              <span>{formatHM(studySec)} done</span>
               <span>{active.expectedMinutes}m goal</span>
             </div>
-            <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
               <div
                 className="h-full rounded-full transition-all"
                 style={{

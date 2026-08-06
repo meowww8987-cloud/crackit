@@ -611,11 +611,11 @@ html.gold img[src="/logo.svg"] {
   html:not(.dark):not(.warm) .text-white\/40 { color: rgba(51, 65, 85, 0.68) !important; }
   html:not(.dark):not(.warm) .text-white\/30 { color: rgba(71, 85, 105, 0.65) !important; }
 
-  html:not(.dark):not(.warm) .bg-white\/5 { background: rgba(0, 0, 0, 0.06) !important; }
-  html:not(.dark):not(.warm) .bg-white\/10 { background: rgba(0, 0, 0, 0.10) !important; }
-  html:not(.dark):not(.warm) .bg-white\/15 { background: rgba(0, 0, 0, 0.14) !important; }
-  html:not(.dark):not(.warm) .bg-white\/20 { background: rgba(0, 0, 0, 0.18) !important; }
-  html:not(.dark):not(.warm) .bg-white\/30 { background: rgba(0, 0, 0, 0.22) !important; }
+  html:not(.dark):not(.warm) .bg-white\/5 { background: rgba(0, 0, 0, 0.10) !important; }
+  html:not(.dark):not(.warm) .bg-white\/10 { background: rgba(0, 0, 0, 0.14) !important; }
+  html:not(.dark):not(.warm) .bg-white\/15 { background: rgba(0, 0, 0, 0.18) !important; }
+  html:not(.dark):not(.warm) .bg-white\/20 { background: rgba(0, 0, 0, 0.22) !important; }
+  html:not(.dark):not(.warm) .bg-white\/30 { background: rgba(0, 0, 0, 0.28) !important; }
 
   html:not(.dark):not(.warm) .border-white\/5 { border-color: rgba(15, 23, 42, 0.10) !important; }
   html:not(.dark):not(.warm) .border-white\/10 { border-color: rgba(15, 23, 42, 0.15) !important; }

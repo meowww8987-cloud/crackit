@@ -118,11 +118,13 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.3.0</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.3.3</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.3.3</strong> — Pomodoro concentric rings, side-by-side date inputs, dim settings, Focus Timer labels, distinct section headers, bar visibility</div>
+            <div><strong className="text-white/70">v2.3.2</strong> — Theme polish (Gold/Rose rebuild), bar visibility, 5 partner status states, Toggle fix</div>
             <div><strong className="text-white/70">v2.3.0</strong> — 5 new themes (Ocean, Forest, Lavender, Rose, Gold), card-solid light mode fix</div>
             <div><strong className="text-white/70">v2.2.0</strong> — Minimal Mode, OLED Black, Adaptive Subject Glow, Glassmorphism, Gradient Text, Smart Borders</div>
             <div><strong className="text-white/70">v2.1.0</strong> — Landscape rotation, partner sync fixes, syllabus redesign</div>
@@ -139,7 +141,13 @@ export function SettingsTab() {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-white/60 mb-2 block">{label}</label>
+      {/* Section header — visually distinct pill so users can scan settings easily.
+          Previous design used a flat text-xs text-white/60 label which looked
+          identical to body copy and was easy to skip past. */}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="inline-block w-1 h-3.5 rounded-full bg-gradient-to-b from-teal-400 to-teal-500/60" />
+        <label className="text-xs font-bold text-white/85 uppercase tracking-wide">{label}</label>
+      </div>
       {children}
     </div>
   );
@@ -206,76 +214,200 @@ function GoalsSection({ s, update }: { s: Settings; update: <K extends keyof Set
           format={(v) => `${v} / 720`}
         />
       </Row>
-      <Row label="Exam Target Date">
-        <input
-          type="date"
-          value={s.examDate}
-          onChange={(e) => update('examDate', e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400/50"
-        />
-      </Row>
-      <Row label="Prep Start Date">
-        <input
-          type="date"
-          value={s.prepStartDate || ''}
-          onChange={(e) => update('prepStartDate', e.target.value || null)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400/50 mb-2"
-        />
-        {!s.prepStartDate && <p className="text-[10px] text-white/40">Auto-detected from first study session</p>}
-        {s.prepStartDate && (
+      {/* Exam Target Date + Prep Start Date — compact, side-by-side to save vertical space */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-[10px] font-semibold text-white/50 uppercase tracking-wide mb-1.5 block">Exam Target Date</label>
+          <input
+            type="date"
+            value={s.examDate}
+            onChange={(e) => update('examDate', e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 text-xs focus:outline-none focus:border-teal-400/50"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-semibold text-white/50 uppercase tracking-wide mb-1.5 block">Prep Start Date</label>
+          <input
+            type="date"
+            value={s.prepStartDate || ''}
+            onChange={(e) => update('prepStartDate', e.target.value || null)}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 text-xs focus:outline-none focus:border-teal-400/50"
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between -mt-1">
+        {!s.prepStartDate ? (
+          <p className="text-[10px] text-white/40">Auto-detected from first study session</p>
+        ) : (
           <button
             onClick={() => update('prepStartDate', null)}
-            className="text-xs text-teal-400 hover:underline"
+            className="text-[10px] text-teal-400 hover:underline"
           >
-            Reset to auto-detect
+            ↻ Reset prep date to auto-detect
           </button>
         )}
-      </Row>
+      </div>
     </>
   );
 }
 
 function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
+  // Pomodoro visualization: outer ring = work duration, inner ring = break duration.
+  // Each ring's fill represents that duration's value relative to its max range.
+  // Work: 15-90 min (range = 75), Break: 5-30 min (range = 25).
+  // Distinct colors: work = teal/green (focus), break = amber/orange (rest).
+  const workPct = Math.round(((s.pomodoroWork - 15) / (90 - 15)) * 100);
+  const breakPct = Math.round(((s.pomodoroBreak - 5) / (30 - 5)) * 100);
+  const WORK_COLOR = '#14b8a6';   // teal — focus
+  const BREAK_COLOR = '#f59e0b';  // amber — rest
+
   return (
     <>
-      <Row label="Pomodoro Work Duration">
-        <Slider value={s.pomodoroWork} min={15} max={90} step={5} onChange={(v) => update('pomodoroWork', v)} format={(v) => `${v} min`} />
-      </Row>
-      <Row label="Pomodoro Break Duration">
-        <Slider value={s.pomodoroBreak} min={5} max={30} step={5} onChange={(v) => update('pomodoroBreak', v)} format={(v) => `${v} min`} />
-      </Row>
+      {/* === Pomodoro Visualization — concentric rings === */}
+      <div>
+        <label className="text-xs font-semibold text-white/60 mb-2 block">Pomodoro Cycle</label>
+        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
+          {/* Concentric SVG rings */}
+          <div className="relative w-24 h-24 shrink-0">
+            <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
+              {/* Outer ring track */}
+              <circle cx="48" cy="48" r="42" fill="none" stroke="var(--ring-track)" strokeWidth="6" />
+              {/* Outer ring fill = WORK */}
+              <motion.circle
+                cx="48" cy="48" r="42" fill="none" stroke={WORK_COLOR} strokeWidth="6" strokeLinecap="round"
+                initial={false}
+                animate={{ strokeDasharray: `${(workPct / 100) * 263.89} 263.89` }}
+                transition={{ duration: 0.4 }}
+              />
+              {/* Inner ring track */}
+              <circle cx="48" cy="48" r="30" fill="none" stroke="var(--ring-track)" strokeWidth="6" />
+              {/* Inner ring fill = BREAK */}
+              <motion.circle
+                cx="48" cy="48" r="30" fill="none" stroke={BREAK_COLOR} strokeWidth="6" strokeLinecap="round"
+                initial={false}
+                animate={{ strokeDasharray: `${(breakPct / 100) * 188.50} 188.50` }}
+                transition={{ duration: 0.4 }}
+              />
+            </svg>
+            {/* Center label */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <div className="text-[8px] uppercase tracking-wider text-white/40 leading-none">Cycle</div>
+              <div className="text-[11px] font-bold tabular leading-tight mt-0.5">
+                {s.pomodoroWork}<span className="text-white/40 mx-0.5">/</span>{s.pomodoroBreak}
+              </div>
+              <div className="text-[7px] text-white/40 leading-none mt-0.5">min work/break</div>
+            </div>
+          </div>
+
+          {/* Sliders next to rings */}
+          <div className="flex-1 min-w-0 space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: WORK_COLOR }} />
+                  Work Duration
+                </span>
+                <span className="text-[11px] tabular font-bold" style={{ color: WORK_COLOR }}>{s.pomodoroWork} min</span>
+              </div>
+              <input
+                type="range" min={15} max={90} step={5} value={s.pomodoroWork}
+                onChange={(e) => update('pomodoroWork', Number(e.target.value))}
+                className="w-full"
+                style={{ accentColor: WORK_COLOR }}
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: BREAK_COLOR }} />
+                  Break Duration
+                </span>
+                <span className="text-[11px] tabular font-bold" style={{ color: BREAK_COLOR }}>{s.pomodoroBreak} min</span>
+              </div>
+              <input
+                type="range" min={5} max={30} step={5} value={s.pomodoroBreak}
+                onChange={(e) => update('pomodoroBreak', Number(e.target.value))}
+                className="w-full"
+                style={{ accentColor: BREAK_COLOR }}
+              />
+            </div>
+          </div>
+        </div>
+        {/* Legend */}
+        <div className="flex items-center justify-center gap-4 mt-2">
+          <span className="flex items-center gap-1.5 text-[10px] text-white/60">
+            <span className="inline-block w-2 h-2 rounded-full" style={{ background: WORK_COLOR }} />
+            Outer = Work ({s.pomodoroWork}m)
+          </span>
+          <span className="flex items-center gap-1.5 text-[10px] text-white/60">
+            <span className="inline-block w-2 h-2 rounded-full" style={{ background: BREAK_COLOR }} />
+            Inner = Break ({s.pomodoroBreak}m)
+          </span>
+        </div>
+      </div>
+
+      {/* === Screen Burn Protection (master toggle) === */}
       <Row label="Screen Burn Protection">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-white/70">Dim UI when idle</span>
+          <span className="text-sm text-white/85 font-medium">Dim UI when idle</span>
           <Toggle value={s.burnProtection} onChange={(v) => update('burnProtection', v)} />
         </div>
       </Row>
+
+      {/* === When to dim + Timer visibility when dimmed — side by side === */}
       {s.burnProtection && (
-        <Row label="Screen Dimming">
-          <div className="space-y-3">
-            <div>
-              <span className="text-[10px] text-white/40 uppercase tracking-wide">When to dim (idle delay)</span>
-              <Slider value={s.dimDelay} min={3} max={30} step={1} onChange={(v) => update('dimDelay', v)} format={(v) => `${v}s idle`} />
-            </div>
-            <div>
-              <span className="text-[10px] text-white/40 uppercase tracking-wide">Timer visibility when dimmed</span>
-              <Slider value={s.screenDimOpacity} min={5} max={100} step={5} onChange={(v) => update('screenDimOpacity', v)} format={(v) => `${v}% visible`} />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] font-semibold text-white/50 uppercase tracking-wide mb-1.5 block">When to dim</label>
+            <div className="rounded-xl bg-white/5 border border-white/10 p-2.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-white/60">Idle delay</span>
+                <span className="text-xs tabular font-bold text-amber-400">{s.dimDelay}s</span>
+              </div>
+              <input
+                type="range" min={3} max={30} step={1} value={s.dimDelay}
+                onChange={(e) => update('dimDelay', Number(e.target.value))}
+                className="w-full"
+                style={{ accentColor: '#f59e0b' }}
+              />
+              <div className="flex justify-between text-[8px] text-white/30 mt-0.5">
+                <span>3s</span><span>30s</span>
+              </div>
             </div>
           </div>
-        </Row>
+          <div>
+            <label className="text-[10px] font-semibold text-white/50 uppercase tracking-wide mb-1.5 block">Timer visibility</label>
+            <div className="rounded-xl bg-white/5 border border-white/10 p-2.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-white/60">When dimmed</span>
+                <span className="text-xs tabular font-bold text-teal-400">{s.screenDimOpacity}%</span>
+              </div>
+              <input
+                type="range" min={5} max={100} step={5} value={s.screenDimOpacity}
+                onChange={(e) => update('screenDimOpacity', Number(e.target.value))}
+                className="w-full"
+                style={{ accentColor: '#14b8a6' }}
+              />
+              <div className="flex justify-between text-[8px] text-white/30 mt-0.5">
+                <span>5%</span><span>100%</span>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
+
       <Row label="Distraction Taunt Interval">
         <Slider value={s.distractionTauntInterval} min={0} max={15} step={1} onChange={(v) => update('distractionTauntInterval', v)} format={(v) => v === 0 ? 'Off' : `${v} min`} />
       </Row>
       <Row label="Auto-detect Wasted Time">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-white/70">Detect tab switches as wasted</span>
+          <span className="text-sm text-white/85 font-medium">Detect tab switches as wasted</span>
           <Toggle value={s.autoDetectWasted} onChange={(v) => update('autoDetectWasted', v)} />
         </div>
       </Row>
       <Row label="Landscape Rotation">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-white/70">Allow rotation in full-screen timer</span>
+          <span className="text-sm text-white/85 font-medium">Allow rotation in full-screen timer</span>
           <Toggle value={s.allowLandscape} onChange={(v) => update('allowLandscape', v)} />
         </div>
       </Row>
@@ -336,7 +468,7 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
       </Row>
       <Row label="OLED Black (Battery Saver)">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-white/70">Pure black backgrounds in dark mode</span>
+          <span className="text-sm text-white/85 font-medium">Pure black backgrounds in dark mode</span>
           <Toggle value={s.oledBlack} onChange={(v) => update('oledBlack', v)} />
         </div>
       </Row>
@@ -387,9 +519,9 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
       <Row label="Animations">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-white/80">Reduce animations</div>
-              <div className="text-[10px] text-white/40 leading-snug">
+            <div className="flex-1 min-w-0 pr-3">
+              <div className="text-sm text-white/90 font-semibold">Reduce animations</div>
+              <div className="text-[11px] text-white/55 leading-snug mt-0.5">
                 Disables spring bounces, confetti, particle bursts. Use if motion
                 bothers you or the app feels laggy on your device.
               </div>
@@ -399,7 +531,7 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
           {!s.reduceAnimations && (
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-white/70">Animation intensity</span>
+                <span className="text-xs text-white/80 font-semibold">Animation intensity</span>
                 <span className="text-xs tabular text-teal-400 font-bold">{s.animationIntensity}</span>
               </div>
               <input
@@ -427,9 +559,9 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
       <Row label="Tutorial Mode">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-white/80">Show feature tutorials</div>
-              <div className="text-[10px] text-white/40 leading-snug">
+            <div className="flex-1 min-w-0 pr-3">
+              <div className="text-sm text-white/90 font-semibold">Show feature tutorials</div>
+              <div className="text-[11px] text-white/55 leading-snug mt-0.5">
                 When ON, shows one-time coach marks for each tab explaining its features.
                 Each tutorial shows once, then auto-dismisses.
               </div>
@@ -472,13 +604,13 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
       </Row>
       <Row label="Prefer 2D Graphs">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-white/70">Flat bars over 3D for readability</span>
+          <span className="text-sm text-white/85 font-medium">Flat bars over 3D for readability</span>
           <Toggle value={s.prefer2D} onChange={(v) => update('prefer2D', v)} />
         </div>
       </Row>
       <Row label="Haptic Feedback">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-white/70 flex items-center gap-1.5"><Vibrate size={14} /> Vibration on actions</span>
+          <span className="text-sm text-white/85 font-medium flex items-center gap-1.5"><Vibrate size={14} /> Vibration on actions</span>
           <div className="flex items-center gap-2">
             {s.haptics && (
               <button onClick={() => vibrate([10, 30, 10])} className="text-xs text-teal-400 hover:underline">
@@ -491,7 +623,7 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
       </Row>
       <Row label="Confetti Effects">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-white/70">Celebration confetti on milestones</span>
+          <span className="text-sm text-white/85 font-medium">Celebration confetti on milestones</span>
           <div className="flex items-center gap-2">
             {s.confettiEnabled && (
               <button
@@ -507,7 +639,7 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
       </Row>
       <Row label="Sound Effects">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-white/70">Chimes on achievements</span>
+          <span className="text-sm text-white/85 font-medium">Chimes on achievements</span>
           <div className="flex items-center gap-2">
             {s.soundEnabled && (
               <button
@@ -524,7 +656,7 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
       {s.soundEnabled && (
         <Row label="Sound Volume">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] text-white/40">Volume</span>
+            <span className="text-[11px] text-white/70 font-medium">Volume</span>
             <span className="text-sm font-bold tabular text-teal-400">{s.soundVolume}%</span>
           </div>
           <input
@@ -535,6 +667,7 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
             value={s.soundVolume}
             onChange={(e) => update('soundVolume', Number(e.target.value))}
             className="w-full"
+            style={{ accentColor: '#14b8a6' }}
           />
         </Row>
       )}
@@ -547,7 +680,7 @@ function NotificationsSection({ s, update }: { s: Settings; update: <K extends k
     <>
       <Row label="Test & Timetable Reminders">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-white/70">Enable browser notifications</span>
+          <span className="text-sm text-white/85 font-medium">Enable browser notifications</span>
           <Toggle
             value={s.notificationsEnabled}
             onChange={async (v) => {
