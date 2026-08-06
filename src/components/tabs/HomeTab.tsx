@@ -240,7 +240,7 @@ export function HomeTab() {
 
       {/* Today's Schedule */}
       {todaySlots.length > 0 && (
-        <div className="glass rounded-2xl p-3">
+        <div className="glass rounded-2xl p-3 minimal-hide">
           <div className="flex items-center gap-2 mb-2">
             <Calendar size={14} className="text-amber-400" />
             <span className="text-xs font-bold uppercase tracking-wide text-white/60">Today's Schedule</span>
@@ -258,25 +258,25 @@ export function HomeTab() {
       )}
 
       {/* Subject Health Scores */}
-      <SubjectHealthCard />
+      <div className="minimal-hide"><SubjectHealthCard /></div>
 
       {/* Sleep & Energy + Doubts */}
-      <SleepAndDoubtCard />
+      <div className="minimal-hide"><SleepAndDoubtCard /></div>
 
       {/* Weekly Goals */}
-      <WeeklyGoalCard />
+      <div className="minimal-hide"><WeeklyGoalCard /></div>
 
       {/* Predicted Score */}
       <ScorePredictionCard />
 
       {/* Achievement Badges */}
-      <AchievementBadges />
+      <div className="minimal-hide"><AchievementBadges /></div>
 
       {/* Mini Heatmap */}
-      <MiniHeatmap />
+      <div className="minimal-hide"><MiniHeatmap /></div>
 
       {/* Sessions count */}
-      <div className="glass rounded-2xl p-4 flex items-center justify-between">
+      <div className="glass rounded-2xl p-4 flex items-center justify-between minimal-hide">
         <div>
           <div className="text-xs text-white/50 mb-1">Total Sessions</div>
           <NumberMorph

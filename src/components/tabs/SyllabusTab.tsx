@@ -133,7 +133,7 @@ export function SyllabusTab() {
         </button>
       </div>
 
-      <div className="relative">
+      <div className="relative minimal-hide">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t-muted" />
         <input
           value={search}
@@ -163,7 +163,7 @@ export function SyllabusTab() {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => { setShowBuildSheet(true); vibrate(10); }} className="py-3 rounded-xl bg-gradient-to-r from-teal-500 to-green-500 text-black font-bold text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition shadow-lg shadow-teal-500/20">
+        <button onClick={() => { setShowBuildSheet(true); vibrate(10); }} className="py-3 rounded-xl bg-gradient-to-r from-teal-500 to-green-500 text-black font-bold text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition shadow-lg shadow-teal-500/20 minimal-hide">
           <Plus size={16} /> Build Syllabus
         </button>
         <button onClick={() => { setShowFormulaVault(true); vibrate(10); }} className="py-3 rounded-xl bg-white/5 border border-white/10 text-t-primary font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] hover:bg-white/10 transition">

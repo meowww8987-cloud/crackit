@@ -416,7 +416,9 @@ export function AppShell() {
                       className={cn(
                         'relative flex flex-col items-center justify-center rounded-xl transition-all',
                         'min-w-[42px] h-12 px-1.5',
-                        isActive ? 'text-adaptive' : 'text-adaptive-muted hover:text-adaptive'
+                        isActive ? 'text-adaptive' : 'text-adaptive-muted hover:text-adaptive',
+                        // Hide History, Tests, Stats tabs in Minimal Mode
+                        minimalMode && (tab.key === 'history' || tab.key === 'tests' || tab.key === 'stats') && 'minimal-hide'
                       )}
                       aria-label={tab.label}
                     >

@@ -107,6 +107,7 @@ export interface Chapter {
   name: string;
   pyqCount: number;
   createdAt: number;
+  order?: number; // for drag-to-reorder
 }
 
 export interface SubjectEntity {
@@ -313,8 +314,8 @@ export interface Settings {
   dimDelay: number; // seconds 3-30
   distractionTauntInterval: number; // minutes 0-15, 0 = off
   autoDetectWasted: boolean;
-  appTheme: 'dark' | 'light';
-  focusTheme: 'dark' | 'light';
+  appTheme: 'dark' | 'light' | 'warm';
+  focusTheme: 'dark' | 'light' | 'warm';
   textSize: 'S' | 'M' | 'L' | 'XL';
   prefer2D: boolean;
   haptics: boolean;
