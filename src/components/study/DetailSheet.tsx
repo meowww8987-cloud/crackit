@@ -65,8 +65,7 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
   const liveStudied = isThisActive ? getLiveStudySeconds(active) : studiedSec;
   const liveWasted = isThisActive ? getLiveWastedSeconds(active) : wastedSec;
   const expectedSec = target.expectedMinutes * 60;
-  // Don't cap at 100% — let progress show real value (can exceed 100% if studied more than expected)
-  const progressPct = expectedSec > 0 ? Math.round((liveStudied / expectedSec) * 100) : 0;
+  const progressPct = expectedSec > 0 ? Math.min(100, Math.round((liveStudied / expectedSec) * 100)) : 0;
   const remainingSec = Math.max(0, expectedSec - liveStudied);
 
   const handleToggleDone = () => {

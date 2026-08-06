@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Target, TrendingUp, Calendar, FileText, Brain, Clock, ChevronRight } from 'lucide-react';
 import { useHistory } from '@/lib/store/history';
-import { useSession, getLiveStudySeconds } from '@/lib/store/session';
 import { useSettings } from '@/lib/store/settings';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTests } from '@/lib/store/tests';
@@ -14,10 +13,7 @@ import { formatHM, longDate, diffDays, todayKey, isRevisionOverdue } from '@/lib
 import { triggerRecallChallenge } from '@/components/app/AppShell';
 import { AchievementBadges } from '@/components/shared/AchievementBadges';
 import { ScorePredictionCard } from '@/components/home/ScorePredictionCard';
-import { CountdownCard } from '@/components/home/CountdownCard';
 import { MiniHeatmap } from '@/components/home/MiniHeatmap';
-import { CoachCard } from '@/components/home/CoachCard';
-import { PartnerCard } from '@/components/home/PartnerCard';
 import { WeeklyGoalCard } from '@/components/home/WeeklyGoalCard';
 import { NextTestCard, TestDayMode } from '@/components/home/NextTestCard';
 import { useMounted } from '@/lib/hooks/useMounted';
@@ -45,17 +41,11 @@ export function HomeTab() {
   const timetableSlots = useTimetable((s) => s.slots);
   const recallChallenges = useRecall((s) => s.challenges);
 
-  // Live active session — include in today's total so the ring matches the
-  // partner card (which also includes live session time).
-  const activeSession = useSession((s) => s.active);
-  const liveSec = getLiveStudySeconds(activeSession);
-
   // Compute derived values with useMemo
   const todaySec = useMemo(() => {
     const today = todayKey();
-    const saved = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.studySeconds, 0);
-    return saved + (activeSession ? liveSec : 0);
-  }, [sessions, activeSession, liveSec]);
+    return sessions.filter((s) => s.date === today).reduce((a, s) => a + s.studySeconds, 0);
+  }, [sessions]);
 
   const yestSec = useMemo(() => {
     const d = new Date();
@@ -142,15 +132,84 @@ export function HomeTab() {
             guard causes a hydration mismatch. */}
         {mounted && <StreakFlame streak={streak} />}
       </motion.div>
-      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-sm text-t-muted -mt-2" suppressHydrationWarning>{longDate()}</motion.p>
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-sm text-white/50 -mt-2" suppressHydrationWarning>{longDate()}</motion.p>
 
-      {/* === Merged Countdown + Score Prediction Card === */}
-      <CountdownCard />
+      {/* Countdown Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15, type: 'spring', stiffness: 300, damping: 25 }}
+        className="glass rounded-2xl p-4 bg-gradient-to-br from-teal-500/10 to-green-500/5"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-white/40">
+              {prepStart ? `Prep Day ${prepDay}` : 'Days to NEET'}
+            </div>
+            <CountUp
+              value={daysToExam}
+              duration={1000}
+              className="text-4xl font-bold tabular bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent"
+            />
+            <div className="text-xs text-white/50">days left</div>
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-white/60">
+              EXAM {new Date(examDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+            {prepStart && (
+              <div className="text-[10px] text-white/40 mt-0.5">
+                Since {new Date(prepStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="mb-2">
+          <div className="flex justify-between text-[10px] text-white/40 mb-1 tabular">
+            <span>Day {prepDay} of {prepTotal}</span>
+            <span>{prepPct}% elapsed</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${prepPct}%` }}
+              transition={{ duration: 0.8 }}
+              className="h-full bg-gradient-to-r from-teal-500 to-green-500"
+            />
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between text-[10px] text-white/40 mb-1">
+            <span>Syllabus</span>
+            <span className="tabular">{syllabusPct}% done</span>
+          </div>
+          <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-full bg-green-500" style={{ width: `${syllabusPct}%` }} />
+          </div>
+        </div>
+      </motion.div>
 
-      {/* Test Day Mode — only renders when today is a test day. */}
+      {/* Test Day Mode — only renders when today is a test day. Replaces
+          the regular "Next Test" card (which returns null in this case) with
+          a focused, calming test-day layout. */}
       <TestDayMode />
 
-      {/* === Today/Yesterday + This Week/Last Week comparison rings === */}
+      {/* Active Recall Challenge CTA */}
+      {!todayRecall?.completedAt && (
+        <button
+          onClick={() => triggerRecallChallenge()}
+          className="w-full glass rounded-2xl p-3 flex items-center gap-3 hover:bg-white/[0.07] transition border border-purple-500/20"
+        >
+          <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
+            <Brain size={18} className="text-purple-400" />
+          </div>
+          <div className="flex-1 text-left">
+            <div className="text-sm font-semibold text-purple-300">Daily Recall Challenge</div>
+            <div className="text-[10px] text-white/40">Test your memory of recent topics</div>
+          </div>
+          <ChevronRight size={16} className="text-white/40" />
+        </button>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <RingComparison
           title="Today vs Yesterday"
@@ -161,7 +220,6 @@ export function HomeTab() {
           trend={trendToday}
           label="TODAY"
           sublabel={`Yesterday: ${formatHM(yestSec)}`}
-          accent="teal"
         />
         <RingComparison
           title="This Week vs Last"
@@ -172,49 +230,27 @@ export function HomeTab() {
           trend={trendWeek}
           label="WEEK"
           sublabel={`Last: ${formatHM(lastWeek)}`}
-          accent="violet"
         />
       </div>
 
-      {/* === Study Partner — compact card, tap > for full comparison === */}
-      <PartnerCard />
-
-      {/* === AI Study Coach === */}
-      <CoachCard />
-
-      {/* Active Recall Challenge CTA */}
-      {!todayRecall?.completedAt && (
-        <button
-          onClick={() => triggerRecallChallenge()}
-          className="w-full glass rounded-2xl p-3 flex items-center gap-3 hover:bg-white/[0.07] transition border border-amber-500/30 dark:border-amber-500/25"
-        >
-          <div className="w-9 h-9 rounded-lg bg-amber-500/15 dark:bg-amber-500/20 flex items-center justify-center shrink-0">
-            <Brain size={18} className="text-amber-600 dark:text-amber-400" />
-          </div>
-          <div className="flex-1 text-left">
-            <div className="text-sm font-semibold text-amber-700 dark:text-amber-300">Daily Recall Challenge</div>
-            <div className="text-[10px] text-t-muted">Test your memory of recent topics</div>
-          </div>
-          <ChevronRight size={16} className="text-t-muted" />
-        </button>
-      )}
-
-      {/* Next Test — collapsible readiness card. */}
+      {/* Next Test — collapsible readiness card.
+          On test day, NextTestCard returns null and TestDayMode renders instead
+          (TestDayMode is placed above the Rings so it's the first thing seen). */}
       <NextTestCard />
 
       {/* Today's Schedule */}
       {todaySlots.length > 0 && (
         <div className="glass rounded-2xl p-3">
           <div className="flex items-center gap-2 mb-2">
-            <Calendar size={14} className="text-amber-500 dark:text-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-wide text-t-secondary">Today's Schedule</span>
+            <Calendar size={14} className="text-amber-400" />
+            <span className="text-xs font-bold uppercase tracking-wide text-white/60">Today's Schedule</span>
           </div>
           <div className="space-y-1">
             {todaySlots.map((slot) => (
               <div key={slot.id} className="flex items-center gap-2 text-xs">
-                <Clock size={12} className="text-t-muted" />
-                <span className="tabular text-t-secondary">{slot.startHour}:00 - {slot.endHour}:00</span>
-                <span className="text-t-primary">{slot.subject}</span>
+                <Clock size={12} className="text-white/40" />
+                <span className="tabular text-white/60">{slot.startHour}:00 - {slot.endHour}:00</span>
+                <span className="text-white/80">{slot.subject}</span>
               </div>
             ))}
           </div>
@@ -230,6 +266,9 @@ export function HomeTab() {
       {/* Weekly Goals */}
       <WeeklyGoalCard />
 
+      {/* Predicted Score */}
+      <ScorePredictionCard />
+
       {/* Achievement Badges */}
       <AchievementBadges />
 
@@ -239,52 +278,41 @@ export function HomeTab() {
       {/* Sessions count */}
       <div className="glass rounded-2xl p-4 flex items-center justify-between">
         <div>
-          <div className="text-xs text-t-secondary mb-1">Total Sessions</div>
+          <div className="text-xs text-white/50 mb-1">Total Sessions</div>
           <NumberMorph
             value={sessions.length}
             duration={700}
             className="text-2xl font-bold"
           />
         </div>
-        <TrendingUp size={24} className="text-teal-500/70 dark:text-teal-400/60" />
+        <TrendingUp size={24} className="text-teal-400/60" />
       </div>
     </div>
   );
 }
 
 function RingComparison({
-  title, innerSec, outerSec, innerPct, outerPct, trend, label, sublabel, accent = 'teal',
+  title, innerSec, outerSec, innerPct, outerPct, trend, label, sublabel,
 }: {
   title: string; innerSec: number; outerSec: number; innerPct: number; outerPct: number; trend: number; label: string; sublabel: string;
-  accent?: 'teal' | 'violet';
 }) {
   const innerColor = trend >= 5 ? '#22c55e' : trend <= -5 ? '#ef4444' : '#f59e0b';
-  const trendColor = trend >= 5 ? 'text-green-500 dark:text-green-400' : trend <= -5 ? 'text-red-500 dark:text-red-400' : 'text-amber-500 dark:text-amber-400';
+  const trendColor = trend >= 5 ? 'text-green-400' : trend <= -5 ? 'text-red-400' : 'text-amber-400';
   const trendArrow = trend >= 5 ? '↑' : trend <= -5 ? '↓' : '→';
 
-  // Differentiate the two cards by outer-ring color and accent border so
-  // they don't look identical (left=teal, right=violet).
-  const outerRingColor = accent === 'teal' ? '#14b8a6' : '#8b5cf6';
-  const accentBorder = accent === 'teal'
-    ? 'border-teal-500/25 dark:border-teal-500/20'
-    : 'border-violet-500/25 dark:border-violet-500/20';
-  const labelColor = accent === 'teal'
-    ? 'text-teal-600 dark:text-teal-400'
-    : 'text-violet-600 dark:text-violet-400';
-
   return (
-    <div className={`glass rounded-2xl p-3 flex flex-col items-center border ${accentBorder}`}>
-      <div className="text-[10px] uppercase tracking-widest text-t-muted mb-2 text-center">{title}</div>
+    <div className="glass rounded-2xl p-3 flex flex-col items-center">
+      <div className="text-[10px] uppercase tracking-widest text-white/40 mb-2 text-center">{title}</div>
       <div className="relative w-24 h-24">
         <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
-          <circle cx="48" cy="48" r="42" fill="none" stroke="rgba(128,128,128,0.15)" strokeWidth="4" />
+          <circle cx="48" cy="48" r="42" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
           <motion.circle
-            cx="48" cy="48" r="42" fill="none" stroke={outerRingColor} strokeWidth="4" strokeLinecap="round"
+            cx="48" cy="48" r="42" fill="none" stroke="#9ca3af" strokeWidth="4" strokeLinecap="round"
             initial={{ strokeDasharray: '0 263.89' }}
             animate={{ strokeDasharray: `${(outerPct / 100) * 263.89} 263.89` }}
             transition={{ duration: 1.2, ease: 'easeOut' }}
           />
-          <circle cx="48" cy="48" r="32" fill="none" stroke="rgba(128,128,128,0.15)" strokeWidth="4" />
+          <circle cx="48" cy="48" r="32" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
           <motion.circle
             cx="48" cy="48" r="32" fill="none" stroke={innerColor} strokeWidth="4" strokeLinecap="round"
             initial={{ strokeDasharray: '0 201.06' }}
@@ -293,14 +321,14 @@ function RingComparison({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className={`text-[9px] font-bold ${labelColor}`}>{label}</div>
-          <div className="text-sm font-bold tabular text-t-primary">{formatHM(innerSec)}</div>
+          <div className="text-[9px] text-white/40">{label}</div>
+          <div className="text-sm font-bold tabular">{formatHM(innerSec)}</div>
         </div>
       </div>
       <div className={`text-xs font-semibold mt-2 tabular ${trendColor}`}>
         {trendArrow} {trend > 0 ? '+' : ''}{trend}%
       </div>
-      <div className="text-[10px] text-t-muted mt-0.5">{sublabel}</div>
+      <div className="text-[10px] text-white/40 mt-0.5">{sublabel}</div>
     </div>
   );
 }
@@ -317,27 +345,27 @@ function SleepAndDoubtCard() {
         <button onClick={() => setShowSleep(true)} className="glass rounded-2xl p-3 text-left hover:bg-white/[0.07] transition">
           <div className="flex items-center gap-1.5 mb-1.5">
             <span className="text-sm">😴</span>
-            <span className="text-[10px] font-bold text-t-secondary">Sleep</span>
+            <span className="text-[10px] font-bold text-white/50">Sleep</span>
           </div>
           {todayLog ? (
             <>
-              <div className="text-lg font-bold tabular text-indigo-500 dark:text-indigo-400">{todayLog.sleepHours}h</div>
-              <div className="text-[9px] text-t-muted">{'⚡'.repeat(todayLog.energyLevel)}</div>
+              <div className="text-lg font-bold tabular text-indigo-400">{todayLog.sleepHours}h</div>
+              <div className="text-[9px] text-white/40">{'⚡'.repeat(todayLog.energyLevel)}</div>
             </>
           ) : (
             <>
-              <div className="text-sm font-semibold text-t-secondary">Log sleep</div>
-              <div className="text-[9px] text-t-muted">Tap to log</div>
+              <div className="text-sm font-semibold text-white/50">Log sleep</div>
+              <div className="text-[9px] text-white/30">Tap to log</div>
             </>
           )}
         </button>
         <div className="glass rounded-2xl p-3">
           <div className="flex items-center gap-1.5 mb-1.5">
             <span className="text-sm">❓</span>
-            <span className="text-[10px] font-bold text-t-secondary">Doubts</span>
+            <span className="text-[10px] font-bold text-white/50">Doubts</span>
           </div>
-          <div className="text-lg font-bold tabular text-amber-500 dark:text-amber-400">{pendingDoubts}</div>
-          <div className="text-[9px] text-t-muted">pending · {resolvedDoubts} resolved</div>
+          <div className="text-lg font-bold tabular text-amber-400">{pendingDoubts}</div>
+          <div className="text-[9px] text-white/40">pending · {resolvedDoubts} resolved</div>
         </div>
       </div>
       <AnimatePresence>
@@ -365,7 +393,7 @@ function SubjectHealthCard() {
     <div className="glass rounded-2xl p-3">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-sm">🏥</span>
-        <span className="text-xs font-bold text-t-secondary">Subject Health</span>
+        <span className="text-xs font-bold text-white/70">Subject Health</span>
       </div>
       <div className="space-y-2">
         {healthScores.filter(h => h.score > 0 || lectures.some(l => {
@@ -374,7 +402,7 @@ function SubjectHealthCard() {
           return subj?.name === h.subject;
         })).map((h, i) => (
           <div key={h.subject} className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold text-t-secondary w-16 shrink-0">{h.subject}</span>
+            <span className="text-[10px] font-semibold text-white/60 w-16 shrink-0">{h.subject}</span>
             <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
               <motion.div
                 className="h-full rounded-full"

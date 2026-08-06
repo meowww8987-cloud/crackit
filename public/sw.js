@@ -1,7 +1,7 @@
 // NEET 2027 Study Tracker — Service Worker
 // Caches app shell for offline use
 
-const CACHE_NAME = 'neet-2027-v3';
+const CACHE_NAME = 'neet-2027-v2';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
@@ -47,11 +47,6 @@ self.addEventListener('fetch', (event) => {
 
   // Skip cross-origin requests
   if (url.origin !== self.location.origin) return;
-
-  // CRITICAL: NEVER cache API requests — they must ALWAYS hit the network.
-  // Caching /api/partner/sync caused stale partner data (partner appeared
-  // offline until hard reload). API responses are dynamic and must be fresh.
-  if (url.pathname.startsWith('/api/')) return;
 
   // Skip Next.js HMR and dev resources — NEVER cache these
   if (url.pathname.startsWith('/_next/webpack-hmr')) return;

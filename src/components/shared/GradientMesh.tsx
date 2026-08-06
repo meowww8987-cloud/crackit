@@ -104,10 +104,9 @@ export function GradientMesh() {
       const time = (Date.now() - baseTime) / 1000;
 
       const isDark = document.documentElement.classList.contains('dark');
-      const isWarm = document.documentElement.classList.contains('warm');
 
-      // Base fill color — adapts to theme
-      ctx.fillStyle = isDark ? '#0a0b10' : isWarm ? '#faf3e8' : '#f0f2f5';
+      // Base fill — near-black in dark mode, near-white in light
+      ctx.fillStyle = isDark ? '#0a0b10' : '#fafbfd';
       ctx.fillRect(0, 0, w, h);
 
       // Subject boost: brighten the blob(s) matching the active subject
@@ -124,7 +123,7 @@ export function GradientMesh() {
         // Boost opacity if this blob matches the active subject
         const isMatch = activeColor && blob.color[0] === activeColor[0] && blob.color[1] === activeColor[1];
         const opacityMultiplier = isMatch ? 1.8 : 1;
-        const opacity = blob.baseOpacity * opacityMultiplier * (isDark ? 1 : isWarm ? 0.8 : 0.5);
+        const opacity = blob.baseOpacity * opacityMultiplier * (isDark ? 1 : 0.7);
 
         const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
         grad.addColorStop(0,   `rgba(${blob.color[0]}, ${blob.color[1]}, ${blob.color[2]}, ${opacity})`);

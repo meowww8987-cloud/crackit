@@ -39,11 +39,6 @@ const DEFAULTS: Settings = {
   animationIntensity: 60,
   // Tutorial mode — shows one-time coach marks for every major feature
   tutorialMode: false,
-  // Screen dimming opacity during focus timer (0-100%)
-  // 0 = no dim, 100 = full black. Default 8 = subtle dim.
-  screenDimOpacity: 8,
-  // Allow landscape rotation in focus timer
-  allowLandscape: true,
 };
 
 const TEXT_SIZE_PX = { S: 14, M: 16, L: 18, XL: 20 };
@@ -65,7 +60,7 @@ export const useSettings = create<SettingsStore>()(
     }),
     {
       name: 'neet-settings',
-      version: 5,
+      version: 4,
       migrate: (persisted: any) => {
         // Add bg3DMode default for users who saved settings before this field existed
         if (persisted?.state && persisted.state.bg3DMode === undefined) {
@@ -99,17 +94,11 @@ export function applyTextSize(size: Settings['textSize']) {
   document.documentElement.style.setProperty('--app-font-size', `${TEXT_SIZE_PX[size]}px`);
 }
 
-export function applyTheme(theme: 'dark' | 'light' | 'warm') {
+export function applyTheme(theme: 'dark' | 'light') {
   if (typeof document === 'undefined') return;
-  const el = document.documentElement;
-  // Remove all theme classes
-  el.classList.remove('dark', 'warm', 'light-mode-adapt', 'warm-mode-adapt');
   if (theme === 'dark') {
-    el.classList.add('dark');
-  } else if (theme === 'warm') {
-    el.classList.add('warm', 'warm-mode-adapt');
+    document.documentElement.classList.add('dark');
   } else {
-    // light mode — add adapter class so text-white/bg-white adapt to dark
-    el.classList.add('light-mode-adapt');
+    document.documentElement.classList.remove('dark');
   }
 }

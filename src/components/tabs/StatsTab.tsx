@@ -18,7 +18,6 @@ import { triggerTimeline } from '@/components/app/AppShell';
 import { SubjectWeeklyBreakdown } from '@/components/stats/SubjectWeeklyBreakdown';
 import { HeatmapCalendar } from '@/components/stats/HeatmapCalendar';
 import { SubjectSunburst } from '@/components/stats/SubjectSunburst';
-import { CalendarView } from '@/components/stats/CalendarView';
 import {
   weeklyBarData,
   subjectDistribution,
@@ -97,9 +96,6 @@ export function StatsTab() {
 
       {/* 7-Day Subject Breakdown */}
       <SubjectWeeklyBreakdown />
-
-      {/* Monthly Calendar View — tap any day to see sessions */}
-      <CalendarView />
 
       {/* 365-day Heatmap Calendar */}
       <HeatmapCalendar />

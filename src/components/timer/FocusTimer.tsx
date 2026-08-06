@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pause, Play, Square, ChevronDown, AlertTriangle, CheckCircle2, RotateCw } from 'lucide-react';
+import { Pause, Play, Square, ChevronDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
 import { useTargets } from '@/lib/store/targets';
 import { useSettings } from '@/lib/store/settings';
-import { usePartner } from '@/lib/store/partner';
 import { subjectColor } from '@/lib/colors';
 import { cn, formatClock, formatHM, vibrate } from '@/lib/utils';
 import { FlipTimer } from '@/components/timer/FlipTimer';
@@ -15,20 +14,14 @@ export function FocusTimer() {
   const { active, pause, resume, toggleWasting, stop, setFocusOpen, bumpInteraction } = useSession();
   const toggleTargetDone = useTargets((s) => s.toggleDone);
   const settings = useSettings();
-  const partnerSyncData = usePartner((s) => s.syncData);
-  const partnerCode = usePartner((s) => s.code);
   const color = active ? subjectColor(active.subject) : null;
 
   // Local state for live ticking + burn protection
   const [, setTick] = useState(0);
   const [dimmed, setDimmed] = useState(false);
   const [timerPos, setTimerPos] = useState({ x: 0, y: 0 });
-  const [wasteFlash, setWasteFlash] = useState<number | null>(null);
+  const [wasteFlash, setWasteFlash] = useState<number | null>(null); // seconds wasted on return
   const [showPulse, setShowPulse] = useState(false);
-  const [showGoalReached, setShowGoalReached] = useState(false);
-  const [showBreathing, setShowBreathing] = useState(true); // show on session start
-  // Landscape detection — rotates the timer layout when phone is sideways
-  const [isLandscape, setIsLandscape] = useState(false);
   const lastWastedRef = useRef(0);
   const lastInteractRef = useRef(Date.now());
 
@@ -37,24 +30,6 @@ export function FocusTimer() {
     const i = setInterval(() => setTick((t) => t + 1), 500);
     return () => clearInterval(i);
   }, []);
-
-  // === Landscape detection ===
-  // Rotates the timer layout when phone is sideways (if allowed in settings).
-  // Uses window.orientation + matchMedia for reliable detection.
-  useEffect(() => {
-    if (!settings.allowLandscape) return;
-    const checkOrientation = () => {
-      const landscape = window.innerWidth > window.innerHeight;
-      setIsLandscape(landscape);
-    };
-    checkOrientation();
-    window.addEventListener('resize', checkOrientation);
-    window.addEventListener('orientationchange', checkOrientation);
-    return () => {
-      window.removeEventListener('resize', checkOrientation);
-      window.removeEventListener('orientationchange', checkOrientation);
-    };
-  }, [settings.allowLandscape]);
 
   // Watch for wasted seconds increase (returning from background) — show flash
   useEffect(() => {
@@ -167,89 +142,11 @@ export function FocusTimer() {
     }
   }, [dimmed]);
 
-  // Pre-compute values needed by hooks (before early return)
-  const studySec = active ? getLiveStudySeconds(active) : 0;
-  const wastedSec = active ? getLiveWastedSeconds(active) : 0;
-  const expectedSec = active?.expectedMinutes ? active.expectedMinutes * 60 : 0;
-  const isOverTime = expectedSec ? studySec > expectedSec : false;
-
-  // Track which multiple of expected time we've already shown the modal for.
-  // e.g. if expected = 60 min (3600s):
-  //   - At 3600s (1x) → show modal, track milestoneShown = 1
-  //   - At 7200s (2x) → show modal, track milestoneShown = 2
-  //   - At 10800s (3x) → show modal, track milestoneShown = 3
-  // This prevents fake study time — user must actively confirm "Continue" each time.
-  const lastMilestoneRef = useRef(0);
-
-  useEffect(() => {
-    if (!active || !expectedSec) return;
-    if (active.paused || active.wasting) return;
-    // Calculate current milestone (1, 2, 3, ...)
-    const milestone = Math.floor(studySec / expectedSec);
-    if (milestone > lastMilestoneRef.current && milestone >= 1) {
-      lastMilestoneRef.current = milestone;
-      setShowGoalReached(true);
-      if (settings.haptics) vibrate([10, 30, 10, 30, 10]);
-      import('@/lib/sounds').then(({ playSound }) => playSound('success'));
-      import('@/components/shared/Effects').then(({ triggerConfetti }) => triggerConfetti('medium'));
-    }
-  }, [studySec, expectedSec, active?.paused, active?.wasting, settings.haptics, active]);
-
-  // Reset milestone tracking when session changes (new session → can show again)
-  useEffect(() => {
-    lastMilestoneRef.current = 0;
-    setShowGoalReached(false);
-  }, [active?.targetId, active?.startedAt]);
-
-  // === Partner sync — push live study data every 3s while in FocusTimer ===
-  // CRITICAL: The global usePartnerSync hook in AppShell handles syncing on
-  // all tabs. But when the FocusTimer is open in fullscreen, some mobile
-  // browsers throttle background intervals. This DIRECT sync inside the
-  // FocusTimer guarantees B's study data reaches the server every 3s while
-  // B is actively studying in the black screen — so A sees real-time updates.
-  useEffect(() => {
-    if (!partnerCode) return;
-    // Immediate push when FocusTimer opens
-    partnerSyncData();
-    const i = setInterval(() => {
-      partnerSyncData();
-    }, 3_000);
-    return () => clearInterval(i);
-  }, [partnerCode, partnerSyncData]);
-
-  // Breathing exercise phases (4-7-8 pattern: inhale 4s, hold 7s, exhale 8s)
-  // NOTE: these hooks MUST be declared BEFORE the early return below —
-  // React's Rules of Hooks require hooks to be called unconditionally on
-  // every render. Previously they were after the `if (!active) return null`,
-  // which caused "Rendered fewer hooks than expected" crashes whenever the
-  // session ended (active became null) while the breathing overlay was active.
-  const breathPhases = [
-    { label: 'Breathe in...', duration: 4, scale: 1.5 },
-    { label: 'Hold...', duration: 7, scale: 1.5 },
-    { label: 'Breathe out...', duration: 8, scale: 0.8 },
-  ];
-  const [breathPhase, setBreathPhase] = useState(0);
-  const [breathCount, setBreathCount] = useState(0);
-
-  useEffect(() => {
-    if (!showBreathing) return;
-    const phase = breathPhases[breathPhase];
-    const timer = setTimeout(() => {
-      if (breathPhase < 2) {
-        setBreathPhase(breathPhase + 1);
-      } else {
-        if (breathCount >= 2) {
-          setShowBreathing(false);
-        } else {
-          setBreathCount(breathCount + 1);
-          setBreathPhase(0);
-        }
-      }
-    }, phase.duration * 1000);
-    return () => clearTimeout(timer);
-  }, [showBreathing, breathPhase, breathCount]);
-
   if (!active || !color) return null;
+
+  const studySec = getLiveStudySeconds(active);
+  const wastedSec = getLiveWastedSeconds(active);
+  const isOverTime = active.expectedMinutes ? studySec > active.expectedMinutes * 60 : false;
 
   // Determine state
   const isPaused = active.paused;
@@ -309,44 +206,6 @@ export function FocusTimer() {
 
   const displayTime = isWasting ? wastedSec : studySec;
 
-  // Breathing overlay — shows before the focus timer starts
-  if (showBreathing && active && color) {
-    const phase = breathPhases[breathPhase];
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
-        style={{ backgroundColor: '#000000' }}
-      >
-        <div className="text-xs text-white/40 uppercase tracking-widest mb-1">
-          Breathing Exercise
-        </div>
-        <div className="text-sm text-white/60 mb-12">
-          {breathCount + 1} of 3 · 4-7-8 Pattern
-        </div>
-        <motion.div
-          animate={{ scale: phase.scale }}
-          transition={{ duration: phase.duration, ease: 'easeInOut' }}
-          className="w-32 h-32 rounded-full flex items-center justify-center"
-          style={{
-            background: `radial-gradient(circle, ${color.hex}40, ${color.hex}10)`,
-            border: `2px solid ${color.hex}40`,
-          }}
-        >
-          <span className="text-white font-bold text-lg">{phase.label}</span>
-        </motion.div>
-        <button
-          onClick={() => setShowBreathing(false)}
-          className="absolute bottom-12 text-xs text-white/40 hover:text-white/70"
-        >
-          Skip
-        </button>
-      </motion.div>
-    );
-  }
-
   return (
     <motion.div
       data-focus-overlay
@@ -354,32 +213,12 @@ export function FocusTimer() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={handleInteraction}
-      className={cn(
-        "fixed inset-0 z-[9999] flex flex-col items-center justify-between py-12 px-6"
-      )}
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-between py-12 px-6"
       style={{
         cursor: dimmed ? 'pointer' : 'default',
-        // ALWAYS solid black background — never show app behind.
         backgroundColor: '#000000',
-        // Color overlay on top of black (subject-colored glow).
-        // When dimmed (burn protection), overlay fades out.
         backgroundImage: dimmed ? 'none' : bgOverlay,
         transition: 'background-image 800ms ease-in-out, background-color 800ms ease-in-out',
-        // === Landscape rotation ===
-        // When isLandscape is true, rotate the entire container 90 degrees.
-        // This makes the phone's physical portrait orientation display landscape content.
-        transform: isLandscape ? 'rotate(90deg)' : 'rotate(0deg)',
-        transformOrigin: 'center center',
-        // Swap width/height when rotated so it fills the screen
-        width: isLandscape ? '100vh' : '100vw',
-        height: isLandscape ? '100vw' : '100vh',
-        // When rotated, use landscape flex direction
-        display: 'flex',
-        flexDirection: isLandscape ? 'row' : 'column',
-        alignItems: 'center',
-        justifyContent: isLandscape ? 'center' : 'space-between',
-        gap: isLandscape ? '2rem' : undefined,
-        padding: isLandscape ? '1.5rem 3rem' : '3rem 1.5rem',
       }}
     >
       {/* Wasted time flash — shows when returning from background */}
@@ -476,13 +315,6 @@ export function FocusTimer() {
           <span className="text-white/70">{active.chapter}</span>
         </div>
         <div className="text-xs text-white/40 mt-0.5">{active.topic}</div>
-        {/* Live sync indicator — shows B that their data is being pushed */}
-        {partnerCode && (
-          <div className="text-[9px] text-green-400/60 mt-1 flex items-center justify-center gap-1">
-            <span className="inline-block w-1 h-1 rounded-full bg-green-400 animate-pulse" />
-            Syncing live to partner
-          </div>
-        )}
       </div>
 
       {/* Center: massive timer */}
@@ -510,16 +342,13 @@ export function FocusTimer() {
           )}
         </motion.div>
 
-        {/* Timer — dims based on user's screenDimOpacity setting */}
+        {/* Timer — dims to 8% but stays barely visible */}
         <motion.div
           animate={{ x: timerPos.x, y: timerPos.y }}
           transition={{ type: 'spring', stiffness: 60, damping: 20 }}
           className="transition-opacity duration-1000"
           style={{
-            // When dimmed: reduce opacity to (100 - screenDimOpacity)%.
-            // e.g., if screenDimOpacity = 80, opacity = 0.20 (barely visible).
-            // If screenDimOpacity = 0 (no dim), opacity stays 1 (fully visible).
-            opacity: dimmed ? Math.max(0.05, 1 - (settings.screenDimOpacity / 100)) : 1,
+            opacity: dimmed ? 0.08 : 1,
             filter: dimmed ? 'drop-shadow(0 0 40px rgba(255,255,255,0.1))' : 'none',
           }}
         >
@@ -552,7 +381,7 @@ export function FocusTimer() {
               <div
                 className="h-full rounded-full transition-all"
                 style={{
-                  width: `${(studySec / (active.expectedMinutes * 60)) * 100}%`,
+                  width: `${Math.min(100, (studySec / (active.expectedMinutes * 60)) * 100)}%`,
                   background: `linear-gradient(90deg, ${color.hex}, ${color.hex}88)`,
                 }}
               />
@@ -630,92 +459,8 @@ export function FocusTimer() {
           >
             <ChevronDown size={16} /> Min
           </button>
-          {/* Landscape toggle button — manually switch between portrait/landscape layout */}
-          {settings.allowLandscape && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleInteraction();
-                setIsLandscape(!isLandscape);
-                vibrate(8);
-              }}
-              className="px-4 py-4 rounded-2xl font-semibold text-sm bg-white/5 text-white/70 active:scale-[0.98] transition flex items-center justify-center gap-1.5"
-              title="Toggle landscape mode"
-            >
-              <RotateCw size={16} className={isLandscape ? 'rotate-90 transition-transform' : 'transition-transform'} />
-            </button>
-          )}
         </div>
       </div>
-
-      {/* === Goal Reached Modal — shows when study time hits 100% of expected === */}
-      <AnimatePresence>
-        {showGoalReached && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center px-6"
-            style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
-            onClick={() => setShowGoalReached(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.8, y: 30, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: 10, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-              onClick={(e) => e.stopPropagation()}
-              className="glass-strong rounded-3xl p-6 max-w-sm w-full text-center"
-            >
-              {/* Celebration emoji */}
-              <motion.div
-                initial={{ scale: 0, rotate: -20 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 12, delay: 0.1 }}
-                className="text-5xl mb-3"
-              >
-                🎯
-              </motion.div>
-
-              {/* Title */}
-              <h2 className="text-xl font-bold mb-1">
-                {lastMilestoneRef.current}x Goal Reached!
-              </h2>
-              <p className="text-sm text-white/60 mb-1">
-                You studied for <strong className="text-white">{formatHM(expectedSec * lastMilestoneRef.current)}</strong>
-              </p>
-              <p className="text-xs text-white/40 mb-5">
-                {lastMilestoneRef.current === 1
-                  ? 'Great work! Keep going or end the session.'
-                  : 'Impressive dedication! Keep going or end the session.'}
-              </p>
-
-              {/* Two buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setShowGoalReached(false);
-                    vibrate(10);
-                  }}
-                  className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-green-500 text-black font-bold text-sm active:scale-[0.98]"
-                >
-                  Continue Studying
-                </button>
-                <button
-                  onClick={() => {
-                    setShowGoalReached(false);
-                    vibrate([10, 30, 10]);
-                    handleDone();
-                  }}
-                  className="flex-1 py-3.5 rounded-xl bg-white/10 text-white font-bold text-sm active:scale-[0.98]"
-                >
-                  Mark Done & End
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }

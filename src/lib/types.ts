@@ -107,7 +107,6 @@ export interface Chapter {
   name: string;
   pyqCount: number;
   createdAt: number;
-  order?: number; // for drag-to-reorder
 }
 
 export interface SubjectEntity {
@@ -314,8 +313,8 @@ export interface Settings {
   dimDelay: number; // seconds 3-30
   distractionTauntInterval: number; // minutes 0-15, 0 = off
   autoDetectWasted: boolean;
-  appTheme: 'dark' | 'light' | 'warm';
-  focusTheme: 'dark' | 'light' | 'warm';
+  appTheme: 'dark' | 'light';
+  focusTheme: 'dark' | 'light';
   textSize: 'S' | 'M' | 'L' | 'XL';
   prefer2D: boolean;
   haptics: boolean;
@@ -357,10 +356,6 @@ export interface Settings {
    * Toggle in Settings → Appearance.
    */
   tutorialMode: boolean;
-  /** Screen dimming opacity during focus timer (0-100). 0 = no dim, 100 = black. */
-  screenDimOpacity: number;
-  /** Allow landscape rotation in focus timer. */
-  allowLandscape: boolean;
 }
 
 // ===== Timetable =====

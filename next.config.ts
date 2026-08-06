@@ -1,13 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Removed output: "standalone" — z.ai may not support standalone mode.
-  // Standard Next.js build works on all platforms.
+  output: "standalone",
   typescript: {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  // Allow dev origins for preview
   allowedDevOrigins: ['*'],
+  // Disable HMR to prevent stale module cache issues
   devIndicators: false,
 };
 

@@ -22,9 +22,6 @@ export function LiquidProgress({ pct, color = '#14b8a6', color2, className, heig
         style={{ backgroundImage: gradient }}
         initial={{ width: 0 }}
         animate={{ width: `${Math.min(100, pct)}%` }}
-        // Note: pct can exceed 100% when user studies more than expected time.
-        // We cap the visual width at 100% so the bar doesn't overflow, but the
-        // actual number shown elsewhere (text) reflects the real percentage.
         transition={{ duration: 0.6, ease: 'easeOut' }}
       >
         <div className="liquid-shimmer" />

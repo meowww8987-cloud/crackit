@@ -42,107 +42,23 @@ export function TargetCard({
   const startSession = useSession((s) => s.startSession);
   const pause = useSession((s) => s.pause);
   const resume = useSession((s) => s.resume);
-  const toggleDone = useTargets((s) => s.toggleDone);
+  const toggleDone = useTargets();
   const haptics = useSettings((s) => s.haptics);
   const reduceAnimations = useSettings((s) => s.reduceAnimations);
   const animationIntensity = useSettings((s) => s.animationIntensity);
   const [celebrate, setCelebrate] = useState(false);
   const [flashGreen, setFlashGreen] = useState(false);
 
-  // === Refined gesture detection ===
-  // Three distinct intents:
-  //  1. QUICK TAP (< 200ms hold, < 8px movement) → open detail
-  //  2. LONG PRESS (≥ 400ms hold, < 8px movement) → arm drag mode (visual pop)
-  //  3. DRAG (≥ 8px movement after long-press armed) → reorder card
-  //
-  // Previous issues fixed:
-  //  - Tap fired on any touch, even accidental fraction-of-second brushes.
-  //    Now requires the pointer to be DOWN for ≥ 80ms AND released with minimal
-  //    movement before it counts as a tap (filters out micro-jitter).
-  //  - Vertical drag activated on 1-2px movement. Now requires 8px of
-  //    movement AND the long-press timer to have fired (400ms hold) before
-  //    the drag is "armed". A quick swipe without holding does nothing.
-  //  - Start/Pause button taps sometimes leaked to the parent onTap.
-  //    Now we track whether the pointer down started on a button and
-  //    suppress the parent tap in that case.
-  const suppressTapRef = useRef(false);
-  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dragArmedRef = useRef(false); // becomes true after 400ms hold
-  const pressStartRef = useRef<{ x: number; y: number; t: number; onButton: boolean } | null>(null);
-  const [popped, setPopped] = useState(false);
-
-  // Movement threshold (px) — pointer must travel at least this far to be
-  // considered a drag attempt rather than a tap.
-  const DRAG_MOVE_THRESHOLD = 8;
-  // Hold time (ms) required before drag mode is "armed". Below this, the
-  // card stays in tap mode and won't start reordering.
-  const LONG_PRESS_MS = 400;
-  // Minimum press duration (ms) for a tap to count. Filters out accidental
-  // micro-touches where the finger brushes the screen for < 80ms.
-  const MIN_TAP_MS = 80;
-
-  const onCardPointerDown = (e: React.PointerEvent) => {
-    // If the pointer down landed on a button or interactive element inside
-    // the card, mark it so we don't open detail on release.
-    const onButton = (e.target as HTMLElement).closest('button, a, input, [data-stop-propagation]');
-    suppressTapRef.current = !!onButton;
-    dragArmedRef.current = false;
-    setPopped(false);
-    pressStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      t: Date.now(),
-      onButton: !!onButton,
-    };
-    // Arm drag mode after a deliberate long press. Only if the user is NOT
-    // pressing on a button (so button taps never accidentally arm drag).
-    if (!onButton) {
-      pressTimerRef.current = setTimeout(() => {
-        dragArmedRef.current = true;
-        setPopped(true);
-        if (haptics) vibrate(10);
-      }, LONG_PRESS_MS);
-    }
-  };
-
-  const onCardPointerMove = (e: React.PointerEvent) => {
-    if (!pressStartRef.current) return;
-    const dx = Math.abs(e.clientX - pressStartRef.current.x);
-    const dy = Math.abs(e.clientY - pressStartRef.current.y);
-    // If significant movement happens BEFORE the long-press timer fires,
-    // cancel the timer — this is a swipe/scroll, not a long-press.
-    // (The drag itself will be handled by Reorder.Item, but only if armed.)
-    if ((dx > DRAG_MOVE_THRESHOLD || dy > DRAG_MOVE_THRESHOLD) && pressTimerRef.current) {
-      clearTimeout(pressTimerRef.current);
-      pressTimerRef.current = null;
-      // Not armed yet → suppress tap (it became a drag attempt)
-      suppressTapRef.current = true;
-    }
-  };
-
-  const onCardPointerUp = () => {
-    if (pressTimerRef.current) {
-      clearTimeout(pressTimerRef.current);
-      pressTimerRef.current = null;
-    }
-    setPopped(false);
-    // If the press was too short (< MIN_TAP_MS), treat as accidental touch
-    // and suppress the tap. prevents detail opening on quick brushes.
-    if (pressStartRef.current) {
-      const heldMs = Date.now() - pressStartRef.current.t;
-      if (heldMs < MIN_TAP_MS) {
-        suppressTapRef.current = true;
-      }
-      pressStartRef.current = null;
-    }
-    // Reset drag-armed flag after a short delay so the next interaction
-    // starts fresh. (Immediate reset would race with Reorder.Item's drag.)
-    setTimeout(() => { dragArmedRef.current = false; }, 50);
-  };
-
-  useEffect(() => () => {
-    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
-  }, []);
+  // Long-press-to-drag state.
+  // Reorder.Item's drag is gated behind `dragEnabled` — false by default so
+  // taps open the detail sheet, but after holding 350ms it flips to true and
+  // the user can move their finger to reorder.
+  // `dragArmed` is the visual cue state (card lifts slightly + haptic).
+  const [dragEnabled, setDragEnabled] = useState(false);
+  const [dragArmed, setDragArmed] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pointerStartPos = useRef<{ x: number; y: number } | null>(null);
+  const pointerMovedRef = useRef(false);
 
   const isThisActive = active?.targetId === target.id;
   const isAnyActive = active !== null && !isThisActive;
@@ -176,10 +92,7 @@ export function TargetCard({
   const liveStudied = isThisActive ? getLiveStudySeconds(active) : studiedSec;
   const liveWasted = isThisActive ? getLiveWastedSeconds(active) : wastedSec;
   const expectedSec = target.expectedMinutes * 60;
-  // Progress shows 100% when expected time is reached, but does NOT cap the
-  // actual study time — liveStudied keeps growing past expected time.
-  // The bar shows min(100%) but the text shows the REAL studied time.
-  const progressPct = expectedSec > 0 ? Math.round((liveStudied / expectedSec) * 100) : 0;
+  const progressPct = expectedSec > 0 ? Math.min(100, Math.round((liveStudied / expectedSec) * 100)) : 0;
 
   const handleStartPause = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -204,10 +117,72 @@ export function TargetCard({
     }
   };
 
-  // === Simple interaction model ===
-  // Reorder.Item handles drag natively. We use `onTap` (Framer Motion's
-  // tap detector — fires only on clean tap, NOT after drag) to open detail.
-  // Buttons inside use stopPropagation so they don't trigger the tap.
+  // === Long-press-to-drag handlers ===
+  // The card is NOT draggable by default — taps open the detail sheet.
+  // After holding 350ms without moving, drag is "armed" (haptic + visual cue),
+  // and the user can move their finger to reorder. Release to drop.
+  const DRAG_ARM_DELAY = 350;
+  const TAP_MOVE_THRESHOLD = 10; // px — if finger moves more than this, cancel tap
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const onCardPointerDown = (e: React.PointerEvent) => {
+    // Only respond to primary button / touch
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    pointerStartPos.current = { x: e.clientX, y: e.clientY };
+    pointerMovedRef.current = false;
+    clearLongPress();
+    longPressTimer.current = setTimeout(() => {
+      // Long-press fired → arm drag
+      setDragEnabled(true);
+      setDragArmed(true);
+      if (haptics) vibrate(25);
+    }, DRAG_ARM_DELAY);
+  };
+
+  const onCardPointerMove = (e: React.PointerEvent) => {
+    if (!pointerStartPos.current) return;
+    const dx = e.clientX - pointerStartPos.current.x;
+    const dy = e.clientY - pointerStartPos.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) > TAP_MOVE_THRESHOLD) {
+      pointerMovedRef.current = true;
+      // If user moved before drag was armed, cancel the long-press timer
+      // (they're scrolling, not trying to drag)
+      if (!dragArmed) clearLongPress();
+    }
+  };
+
+  const onCardPointerUp = (e: React.PointerEvent) => {
+    clearLongPress();
+    if (dragArmed) {
+      // Was dragging — drop and reset
+      setDragEnabled(false);
+      setDragArmed(false);
+      return;
+    }
+    // Wasn't dragging — if no significant movement, treat as tap → open detail
+    if (!pointerMovedRef.current) {
+      onOpenDetail();
+    }
+    pointerStartPos.current = null;
+    pointerMovedRef.current = false;
+  };
+
+  const onCardPointerCancel = () => {
+    clearLongPress();
+    setDragEnabled(false);
+    setDragArmed(false);
+    pointerStartPos.current = null;
+    pointerMovedRef.current = false;
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => () => clearLongPress(), []);
 
   const stateClass = {
     idle: '',
@@ -230,61 +205,47 @@ export function TargetCard({
       value={target}
       data-card
       layout
-      drag="y"
-      dragDirectionLock
-      dragElastic={0.15}
+      // Drag is gated behind `dragEnabled` — only true after a 350ms long-press.
+      // This lets taps open the detail sheet and buttons stay clickable.
+      drag={dragEnabled}
       initial={reduceAnimations ? false : { opacity: 0, y: 8 }}
       animate={{
         opacity: 1,
         y: 0,
-        // "Pop" effect when long-pressed — card lifts slightly to show drag mode
-        scale: popped && !reduceAnimations ? 1.02 : (celebrate && !reduceAnimations ? 1.02 : 1),
+        scale: dragArmed && !reduceAnimations ? 1.02 : (celebrate && !reduceAnimations ? 1.02 : 1),
       }}
       whileDrag={
         reduceAnimations
-          ? { zIndex: 50, cursor: 'grabbing', scale: 1.02 }
+          ? { zIndex: 50, cursor: 'grabbing' }
           : {
-              scale: 1.03,
+              scale: 1.04,
+              y: -4,
               zIndex: 50,
               cursor: 'grabbing',
-              boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.08)',
+              boxShadow: '0 16px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05)',
             }
       }
       dragTransition={
         reduceAnimations
-          ? { bounceStiffness: 1000, bounceDamping: 100 }
-          : { bounceStiffness: 800, bounceDamping: 45 }
+          ? { bounceStiffness: 1000, bounceDamping: 100 } // no bounce
+          : { bounceStiffness: 500, bounceDamping: 35 }
       }
       transition={
         reduceAnimations
           ? { duration: 0 }
-          : { type: 'spring', stiffness: 500, damping: 40, mass: 0.8 }
+          : {
+              type: 'spring',
+              // Intensity scales the spring: higher intensity = bouncier (lower damping)
+              stiffness: 400 + (animationIntensity / 100) * 200, // 400-600
+              damping: 45 - (animationIntensity / 100) * 20,     // 45→25 (higher intensity = less damping = bouncier)
+              mass: 0.8,
+            }
       }
-      // Pointer handlers for refined gesture detection
+      // Long-press-to-drag handlers. Taps (no movement + < 350ms hold) open detail.
       onPointerDown={onCardPointerDown}
       onPointerMove={onCardPointerMove}
       onPointerUp={onCardPointerUp}
-      onPointerLeave={onCardPointerUp}
-      onPointerCancel={onCardPointerUp}
-      // onTap — only opens detail if:
-      //  - The tap didn't originate on a button/interactive element (checked
-      //    via the event target at tap time — more reliable than stopPropagation,
-      //    which framer-motion's tap detector doesn't fully respect).
-      //  - suppressTapRef is false (not a long-press, not an accidental
-      //    micro-touch, not a drag attempt).
-      //  - drag was not armed.
-      onTap={(e: any) => {
-        // If the tap landed on a button or interactive child, let that
-        // element's own onClick handle it — don't open detail.
-        if (e?.target && (e.target as HTMLElement).closest('button, a, input, [data-stop-propagation]')) {
-          return;
-        }
-        if (suppressTapRef.current || dragArmedRef.current) {
-          suppressTapRef.current = false;
-          return;
-        }
-        onOpenDetail();
-      }}
+      onPointerCancel={onCardPointerCancel}
       className={cn(
         // NOTE: do NOT use `transition-all duration-500` — it conflicts with
         // Framer Motion's JS-driven transform animations and causes stutter.
@@ -295,9 +256,10 @@ export function TargetCard({
         //   idle: pointer (tap to open)
         //   armed: grab (long-press active, ready to drag)
         //   dragging: grabbing (Framer Motion sets this via whileDrag)
-        'cursor-pointer',
+        dragArmed ? 'cursor-grab' : 'cursor-pointer',
         stateClass,
         flashGreen && 'ring-2 ring-green-500',
+        dragArmed && 'ring-2 ring-white/30',
       )}
       style={{
         // Targeted CSS transitions for visual props only (NOT transform)
@@ -341,29 +303,16 @@ export function TargetCard({
         />
       )}
 
-      {/* Card flip celebration on done — 3D Y-axis rotation showing green "Done!" face */}
+      {/* Green flash overlay on done celebration */}
       <AnimatePresence>
         {flashGreen && (
           <motion.div
-            initial={{ rotateY: 0, opacity: 1 }}
-            animate={{ rotateY: 180, opacity: 0 }}
+            initial={{ opacity: 0.3 }}
+            animate={{ opacity: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: 'easeInOut' }}
-            className="absolute inset-0 pointer-events-none rounded-2xl flex items-center justify-center"
-            style={{
-              background: 'linear-gradient(135deg, rgba(34,197,94,0.3), rgba(34,197,94,0.1))',
-              backfaceVisibility: 'hidden',
-            }}
-          >
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.1, type: 'spring', stiffness: 400, damping: 15 }}
-              className="text-3xl"
-            >
-              ✅
-            </motion.span>
-          </motion.div>
+            transition={{ duration: 0.4 }}
+            className="absolute inset-0 bg-green-500 pointer-events-none rounded-2xl"
+          />
         )}
       </AnimatePresence>
 
@@ -406,6 +355,8 @@ export function TargetCard({
         {/* Start/Pause button */}
         <button
           onClick={handleStartPause}
+          // Stop pointer down so the card's long-press timer doesn't fire
+          // when the user is just tapping this button.
           onPointerDown={(e) => e.stopPropagation()}
           disabled={isAnyActive || target.done}
           className={cn(
@@ -453,7 +404,7 @@ export function TargetCard({
               setCelebrate(true);
               setTimeout(() => setFlashGreen(false), 400);
               setTimeout(() => setCelebrate(false), 600);
-              toggleDone(target.id);
+              toggleDone.toggleDone(target.id);
               playSound('done');
               // Particle burst from the tap point in the subject's color
               // (skipped when reduceAnimations is on)
@@ -476,7 +427,7 @@ export function TargetCard({
         <div
           className={cn(
             'text-white/30 flex items-center transition-colors',
-            '',
+            dragArmed && 'text-white/80',
           )}
           aria-label="Hold card to drag and reorder"
         >

@@ -27,14 +27,11 @@ import { GradientMesh } from '@/components/shared/GradientMesh';
 import { Scene3D } from '@/components/shared/Scene3D';
 import { Splash3D } from '@/components/shared/Splash3D';
 import { DailySummaryCard } from '@/components/home/DailySummaryCard';
-import { WeeklyReportCard } from '@/components/home/CoachCard';
 import { PaperTestCompanion } from '@/components/tests/PaperTestCompanion';
 import { PaperTestPicker } from '@/components/tests/PaperTestPicker';
 import { TutorialManager } from '@/components/shared/TutorialManager';
-import { SmartNotifications } from '@/components/shared/SmartNotifications';
 import { configureSounds } from '@/lib/sounds';
 import { useSettings } from '@/lib/store/settings';
-import { usePartnerSync } from '@/hooks/usePartnerSync';
 
 // Global state for showing the active recall challenge (avoids prop drilling)
 let _showRecallChallenge: () => void = () => {};
@@ -59,11 +56,6 @@ export function AppShell() {
   const { active, focusOpen, pendingMoodSession, tick } = useSession();
   const [navVisible, setNavVisible] = useState(true);
   const [showRecall, setShowRecall] = useState(false);
-
-  // === Global partner sync ===
-  // Runs on EVERY tab (not just Home) so live study data is pushed to the
-  // server even when the user is on the Study/Tests/Stats tab.
-  usePartnerSync();
   const [showFreeStudy, setShowFreeStudy] = useState(false);
   const [showPaperTestPicker, setShowPaperTestPicker] = useState(false);
   const [activePaperTestId, setActivePaperTestId] = useState<string | null>(null);
@@ -482,28 +474,29 @@ export function AppShell() {
       {/* Daily Summary — auto-shows at 9 PM or morning after */}
       <DailySummaryCard />
 
-      {/* Weekly Report — auto-shows on Sunday at 8 PM */}
-      <WeeklyReportCard />
-
       {/* Tutorial Manager — shows coach marks when tutorialMode is ON */}
       <TutorialManager />
-
-      {/* Smart Notifications — background notification scheduler */}
-      <SmartNotifications />
     </div>
   );
 }
 
 function TopBar() {
+  const setTab = useNav((s) => s.setTab);
   return (
-    <div className="absolute top-0 left-0 right-0 z-30 h-13 px-4 py-2.5 flex items-center pointer-events-none">
+    <div className="absolute top-0 left-0 right-0 z-30 h-13 px-4 py-2.5 flex items-center justify-between pointer-events-none">
       <div className="flex items-center gap-1.5 pointer-events-auto">
         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-400 to-green-500 flex items-center justify-center text-xs font-bold text-black shadow-lg shadow-teal-500/20">
           N
         </div>
         <span className="text-sm font-semibold tracking-tight text-adaptive">NEET 2027</span>
       </div>
-      {/* Settings button removed — use the dedicated Settings tab in bottom nav */}
+      <button
+        onClick={() => setTab('settings')}
+        className="pointer-events-auto w-9 h-9 rounded-lg glass flex items-center justify-center text-adaptive-muted hover:text-adaptive active:scale-95 transition"
+        aria-label="Settings"
+      >
+        <SettingsIcon size={18} />
+      </button>
     </div>
   );
 }

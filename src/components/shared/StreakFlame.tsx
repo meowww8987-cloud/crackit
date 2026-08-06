@@ -33,9 +33,6 @@ export function StreakFlame({ streak, className }: Props) {
 
   if (streak <= 0) return null;
 
-  // Streak freeze: show 🧊 badge if freezes are available
-  const freezesAvailable = Math.floor(streak / 7);
-
   // Flame intensity levels
   const level = streak >= 30 ? 'epic' : streak >= 14 ? 'fire' : streak >= 7 ? 'blaze' : 'spark';
   const config = {
@@ -116,15 +113,6 @@ export function StreakFlame({ streak, className }: Props) {
         >
           !
         </motion.span>
-      )}
-      {/* Streak freeze badge — shows available freezes */}
-      {freezesAvailable > 0 && !atRisk && (
-        <span
-          className="absolute -top-1 -right-1 bg-blue-500 text-white text-[7px] font-bold px-1 py-0.5 rounded-full"
-          title={`${freezesAvailable} streak freeze${freezesAvailable === 1 ? '' : 's'} available`}
-        >
-          🧊{freezesAvailable}
-        </span>
       )}
     </motion.div>
   );

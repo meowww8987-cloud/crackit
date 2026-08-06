@@ -22,20 +22,6 @@ interface HistoryStore {
   getStreak: () => number;
 }
 
-// Helper: count consecutive study days (without freeze logic — raw count)
-function streakCount(days: Set<string>): number {
-  let count = 0;
-  const d = new Date();
-  const todayKeyStr = todayKey();
-  if (!days.has(todayKeyStr)) d.setDate(d.getDate() - 1);
-  while (true) {
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    if (days.has(key)) { count++; d.setDate(d.getDate() - 1); }
-    else break;
-  }
-  return count;
-}
-
 export const useHistory = create<HistoryStore>()(
   persist(
     (set, get) => ({
@@ -109,18 +95,10 @@ export const useHistory = create<HistoryStore>()(
           if (s.studySeconds >= 60) days.add(s.date);
         }
         if (days.size === 0) return 0;
-
-        // Streak freeze: every 7 consecutive days, earn 1 freeze.
-        // Freezes auto-fill gaps (missed days) in the streak.
-        // Max 2 freezes can be used per streak.
-        const freezesAvailable = Math.floor(streakCount(days) / 7);
-        const freezesUsed = get()._freezesUsed || 0;
-        const freezesRemaining = Math.max(0, freezesAvailable - freezesUsed);
-
-        // Count back from today, allowing up to 2 freeze gaps
+        // Count back from today
         let streak = 0;
-        let freezeGapsUsed = 0;
         const d = new Date();
+        // If today not in set but yesterday is — still count from yesterday
         const todayKeyStr = todayKey();
         if (!days.has(todayKeyStr)) {
           d.setDate(d.getDate() - 1);
@@ -130,19 +108,10 @@ export const useHistory = create<HistoryStore>()(
           if (days.has(key)) {
             streak++;
             d.setDate(d.getDate() - 1);
-          } else if (freezeGapsUsed < freezesRemaining && freezeGapsUsed < 2) {
-            // Use a freeze to skip this gap day
-            freezeGapsUsed++;
-            streak++;
-            d.setDate(d.getDate() - 1);
           } else break;
         }
         return streak;
       },
-
-      // Streak freeze state
-      _freezesUsed: 0,
-      _freezesEarned: 0,
     }),
     { name: 'neet-history' }
   )

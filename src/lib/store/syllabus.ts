@@ -21,7 +21,6 @@ interface SyllabusStore {
   setHardness: (id: string, hardness: number) => void;
   deleteLecture: (id: string) => void;
   deleteChapter: (id: string) => void;
-  reorderChapters: (subjectId: string, newOrder: string[]) => void;
   advanceRevision: (id: string) => void;
   getCompletionPercent: () => number;
   getOverdueRevisions: () => Lecture[];
@@ -305,17 +304,6 @@ export const useSyllabus = create<SyllabusStore>()(
           chapters: st.chapters.filter((c) => c.id !== id),
           lectures: st.lectures.filter((l) => l.chapterId !== id),
         })),
-
-      reorderChapters: (subjectId, newOrder) =>
-        set((st) => {
-          // Update the order field on each chapter in the subject
-          const updatedChapters = st.chapters.map((c) => {
-            if (c.subjectId !== subjectId) return c;
-            const idx = newOrder.indexOf(c.id);
-            return idx >= 0 ? { ...c, order: idx } : c;
-          });
-          return { chapters: updatedChapters };
-        }),
 
       advanceRevision: (id) => {
         const state = get();

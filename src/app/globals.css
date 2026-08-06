@@ -49,11 +49,11 @@
   --app-font-size: 16px;
 
   /* Subject colors */
-  --color-physics: #3b82f6;
-  --color-chemistry: #a855f7;
-  --color-botany: #22c55e;
-  --color-zoology: #f43f5e;
-  --color-general: #64748b;
+  --color-physics: #14b8a6;
+  --color-chemistry: #22c55e;
+  --color-botany: #10b981;
+  --color-zoology: #ef4444;
+  --color-general: #6b7280;
 
   /* State colors */
   --color-studying: #22c55e;
@@ -61,66 +61,40 @@
   --color-wasting: #ef4444;
   --color-done: #6b7280;
 
-  /* ===== LIGHT THEME (default) ===== */
-  --bg-app: #f0f2f5;
-  --bg-card: #ffffff;
-  --bg-card-solid: #ffffff;
-  --bg-glass-strong: #ffffff;
-  --text-primary: #1a1a2e;
-  --text-secondary: #475569;   /* slate-600 — was #64748b (too light) */
-  --text-muted: #64748b;       /* slate-500 — was #94a3b8 (nearly invisible) */
-  --border-color: rgba(0, 0, 0, 0.12);
-  --border-card: rgba(15, 23, 42, 0.14);  /* stronger card edges — was 0.06 */
-  --shadow-card: 0 2px 12px -2px rgba(0, 0, 0, 0.08);
-  --shadow-strong: 0 8px 32px -4px rgba(0, 0, 0, 0.14);
-
-  --background: oklch(0.96 0.003 250);
-  --foreground: oklch(0.18 0.005 250);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.005 250);
+  --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.005 250);
+  --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.94 0.005 250);
+  --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.94 0.005 250);
-  --muted-foreground: oklch(0.5 0.01 250);
-  --accent: oklch(0.94 0.005 250);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.6 0.05 200);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.97 0 0);
+  --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.94 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.9 0 0);
-  --sidebar-ring: oklch(0.6 0.05 200);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* ===== DARK THEME ===== */
 .dark {
-  --bg-app: #0a0b15;
-  --bg-card: #16181f;
-  --bg-card-solid: #16181f;
-  --bg-glass-strong: #1a1d26;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --border-color: rgba(255, 255, 255, 0.06);
-  --border-card: rgba(255, 255, 255, 0.08);
-  --shadow-card: 0 2px 12px -2px rgba(0, 0, 0, 0.5);
-  --shadow-strong: 0 8px 32px -4px rgba(0, 0, 0, 0.7);
-
   --background: oklch(0.08 0.005 250);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.14 0.008 250);
@@ -154,53 +128,6 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* ===== WARM THEME (light warm cream/amber — like reading a paper book) ===== */
-.warm {
-  --bg-app: #faf3e8;
-  --bg-card: #fff8ed;
-  --bg-card-solid: #fff8ed;
-  --bg-glass-strong: #fffaf2;
-  --text-primary: #3d2b1f;
-  --text-secondary: #6b4f3a;   /* darker warm brown — was #8a6f5a (too faint) */
-  --text-muted: #8a6f5a;       /* was #b09880 (nearly invisible on cream) */
-  --border-color: rgba(61, 43, 31, 0.12);
-  --border-card: rgba(120, 80, 40, 0.22);
-  --shadow-card: 0 2px 12px -2px rgba(120, 80, 40, 0.12);
-  --shadow-strong: 0 8px 32px -4px rgba(120, 80, 40, 0.18);
-
-  --background: oklch(0.96 0.015 70);
-  --foreground: oklch(0.30 0.02 50);
-  --card: oklch(0.98 0.012 70);
-  --card-foreground: oklch(0.30 0.02 50);
-  --popover: oklch(0.98 0.012 70);
-  --popover-foreground: oklch(0.30 0.02 50);
-  --primary: oklch(0.55 0.12 50);
-  --primary-foreground: oklch(0.98 0.01 70);
-  --secondary: oklch(0.93 0.02 70);
-  --secondary-foreground: oklch(0.35 0.02 50);
-  --muted: oklch(0.93 0.02 70);
-  --muted-foreground: oklch(0.55 0.03 50);
-  --accent: oklch(0.90 0.03 60);
-  --accent-foreground: oklch(0.35 0.02 50);
-  --destructive: oklch(0.55 0.22 25);
-  --border: oklch(0.88 0.02 60);
-  --input: oklch(0.90 0.02 60);
-  --ring: oklch(0.60 0.08 50);
-  --chart-1: oklch(0.60 0.15 40);
-  --chart-2: oklch(0.55 0.12 160);
-  --chart-3: oklch(0.50 0.10 220);
-  --chart-4: oklch(0.65 0.18 30);
-  --chart-5: oklch(0.60 0.15 350);
-  --sidebar: oklch(0.97 0.012 70);
-  --sidebar-foreground: oklch(0.30 0.02 50);
-  --sidebar-primary: oklch(0.55 0.12 50);
-  --sidebar-primary-foreground: oklch(0.98 0.01 70);
-  --sidebar-accent: oklch(0.92 0.03 60);
-  --sidebar-accent-foreground: oklch(0.35 0.02 50);
-  --sidebar-border: oklch(0.88 0.02 60);
-  --sidebar-ring: oklch(0.60 0.08 50);
-}
-
 @layer base {
   html {
     font-size: var(--app-font-size);
@@ -212,129 +139,90 @@
     @apply bg-background text-foreground;
     font-feature-settings: "tnum" 1;
   }
-
-  /* ===== GLOBAL THEME ADAPTATION =====
-   * Many components use Tailwind's text-white / bg-white/N classes which
-   * are hardcoded white. In light/warm mode these become invisible.
-   * Instead of editing 200+ lines across 30+ files, we override these
-   * classes globally based on the active theme.
-   *
-   * In light mode (:root without .dark or .warm): text-white → dark text
-   * In warm mode (.warm): text-white → warm cream text
-   * In dark mode (.dark): no change (white is correct)
-   */
-
-  /* Light mode: override all white text/bg to dark equivalents.
-     Applied when html has neither .dark nor .warm class.
-     CRITICAL: Opacities are HIGH because these are dark-on-white (light theme).
-     Low opacities (0.25-0.45) are invisible on white cards. */
-  html:not(.dark):not(.warm) .text-white,
-  html:not(.dark):not(.warm) text-white {
-    color: #0f172a !important;  /* slate-900 — near black */
-  }
-  html:not(.dark):not(.warm) .text-white\/90 { color: rgba(15, 23, 42, 0.95) !important; }
-  html:not(.dark):not(.warm) .text-white\/80 { color: rgba(15, 23, 42, 0.88) !important; }
-  html:not(.dark):not(.warm) .text-white\/70 { color: rgba(30, 41, 59, 0.82) !important; }
-  html:not(.dark):not(.warm) .text-white\/60 { color: rgba(30, 41, 59, 0.75) !important; }
-  html:not(.dark):not(.warm) .text-white\/50 { color: rgba(51, 65, 85, 0.72) !important; }
-  html:not(.dark):not(.warm) .text-white\/40 { color: rgba(51, 65, 85, 0.68) !important; }
-  html:not(.dark):not(.warm) .text-white\/30 { color: rgba(71, 85, 105, 0.65) !important; }
-
-  html:not(.dark):not(.warm) .bg-white\/5 { background: rgba(0, 0, 0, 0.04) !important; }
-  html:not(.dark):not(.warm) .bg-white\/10 { background: rgba(0, 0, 0, 0.06) !important; }
-  html:not(.dark):not(.warm) .bg-white\/15 { background: rgba(0, 0, 0, 0.08) !important; }
-  html:not(.dark):not(.warm) .bg-white\/20 { background: rgba(0, 0, 0, 0.10) !important; }
-  html:not(.dark):not(.warm) .bg-white\/30 { background: rgba(0, 0, 0, 0.14) !important; }
-
-  /* Light mode: border-white overrides — BOOSTED for visibility on white cards */
-  html:not(.dark):not(.warm) .border-white\/5 { border-color: rgba(15, 23, 42, 0.10) !important; }
-  html:not(.dark):not(.warm) .border-white\/10 { border-color: rgba(15, 23, 42, 0.15) !important; }
-  html:not(.dark):not(.warm) .border-white\/20 { border-color: rgba(15, 23, 42, 0.22) !important; }
-
-  /* Light mode: ring-white/N overrides */
-  html:not(.dark):not(.warm) .ring-white\/30 { --tw-ring-color: rgba(15, 23, 42, 0.25) !important; }
-
-  /* Warm mode: override white text/bg to warm brown equivalents (light warm theme).
-     Opacities HIGH because these are brown-on-cream (warm theme).
-     Low opacities are invisible on cream cards. */
-  .warm .text-white,
-  .warm text-white {
-    color: #2c1810 !important;  /* dark brown — near black */
-  }
-  .warm .text-white\/90 { color: rgba(44, 24, 16, 0.95) !important; }
-  .warm .text-white\/80 { color: rgba(44, 24, 16, 0.88) !important; }
-  .warm .text-white\/70 { color: rgba(74, 52, 35, 0.85) !important; }
-  .warm .text-white\/60 { color: rgba(74, 52, 35, 0.78) !important; }
-  .warm .text-white\/50 { color: rgba(107, 79, 58, 0.75) !important; }
-  .warm .text-white\/40 { color: rgba(107, 79, 58, 0.70) !important; }
-  .warm .text-white\/30 { color: rgba(140, 110, 80, 0.65) !important; }
-
-  .warm .bg-white\/5 { background: rgba(180, 140, 100, 0.06) !important; }
-  .warm .bg-white\/10 { background: rgba(180, 140, 100, 0.10) !important; }
-  .warm .bg-white\/15 { background: rgba(180, 140, 100, 0.10) !important; }
-  .warm .bg-white\/20 { background: rgba(180, 140, 100, 0.12) !important; }
-  .warm .bg-white\/30 { background: rgba(180, 140, 100, 0.15) !important; }
-
-  .warm .border-white\/5 { border-color: rgba(120, 80, 40, 0.18) !important; }
-  .warm .border-white\/10 { border-color: rgba(120, 80, 40, 0.25) !important; }
-  .warm .border-white\/20 { border-color: rgba(120, 80, 40, 0.32) !important; }
-  .warm .ring-white\/30 { --tw-ring-color: rgba(120, 80, 40, 0.35) !important; }
-
-  /* Light mode: black/[opacity] backgrounds should become lighter */
-  html:not(.dark):not(.warm) .bg-black\/60 { background: rgba(0, 0, 0, 0.3) !important; }
-  html:not(.dark):not(.warm) .bg-black\/70 { background: rgba(0, 0, 0, 0.4) !important; }
-
-  /* Warm mode: black/[opacity] backgrounds become warm shadows */
-  .warm .bg-black\/60 { background: rgba(61, 43, 31, 0.3) !important; }
-  .warm .bg-black\/70 { background: rgba(61, 43, 31, 0.4) !important; }
-
-  /* === Input field contrast fix for light/warm themes ===
-     Many input fields use bg-white/5 + border-white/10 which become nearly
-     invisible on white/cream cards. This ensures inputs always have a
-     visible border and readable text in light/warm modes. */
-  html:not(.dark):not(.warm) input,
-  html:not(.dark):not(.warm) textarea,
-  html:not(.dark):not(.warm) select {
-    color: #0f172a !important;
-  }
-  html:not(.dark):not(.warm) input::placeholder,
-  html:not(.dark):not(.warm) textarea::placeholder {
-    color: rgba(71, 85, 105, 0.5) !important;
-  }
-  .warm input,
-  .warm textarea,
-  .warm select {
-    color: #2c1810 !important;
-  }
-  .warm input::placeholder,
-  .warm textarea::placeholder {
-    color: rgba(140, 110, 80, 0.5) !important;
-  }
 }
 
 /* ====== App-specific utilities ====== */
 
-/* Glass card — uses CSS variables so it adapts to all themes (light/dark/warm) */
+/* Glass card — Glassmorphism 2.0
+ *
+ * Design: cards look like physical objects floating above the aurora.
+ *  - Background opacity bumped from 5% → 12% so content is readable
+ *  - Backdrop blur bumped 16px → 24px, saturation 180% → 200% for richer
+ *    color bleed from the aurora behind
+ *  - Beveled edges: top/left edges get a subtle inner highlight (light from
+ *    above), bottom/right get a subtle inner shadow → fake 3D bevel
+ *  - Drop shadow gives every card a sense of depth off the page
+ */
 .glass {
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 4px 20px -4px rgba(0, 0, 0, 0.08),    /* drop shadow */
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),  /* top inner highlight (bevel) */
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);      /* bottom inner shadow (bevel) */
+}
+.dark .glass {
+  background: rgba(20, 22, 30, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 4px 24px -4px rgba(0, 0, 0, 0.5),      /* drop shadow — stronger in dark */
+    inset 0 1px 0 rgba(255, 255, 255, 0.10), /* top inner highlight (bevel) */
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);       /* bottom inner shadow (bevel) */
 }
 
-/* Glass variant — stronger, for modals/sheets */
+/* Glass variant — stronger, for modals/sheets that need to feel "above" cards */
 .glass-strong {
-  background: var(--bg-glass-strong);
-  border: 1px solid var(--border-card);
-  box-shadow: var(--shadow-strong), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow:
+    0 12px 48px -8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+}
+.dark .glass-strong {
+  background: rgba(22, 24, 32, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 12px 48px -8px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
 }
 
-/* Card Solid — readable card foundation for Study + Syllabus tabs */
+/* Card Solid — readable card foundation for Study + Syllabus tabs.
+ *
+ * Problem this solves: previous cards used light subject-color tints
+ * (5-12% color over dark page) → text became hard to read against the
+ * muddied background, and cards blended into the page.
+ *
+ * Fix: give cards a SOLID dark base (92% opacity navy) so text always
+ * has high contrast (WCAG AAA), then layer a subject-color wash overlay
+ * on top via a child `<div class="card-tint">` so the color identity
+ * is still visible without muddying the text.
+ *
+ * Use together with `.card-tint`:
+ *   <div class="card-solid">
+ *     <div class="card-tint" style={{ background: `${color}24` }} />
+ *     ...content...
+ *   </div>
+ */
 .card-solid {
   position: relative;
-  background: var(--bg-card-solid);
-  border: 1px solid var(--border-card);
-  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: rgba(15, 17, 25, 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow:
+    0 4px 16px -2px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   overflow: hidden;
+}
+.dark .card-solid {
+  background: rgba(18, 20, 28, 0.94);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Subject color tint overlay — sits ON TOP of .card-solid's dark base.
@@ -346,37 +234,24 @@
   mix-blend-mode: overlay;
 }
 
-/* Grid background pattern — theme-aware (uses neutral gray for all themes) */
+/* Grid background pattern */
 .grid-bg {
   background-image:
-    linear-gradient(rgba(128, 128, 128, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(128, 128, 128, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
   background-size: 32px 32px;
   background-position: -1px -1px;
 }
+.dark .grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+}
 
-/* Text colors that adapt to theme */
-.text-adaptive { color: var(--text-primary); }
-.text-adaptive-muted { color: var(--text-secondary); }
-.bg-adaptive { background-color: var(--bg-app); }
-
-/* Theme-adaptive utility classes — replace hardcoded white/black
-   so components work in light/dark/warm modes.
-   Usage: className="text-t-primary text-t-secondary bg-surface" */
-.text-t-primary { color: var(--text-primary); }
-.text-t-secondary { color: var(--text-secondary); }
-.text-t-muted { color: var(--text-muted); }
-.bg-surface { background: var(--bg-card); }
-.bg-surface-strong { background: var(--bg-glass-strong); }
-.border-surface { border-color: var(--border-card); }
-
-/* White/5-style utilities that adapt — in light mode use black, in dark/warm use white */
-.bg-surface-hover { background: rgba(128, 128, 128, 0.08); }
-.text-adaptive-50 { color: var(--text-primary); opacity: 0.5; }
-.text-adaptive-60 { color: var(--text-primary); opacity: 0.6; }
-.text-adaptive-70 { color: var(--text-primary); opacity: 0.7; }
-.text-adaptive-80 { color: var(--text-primary); opacity: 0.8; }
-.text-adaptive-90 { color: var(--text-primary); opacity: 0.9; }
+/* Text colors that adapt */
+.text-adaptive { color: var(--foreground); }
+.text-adaptive-muted { color: var(--muted-foreground); }
+.bg-adaptive { background-color: var(--background); }
 
 /* Tabular numbers for timers/counts */
 .tabular {
@@ -512,8 +387,8 @@ button:active:not(:disabled) {
 }
 
 /* Smooth color transitions on state changes */
-.glass, .glass-strong, .card-solid {
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+.glass {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
 }
 
 /* Number pop animation */

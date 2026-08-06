@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { X, CheckCircle, Info, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
 
 interface Toast {
   id: string;
@@ -17,122 +17,54 @@ export function pushToast(message: string, sub?: string, type: 'success' | 'info
   _pushToast({ message, sub, type });
 }
 
-/** Maximum number of toasts visible at once — older ones are dropped so the
- *  screen never fills up with a stack of bubbles. */
-const MAX_VISIBLE = 3;
-
-/** Auto-dismiss timing per type — errors stay longer because they need action. */
-const DISMISS_MS: Record<string, number> = {
-  success: 3000,
-  info: 3500,
-  error: 5000,
-};
-
 export function ToastContainer() {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const remove = useCallback((id: string) => {
     setToasts((t) => t.filter((x) => x.id !== id));
-    const timer = timers.current[id];
-    if (timer) {
-      clearTimeout(timer);
-      delete timers.current[id];
-    }
   }, []);
 
   useEffect(() => {
     _pushToast = (toast) => {
       const id = Math.random().toString(36).slice(2);
-      setToasts((prev) => {
-        // Drop oldest if we'd exceed MAX_VISIBLE — prevents screen flooding.
-        const next = [...prev, { ...toast, id }];
-        return next.slice(-MAX_VISIBLE);
-      });
-      const ms = DISMISS_MS[toast.type || 'success'] || 3000;
-      timers.current[id] = setTimeout(() => remove(id), ms);
+      setToasts((t) => [...t, { ...toast, id }]);
+      // Auto-dismiss after 3s
+      setTimeout(() => remove(id), 3000);
     };
-    return () => {
-      _pushToast = () => {};
-      Object.values(timers.current).forEach(clearTimeout);
-      timers.current = {};
-    };
+    return () => { _pushToast = () => {}; };
   }, [remove]);
 
-  // Per-type styling — SOLID backgrounds with good contrast in all themes.
-  // Previous design used 10%-opacity tints which were nearly invisible in
-  // light mode (dark text on near-white = washed out).
-  const typeConfig = {
-    success: {
-      icon: CheckCircle,
-      iconColor: 'text-white',
-      bg: 'bg-green-600',
-      ring: 'ring-green-700/20',
-    },
-    info: {
-      icon: Info,
-      iconColor: 'text-white',
-      bg: 'bg-teal-600',
-      ring: 'ring-teal-700/20',
-    },
-    error: {
-      icon: AlertCircle,
-      iconColor: 'text-white',
-      bg: 'bg-red-600',
-      ring: 'ring-red-700/20',
-    },
-  };
-
-  // Swipe-to-dismiss handler — lets mobile users flick the toast away.
-  const handleDragEnd = (id: string, info: PanInfo) => {
-    // Dismiss if dragged >40px horizontally or >30px up.
-    if (Math.abs(info.offset.x) > 40 || info.offset.y < -30) {
-      remove(id);
-    }
+  const typeColor = {
+    success: { border: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+    info: { border: '#14b8a6', bg: 'rgba(20,184,166,0.1)' },
+    error: { border: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
   };
 
   return (
-    <div
-      className="fixed left-0 right-0 z-[300] flex flex-col items-center gap-2 px-3 pointer-events-none"
-      style={{
-        top: 'max(env(safe-area-inset-top, 0px), 0.5rem)',
-        // On mobile, toasts appear below the status bar / notch.
-        // On desktop, they sit neatly at the top.
-      }}
-    >
+    <div className="fixed top-14 left-0 right-0 z-[300] flex flex-col items-center gap-2 px-4 pointer-events-none">
       <AnimatePresence>
         {toasts.map((t) => {
-          const c = typeConfig[t.type || 'success'];
-          const Icon = c.icon;
+          const c = typeColor[t.type || 'success'];
           return (
             <motion.div
               key={t.id}
-              layout
-              initial={{ opacity: 0, y: -24, scale: 0.92 }}
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 120, scale: 0.9 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.6}
-              onDragEnd={(_, info) => handleDragEnd(t.id, info)}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               onClick={() => remove(t.id)}
-              className={`pointer-events-auto cursor-pointer ${c.bg} ${c.ring} ring-1 rounded-2xl px-4 py-3 flex items-center gap-3 max-w-sm w-full shadow-lg`}
+              className="glass rounded-xl px-4 py-2.5 flex items-center gap-2.5 max-w-sm w-full shadow-2xl pointer-events-auto cursor-pointer"
+              style={{ borderLeft: `3px solid ${c.border}`, background: c.bg }}
             >
-              {/* Icon — white on solid color background for maximum contrast */}
-              <Icon size={18} className={`shrink-0 ${c.iconColor}`} />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-white leading-tight">{t.message}</div>
-                {t.sub && (
-                  <div className="text-xs text-white/85 mt-0.5 leading-snug">{t.sub}</div>
-                )}
+                <div className="text-xs font-semibold text-white">{t.message}</div>
+                {t.sub && <div className="text-[10px] text-white/50 truncate">{t.sub}</div>}
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); remove(t.id); }}
-                className="shrink-0 text-white/70 hover:text-white transition p-1 -mr-1"
-                aria-label="Dismiss"
+                className="text-white/30 hover:text-white shrink-0"
               >
-                <X size={14} />
+                <X size={12} />
               </button>
             </motion.div>
           );
