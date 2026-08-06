@@ -313,14 +313,14 @@ function RingComparison({
       <div className="text-[10px] uppercase tracking-widest text-white/40 mb-2 text-center">{title}</div>
       <div className="relative w-24 h-24">
         <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
-          <circle cx="48" cy="48" r="42" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
+          <circle cx="48" cy="48" r="42" fill="none" stroke="var(--ring-track)" strokeWidth="4" />
           <motion.circle
-            cx="48" cy="48" r="42" fill="none" stroke="#9ca3af" strokeWidth="4" strokeLinecap="round"
+            cx="48" cy="48" r="42" fill="none" stroke="var(--ring-outer)" strokeWidth="4" strokeLinecap="round"
             initial={{ strokeDasharray: '0 263.89' }}
             animate={{ strokeDasharray: `${(outerPct / 100) * 263.89} 263.89` }}
             transition={{ duration: 1.2, ease: 'easeOut' }}
           />
-          <circle cx="48" cy="48" r="32" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
+          <circle cx="48" cy="48" r="32" fill="none" stroke="var(--ring-track)" strokeWidth="4" />
           <motion.circle
             cx="48" cy="48" r="32" fill="none" stroke={innerColor} strokeWidth="4" strokeLinecap="round"
             initial={{ strokeDasharray: '0 201.06' }}

@@ -61,6 +61,12 @@
   --color-wasting: #ef4444;
   --color-done: #6b7280;
 
+  /* Ring/Bar track + outer colors — used by RingComparison SVG and
+     linear progress bars. Override per-theme for visibility. */
+  --ring-track: rgba(15, 23, 42, 0.14);
+  --ring-outer: #94a3b8;
+  --bar-track: rgba(15, 23, 42, 0.10);
+
   --background: oklch(0.97 0.003 250);
   --foreground: oklch(0.15 0.005 250);
   --card: oklch(1 0 0);
@@ -95,6 +101,9 @@
 }
 
 .dark {
+  --ring-track: rgba(255, 255, 255, 0.10);
+  --ring-outer: #9ca3af;
+  --bar-track: rgba(255, 255, 255, 0.08);
   --background: oklch(0.08 0.005 250);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.14 0.008 250);
@@ -130,6 +139,9 @@
 
 /* ===== OCEAN BREEZE THEME — Deep teal blue ===== */
 .ocean {
+  --ring-track: rgba(45, 212, 191, 0.20);
+  --ring-outer: #5eead4;
+  --bar-track: rgba(20, 184, 166, 0.18);
   --bg-app: #042f2e;
   --bg-card: #042f2e;
   --bg-card-solid: #042f2e;
@@ -168,13 +180,14 @@
 .ocean .text-white\/50 { color: rgba(45, 212, 191, 0.70) !important; }
 .ocean .text-white\/40 { color: rgba(45, 212, 191, 0.60) !important; }
 .ocean .text-white\/30 { color: rgba(45, 212, 191, 0.48) !important; }
-.ocean .bg-white\/5 { background: rgba(20, 184, 166, 0.08) !important; }
-.ocean .bg-white\/10 { background: rgba(20, 184, 166, 0.12) !important; }
-.ocean .bg-white\/15 { background: rgba(20, 184, 166, 0.16) !important; }
-.ocean .bg-white\/20 { background: rgba(20, 184, 166, 0.20) !important; }
-.ocean .border-white\/5 { border-color: rgba(20, 184, 166, 0.20) !important; }
-.ocean .border-white\/10 { border-color: rgba(20, 184, 166, 0.30) !important; }
-.ocean .border-white\/20 { border-color: rgba(20, 184, 166, 0.40) !important; }
+.ocean .bg-white\/5 { background: rgba(20, 184, 166, 0.14) !important; }
+.ocean .bg-white\/10 { background: rgba(20, 184, 166, 0.20) !important; }
+.ocean .bg-white\/15 { background: rgba(20, 184, 166, 0.26) !important; }
+.ocean .bg-white\/20 { background: rgba(20, 184, 166, 0.32) !important; }
+.ocean .border-white\/5 { border-color: rgba(20, 184, 166, 0.24) !important; }
+.ocean .border-white\/10 { border-color: rgba(20, 184, 166, 0.34) !important; }
+.ocean .border-white\/20 { border-color: rgba(20, 184, 166, 0.46) !important; }
+.ocean .ring-white\/30 { --tw-ring-color: rgba(20, 184, 166, 0.45) !important; }
 .ocean .glass {
   background: #042f2e;
   border: 1px solid rgba(20, 184, 166, 0.30);
@@ -206,6 +219,9 @@
 
 /* ===== FOREST MIST THEME — Deep emerald green ===== */
 .forest {
+  --ring-track: rgba(74, 222, 128, 0.20);
+  --ring-outer: #86efac;
+  --bar-track: rgba(34, 197, 94, 0.18);
   --bg-app: #022c22;
   --bg-card: #022c22;
   --bg-card-solid: #022c22;
@@ -244,13 +260,14 @@
 .forest .text-white\/50 { color: rgba(74, 222, 128, 0.70) !important; }
 .forest .text-white\/40 { color: rgba(74, 222, 128, 0.60) !important; }
 .forest .text-white\/30 { color: rgba(74, 222, 128, 0.48) !important; }
-.forest .bg-white\/5 { background: rgba(34, 197, 94, 0.08) !important; }
-.forest .bg-white\/10 { background: rgba(34, 197, 94, 0.12) !important; }
-.forest .bg-white\/15 { background: rgba(34, 197, 94, 0.16) !important; }
-.forest .bg-white\/20 { background: rgba(34, 197, 94, 0.20) !important; }
-.forest .border-white\/5 { border-color: rgba(34, 197, 94, 0.20) !important; }
-.forest .border-white\/10 { border-color: rgba(34, 197, 94, 0.30) !important; }
-.forest .border-white\/20 { border-color: rgba(34, 197, 94, 0.40) !important; }
+.forest .bg-white\/5 { background: rgba(34, 197, 94, 0.14) !important; }
+.forest .bg-white\/10 { background: rgba(34, 197, 94, 0.20) !important; }
+.forest .bg-white\/15 { background: rgba(34, 197, 94, 0.26) !important; }
+.forest .bg-white\/20 { background: rgba(34, 197, 94, 0.32) !important; }
+.forest .border-white\/5 { border-color: rgba(34, 197, 94, 0.24) !important; }
+.forest .border-white\/10 { border-color: rgba(34, 197, 94, 0.34) !important; }
+.forest .border-white\/20 { border-color: rgba(34, 197, 94, 0.46) !important; }
+.forest .ring-white\/30 { --tw-ring-color: rgba(34, 197, 94, 0.45) !important; }
 .forest .glass {
   background: #022c22;
   border: 1px solid rgba(34, 197, 94, 0.30);
@@ -282,6 +299,9 @@
 
 /* ===== LAVENDER DUSK THEME — Deep vibrant purple ===== */
 .lavender {
+  --ring-track: rgba(192, 132, 252, 0.20);
+  --ring-outer: #d8b4fe;
+  --bar-track: rgba(168, 85, 247, 0.18);
   --bg-app: #1e0a3c;
   --bg-card: #1e0a3c;
   --bg-card-solid: #1e0a3c;
@@ -320,13 +340,14 @@
 .lavender .text-white\/50 { color: rgba(192, 132, 252, 0.70) !important; }
 .lavender .text-white\/40 { color: rgba(192, 132, 252, 0.60) !important; }
 .lavender .text-white\/30 { color: rgba(192, 132, 252, 0.48) !important; }
-.lavender .bg-white\/5 { background: rgba(168, 85, 247, 0.08) !important; }
-.lavender .bg-white\/10 { background: rgba(168, 85, 247, 0.12) !important; }
-.lavender .bg-white\/15 { background: rgba(168, 85, 247, 0.16) !important; }
-.lavender .bg-white\/20 { background: rgba(168, 85, 247, 0.20) !important; }
-.lavender .border-white\/5 { border-color: rgba(168, 85, 247, 0.20) !important; }
-.lavender .border-white\/10 { border-color: rgba(168, 85, 247, 0.30) !important; }
-.lavender .border-white\/20 { border-color: rgba(168, 85, 247, 0.40) !important; }
+.lavender .bg-white\/5 { background: rgba(168, 85, 247, 0.14) !important; }
+.lavender .bg-white\/10 { background: rgba(168, 85, 247, 0.20) !important; }
+.lavender .bg-white\/15 { background: rgba(168, 85, 247, 0.26) !important; }
+.lavender .bg-white\/20 { background: rgba(168, 85, 247, 0.32) !important; }
+.lavender .border-white\/5 { border-color: rgba(168, 85, 247, 0.24) !important; }
+.lavender .border-white\/10 { border-color: rgba(168, 85, 247, 0.34) !important; }
+.lavender .border-white\/20 { border-color: rgba(168, 85, 247, 0.46) !important; }
+.lavender .ring-white\/30 { --tw-ring-color: rgba(168, 85, 247, 0.45) !important; }
 .lavender .glass {
   background: #1e0a3c;
   border: 1px solid rgba(168, 85, 247, 0.35);
@@ -356,157 +377,210 @@
 .lavender .bg-black\/60 { background: rgba(30, 10, 60, 0.6) !important; }
 .lavender .bg-black\/70 { background: rgba(30, 10, 60, 0.7) !important; }
 
-/* ===== ROSE QUARTZ THEME — Deep hot pink ===== */
+/* ===== ROSE QUARTZ THEME — Light pink + white cards + dark pink text ===== */
 .rose {
-  --bg-app: #4c0519;
-  --bg-card: #4c0519;
-  --bg-card-solid: #4c0519;
-  --bg-glass-strong: #3d0414;
-  --text-primary: #fce7f3;
-  --text-secondary: #f472b6;
+  --ring-track: rgba(190, 24, 93, 0.22);
+  --ring-outer: #be185d;
+  --bar-track: rgba(190, 24, 93, 0.18);
+  --bg-app: #fce7f3;
+  --bg-card: #ffffff;
+  --bg-card-solid: #ffffff;
+  --bg-glass-strong: #ffffff;
+  --text-primary: #831843;
+  --text-secondary: #be185d;
   --text-muted: #9d174d;
-  --border-color: rgba(236, 72, 153, 0.35);
-  --border-card: rgba(236, 72, 153, 0.40);
-  --shadow-card: 0 2px 12px -2px rgba(236, 72, 153, 0.12);
-  --shadow-strong: 0 8px 32px -4px rgba(236, 72, 153, 0.18);
-  --background: oklch(0.15 0.06 350);
-  --foreground: oklch(0.90 0.05 350);
-  --card: oklch(0.18 0.06 350);
-  --card-foreground: oklch(0.90 0.05 350);
-  --popover: oklch(0.18 0.06 350);
-  --popover-foreground: oklch(0.90 0.05 350);
-  --primary: oklch(0.65 0.18 350);
-  --primary-foreground: oklch(0.15 0.06 350);
-  --secondary: oklch(0.22 0.05 350);
-  --secondary-foreground: oklch(0.85 0.05 350);
-  --muted: oklch(0.22 0.04 350);
-  --muted-foreground: oklch(0.55 0.05 350);
-  --accent: oklch(0.26 0.06 350);
-  --accent-foreground: oklch(0.85 0.05 350);
-  --destructive: oklch(0.65 0.2 25);
-  --border: oklch(0.25 0.05 350);
-  --input: oklch(0.22 0.04 350);
-  --ring: oklch(0.58 0.13 350);
+  --border-color: rgba(190, 24, 93, 0.22);
+  --border-card: rgba(190, 24, 93, 0.28);
+  --shadow-card: 0 2px 12px -2px rgba(190, 24, 93, 0.10);
+  --shadow-strong: 0 8px 32px -4px rgba(190, 24, 93, 0.15);
+  --background: oklch(0.92 0.04 350);
+  --foreground: oklch(0.25 0.10 350);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0.10 350);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.10 350);
+  --primary: oklch(0.55 0.20 350);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.94 0.03 350);
+  --secondary-foreground: oklch(0.30 0.10 350);
+  --muted: oklch(0.94 0.03 350);
+  --muted-foreground: oklch(0.45 0.10 350);
+  --accent: oklch(0.92 0.04 350);
+  --accent-foreground: oklch(0.30 0.10 350);
+  --destructive: oklch(0.55 0.22 25);
+  --border: oklch(0.88 0.04 350);
+  --input: oklch(0.94 0.03 350);
+  --ring: oklch(0.55 0.18 350);
 }
-.rose .text-white, .rose text-white { color: #fce7f3 !important; }
-.rose .text-white\/90 { color: rgba(252, 231, 243, 0.95) !important; }
-.rose .text-white\/80 { color: rgba(252, 231, 243, 0.88) !important; }
-.rose .text-white\/70 { color: rgba(244, 114, 182, 0.88) !important; }
-.rose .text-white\/60 { color: rgba(244, 114, 182, 0.80) !important; }
-.rose .text-white\/50 { color: rgba(244, 114, 182, 0.70) !important; }
-.rose .text-white\/40 { color: rgba(244, 114, 182, 0.60) !important; }
-.rose .text-white\/30 { color: rgba(244, 114, 182, 0.48) !important; }
-.rose .bg-white\/5 { background: rgba(236, 72, 153, 0.08) !important; }
-.rose .bg-white\/10 { background: rgba(236, 72, 153, 0.12) !important; }
-.rose .bg-white\/15 { background: rgba(236, 72, 153, 0.16) !important; }
-.rose .bg-white\/20 { background: rgba(236, 72, 153, 0.20) !important; }
-.rose .border-white\/5 { border-color: rgba(236, 72, 153, 0.20) !important; }
-.rose .border-white\/10 { border-color: rgba(236, 72, 153, 0.30) !important; }
-.rose .border-white\/20 { border-color: rgba(236, 72, 153, 0.40) !important; }
+/* Body background — soft pink gradient */
+html.rose body {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(244, 114, 182, 0.25) 0%, transparent 45%),
+    radial-gradient(circle at 85% 90%, rgba(236, 72, 153, 0.18) 0%, transparent 50%),
+    linear-gradient(180deg, #fce7f3 0%, #fbcfe8 100%) !important;
+  background-attachment: fixed !important;
+}
+.rose .text-white, .rose text-white { color: #831843 !important; }
+.rose .text-white\/90 { color: rgba(131, 24, 67, 0.95) !important; }
+.rose .text-white\/80 { color: rgba(131, 24, 67, 0.88) !important; }
+.rose .text-white\/70 { color: rgba(157, 23, 77, 0.85) !important; }
+.rose .text-white\/60 { color: rgba(157, 23, 77, 0.78) !important; }
+.rose .text-white\/50 { color: rgba(190, 24, 93, 0.70) !important; }
+.rose .text-white\/40 { color: rgba(190, 24, 93, 0.60) !important; }
+.rose .text-white\/30 { color: rgba(219, 39, 119, 0.55) !important; }
+.rose .bg-white\/5 { background: rgba(190, 24, 93, 0.10) !important; }
+.rose .bg-white\/10 { background: rgba(190, 24, 93, 0.16) !important; }
+.rose .bg-white\/15 { background: rgba(190, 24, 93, 0.22) !important; }
+.rose .bg-white\/20 { background: rgba(190, 24, 93, 0.28) !important; }
+.rose .border-white\/5 { border-color: rgba(190, 24, 93, 0.22) !important; }
+.rose .border-white\/10 { border-color: rgba(190, 24, 93, 0.30) !important; }
+.rose .border-white\/20 { border-color: rgba(190, 24, 93, 0.42) !important; }
+.rose .ring-white\/30 { --tw-ring-color: rgba(190, 24, 93, 0.35) !important; }
 .rose .glass {
-  background: #4c0519;
-  border: 1px solid rgba(236, 72, 153, 0.35);
-  box-shadow: 0 4px 20px -4px rgba(236, 72, 153, 0.15), inset 0 1px 0 rgba(236, 72, 153, 0.10);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  background: #ffffff;
+  border: 1px solid rgba(190, 24, 93, 0.20);
+  box-shadow: 0 4px 20px -4px rgba(190, 24, 93, 0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
 }
 .rose .glass-strong {
-  background: #3d0414;
-  border: 1px solid rgba(236, 72, 153, 0.40);
-  box-shadow: 0 8px 32px -4px rgba(236, 72, 153, 0.20), inset 0 1px 0 rgba(236, 72, 153, 0.15);
+  background: #ffffff;
+  border: 1px solid rgba(190, 24, 93, 0.25);
+  box-shadow: 0 8px 32px -4px rgba(190, 24, 93, 0.18), inset 0 1px 0 rgba(255,255,255,0.8);
 }
 .rose .card-solid {
-  background: #4c0519;
-  border: 1px solid rgba(236, 72, 153, 0.35);
-  box-shadow: 0 2px 12px -2px rgba(236, 72, 153, 0.12);
+  background: #ffffff;
+  border: 1px solid rgba(190, 24, 93, 0.20);
+  box-shadow: 0 2px 12px -2px rgba(190, 24, 93, 0.10), inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.rose .card-tint {
+  mix-blend-mode: normal;
+  opacity: 0.5;
 }
 .rose .gradient-text {
-  background: linear-gradient(135deg, #f472b6, #ec4899);
+  background: linear-gradient(135deg, #ec4899, #be185d);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 .rose .grid-bg {
-  background-image: linear-gradient(rgba(236, 72, 153, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(236, 72, 153, 0.05) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(190, 24, 93, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(190, 24, 93, 0.06) 1px, transparent 1px);
 }
-.rose .bg-black\/60 { background: rgba(76, 5, 25, 0.6) !important; }
-.rose .bg-black\/70 { background: rgba(76, 5, 25, 0.7) !important; }
+.rose .bg-black\/60 { background: rgba(252, 231, 243, 0.7) !important; }
+.rose .bg-black\/70 { background: rgba(252, 231, 243, 0.8) !important; }
+/* Inputs in rose theme — dark pink text on white */
+.rose input, .rose textarea, .rose select {
+  color: #831843 !important;
+  background: #ffffff !important;
+}
+.rose input::placeholder, .rose textarea::placeholder {
+  color: rgba(157, 23, 77, 0.5) !important;
+}
 
-/* ===== MIDNIGHT GOLD THEME — Pure black + gold ===== */
+/* ===== MIDNIGHT GOLD THEME — Slight black + premium gold ambient, pure black cards ===== */
 .gold {
-  --bg-app: #000000;
+  --ring-track: rgba(251, 191, 36, 0.22);
+  --ring-outer: #fbbf24;
+  --bar-track: rgba(251, 191, 36, 0.18);
+  --bg-app: #0a0805;
   --bg-card: #000000;
   --bg-card-solid: #000000;
   --bg-glass-strong: #000000;
   --text-primary: #fde68a;
   --text-secondary: #fbbf24;
-  --text-muted: #92400e;
-  --border-color: rgba(251, 191, 36, 0.30);
-  --border-card: rgba(251, 191, 36, 0.35);
-  --shadow-card: 0 2px 12px -2px rgba(251, 191, 36, 0.10);
-  --shadow-strong: 0 8px 32px -4px rgba(251, 191, 36, 0.15);
-  --background: oklch(0.02 0 0);
-  --foreground: oklch(0.85 0.08 85);
-  --card: oklch(0.03 0 0);
-  --card-foreground: oklch(0.85 0.08 85);
-  --popover: oklch(0.03 0 0);
-  --popover-foreground: oklch(0.85 0.08 85);
-  --primary: oklch(0.75 0.18 85);
+  --text-muted: #d97706;
+  --border-color: rgba(251, 191, 36, 0.32);
+  --border-card: rgba(251, 191, 36, 0.40);
+  --shadow-card: 0 2px 12px -2px rgba(251, 191, 36, 0.14);
+  --shadow-strong: 0 8px 32px -4px rgba(251, 191, 36, 0.22);
+  --background: oklch(0.08 0.02 85);
+  --foreground: oklch(0.85 0.10 85);
+  --card: oklch(0 0 0);
+  --card-foreground: oklch(0.85 0.10 85);
+  --popover: oklch(0 0 0);
+  --popover-foreground: oklch(0.85 0.10 85);
+  --primary: oklch(0.78 0.18 85);
   --primary-foreground: oklch(0.02 0 0);
-  --secondary: oklch(0.06 0.01 85);
-  --secondary-foreground: oklch(0.80 0.06 85);
-  --muted: oklch(0.06 0.01 85);
-  --muted-foreground: oklch(0.45 0.03 85);
-  --accent: oklch(0.08 0.02 85);
-  --accent-foreground: oklch(0.80 0.06 85);
+  --secondary: oklch(0.06 0.02 85);
+  --secondary-foreground: oklch(0.82 0.08 85);
+  --muted: oklch(0.06 0.02 85);
+  --muted-foreground: oklch(0.55 0.06 85);
+  --accent: oklch(0.10 0.04 85);
+  --accent-foreground: oklch(0.82 0.08 85);
   --destructive: oklch(0.65 0.2 25);
-  --border: oklch(0.15 0.03 85);
-  --input: oklch(0.06 0.01 85);
-  --ring: oklch(0.65 0.12 85);
+  --border: oklch(0.18 0.04 85);
+  --input: oklch(0.06 0.02 85);
+  --ring: oklch(0.70 0.14 85);
+}
+/* Body background — slight black with premium gold ambient glow */
+html.gold body {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(251, 191, 36, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 85% 100%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(217, 119, 6, 0.04) 0%, transparent 70%),
+    #050402 !important;
+  background-attachment: fixed !important;
+}
+/* Logo in gold theme — premium gold tint via filter */
+html.gold img[src="/logo.svg"] {
+  filter: hue-rotate(-30deg) saturate(1.4) brightness(1.1) sepia(0.3) !important;
 }
 .gold .text-white, .gold text-white { color: #fde68a !important; }
 .gold .text-white\/90 { color: rgba(253, 230, 138, 0.95) !important; }
 .gold .text-white\/80 { color: rgba(253, 230, 138, 0.88) !important; }
-.gold .text-white\/70 { color: rgba(251, 191, 36, 0.88) !important; }
-.gold .text-white\/60 { color: rgba(251, 191, 36, 0.80) !important; }
-.gold .text-white\/50 { color: rgba(251, 191, 36, 0.70) !important; }
+.gold .text-white\/70 { color: rgba(251, 191, 36, 0.92) !important; }
+.gold .text-white\/60 { color: rgba(251, 191, 36, 0.82) !important; }
+.gold .text-white\/50 { color: rgba(251, 191, 36, 0.72) !important; }
 .gold .text-white\/40 { color: rgba(251, 191, 36, 0.60) !important; }
-.gold .text-white\/30 { color: rgba(251, 191, 36, 0.48) !important; }
-.gold .bg-white\/5 { background: rgba(251, 191, 36, 0.06) !important; }
-.gold .bg-white\/10 { background: rgba(251, 191, 36, 0.10) !important; }
-.gold .bg-white\/15 { background: rgba(251, 191, 36, 0.14) !important; }
-.gold .bg-white\/20 { background: rgba(251, 191, 36, 0.18) !important; }
-.gold .border-white\/5 { border-color: rgba(251, 191, 36, 0.20) !important; }
-.gold .border-white\/10 { border-color: rgba(251, 191, 36, 0.30) !important; }
-.gold .border-white\/20 { border-color: rgba(251, 191, 36, 0.40) !important; }
+.gold .text-white\/30 { color: rgba(251, 191, 36, 0.50) !important; }
+.gold .bg-white\/5 { background: rgba(251, 191, 36, 0.12) !important; }
+.gold .bg-white\/10 { background: rgba(251, 191, 36, 0.18) !important; }
+.gold .bg-white\/15 { background: rgba(251, 191, 36, 0.24) !important; }
+.gold .bg-white\/20 { background: rgba(251, 191, 36, 0.30) !important; }
+.gold .border-white\/5 { border-color: rgba(251, 191, 36, 0.25) !important; }
+.gold .border-white\/10 { border-color: rgba(251, 191, 36, 0.38) !important; }
+.gold .border-white\/20 { border-color: rgba(251, 191, 36, 0.50) !important; }
+.gold .ring-white\/30 { --tw-ring-color: rgba(251, 191, 36, 0.45) !important; }
 .gold .glass {
   background: #000000;
-  border: 1px solid rgba(251, 191, 36, 0.30);
-  box-shadow: 0 4px 20px -4px rgba(251, 191, 36, 0.12), inset 0 1px 0 rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  box-shadow: 0 4px 20px -4px rgba(251, 191, 36, 0.18), inset 0 1px 0 rgba(251, 191, 36, 0.12);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
 }
 .gold .glass-strong {
   background: #000000;
-  border: 1px solid rgba(251, 191, 36, 0.35);
-  box-shadow: 0 8px 32px -4px rgba(251, 191, 36, 0.18), inset 0 1px 0 rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.40);
+  box-shadow: 0 8px 32px -4px rgba(251, 191, 36, 0.28), inset 0 1px 0 rgba(251, 191, 36, 0.18);
 }
 .gold .card-solid {
   background: #000000;
-  border: 1px solid rgba(251, 191, 36, 0.30);
-  box-shadow: 0 2px 12px -2px rgba(251, 191, 36, 0.10);
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  box-shadow: 0 2px 12px -2px rgba(251, 191, 36, 0.14), inset 0 1px 0 rgba(251, 191, 36, 0.08);
+}
+.gold .card-tint {
+  mix-blend-mode: screen;
+  opacity: 0.6;
 }
 .gold .gradient-text {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  background: linear-gradient(135deg, #fde68a, #fbbf24 40%, #f59e0b 80%, #d97706);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 .gold .grid-bg {
-  background-image: linear-gradient(rgba(251, 191, 36, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(251, 191, 36, 0.04) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(251, 191, 36, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(251, 191, 36, 0.06) 1px, transparent 1px);
 }
-.gold .bg-black\/60 { background: rgba(0, 0, 0, 0.6) !important; }
-.gold .bg-black\/70 { background: rgba(0, 0, 0, 0.7) !important; }
+.gold .bg-black\/60 { background: rgba(0, 0, 0, 0.7) !important; }
+.gold .bg-black\/70 { background: rgba(0, 0, 0, 0.8) !important; }
+/* Inputs in gold theme — gold text on pure black */
+.gold input, .gold textarea, .gold select {
+  color: #fde68a !important;
+  background: #000000 !important;
+}
+.gold input::placeholder, .gold textarea::placeholder {
+  color: rgba(251, 191, 36, 0.5) !important;
+}
 
 @layer base {
   html {
@@ -537,11 +611,11 @@
   html:not(.dark):not(.warm) .text-white\/40 { color: rgba(51, 65, 85, 0.68) !important; }
   html:not(.dark):not(.warm) .text-white\/30 { color: rgba(71, 85, 105, 0.65) !important; }
 
-  html:not(.dark):not(.warm) .bg-white\/5 { background: rgba(0, 0, 0, 0.04) !important; }
-  html:not(.dark):not(.warm) .bg-white\/10 { background: rgba(0, 0, 0, 0.06) !important; }
-  html:not(.dark):not(.warm) .bg-white\/15 { background: rgba(0, 0, 0, 0.08) !important; }
-  html:not(.dark):not(.warm) .bg-white\/20 { background: rgba(0, 0, 0, 0.10) !important; }
-  html:not(.dark):not(.warm) .bg-white\/30 { background: rgba(0, 0, 0, 0.14) !important; }
+  html:not(.dark):not(.warm) .bg-white\/5 { background: rgba(0, 0, 0, 0.06) !important; }
+  html:not(.dark):not(.warm) .bg-white\/10 { background: rgba(0, 0, 0, 0.10) !important; }
+  html:not(.dark):not(.warm) .bg-white\/15 { background: rgba(0, 0, 0, 0.14) !important; }
+  html:not(.dark):not(.warm) .bg-white\/20 { background: rgba(0, 0, 0, 0.18) !important; }
+  html:not(.dark):not(.warm) .bg-white\/30 { background: rgba(0, 0, 0, 0.22) !important; }
 
   html:not(.dark):not(.warm) .border-white\/5 { border-color: rgba(15, 23, 42, 0.10) !important; }
   html:not(.dark):not(.warm) .border-white\/10 { border-color: rgba(15, 23, 42, 0.15) !important; }
@@ -562,11 +636,11 @@
   .warm .text-white\/40 { color: rgba(107, 79, 58, 0.70) !important; }
   .warm .text-white\/30 { color: rgba(140, 110, 80, 0.65) !important; }
 
-  .warm .bg-white\/5 { background: rgba(180, 140, 100, 0.06) !important; }
-  .warm .bg-white\/10 { background: rgba(180, 140, 100, 0.10) !important; }
-  .warm .bg-white\/15 { background: rgba(180, 140, 100, 0.10) !important; }
-  .warm .bg-white\/20 { background: rgba(180, 140, 100, 0.12) !important; }
-  .warm .bg-white\/30 { background: rgba(180, 140, 100, 0.15) !important; }
+  .warm .bg-white\/5 { background: rgba(180, 140, 100, 0.10) !important; }
+  .warm .bg-white\/10 { background: rgba(180, 140, 100, 0.16) !important; }
+  .warm .bg-white\/15 { background: rgba(180, 140, 100, 0.22) !important; }
+  .warm .bg-white\/20 { background: rgba(180, 140, 100, 0.28) !important; }
+  .warm .bg-white\/30 { background: rgba(180, 140, 100, 0.34) !important; }
 
   .warm .border-white\/5 { border-color: rgba(120, 80, 40, 0.18) !important; }
   .warm .border-white\/10 { border-color: rgba(120, 80, 40, 0.25) !important; }
@@ -593,8 +667,18 @@
   /* Light mode: black backgrounds → lighter */
   html:not(.dark):not(.warm) .bg-black\/60 { background: rgba(0, 0, 0, 0.3) !important; }
   html:not(.dark):not(.warm) .bg-black\/70 { background: rgba(0, 0, 0, 0.4) !important; }
+  html:not(.dark):not(.warm) {
+    --ring-track: rgba(15, 23, 42, 0.16);
+    --ring-outer: #64748b;
+    --bar-track: rgba(15, 23, 42, 0.12);
+  }
   .warm .bg-black\/60 { background: rgba(61, 43, 31, 0.3) !important; }
   .warm .bg-black\/70 { background: rgba(61, 43, 31, 0.4) !important; }
+  .warm {
+    --ring-track: rgba(120, 80, 40, 0.22);
+    --ring-outer: #92593a;
+    --bar-track: rgba(120, 80, 40, 0.18);
+  }
 }
 
 /* ====== App-specific utilities ====== */

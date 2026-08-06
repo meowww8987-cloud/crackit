@@ -99,8 +99,18 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   // Freshness
   const partnerAge = partner.partnerLastSeen ? Date.now() - partner.partnerLastSeen : null;
 
-  const myStatus = myActiveSession ? (myActiveSession.paused ? 'idle' : 'online') : 'offline';
-  const partnerStatus = partnerAge !== null && partnerAge < 20000 ? 'online' : partnerAge !== null && partnerAge < 120000 ? 'idle' : 'offline';
+  const myStatus: 'studying' | 'paused' | 'wasting' | 'offline' | 'online' = myActiveSession
+    ? (myActiveSession.wasting ? 'wasting'
+       : myActiveSession.paused ? 'paused'
+       : 'studying')
+    : 'online';
+  // For partner, infer from their pushed data + freshness
+  const partnerStatus: 'studying' | 'paused' | 'wasting' | 'offline' | 'online' =
+    partnerAge === null || partnerAge > 120_000 ? 'offline'
+    : pd?.isStudying ? 'studying'
+    : pd?.isWasting ? 'wasting'
+    : pd?.isPaused ? 'paused'
+    : 'online';
 
   return (
     <motion.div
@@ -135,8 +145,7 @@ export function PartnerComparisonSheet({ onClose }: Props) {
             <PartnerAvatar
               initials={(partner.name || 'Y').slice(0, 2)}
               accentColor="#14b8a6"
-              status={myStatus as 'online' | 'idle' | 'offline'}
-              isStudying={!!myActiveSession && !myActiveSession.paused}
+              status={myStatus}
               size={64}
             />
             <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">YOU</div>
@@ -157,7 +166,6 @@ export function PartnerComparisonSheet({ onClose }: Props) {
               initials={(partner.partnerName || 'P').slice(0, 2)}
               accentColor="#8b5cf6"
               status={partnerStatus}
-              isStudying={pd?.isStudying || false}
               size={64}
             />
             <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider truncate max-w-[70px]">

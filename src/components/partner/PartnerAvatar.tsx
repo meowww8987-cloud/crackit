@@ -3,16 +3,29 @@
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
+type PartnerStatus = 'studying' | 'paused' | 'wasting' | 'offline' | 'online' | 'idle';
+
 interface Props {
   /** Initials to show (1-2 chars). */
   initials: string;
   /** Accent color hex — used for the gradient fill and ring. */
   accentColor: string;
-  /** Online status: 'online' | 'idle' | 'offline'. */
-  status: 'online' | 'idle' | 'offline';
+  /** Status: 'studying' | 'paused' | 'wasting' | 'offline' | 'online' | 'idle'.
+   *
+   * Canonical states (5) shown on the friend card:
+   *  - studying: green dot + pulsing glow ring (actively studying right now)
+   *  - online:   green dot, NO pulse (online but idle)
+   *  - paused:   amber dot
+   *  - wasting:  red dot
+   *  - offline:  gray dot
+   *
+   * 'idle' is an alias for 'paused' (kept for backward compat).
+   */
+  status: PartnerStatus;
   /** Size in pixels. */
   size?: number;
-  /** Whether the user is actively studying — adds a pulsing glow. */
+  /** Whether the user is actively studying — legacy flag, now inferred from status.
+   *  Kept for backward compatibility. */
   isStudying?: boolean;
   /** Subject color for the ring glow (defaults to accentColor). */
   subjectColor?: string;
@@ -25,8 +38,12 @@ interface Props {
  * Design:
  * - Gradient fill using accentColor
  * - White initials centered
- * - Status dot bottom-right (green=idle grey, pulsing green=online+studying)
- * - Optional subject-color glow ring when studying
+ * - Status dot bottom-right:
+ *     studying → green, pulsing glow ring around avatar
+ *     online   → green (no pulse)
+ *     paused   → amber
+ *     wasting  → red
+ *     offline  → gray
  *
  * Modern avatar pattern used by Notion, Linear, Slack.
  */
@@ -39,8 +56,18 @@ export function PartnerAvatar({
   subjectColor,
   className,
 }: Props) {
+  // Normalize legacy status values
+  const normalized: 'studying' | 'online' | 'paused' | 'wasting' | 'offline' =
+    status === 'idle' ? 'paused' : status;
+
   const glowColor = subjectColor || accentColor;
-  const statusColor = status === 'online' ? '#22c55e' : status === 'idle' ? '#f59e0b' : '#6b7280';
+  const activelyStudying = normalized === 'studying' || isStudying;
+
+  const statusColor =
+    normalized === 'studying' || normalized === 'online' ? '#22c55e'
+    : normalized === 'paused' ? '#f59e0b'
+    : normalized === 'wasting' ? '#ef4444'
+    : '#9ca3af';
 
   return (
     <div
@@ -48,7 +75,7 @@ export function PartnerAvatar({
       style={{ width: size, height: size }}
     >
       {/* Outer glow ring — only when studying */}
-      {isStudying && (
+      {activelyStudying && (
         <motion.div
           animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.08, 1] }}
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
@@ -92,8 +119,8 @@ export function PartnerAvatar({
           background: statusColor,
         }}
       >
-        {/* Pulsing animation when online + studying */}
-        {status === 'online' && isStudying && (
+        {/* Pulsing animation when studying */}
+        {activelyStudying && (
           <motion.div
             animate={{ scale: [1, 1.6, 1], opacity: [0.8, 0, 0.8] }}
             transition={{ duration: 1.5, repeat: Infinity }}

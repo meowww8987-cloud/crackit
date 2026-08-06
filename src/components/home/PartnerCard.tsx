@@ -258,11 +258,14 @@ export function PartnerCard() {
   const partnerDataAge = partnerUpdatedAt ? Date.now() - partnerUpdatedAt : null;
   const partnerIsLive = partnerDataAge !== null && partnerDataAge < 30_000;
 
-  // Status badge for partner
-  const partnerStatusText = partnerIsStudying ? 'Studying now' : partnerIsWasting ? 'Wasting time' : partnerIsPaused ? 'Paused' : 'Idle';
-  const partnerStatusColor = partnerIsStudying ? '#22c55e' : partnerIsWasting ? '#ef4444' : partnerIsPaused ? '#f59e0b' : '#6b7280';
-  const myStatusText = myIsStudying ? 'Studying now' : myIsWasting ? 'Wasting time' : myIsPaused ? 'Paused' : 'Idle';
-  const myStatusColor = myIsStudying ? '#22c55e' : myIsWasting ? '#ef4444' : myIsPaused ? '#f59e0b' : '#6b7280';
+  // Status badge — 5 explicit states: Online / Studying / Paused / Wasting / Offline
+  // Partner is "Offline" if we haven't seen them in >2min, otherwise "Online" (idle).
+  const partnerIsOffline = partnerDataAge === null || partnerDataAge > 120_000;
+  const partnerStatusText = partnerIsStudying ? 'Studying' : partnerIsWasting ? 'Wasting' : partnerIsPaused ? 'Paused' : partnerIsOffline ? 'Offline' : 'Online';
+  const partnerStatusColor = partnerIsStudying ? '#22c55e' : partnerIsWasting ? '#ef4444' : partnerIsPaused ? '#f59e0b' : partnerIsOffline ? '#9ca3af' : '#3b82f6';
+  // "You" are always online (you're looking at the app)
+  const myStatusText = myIsStudying ? 'Studying' : myIsWasting ? 'Wasting' : myIsPaused ? 'Paused' : 'Online';
+  const myStatusColor = myIsStudying ? '#22c55e' : myIsWasting ? '#ef4444' : myIsPaused ? '#f59e0b' : '#3b82f6';
 
   return (
     <>
@@ -398,8 +401,7 @@ export function PartnerCard() {
                 <PartnerAvatar
                   initials={(partner.name || 'Y').charAt(0).toUpperCase()}
                   accentColor="#14b8a6"
-                  status={myIsStudying ? 'online' : myIsPaused ? 'idle' : 'offline'}
-                  isStudying={myIsStudying}
+                  status={myIsStudying ? 'studying' : myIsWasting ? 'wasting' : myIsPaused ? 'paused' : 'online'}
                   size={40}
                 />
                 <div className="flex-1 min-w-0">
@@ -433,8 +435,7 @@ export function PartnerCard() {
                 <PartnerAvatar
                   initials={(partner.partnerName || 'P').charAt(0).toUpperCase()}
                   accentColor="#8b5cf6"
-                  status={partnerIsStudying ? 'online' : partnerIsPaused ? 'idle' : 'offline'}
-                  isStudying={partnerIsStudying}
+                  status={partnerIsStudying ? 'studying' : partnerIsWasting ? 'wasting' : partnerIsPaused ? 'paused' : partnerIsOffline ? 'offline' : 'online'}
                   size={40}
                 />
                 <div className="flex-1 min-w-0">

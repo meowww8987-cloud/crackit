@@ -169,14 +169,15 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
     <button
       onClick={() => { onChange(!value); vibrate(8); }}
       className={cn(
-        'w-12 h-7 rounded-full transition relative',
-        value ? 'bg-teal-500' : 'bg-white/10'
+        'w-12 h-7 rounded-full transition-colors duration-200 relative shrink-0',
+        value ? 'bg-teal-500' : 'bg-white/15'
       )}
+      aria-pressed={value}
     >
       <motion.div
-        layout
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        className={cn('absolute top-1 w-5 h-5 rounded-full bg-white', value ? 'left-6' : 'left-1')}
+        animate={{ x: value ? 20 : 0 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+        className="absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm"
       />
     </button>
   );
