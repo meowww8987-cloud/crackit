@@ -208,14 +208,24 @@ export function StudyTab() {
                 {/* Chapter sub-groups within this subject */}
                 {Array.from(subjGroup.chapters.values()).map((chGroup) => {
                   const chDone = chGroup.items.filter((t) => t.done).length;
+                  const isMulti = chGroup.items.length > 1;
                   return (
                     <div key={chGroup.chapter} className="space-y-2">
-                      {/* Chapter sub-header */}
+                      {/* Chapter sub-header — shows "N cards" badge when this
+                          chapter has multiple targets (sister cards) */}
                       <div className="flex items-center gap-1.5 px-1 pt-1">
                         <div className="w-1 h-3 rounded-full" style={{ background: `${color.hex}80` }} />
-                        <span className="text-[11px] font-semibold text-white/80">{chGroup.chapter}</span>
-                        <span className="text-[9px] text-white/60 tabular ml-auto">
-                          {chDone}/{chGroup.items.length}
+                        <span className="text-[11px] font-semibold text-white/80 truncate">{chGroup.chapter}</span>
+                        {isMulti && (
+                          <span
+                            className="text-[8px] font-bold px-1.5 py-0.5 rounded-full tabular"
+                            style={{ background: `${color.hex}20`, color: color.hex }}
+                          >
+                            {chGroup.items.length} cards
+                          </span>
+                        )}
+                        <span className="text-[9px] text-white/55 tabular ml-auto">
+                          {chDone}/{chGroup.items.length} done
                         </span>
                       </div>
 
@@ -235,12 +245,15 @@ export function StudyTab() {
                         }
                         reorderToday(result);
                       }} className="space-y-2" layout>
-                        {chGroup.items.map((t) => (
+                        {chGroup.items.map((t, idx) => (
                           <TargetCard
                             key={t.id}
                             target={t}
                             onOpenDetail={() => setDetailTarget(t)}
                             onEdit={() => { setEditingTarget(t); setShowAdd(true); }}
+                            indexInChapter={idx + 1}
+                            chapterTotal={chGroup.items.length}
+                            hasSiblings={chGroup.items.length > 1}
                           />
                         ))}
                       </Reorder.Group>

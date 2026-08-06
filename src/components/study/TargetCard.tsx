@@ -1,33 +1,45 @@
 'use client';
 
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { Play, Pause, Check, GripVertical, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
+import { Play, Pause, Check, CheckCircle2, Clock, MoreVertical, GripVertical, BookOpen, FileText } from 'lucide-react';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
 import { useHistory } from '@/lib/store/history';
 import { useTargets } from '@/lib/store/targets';
 import { useSettings } from '@/lib/store/settings';
 import { subjectColor } from '@/lib/colors';
-import type { Target } from '@/lib/types';
+import type { Target, ActivityType } from '@/lib/types';
 import { cn, formatHM, vibrate } from '@/lib/utils';
 import { playSound } from '@/lib/sounds';
 import { LiquidProgress } from '@/components/shared/LiquidProgress';
-import { SwipeableCardWrapper } from '@/components/study/SwipeableCardWrapper';
 
 interface Props {
   target: Target;
   onOpenDetail: () => void;
   onEdit: () => void;
-  /** When provided, enables swipe gestures (right=done, left=quick actions). */
   onDelete?: () => void;
   onDuplicate?: () => void;
   /**
-   * Enable swipe gestures. Default false to avoid conflict with Reorder.Item
-   * (which uses vertical drag). When true, the card is NOT reorderable but
-   * IS swipeable. Pick one mode per usage context.
+   * Index of this card within its chapter group (1-based).
+   * Used for the "sister card" indicator — shows "1/3", "2/3" etc. when
+   * multiple cards share the same subject + chapter.
    */
-  swipeEnabled?: boolean;
+  indexInChapter?: number;
+  /** Total cards in this chapter group. */
+  chapterTotal?: number;
+  /** Whether this card has at least one sibling in the same chapter. */
+  hasSiblings?: boolean;
 }
+
+// Activity-specific icon + tint — makes it easy to tell a Lecture apart from
+// a DPP / Notes / Revision card at a glance, even when they share a subject.
+const ACTIVITY_META: Record<ActivityType, { icon: typeof BookOpen; label: string }> = {
+  Lecture:  { icon: BookOpen,  label: 'Lecture' },
+  DPP:      { icon: FileText,  label: 'DPP' },
+  Notes:    { icon: FileText,  label: 'Notes' },
+  Revision: { icon: BookOpen,  label: 'Revision' },
+  Custom:   { icon: FileText,  label: 'Task' },
+};
 
 export function TargetCard({
   target,
@@ -35,9 +47,14 @@ export function TargetCard({
   onEdit,
   onDelete,
   onDuplicate,
-  swipeEnabled = false,
+  indexInChapter,
+  chapterTotal,
+  hasSiblings,
 }: Props) {
   const color = subjectColor(target.subject);
+  const activityMeta = ACTIVITY_META[target.activity] || ACTIVITY_META.Custom;
+  const ActivityIcon = activityMeta.icon;
+
   const active = useSession((s) => s.active);
   const startSession = useSession((s) => s.startSession);
   const pause = useSession((s) => s.pause);
@@ -49,16 +66,11 @@ export function TargetCard({
   const [celebrate, setCelebrate] = useState(false);
   const [flashGreen, setFlashGreen] = useState(false);
 
-  // Long-press-to-drag state.
-  // Reorder.Item's drag is gated behind `dragEnabled` — false by default so
-  // taps open the detail sheet, but after holding 350ms it flips to true and
-  // the user can move their finger to reorder.
-  // `dragArmed` is the visual cue state (card lifts slightly + haptic).
-  const [dragEnabled, setDragEnabled] = useState(false);
-  const [dragArmed, setDragArmed] = useState(false);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pointerStartPos = useRef<{ x: number; y: number } | null>(null);
-  const pointerMovedRef = useRef(false);
+  // Drag controls — a dedicated drag handle (GripVertical) starts the drag.
+  // This is more reliable than long-press on mobile + doesn't conflict with
+  // tap-to-open-detail. The handle calls dragControls.start(e) on pointerdown;
+  // Reorder.Item reads `dragListener={false}` + `dragControls={dragControls}`.
+  const dragControls = useDragControls();
 
   const isThisActive = active?.targetId === target.id;
   const isAnyActive = active !== null && !isThisActive;
@@ -72,7 +84,7 @@ export function TargetCard({
     ? 'done'
     : 'idle';
 
-  // Today's sessions for this target (use stable selector + memoized filter)
+  // Today's sessions for this target
   const allSessions = useHistory((s) => s.sessions);
   const sessions = useMemo(
     () => allSessions.filter((s) => s.targetId === target.id && s.date === target.date),
@@ -93,12 +105,13 @@ export function TargetCard({
   const liveWasted = isThisActive ? getLiveWastedSeconds(active) : wastedSec;
   const expectedSec = target.expectedMinutes * 60;
   const progressPct = expectedSec > 0 ? Math.min(100, Math.round((liveStudied / expectedSec) * 100)) : 0;
+  const remainingSec = Math.max(0, expectedSec - liveStudied);
 
   const handleStartPause = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (haptics) vibrate(12);
     if (target.done) {
-      toggleDone(target.id);
+      toggleDone.toggleDone(target.id);
       return;
     }
     if (isThisActive) {
@@ -117,109 +130,36 @@ export function TargetCard({
     }
   };
 
-  // === Long-press-to-drag handlers ===
-  // The card is NOT draggable by default — taps open the detail sheet.
-  // After holding 350ms without moving, drag is "armed" (haptic + visual cue),
-  // and the user can move their finger to reorder. Release to drop.
-  const DRAG_ARM_DELAY = 350;
-  const TAP_MOVE_THRESHOLD = 10; // px — if finger moves more than this, cancel tap
-
-  const clearLongPress = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
-
-  const onCardPointerDown = (e: React.PointerEvent) => {
-    // Only respond to primary button / touch
-    if (e.button !== 0 && e.pointerType === 'mouse') return;
-    pointerStartPos.current = { x: e.clientX, y: e.clientY };
-    pointerMovedRef.current = false;
-    clearLongPress();
-    longPressTimer.current = setTimeout(() => {
-      // Long-press fired → arm drag
-      setDragEnabled(true);
-      setDragArmed(true);
-      if (haptics) vibrate(25);
-    }, DRAG_ARM_DELAY);
-  };
-
-  const onCardPointerMove = (e: React.PointerEvent) => {
-    if (!pointerStartPos.current) return;
-    const dx = e.clientX - pointerStartPos.current.x;
-    const dy = e.clientY - pointerStartPos.current.y;
-    if (Math.sqrt(dx * dx + dy * dy) > TAP_MOVE_THRESHOLD) {
-      pointerMovedRef.current = true;
-      // If user moved before drag was armed, cancel the long-press timer
-      // (they're scrolling, not trying to drag)
-      if (!dragArmed) clearLongPress();
-    }
-  };
-
-  const onCardPointerUp = (e: React.PointerEvent) => {
-    clearLongPress();
-    if (dragArmed) {
-      // Was dragging — drop and reset
-      setDragEnabled(false);
-      setDragArmed(false);
-      return;
-    }
-    // Wasn't dragging — if no significant movement, treat as tap → open detail
-    if (!pointerMovedRef.current) {
-      onOpenDetail();
-    }
-    pointerStartPos.current = null;
-    pointerMovedRef.current = false;
-  };
-
-  const onCardPointerCancel = () => {
-    clearLongPress();
-    setDragEnabled(false);
-    setDragArmed(false);
-    pointerStartPos.current = null;
-    pointerMovedRef.current = false;
-  };
-
-  // Cleanup timer on unmount
-  useEffect(() => () => clearLongPress(), []);
-
-  const stateClass = {
-    idle: '',
-    studying: 'border-2 glow-pulse',
-    paused: 'border-2 border-amber-400',
-    wasting: 'border-2 glow-pulse',
-    done: 'opacity-60',
-  }[sessionState];
-
-  const stateGlow = isThisActive
-    ? active!.wasting
-      ? 'rgba(239,68,68,0.5)'
-      : active!.paused
-      ? 'rgba(245,158,11,0.5)'
-      : color.glow
-    : 'transparent';
+  // Status pill content for the active session state
+  const statusPill = sessionState === 'studying' ? (
+    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-green-500 text-white pulse-slow shadow flex items-center gap-1">
+      <span className="inline-block w-1 h-1 rounded-full bg-white" /> LIVE
+    </span>
+  ) : sessionState === 'paused' ? (
+    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500 text-white shadow">⏸ PAUSED</span>
+  ) : sessionState === 'wasting' ? (
+    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-red-500 text-white pulse-fast shadow">⚠ WASTING</span>
+  ) : null;
 
   return (
     <Reorder.Item
       value={target}
       data-card
       layout
-      // Drag is gated behind `dragEnabled` — only true after a 350ms long-press.
-      // This lets taps open the detail sheet and buttons stay clickable.
-      drag={dragEnabled}
+      dragListener={false}
+      dragControls={dragControls}
       initial={reduceAnimations ? false : { opacity: 0, y: 8 }}
       animate={{
         opacity: 1,
         y: 0,
-        scale: dragArmed && !reduceAnimations ? 1.02 : (celebrate && !reduceAnimations ? 1.02 : 1),
+        scale: celebrate && !reduceAnimations ? 1.02 : 1,
       }}
       whileDrag={
         reduceAnimations
           ? { zIndex: 50, cursor: 'grabbing' }
           : {
-              scale: 1.04,
-              y: -4,
+              scale: 1.03,
+              y: -2,
               zIndex: 50,
               cursor: 'grabbing',
               boxShadow: '0 16px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05)',
@@ -227,7 +167,7 @@ export function TargetCard({
       }
       dragTransition={
         reduceAnimations
-          ? { bounceStiffness: 1000, bounceDamping: 100 } // no bounce
+          ? { bounceStiffness: 1000, bounceDamping: 100 }
           : { bounceStiffness: 500, bounceDamping: 35 }
       }
       transition={
@@ -235,39 +175,24 @@ export function TargetCard({
           ? { duration: 0 }
           : {
               type: 'spring',
-              // Intensity scales the spring: higher intensity = bouncier (lower damping)
-              stiffness: 400 + (animationIntensity / 100) * 200, // 400-600
-              damping: 45 - (animationIntensity / 100) * 20,     // 45→25 (higher intensity = less damping = bouncier)
+              stiffness: 400 + (animationIntensity / 100) * 200,
+              damping: 45 - (animationIntensity / 100) * 20,
               mass: 0.8,
             }
       }
-      // Long-press-to-drag handlers. Taps (no movement + < 350ms hold) open detail.
-      onPointerDown={onCardPointerDown}
-      onPointerMove={onCardPointerMove}
-      onPointerUp={onCardPointerUp}
-      onPointerCancel={onCardPointerCancel}
       className={cn(
-        // NOTE: do NOT use `transition-all duration-500` — it conflicts with
-        // Framer Motion's JS-driven transform animations and causes stutter.
-        // Instead, use targeted transitions only for non-transform props
-        // (border-color, box-shadow) so the drag stays smooth.
-        'card-solid rounded-2xl p-3.5 relative overflow-hidden select-none',
-        // Cursor changes based on drag state:
-        //   idle: pointer (tap to open)
-        //   armed: grab (long-press active, ready to drag)
-        //   dragging: grabbing (Framer Motion sets this via whileDrag)
-        dragArmed ? 'cursor-grab' : 'cursor-pointer',
-        stateClass,
+        'card-solid rounded-2xl relative overflow-hidden select-none',
+        // Tap opens detail; drag handle is separate
+        'cursor-pointer',
+        sessionState === 'studying' && 'glow-pulse',
+        sessionState === 'wasting' && 'glow-pulse',
+        target.done && 'opacity-65',
         flashGreen && 'ring-2 ring-green-500',
-        dragArmed && 'ring-2 ring-white/30',
       )}
       style={{
-        // Targeted CSS transitions for visual props only (NOT transform)
         transitionProperty: 'border-color, box-shadow, background-color',
         transitionDuration: '250ms',
         transitionTimingFunction: 'ease-out',
-        // via a child `.card-tint` overlay div so it sits ON TOP of the dark
-        // base — color identity without muddying the text underneath.
         borderColor: flashGreen
           ? '#22c55e'
           : isThisActive
@@ -276,200 +201,261 @@ export function TargetCard({
             : active!.paused
             ? '#f59e0b'
             : color.hex
-          : `${color.hex}80`,
-        ['--glow-color' as string]: stateGlow,
-        // Smart color-coded glow: when THIS card is the active studying card,
-        // add a stronger outer glow in the subject color.
+          : `${color.hex}55`,
+        ['--glow-color' as string]: isThisActive
+          ? active!.wasting
+            ? 'rgba(239,68,68,0.5)'
+            : active!.paused
+            ? 'rgba(245,158,11,0.5)'
+            : color.glow
+          : 'transparent',
         boxShadow: isThisActive && !active!.paused && !active!.wasting
           ? `0 0 24px -4px ${color.hex}80, 0 4px 16px -2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.16)`
           : undefined,
       }}
-      // onClick removed — tap-to-open-detail is now handled in onCardPointerUp
-      // (after long-press logic decides if it was a tap or a drag attempt)
+      onPointerDown={(e) => {
+        // Tap to open detail — but only if the pointer didn't start on the
+        // drag handle (the handle stops propagation in its own onPointerDown).
+        // We defer the "was this a tap?" decision to onPointerUp.
+        (e.currentTarget as HTMLElement).dataset.pointerStart = '1';
+      }}
+      onPointerUp={(e) => {
+        const el = e.currentTarget as HTMLElement;
+        if (el.dataset.pointerStart === '1' && !el.dataset.dragged) {
+          onOpenDetail();
+        }
+        delete el.dataset.pointerStart;
+        delete el.dataset.dragged;
+      }}
     >
-      {/* Subject color tint overlay — sits on top of the solid dark base
-          so the card visibly belongs to its subject without reducing
-          text contrast. `mix-blend-mode: overlay` in CSS handles the math. */}
+      {/* Subject color tint overlay */}
       <div
         className="card-tint"
         style={{
-          background: sessionState === 'done'
-            ? `linear-gradient(135deg, ${color.hex}14, transparent)`
-            : `linear-gradient(135deg, ${color.hex}33, ${color.hex}14)`,
+          background: target.done
+            ? `linear-gradient(135deg, ${color.hex}10, transparent)`
+            : `linear-gradient(135deg, ${color.hex}28, ${color.hex}0a)`,
         }}
       />
-      {/* Content wrapper — sits above the .card-tint overlay */}
-      <div className="relative">
-      {/* Left accent border for idle state */}
-      {sessionState === 'idle' && (
+
+      {/* === Sister-card indicator: left-edge "depth" bar ===
+          When multiple cards share the same subject+chapter, show a colored
+          vertical bar on the left edge with a small "1/3" badge so the user
+          can tell at a glance which card is which within the group. */}
+      {hasSiblings && (
         <div
-          className="absolute left-0 top-0 bottom-0 w-[3px]"
-          style={{ background: color.hex, opacity: 0.4 }}
-        />
+          className="absolute left-0 top-0 bottom-0 flex flex-col items-center justify-center pointer-events-none"
+          style={{ width: 4, background: color.hex, opacity: 0.6 }}
+        >
+          <span
+            className="absolute left-1 top-1.5 text-[8px] font-bold tabular px-1 py-0.5 rounded-sm"
+            style={{ background: `${color.hex}30`, color: color.hex }}
+          >
+            {indexInChapter}/{chapterTotal}
+          </span>
+        </div>
       )}
 
-      {/* Green flash overlay on done celebration */}
-      <AnimatePresence>
-        {flashGreen && (
-          <motion.div
-            initial={{ opacity: 0.3 }}
-            animate={{ opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="absolute inset-0 bg-green-500 pointer-events-none rounded-2xl"
-          />
-        )}
-      </AnimatePresence>
+      {/* Content wrapper */}
+      <div className="relative p-3 pl-3.5">
+        {/* Green flash on done celebration */}
+        <AnimatePresence>
+          {flashGreen && (
+            <motion.div
+              initial={{ opacity: 0.3 }}
+              animate={{ opacity: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+              className="absolute inset-0 bg-green-500 pointer-events-none rounded-2xl"
+            />
+          )}
+        </AnimatePresence>
 
-      {/* Row 1: badges + button + drag handle */}
-      <div className="flex items-center gap-2 mb-1.5">
-        {target.lecture && (
+        {/* === Row 1: Header — activity icon + lecture tag + activity badge + status pill === */}
+        <div className="flex items-center gap-1.5 mb-1.5 min-h-[24px]">
+          {/* Activity icon — color-coded by subject, shape-coded by activity */}
+          <div
+            className="w-5 h-5 rounded flex items-center justify-center shrink-0"
+            style={{ background: `${color.hex}22`, color: color.hex }}
+          >
+            <ActivityIcon size={12} />
+          </div>
+
+          {/* Lecture tag (e.g. "Lec 12") — only for Lecture activity */}
+          {target.lecture && (
+            <span
+              className={cn(
+                'text-[9px] font-bold px-1.5 py-0.5 rounded tabular shrink-0',
+                target.done && 'line-through opacity-60'
+              )}
+              style={{ background: `${color.hex}25`, color: color.hex, border: `1px solid ${color.hex}40` }}
+            >
+              {target.lecture}
+            </span>
+          )}
+
+          {/* Activity badge — DPP / Notes / Revision / Custom */}
           <span
             className={cn(
-              'text-[10px] font-bold px-1.5 py-0.5 rounded tabular',
+              'text-[9px] font-medium px-1.5 py-0.5 rounded shrink-0',
               target.done && 'line-through opacity-60'
             )}
-            style={{ background: `${color.hex}30`, color: color.hex, border: `1px solid ${color.hex}40` }}
+            style={{ background: 'rgba(255,255,255,0.10)', color: 'inherit' }}
           >
-            {target.lecture}
+            {activityMeta.label}
           </span>
-        )}
-        <span className={cn(
-          'text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/15 text-white/90',
-          target.done && 'line-through opacity-60'
-        )}>
-          {target.activity}
-        </span>
-        {sessionState === 'studying' && (
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-500 text-white pulse-slow shadow-lg">
-            ● STUDYING
-          </span>
-        )}
-        {sessionState === 'paused' && (
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-white shadow-lg">
-            ⏸ PAUSED
-          </span>
-        )}
-        {sessionState === 'wasting' && (
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500 text-white pulse-fast shadow-lg">
-            ⚠ WASTING
-          </span>
-        )}
-        <span className="text-[11px] text-white/70 ml-auto tabular">{target.expectedMinutes}m</span>
 
-        {/* Start/Pause button */}
-        <button
-          onClick={handleStartPause}
-          // Stop pointer down so the card's long-press timer doesn't fire
-          // when the user is just tapping this button.
-          onPointerDown={(e) => e.stopPropagation()}
-          disabled={isAnyActive || target.done}
-          className={cn(
-            'flex items-center justify-center rounded-lg transition active:scale-95 min-w-[36px] h-8 px-2',
-            target.done
-              ? 'bg-green-500/20 text-green-400'
-              : isThisActive
-              ? active!.wasting
-                ? 'bg-red-500 text-white pulse-fast'
-                : active!.paused
-                ? 'bg-amber-500 text-white'
-                : 'text-white pulse-slow'
-              : isAnyActive
-              ? 'bg-white/5 text-white/30 cursor-not-allowed'
-              : 'bg-white/10 text-white hover:bg-white/15'
-          )}
-          style={
-            !target.done && isThisActive && !active!.wasting && !active!.paused
-              ? { background: color.hex, color: '#000' }
-              : undefined
-          }
-        >
-          {target.done ? (
-            <Check size={16} strokeWidth={3} />
-          ) : isThisActive ? (
-            active!.paused ? (
-              <Play size={14} fill="currentColor" />
-            ) : (
-              <Pause size={14} fill="currentColor" />
-            )
-          ) : (
-            <Play size={14} fill="currentColor" />
-          )}
-        </button>
+          {/* Status pill (LIVE / PAUSED / WASTING) — only when active */}
+          {statusPill}
 
-        {/* Done button — marks target complete (also syncs to syllabus) */}
-        {!target.done && (
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Expected time — compact */}
+          <span className="text-[10px] text-white/55 tabular flex items-center gap-0.5 shrink-0">
+            <Clock size={10} />
+            {target.expectedMinutes}m
+          </span>
+
+          {/* Drag handle — dedicated, calls dragControls.start on pointerdown */}
           <button
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
+            onPointerDown={(e) => {
               e.stopPropagation();
               if (haptics) vibrate(15);
-              // Trigger celebration animation
-              setFlashGreen(true);
-              setCelebrate(true);
-              setTimeout(() => setFlashGreen(false), 400);
-              setTimeout(() => setCelebrate(false), 600);
-              toggleDone.toggleDone(target.id);
-              playSound('done');
-              // Particle burst from the tap point in the subject's color
-              // (skipped when reduceAnimations is on)
-              if (!reduceAnimations) {
-                import('@/components/shared/Effects').then(({ triggerParticleBurst }) => {
-                  triggerParticleBurst(e.clientX, e.clientY, color.hex);
-                });
-              }
-              import('@/components/shared/Effects').then(({ triggerEffect }) => triggerEffect('small', 'chime'));
+              dragControls.start(e);
+              // Mark card as "being dragged" so onPointerUp doesn't open detail
+              const card = (e.currentTarget as HTMLElement).closest('[data-card]') as HTMLElement;
+              if (card) card.dataset.dragged = '1';
             }}
-            className="flex items-center justify-center rounded-lg transition active:scale-95 min-w-[32px] h-8 px-1.5 bg-green-500/15 text-green-400 hover:bg-green-500/25"
-            title="Mark as done"
+            onClick={(e) => e.stopPropagation()}
+            className="ml-1 w-6 h-6 rounded flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 active:scale-90 transition shrink-0 cursor-grab active:cursor-grabbing"
+            aria-label="Drag to reorder"
+            title="Drag to reorder"
           >
-            <CheckCircle2 size={16} />
+            <GripVertical size={14} />
           </button>
-        )}
+        </div>
 
-        {/* Drag handle hint — visual indicator that the card can be reordered.
-            Hold anywhere on the card for 350ms to start dragging. */}
+        {/* === Row 2: Title (topic name) === */}
         <div
           className={cn(
-            'text-white/30 flex items-center transition-colors',
-            dragArmed && 'text-white/80',
+            'text-sm font-semibold mb-2 leading-snug pr-1',
+            target.done && 'line-through text-white/55'
           )}
-          aria-label="Hold card to drag and reorder"
         >
-          <GripVertical size={16} />
+          {target.topic}
         </div>
-      </div>
 
-      {/* Row 2: Title */}
-      <div
-        className={cn(
-          'text-base font-semibold mb-2 leading-tight text-white',
-          target.done && 'line-through text-white/60'
-        )}
-      >
-        {target.topic}
-      </div>
+        {/* === Row 3: Liquid progress bar === */}
+        <LiquidProgress
+          pct={progressPct}
+          color={sessionState === 'wasting' ? '#ef4444' : color.hex}
+          color2={sessionState === 'wasting' ? '#ef4444aa' : `${color.hex}aa`}
+          className="mb-2"
+          height="h-1.5"
+        />
 
-      {/* Row 3: Liquid progress bar */}
-      <LiquidProgress
-        pct={progressPct}
-        color={sessionState === 'wasting' ? '#ef4444' : color.hex}
-        color2={sessionState === 'wasting' ? '#ef4444aa' : `${color.hex}aa`}
-        className="mb-2"
-      />
+        {/* === Row 4: Stats — studied / remaining / sessions + action buttons === */}
+        <div className="flex items-center gap-2">
+          {/* Studied time */}
+          <span className="text-[11px] text-green-400 tabular flex items-center gap-0.5 font-medium">
+            <Play size={9} fill="currentColor" />
+            {formatHM(liveStudied)}
+          </span>
 
-      {/* Row 4: stats */}
-      <div className="flex items-center gap-3 text-xs">
-        <span className="text-green-400 tabular flex items-center gap-1">
-          ▶ {formatHM(liveStudied)} / {target.expectedMinutes}m
-        </span>
-        {liveWasted > 0 && (
-          <span className="text-red-400 tabular">⚠ {formatHM(liveWasted)}</span>
-        )}
-        <span className="text-white/70 ml-auto tabular">
-          {sessions.length} {sessions.length === 1 ? 'session' : 'sessions'} today
-        </span>
-      </div>
+          {/* Remaining or done indicator */}
+          {target.done ? (
+            <span className="text-[10px] text-green-400 font-semibold flex items-center gap-0.5">
+              <Check size={10} strokeWidth={3} /> Done
+            </span>
+          ) : remainingSec > 0 ? (
+            <span className="text-[10px] text-white/45 tabular">
+              · {formatHM(remainingSec)} left
+            </span>
+          ) : null}
+
+          {/* Wasted time (if any) */}
+          {liveWasted > 0 && (
+            <span className="text-[10px] text-red-400 tabular">⚠ {formatHM(liveWasted)}</span>
+          )}
+
+          {/* Session count */}
+          {sessions.length > 0 && (
+            <span className="text-[10px] text-white/40 tabular">
+              · {sessions.length}{sessions.length === 1 ? ' session' : ' sessions'}
+            </span>
+          )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Start/Pause button */}
+          <button
+            onClick={handleStartPause}
+            onPointerDown={(e) => e.stopPropagation()}
+            disabled={isAnyActive || target.done}
+            className={cn(
+              'flex items-center justify-center rounded-lg transition active:scale-95 min-w-[32px] h-7 px-2',
+              target.done
+                ? 'bg-green-500/20 text-green-400'
+                : isThisActive
+                ? active!.wasting
+                  ? 'bg-red-500 text-white pulse-fast'
+                  : active!.paused
+                  ? 'bg-amber-500 text-white'
+                  : 'text-white pulse-slow'
+                : isAnyActive
+                ? 'bg-white/5 text-white/30 cursor-not-allowed'
+                : 'bg-white/10 text-white hover:bg-white/20'
+            )}
+            style={
+              !target.done && isThisActive && !active!.wasting && !active!.paused
+                ? { background: color.hex, color: '#000' }
+                : undefined
+            }
+            aria-label={isThisActive ? (active!.paused ? 'Resume' : 'Pause') : 'Start session'}
+          >
+            {target.done ? (
+              <Check size={14} strokeWidth={3} />
+            ) : isThisActive ? (
+              active!.paused ? (
+                <Play size={12} fill="currentColor" />
+              ) : (
+                <Pause size={12} fill="currentColor" />
+              )
+            ) : (
+              <Play size={12} fill="currentColor" />
+            )}
+          </button>
+
+          {/* Done button — marks target complete */}
+          {!target.done && (
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (haptics) vibrate(15);
+                setFlashGreen(true);
+                setCelebrate(true);
+                setTimeout(() => setFlashGreen(false), 400);
+                setTimeout(() => setCelebrate(false), 600);
+                toggleDone.toggleDone(target.id);
+                playSound('done');
+                if (!reduceAnimations) {
+                  import('@/components/shared/Effects').then(({ triggerParticleBurst }) => {
+                    triggerParticleBurst(e.clientX, e.clientY, color.hex);
+                  });
+                }
+                import('@/components/shared/Effects').then(({ triggerEffect }) => triggerEffect('small', 'chime'));
+              }}
+              className="flex items-center justify-center rounded-lg transition active:scale-95 min-w-[28px] h-7 px-1.5 bg-green-500/15 text-green-400 hover:bg-green-500/25"
+              aria-label="Mark as done"
+              title="Mark as done"
+            >
+              <CheckCircle2 size={14} />
+            </button>
+          )}
+        </div>
       </div>
     </Reorder.Item>
   );

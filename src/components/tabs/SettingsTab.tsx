@@ -119,11 +119,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.3.5</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.4.0</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.4.0</strong> — Rebuilt TargetCard (cleaner info hierarchy, activity icons, remaining time), fixed drag-and-drop with dedicated drag handle, sister-card indicators (1/N badge + left-edge bar)</div>
             <div><strong className="text-white/70">v2.3.5</strong> — Fix light mode text visibility (all text-white/N opacity levels), compact Pomodoro widget, fix concentric ring overlap + pointer pass-through</div>
             <div><strong className="text-white/70">v2.3.4</strong> — Slidable concentric Pomodoro rings (drag around the ring, not a straight slider), theme-aware range slider track + thumb</div>
             <div><strong className="text-white/70">v2.3.3</strong> — Pomodoro concentric rings, side-by-side date inputs, dim settings, Focus Timer labels, distinct section headers, bar visibility</div>
