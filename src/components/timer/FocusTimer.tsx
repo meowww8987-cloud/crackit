@@ -510,13 +510,16 @@ export function FocusTimer() {
           )}
         </motion.div>
 
-        {/* Timer — dims to 8% but stays barely visible */}
+        {/* Timer — dims based on user's screenDimOpacity setting */}
         <motion.div
           animate={{ x: timerPos.x, y: timerPos.y }}
           transition={{ type: 'spring', stiffness: 60, damping: 20 }}
           className="transition-opacity duration-1000"
           style={{
-            opacity: dimmed ? 0.08 : 1,
+            // When dimmed: reduce opacity to (100 - screenDimOpacity)%.
+            // e.g., if screenDimOpacity = 80, opacity = 0.20 (barely visible).
+            // If screenDimOpacity = 0 (no dim), opacity stays 1 (fully visible).
+            opacity: dimmed ? Math.max(0.05, 1 - (settings.screenDimOpacity / 100)) : 1,
             filter: dimmed ? 'drop-shadow(0 0 40px rgba(255,255,255,0.1))' : 'none',
           }}
         >
