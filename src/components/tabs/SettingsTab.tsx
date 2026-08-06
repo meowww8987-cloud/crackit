@@ -91,7 +91,11 @@ export function SettingsTab() {
         );
       })}
 
-      <p className="text-center text-xs text-white/30 pt-2">Phase 1 · Full settings coming in Phase 3</p>
+      <p className="text-center text-xs text-white/30 pt-2">
+        <span className="font-semibold text-white/40">NEET 2027 Study Tracker</span>
+        <br />
+        Version <span className="font-mono text-teal-400">2.1.0</span>
+      </p>
     </div>
   );
 }
