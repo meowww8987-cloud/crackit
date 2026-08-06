@@ -416,11 +416,15 @@ export function PartnerCard() {
                       className="h-full rounded-full bg-gradient-to-r from-teal-500 to-green-500"
                     />
                   </div>
-                  {myCurrentSubject && (
-                    <div className="text-[9px] text-t-muted mt-0.5 truncate">
-                      {myCurrentSubject}{myCurrentChapter ? ` · ${myCurrentChapter}` : ''}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-[9px] mt-0.5">
+                    <span style={{ color: myStatusColor }} className="font-bold">{myStatusText}</span>
+                    {myTodayWastedSec > 0 && (
+                      <span className="text-red-500 dark:text-red-400 tabular">⚠ {formatHM(myTodayWastedSec)}</span>
+                    )}
+                    {myCurrentSubject && (
+                      <span className="text-t-muted truncate">{myCurrentSubject}{myCurrentChapter ? ` · ${myCurrentChapter}` : ''}</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -436,7 +440,7 @@ export function PartnerCard() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between text-[10px] mb-0.5">
                     <span className="font-bold text-violet-600 dark:text-violet-400 uppercase truncate">
-                      PARTNER · {partner.partnerName || '—'}
+                      {partner.partnerName || '—'}
                     </span>
                     <span className="tabular text-t-secondary font-semibold">
                       {formatHM(partnerSec)} <span className="text-t-muted font-normal">/ {dailyGoalHours}h</span>
@@ -449,11 +453,15 @@ export function PartnerCard() {
                       className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500"
                     />
                   </div>
-                  {partnerLastSubject && (
-                    <div className="text-[9px] text-t-muted mt-0.5 truncate">
-                      {partnerLastSubject}{partnerLastChapter ? ` · ${partnerLastChapter}` : ''}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-[9px] mt-0.5">
+                    <span style={{ color: partnerStatusColor }} className="font-bold">{partnerStatusText}</span>
+                    {partnerWastedSec > 0 && (
+                      <span className="text-red-500 dark:text-red-400 tabular">⚠ {formatHM(partnerWastedSec)}</span>
+                    )}
+                    {partnerLastSubject && (
+                      <span className="text-t-muted truncate">{partnerLastSubject}{partnerLastChapter ? ` · ${partnerLastChapter}` : ''}</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
