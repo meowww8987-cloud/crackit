@@ -125,12 +125,31 @@ export function CircularSlider({
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (disabled) return;
+    // Check if the pointer is near the ring (within a tolerance band).
+    // This prevents the SVG's onPointerDown from firing when the user clicks
+    // the empty center of the ring — which would otherwise hijack clicks meant
+    // for a ring layered below in a concentric setup.
+    const svg = svgRef.current;
+    if (svg) {
+      const rect = svg.getBoundingClientRect();
+      const scaleX = size / rect.width;
+      const scaleY = size / rect.height;
+      const px = (e.clientX - rect.left) * scaleX;
+      const py = (e.clientY - rect.top) * scaleY;
+      const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+      // Only respond if the pointer is within ±(strokeWidth/2 + 10) of the ring radius
+      const tolerance = strokeWidth / 2 + 10;
+      if (Math.abs(dist - radius) > tolerance) {
+        // Not near this ring — let the event pass through to any ring below
+        return;
+      }
+    }
     e.preventDefault();
     (e.target as Element).setPointerCapture?.(e.pointerId);
     setDragging(true);
     const v = pointerToValue(e.clientX, e.clientY);
     if (v !== value) onChange(v);
-  }, [disabled, pointerToValue, value, onChange]);
+  }, [disabled, pointerToValue, value, onChange, cx, cy, size, radius, strokeWidth]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragging || disabled) return;
@@ -216,18 +235,20 @@ export function CircularSlider({
         onPointerUp={handlePointerUp}
         onKeyDown={handleKeyDown}
         className={cn('outline-none cursor-pointer', dragging && 'cursor-grabbing')}
-        style={{ touchAction: 'none' as const, pointerEvents: 'bounding-box' as any }}
+        style={{ touchAction: 'none' as const }}
       >
         {/* Transparent wider hit-zone path so the user can grab anywhere near
-            the ring (not just on the thin stroke). This makes the slider feel
-            much more draggable, especially on touch devices. */}
+            the ring (not just on the thin stroke). pointerEvents='stroke' means
+            only clicks ON the ring path itself trigger events — the empty center
+            passes through to any ring layered below. This is critical when two
+            CircularSliders are stacked concentrically. */}
         <path
           d={trackPath}
           fill="none"
           stroke="transparent"
-          strokeWidth={strokeWidth + 16}
+          strokeWidth={strokeWidth + 14}
           strokeLinecap="round"
-          className="cursor-pointer"
+          style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
         />
         {/* Track */}
         <path
@@ -236,7 +257,7 @@ export function CircularSlider({
           stroke="var(--ring-track, rgba(255,255,255,0.10))"
           strokeWidth={strokeWidth}
           strokeLinecap="round"
-          pointerEvents="none"
+          style={{ pointerEvents: 'none' }}
         />
         {/* Value fill */}
         {valuePath && (
@@ -246,10 +267,18 @@ export function CircularSlider({
             stroke={color}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
-            pointerEvents="none"
+            style={{ pointerEvents: 'none' }}
           />
         )}
-        {/* Thumb */}
+        {/* Thumb — also draggable. Slightly wider hit area via a transparent
+            circle behind it. */}
+        <circle
+          cx={thumb.x}
+          cy={thumb.y}
+          r={thumbRadius + 6}
+          fill="transparent"
+          style={{ pointerEvents: 'all', cursor: 'grab' }}
+        />
         <circle
           cx={thumb.x}
           cy={thumb.y}
@@ -257,8 +286,11 @@ export function CircularSlider({
           fill={color}
           stroke="var(--card-bg, #fff)"
           strokeWidth={3}
-          pointerEvents="none"
-          style={{ filter: dragging ? `drop-shadow(0 2px 8px ${color}80)` : 'none', transition: dragging ? 'none' : 'all 0.15s ease' }}
+          style={{
+            pointerEvents: 'none',
+            filter: dragging ? `drop-shadow(0 2px 8px ${color}80)` : 'none',
+            transition: dragging ? 'none' : 'all 0.15s ease',
+          }}
         />
       </svg>
       {/* Center label */}

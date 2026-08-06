@@ -119,11 +119,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.3.4</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.3.5</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.3.5</strong> — Fix light mode text visibility (all text-white/N opacity levels), compact Pomodoro widget, fix concentric ring overlap + pointer pass-through</div>
             <div><strong className="text-white/70">v2.3.4</strong> — Slidable concentric Pomodoro rings (drag around the ring, not a straight slider), theme-aware range slider track + thumb</div>
             <div><strong className="text-white/70">v2.3.3</strong> — Pomodoro concentric rings, side-by-side date inputs, dim settings, Focus Timer labels, distinct section headers, bar visibility</div>
             <div><strong className="text-white/70">v2.3.2</strong> — Theme polish (Gold/Rose rebuild), bar visibility, 5 partner status states, Toggle fix</div>
@@ -262,25 +263,25 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
   const WORK_COLOR = '#14b8a6';   // teal — focus
   const BREAK_COLOR = '#f59e0b';  // amber — rest
 
-  // Both rings share the same SVG canvas size; only the radius differs so they
-  // stack concentrically. Outer radius 52, inner radius 36, stroke 8.
-  const OUTER_R = 52;
-  const INNER_R = 36;
-  const STROKE = 8;
-  // Canvas size = 2 * (outer radius + padding). Matches CircularSlider's internal math.
-  const CANVAS = (OUTER_R + STROKE / 2 + 8) * 2;
+  // Ring geometry — increased gap between outer and inner so they don't
+  // visually overlap. Outer radius 50, inner radius 32 (gap = 18px > stroke 7).
+  // Stroke reduced to 7 for a slimmer, more elegant look.
+  const OUTER_R = 50;
+  const INNER_R = 32;
+  const STROKE = 7;
+  const CANVAS = (OUTER_R + STROKE / 2 + 8) * 2;  // = 124
 
   return (
     <>
-      {/* === Pomodoro Cycle — concentric circular sliders === */}
+      {/* === Pomodoro Cycle — concentric circular sliders (compact) === */}
       <div>
-        <label className="text-xs font-bold text-white/85 uppercase tracking-wide mb-2 flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-2">
           <span className="inline-block w-1 h-3.5 rounded-full bg-gradient-to-b from-teal-400 to-teal-500/60" />
-          Pomodoro Cycle
-        </label>
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-4 flex flex-col items-center gap-3">
-          {/* Stacked circular sliders — both absolutely positioned in a fixed-size box */}
-          <div className="relative" style={{ width: CANVAS, height: CANVAS }}>
+          <label className="text-xs font-bold text-white/85 uppercase tracking-wide">Pomodoro Cycle</label>
+        </div>
+        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
+          {/* Stacked circular sliders */}
+          <div className="relative shrink-0" style={{ width: CANVAS, height: CANVAS }}>
             {/* Outer ring: WORK */}
             <div className="absolute inset-0">
               <CircularSlider
@@ -294,7 +295,6 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
                 ariaLabel="Pomodoro work duration in minutes"
                 onChange={(v) => update('pomodoroWork', v)}
                 onCommit={(v) => update('pomodoroWork', v)}
-                centerLabel={null}
               />
             </div>
             {/* Inner ring: BREAK */}
@@ -310,41 +310,32 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
                 ariaLabel="Pomodoro break duration in minutes"
                 onChange={(v) => update('pomodoroBreak', v)}
                 onCommit={(v) => update('pomodoroBreak', v)}
-                centerLabel={null}
               />
             </div>
-            {/* Center label — overlaid on top of both rings */}
+            {/* Center label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <div className="text-[8px] uppercase tracking-widest text-white/40 font-bold">Cycle</div>
-              <div className="text-base font-bold tabular leading-tight mt-0.5">
+              <div className="text-base font-bold tabular leading-none">
                 <span style={{ color: WORK_COLOR }}>{s.pomodoroWork}</span>
                 <span className="text-white/40 mx-0.5">/</span>
                 <span style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}</span>
               </div>
-              <div className="text-[7px] text-white/40 leading-none mt-0.5 uppercase tracking-wide">work/break min</div>
+              <div className="text-[7px] text-white/45 leading-none mt-1 uppercase tracking-wide">min</div>
             </div>
           </div>
 
-          {/* Legend + value chips */}
-          <div className="grid grid-cols-2 gap-2 w-full mt-1">
-            <div className="rounded-xl bg-white/5 border border-white/10 px-2.5 py-1.5 flex items-center gap-2">
+          {/* Legend chips — compact, beside the rings */}
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <div className="flex items-center gap-2">
               <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: WORK_COLOR }} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[9px] uppercase tracking-wide text-white/50 font-semibold">Outer · Work</div>
-                <div className="text-xs font-bold tabular" style={{ color: WORK_COLOR }}>{s.pomodoroWork} min</div>
-              </div>
+              <span className="text-[10px] uppercase tracking-wide text-white/55 font-semibold">Work</span>
+              <span className="text-xs font-bold tabular ml-auto" style={{ color: WORK_COLOR }}>{s.pomodoroWork}m</span>
             </div>
-            <div className="rounded-xl bg-white/5 border border-white/10 px-2.5 py-1.5 flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: BREAK_COLOR }} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[9px] uppercase tracking-wide text-white/50 font-semibold">Inner · Break</div>
-                <div className="text-xs font-bold tabular" style={{ color: BREAK_COLOR }}>{s.pomodoroBreak} min</div>
-              </div>
+              <span className="text-[10px] uppercase tracking-wide text-white/55 font-semibold">Break</span>
+              <span className="text-xs font-bold tabular ml-auto" style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}m</span>
             </div>
           </div>
-          <p className="text-[10px] text-white/45 leading-snug text-center">
-            Drag the <strong style={{ color: WORK_COLOR }}>teal</strong> thumb for work, the <strong style={{ color: BREAK_COLOR }}>amber</strong> thumb for break.
-          </p>
         </div>
       </div>
 
@@ -360,10 +351,10 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
       {s.burnProtection && (
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-[10px] font-semibold text-white/50 uppercase tracking-wide mb-1.5 block">When to dim</label>
+            <label className="text-[10px] font-semibold text-white/55 uppercase tracking-wide mb-1.5 block">When to dim</label>
             <div className="rounded-xl bg-white/5 border border-white/10 p-2.5">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-white/60">Idle delay</span>
+                <span className="text-[10px] text-white/65">Idle delay</span>
                 <span className="text-xs tabular font-bold text-amber-400">{s.dimDelay}s</span>
               </div>
               <input
@@ -372,16 +363,16 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
                 className="w-full"
                 style={{ accentColor: '#f59e0b' }}
               />
-              <div className="flex justify-between text-[8px] text-white/30 mt-0.5">
+              <div className="flex justify-between text-[8px] text-white/35 mt-0.5">
                 <span>3s</span><span>30s</span>
               </div>
             </div>
           </div>
           <div>
-            <label className="text-[10px] font-semibold text-white/50 uppercase tracking-wide mb-1.5 block">Timer visibility</label>
+            <label className="text-[10px] font-semibold text-white/55 uppercase tracking-wide mb-1.5 block">Timer visibility</label>
             <div className="rounded-xl bg-white/5 border border-white/10 p-2.5">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-white/60">When dimmed</span>
+                <span className="text-[10px] text-white/65">When dimmed</span>
                 <span className="text-xs tabular font-bold text-teal-400">{s.screenDimOpacity}%</span>
               </div>
               <input
@@ -390,7 +381,7 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
                 className="w-full"
                 style={{ accentColor: '#14b8a6' }}
               />
-              <div className="flex justify-between text-[8px] text-white/30 mt-0.5">
+              <div className="flex justify-between text-[8px] text-white/35 mt-0.5">
                 <span>5%</span><span>100%</span>
               </div>
             </div>
