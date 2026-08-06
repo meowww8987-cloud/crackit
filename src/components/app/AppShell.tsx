@@ -518,25 +518,14 @@ export function AppShell() {
 }
 
 function TopBar() {
-  const minimalMode = useSettings((s) => s.minimalMode);
-  const setMinimalMode = useSettings((s) => (s as any).set);
   return (
-    <div className="absolute top-0 left-0 right-0 z-30 h-13 px-4 py-2.5 flex items-center justify-between pointer-events-none">
+    <div className="absolute top-0 left-0 right-0 z-30 h-13 px-4 py-2.5 flex items-center pointer-events-none">
       <div className="flex items-center gap-1.5 pointer-events-auto">
         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-400 to-green-500 flex items-center justify-center text-xs font-bold text-black shadow-lg shadow-teal-500/20">
           N
         </div>
         <span className="text-sm font-semibold tracking-tight gradient-text">NEET 2027</span>
       </div>
-      {/* Minimal Mode eye toggle — quick switch for deep focus */}
-      <button
-        onClick={() => { vibrate(10); setMinimalMode('minimalMode', !minimalMode); }}
-        className="pointer-events-auto w-9 h-9 rounded-lg glass flex items-center justify-center text-adaptive-muted hover:text-adaptive active:scale-95 transition"
-        aria-label="Toggle minimal mode"
-        title="Minimal Mode"
-      >
-        {minimalMode ? <EyeOff size={18} /> : <Eye size={18} />}
-      </button>
     </div>
   );
 }

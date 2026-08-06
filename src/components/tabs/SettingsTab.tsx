@@ -14,6 +14,8 @@ import {
   Download,
   Upload,
   Sparkles,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useSettings, applyTextSize, applyTheme } from '@/lib/store/settings';
 import { cn, vibrate } from '@/lib/utils';
@@ -43,7 +45,26 @@ export function SettingsTab() {
 
   return (
     <div className="pt-2 pb-4 space-y-3">
-      <h1 className="text-xl font-bold mb-2">Settings</h1>
+      {/* Header with Minimal Mode toggle */}
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-xl font-bold">Settings</h1>
+        {/* Minimal Mode toggle — modern interactive button */}
+        <button
+          onClick={() => { vibrate(15); update('minimalMode', !s.minimalMode); }}
+          className={cn(
+            'px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95',
+            s.minimalMode
+              ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/30'
+              : 'bg-white/5 text-t-secondary border border-white/10 hover:bg-white/10'
+          )}
+        >
+          {s.minimalMode ? (
+            <><EyeOff size={13} /> Minimal ON</>
+          ) : (
+            <><Eye size={13} /> Minimal</>
+          )}
+        </button>
+      </div>
 
       {SECTIONS.map((sec) => {
         const Icon = sec.icon;
@@ -253,12 +274,6 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
         <div className="flex items-center justify-between">
           <span className="text-sm text-white/70">Allow rotation in full-screen timer</span>
           <Toggle value={s.allowLandscape} onChange={(v) => update('allowLandscape', v)} />
-        </div>
-      </Row>
-      <Row label="Minimal Mode">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-white/70">Hide non-essential UI for deep focus</span>
-          <Toggle value={s.minimalMode} onChange={(v) => update('minimalMode', v)} />
         </div>
       </Row>
     </>

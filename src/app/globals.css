@@ -405,8 +405,36 @@ button:active:not(:disabled) {
   background-color: #000000 !important;
 }
 
-/* Minimal mode — hide non-essential UI elements */
+/* Minimal mode — hide non-essential UI elements + solid background */
 .minimal-mode .minimal-hide {
+  display: none !important;
+}
+
+/* Solid backgrounds in minimal mode (per theme) */
+.minimal-mode {
+  --bg-app: #000000;
+  --bg-card: #000000;
+  --bg-card-solid: #000000;
+  --bg-glass-strong: #000000;
+}
+.minimal-mode.light-mode-adapt {
+  --bg-app: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-solid: #ffffff;
+  --bg-glass-strong: #ffffff;
+}
+.minimal-mode.warm {
+  --bg-app: #faf3e8;
+  --bg-card: #fff8ed;
+  --bg-card-solid: #fff8ed;
+  --bg-glass-strong: #fffaf2;
+}
+
+/* Hide aurora/3D background in minimal mode */
+.minimal-mode .aurora-noise,
+.minimal-mode .aurora-vignette,
+.minimal-mode .grid-bg,
+.minimal-mode canvas {
   display: none !important;
 }
 

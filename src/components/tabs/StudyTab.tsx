@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Target as TargetIcon, Sparkles, X, Check, GripVertical, HelpCircle } from 'lucide-react';
+import { Plus, Target as TargetIcon, Sparkles, X, Check, GripVertical, HelpCircle, Eye, EyeOff } from 'lucide-react';
 import { Reorder, motion, AnimatePresence } from 'framer-motion';
 import { useTargets } from '@/lib/store/targets';
 import { useSession } from '@/lib/store/session';
@@ -30,6 +30,10 @@ export function StudyTab() {
   const [detailTarget, setDetailTarget] = useState<Target | null>(null);
   const [showDoubts, setShowDoubts] = useState(false);
   const pendingDoubts = useDoubts((s) => s.getPendingCount());
+  // Floating widget visibility — eye button in Study tab header
+  const widgetHidden = useSession((s) => s.widgetHidden);
+  const setWidgetHidden = useSession((s) => s.setWidgetHidden);
+  const activeSession = useSession((s) => s.active);
 
   const sortedTargets = useMemo(
     () => [...todayTargets].sort((a, b) => a.order - b.order),
@@ -101,8 +105,21 @@ export function StudyTab() {
             {formatHM(studySecToday)} / {Math.floor(expectedTotalMin / 60)}h {expectedTotalMin % 60}m
           </span>
         </div>
-        <div className="text-white/50 tabular" suppressHydrationWarning>
-          Done <span className="text-white font-semibold">{doneCount}</span>/{sortedTargets.length}
+        <div className="flex items-center gap-2">
+          <div className="text-white/50 tabular" suppressHydrationWarning>
+            Done <span className="text-white font-semibold">{doneCount}</span>/{sortedTargets.length}
+          </div>
+          {/* Eye button — toggle floating widget visibility (only on Study tab) */}
+          {activeSession && (
+            <button
+              onClick={() => { vibrate(10); setWidgetHidden(!widgetHidden); }}
+              className="w-8 h-8 rounded-lg glass flex items-center justify-center text-t-muted hover:text-t-primary transition active:scale-95"
+              aria-label={widgetHidden ? 'Show floating widget' : 'Hide floating widget'}
+              title={widgetHidden ? 'Show widget' : 'Hide widget'}
+            >
+              {widgetHidden ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          )}
         </div>
       </div>
 
