@@ -80,14 +80,17 @@ export function AppShell() {
 
     // Restore session on app load — auto-pause if was running
     useSession.getState().restoreSession();
+  }, []);
 
-    // Apply OLED Black + Minimal Mode on mount + when they change
+  // Apply OLED Black + Minimal Mode on mount
+  useEffect(() => {
     import('@/lib/store/settings').then(({ applyOledBlack, applyMinimalMode }) => {
       applyOledBlack(useSettings.getState().oledBlack);
       applyMinimalMode(useSettings.getState().minimalMode);
     });
+  }, []);
 
-    // Apply OLED Black when setting changes
+  // Apply OLED Black when setting changes
   useEffect(() => {
     import('@/lib/store/settings').then(({ applyOledBlack }) => applyOledBlack(oledBlack));
   }, [oledBlack]);
@@ -98,34 +101,34 @@ export function AppShell() {
   }, [minimalMode]);
 
   // === Back button prevention ===
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     // On PWA / mobile, a single back press should NOT exit the app.
     // Strategy: push a dummy history state on mount, then intercept popstate.
     // First back press: show "Press back again to exit" toast, re-push state.
     // Second back press (within 2s): allow exit.
-    if (typeof window !== 'undefined') {
-      // Push a dummy state so there's something to "go back" to
+    // Push a dummy state so there's something to "go back" to
+    window.history.pushState({ app: true }, '');
+    let backPressedAt = 0;
+    const onPopState = (e: PopStateEvent) => {
+      const now = Date.now();
+      if (now - backPressedAt < 2000) {
+        // Second press within 2s → allow exit
+        window.history.back();
+        return;
+      }
+      // First press → prevent exit, show toast, re-push state
+      backPressedAt = now;
       window.history.pushState({ app: true }, '');
-      let backPressedAt = 0;
-      const onPopState = (e: PopStateEvent) => {
-        const now = Date.now();
-        if (now - backPressedAt < 2000) {
-          // Second press within 2s → allow exit
-          window.history.back();
-          return;
-        }
-        // First press → prevent exit, show toast, re-push state
-        backPressedAt = now;
-        window.history.pushState({ app: true }, '');
-        vibrate(15);
-        import('@/components/shared/Toast').then(({ pushToast }) =>
-          pushToast('Press back again to exit', '', 'info')
-        );
-      };
-      window.addEventListener('popstate', onPopState);
-      return () => {
-        window.removeEventListener('popstate', onPopState);
-      };
-    }
+      vibrate(15);
+      import('@/components/shared/Toast').then(({ pushToast }) =>
+        pushToast('Press back again to exit', '', 'info')
+      );
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+    };
   }, []);
 
   // Configure sound system from settings (and re-configure when they change)
