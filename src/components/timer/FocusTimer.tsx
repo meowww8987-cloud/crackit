@@ -512,7 +512,6 @@ export function FocusTimer() {
               <RotateCw size={16} className={isLandscape ? 'rotate-90 transition-transform' : 'transition-transform'} />
             </button>
           )}
-          </button>
         </div>
       </div>
     </motion.div>
