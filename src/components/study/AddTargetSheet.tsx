@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, BookOpen, ChevronRight, ChevronLeft, BookOpen as LecIcon, FileText, StickyNote, RefreshCw, Star } from 'lucide-react';
+import { X, Check, BookOpen, ChevronRight, ChevronLeft, BookOpen as LecIcon, FileText, StickyNote, RefreshCw, Star, Atom, FlaskConical, Leaf, Dna, Layers } from 'lucide-react';
 import { useTargets } from '@/lib/store/targets';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useSession } from '@/lib/store/session';
@@ -26,8 +26,17 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof BookOpen; color: stri
 };
 const ACTIVITIES = Object.keys(ACTIVITY_CONFIG) as ActivityType[];
 
-// Preset snap points for the expected time slider
-const TIME_PRESETS = [15, 30, 45, 60, 90, 120];
+// Subject icons — each subject gets a unique icon (not just a color dot)
+const SUBJECT_ICONS: Record<string, typeof Atom> = {
+  Physics:   Atom,
+  Chemistry: FlaskConical,
+  Botany:    Leaf,
+  Zoology:   Dna,
+  General:   Layers,
+};
+
+// Preset snap points for the expected time slider — must match slider range
+const TIME_PRESETS = [30, 45, 60, 90, 120, 150, 180];
 
 export function AddTargetSheet({ editing, onClose }: Props) {
   const addTarget = useTargets((s) => s.addTarget);
@@ -183,7 +192,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
       if (diff < minDiff) { minDiff = diff; closest = p; }
     }
     // Only snap if within 7 min of a preset
-    return minDiff <= 7 ? closest : Math.round(val / 5) * 5;
+    return minDiff <= 7 ? closest : Math.max(30, Math.round(val / 5) * 5);
   };
 
   return (
@@ -255,6 +264,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                     const c = subjectColor(s);
                     const sel = subject === s;
                     const hasSyllabus = syllabusSubjects.some((sub) => sub.name === s);
+                    const SubjIcon = SUBJECT_ICONS[s] || Layers;
                     return (
                       <button
                         key={s}
@@ -265,12 +275,23 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                           vibrate(8);
                         }}
                         className={cn(
-                          'py-4 rounded-2xl text-sm font-bold transition border relative flex flex-col items-center gap-1',
-                          sel ? 'text-black' : 'text-white/70 border-white/10 bg-white/5'
+                          'py-4 rounded-2xl text-sm font-bold transition border relative flex flex-col items-center gap-1.5',
+                          sel ? 'text-black' : 'text-adaptive'
                         )}
-                        style={sel ? { background: c.hex, borderColor: c.hex } : undefined}
+                        style={sel
+                          ? { background: c.hex, borderColor: c.hex }
+                          : { background: `${c.hex}10`, borderColor: `${c.hex}30` }
+                        }
                       >
-                        <div className="w-5 h-5 rounded mb-0.5" style={{ background: sel ? 'rgba(0,0,0,0.2)' : c.hex }} />
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center"
+                          style={sel
+                            ? { background: 'rgba(0,0,0,0.15)' }
+                            : { background: `${c.hex}20` }
+                          }
+                        >
+                          <SubjIcon size={18} style={{ color: sel ? '#000' : c.hex }} />
+                        </div>
                         {s}
                         {hasSyllabus && (
                           <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-400" />
@@ -423,8 +444,8 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                         )}
                         style={sel ? { background: `${cfg.color}20`, borderColor: cfg.color } : undefined}
                       >
-                        <Icon size={16} style={{ color: sel ? cfg.color : 'rgba(255,255,255,0.4)' }} />
-                        <span className="text-[9px] font-semibold" style={{ color: sel ? cfg.color : 'rgba(255,255,255,0.5)' }}>{cfg.label}</span>
+                        <Icon size={16} style={{ color: sel ? cfg.color : 'var(--muted-foreground, rgba(128,128,128,0.6))' }} />
+                        <span className="text-[9px] font-semibold" style={{ color: sel ? cfg.color : 'var(--muted-foreground, rgba(128,128,128,0.6))' }}>{cfg.label}</span>
                       </button>
                     );
                   })}
@@ -439,7 +460,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                   {/* Slider */}
                   <input
                     type="range"
-                    min={10}
+                    min={30}
                     max={180}
                     step={5}
                     value={expectedMinutes}
