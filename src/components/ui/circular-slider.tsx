@@ -229,7 +229,14 @@ export function CircularSlider({
 
   return (
     <div
-      className={cn('relative inline-block select-none', disabled && 'opacity-50 pointer-events-none', className)}
+      // pointer-events: none on the WRAPPER DIV so the empty space inside
+      // (between/around the ring) is click-through. This is the critical
+      // fix for concentric stacking: the inner ring's div spans the full
+      // canvas and would otherwise intercept every click over the outer
+      // ring below. Descendants (the hit-zone circle + thumb circle)
+      // explicitly set pointer-events: stroke/all, which RE-ENABLES event
+      // capture on themselves despite the parent being none (per CSS spec).
+      className={cn('relative inline-block select-none pointer-events-none', disabled && 'opacity-50', className)}
       style={{ width: size, height: size, touchAction: 'none' }}
     >
       <svg

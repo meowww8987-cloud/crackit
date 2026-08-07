@@ -119,11 +119,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.5.1</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.5.2</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.5.2</strong> — Really fix outer Pomodoro ring: wrapper DIV (not just SVG) was intercepting pointer events over the outer ring. Added pointer-events: none to the div; hit-zone circles still receive events.</div>
             <div><strong className="text-white/70">v2.5.1</strong> — Fix outer Pomodoro ring not sliding (inner ring's SVG was intercepting pointer events on its empty center, blocking the outer ring below)</div>
             <div><strong className="text-white/70">v2.5.0</strong> — Sleep tracking with persistent banner + drag-to-wake + browser notification; Micro-break exercises (box breathing, 20-20-20, stretch); Study Pact with partner</div>
             <div><strong className="text-white/70">v2.4.3</strong> — Fix concentric rings having different centers (each ring computed its own canvas size from its own radius → misaligned). Now both rings share the same canvasSize so they're perfectly concentric.</div>
