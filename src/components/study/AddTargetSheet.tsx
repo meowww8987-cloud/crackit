@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, Check, ChevronDown, BookOpen } from 'lucide-react';
 import { useTargets } from '@/lib/store/targets';
@@ -8,6 +8,7 @@ import { useSyllabus } from '@/lib/store/syllabus';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
 import type { Subject, ActivityType, Target } from '@/lib/types';
 import { cn, todayKey, vibrate } from '@/lib/utils';
+import { getLearnedExpectedMinutes } from '@/lib/learnedTime';
 
 interface Props {
   editing?: Target | null;
@@ -37,6 +38,18 @@ export function AddTargetSheet({ editing, onClose }: Props) {
   const [customTopic, setCustomTopic] = useState(
     editing?.isChapterTarget ? '' : (editing?.topic && !editing.lectureId ? editing.topic : '')
   );
+
+  // === Auto-fill expected time from learned patterns ===
+  // When the user changes subject or activity (and is NOT editing an existing
+  // target), auto-fill the expected time with the median time they've
+  // previously spent on that subject+activity combination.
+  // E.g., if they usually study Physics Lectures for 110 min, the field
+  // auto-fills 110 instead of the default 60.
+  useEffect(() => {
+    if (editing) return; // don't override when editing existing target
+    const learned = getLearnedExpectedMinutes(subject, activity);
+    setExpectedMinutes(learned);
+  }, [subject, activity, editing]);
 
   // Chapters for selected subject (from user's syllabus)
   const availableChapters = useMemo(() => {

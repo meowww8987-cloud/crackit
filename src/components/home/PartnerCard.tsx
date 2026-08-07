@@ -11,11 +11,11 @@ import { useTests } from '@/lib/store/tests';
 import { useSettings } from '@/lib/store/settings';
 import { formatHM, todayKey, vibrate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
-import { pushToast } from '@/components/shared/Toast';
 import { PartnerComparisonSheet } from '@/components/partner/PartnerComparisonSheet';
 import { PartnerAvatar } from '@/components/partner/PartnerAvatar';
 import { PartnerProgressRing } from '@/components/partner/PartnerProgressRing';
 import { AnimatedCounter } from '@/components/partner/AnimatedCounter';
+// pushToast removed — partner notifications were annoying when clicking tabs.
 
 // Stable empty array for targets fallback — if we use `|| []` inline in the
 // Zustand selector, it creates a NEW array reference on every call, which
@@ -74,12 +74,9 @@ export function PartnerCard() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   void tick;
 
-  // Track partnerName changes so we can toast when someone joins.
+  // Track partnerName changes — silently (no toast notification).
+  // The user said partner toasts are annoying when clicking tabs.
   useEffect(() => {
-    if (!partnerNameRef.current && partner.partnerName) {
-      // First time we see a partner name — they just joined!
-      pushToast('Friend joined!', `${partner.partnerName} is now your study friend`, 'success');
-    }
     partnerNameRef.current = partner.partnerName;
   }, [partner.partnerName]);
 
@@ -594,7 +591,7 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
     setLoading(false);
     if (result.code) {
       setMode('menu');
-      pushToast('Pair created!', `Share code: ${result.code}`, 'success');
+      // No toast — silent success.
     } else {
       setError(result.error || 'Failed to create. Try again.');
     }
@@ -608,7 +605,7 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
     setLoading(false);
     if (result.ok) {
       onClose();
-      pushToast('Connected!', `You're now study friends`, 'success');
+      // No toast — silent success.
     } else {
       setError(result.error || 'Invalid code or pair is full.');
     }
@@ -617,7 +614,7 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
   const handleDisconnect = () => {
     disconnect();
     onClose();
-    pushToast('Disconnected', 'Partner removed', 'info');
+    // No toast — silent.
   };
 
   return (

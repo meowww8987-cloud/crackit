@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Target, TrendingUp, Calendar, FileText, Clock } from 'lucide-react';
 import { useHistory } from '@/lib/store/history';
@@ -110,6 +110,24 @@ export function HomeTab() {
 
   const todayPct = Math.min(100, Math.round((todaySec / (dailyGoal * 3600)) * 100));
   const yestPct = Math.min(100, Math.round((yestSec / (dailyGoal * 3600)) * 100));
+
+  // === Confetti on Goal Hit ===
+  // Fires once when the user crosses 100% of their daily goal.
+  const goalHitRef = useRef(false);
+  useEffect(() => {
+    if (todayPct >= 100 && !goalHitRef.current) {
+      goalHitRef.current = true;
+      // Trigger confetti from the Effects module
+      import('@/components/shared/Effects').then(({ triggerConfetti }) => {
+        triggerConfetti('big');
+      });
+      import('@/lib/sounds').then(({ playSound }) => playSound('success'));
+    }
+    // Reset if user drops below 100% (e.g., a session was deleted)
+    if (todayPct < 100) {
+      goalHitRef.current = false;
+    }
+  }, [todayPct]);
 
   const trendToday = yestSec > 0 ? Math.round(((todaySec - yestSec) / yestSec) * 100) : todaySec > 0 ? 100 : 0;
   const trendWeek = lastWeek > 0 ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100) : thisWeek > 0 ? 100 : 0;

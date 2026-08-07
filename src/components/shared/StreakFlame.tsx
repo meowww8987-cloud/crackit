@@ -33,13 +33,16 @@ export function StreakFlame({ streak, className }: Props) {
 
   if (streak <= 0) return null;
 
-  // Flame intensity levels
-  const level = streak >= 30 ? 'epic' : streak >= 14 ? 'fire' : streak >= 7 ? 'blaze' : 'spark';
+  // Flame intensity levels — grows with streak
+  // 1-6 = spark (small), 7-13 = blaze (medium), 14-29 = fire (large+glow),
+  // 30-99 = epic (larger+sparks), 100+ = golden (special golden flame)
+  const level = streak >= 100 ? 'golden' : streak >= 30 ? 'epic' : streak >= 14 ? 'fire' : streak >= 7 ? 'blaze' : 'spark';
   const config = {
-    spark: { size: 14, duration: '1.6s', glow: 'rgba(251,146,60,0.3)' },
-    blaze: { size: 16, duration: '1.2s', glow: 'rgba(251,146,60,0.5)' },
-    fire: { size: 18, duration: '0.9s', glow: 'rgba(239,68,68,0.5)' },
-    epic: { size: 20, duration: '0.7s', glow: 'rgba(239,68,68,0.7)' },
+    spark:  { size: 14, duration: '1.6s', glow: 'rgba(251,146,60,0.3)',  color: '#fb923c', emoji: '🔥' },
+    blaze:  { size: 16, duration: '1.2s', glow: 'rgba(251,146,60,0.5)',  color: '#fb923c', emoji: '🔥' },
+    fire:   { size: 18, duration: '0.9s', glow: 'rgba(239,68,68,0.5)',   color: '#ef4444', emoji: '🔥' },
+    epic:   { size: 20, duration: '0.7s', glow: 'rgba(239,68,68,0.7)',   color: '#ef4444', emoji: '🔥' },
+    golden: { size: 22, duration: '0.6s', glow: 'rgba(251,191,36,0.8)',  color: '#fbbf24', emoji: '🌟' },
   };
   const c = config[level];
 
@@ -48,7 +51,7 @@ export function StreakFlame({ streak, className }: Props) {
       className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-full border relative', className)}
       style={{
         background: c.glow,
-        borderColor: level === 'epic' ? 'rgba(239,68,68,0.4)' : 'rgba(251,146,60,0.3)',
+        borderColor: level === 'golden' ? 'rgba(251,191,36,0.5)' : level === 'epic' ? 'rgba(239,68,68,0.4)' : 'rgba(251,146,60,0.3)',
       }}
       animate={
         atRisk
@@ -85,23 +88,39 @@ export function StreakFlame({ streak, className }: Props) {
         }}
         style={{ fontSize: c.size, display: 'inline-block' }}
       >
-        🔥
+        {c.emoji}
       </motion.span>
       <span
         className="text-sm font-bold tabular"
-        style={{ color: level === 'epic' ? '#ef4444' : '#fb923c' }}
+        style={{ color: c.color }}
       >
         {streak}
       </span>
-      {level === 'epic' && (
-        <motion.span
-          className="absolute"
-          animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 2] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          style={{ fontSize: 8, color: '#fbbf24' }}
-        >
-          ✨
-        </motion.span>
+      {/* Particle sparks for epic (30+) + golden (100+) levels */}
+      {(level === 'epic' || level === 'golden') && (
+        <>
+          {[...Array(level === 'golden' ? 4 : 2)].map((_, i) => (
+            <motion.span
+              key={i}
+              className="absolute"
+              animate={{
+                opacity: [0, 1, 0],
+                scale: [0.5, 1.5, 2],
+                y: [0, -15 - i * 5],
+                x: [0, (i % 2 === 0 ? 8 : -8)],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                delay: i * 0.5,
+                ease: 'easeOut',
+              }}
+              style={{ fontSize: 8, color: level === 'golden' ? '#fbbf24' : '#fbbf24' }}
+            >
+              ✨
+            </motion.span>
+          ))}
+        </>
       )}
       {/* "AT RISK" pulse badge — appears when streak is in danger */}
       {atRisk && (
