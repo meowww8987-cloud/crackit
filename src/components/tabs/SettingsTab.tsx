@@ -23,6 +23,7 @@ import { cn, vibrate } from '@/lib/utils';
 import type { Settings } from '@/lib/types';
 import { TimetableEditor } from '@/components/timetable/TimetableEditor';
 import { ConcentricRings } from '@/components/ui/concentric-rings';
+import { triggerTutorialOnboarding } from '@/components/app/AppShell';
 
 type SectionKey = 'goals' | 'focus' | 'appearance' | 'notifications' | 'timetable' | 'data';
 
@@ -37,7 +38,6 @@ const SECTIONS: { key: SectionKey; label: string; icon: typeof TargetIcon; color
 
 export function SettingsTab() {
   const [open, setOpen] = useState<SectionKey>('goals');
-  const [showTutorialOnboarding, setShowTutorialOnboarding] = useState(false);
   const s = useSettings();
 
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
@@ -61,8 +61,8 @@ export function SettingsTab() {
               vibrate(15);
               update('tutorialMode', !(s.tutorialMode ?? false));
               if (!(s.tutorialMode ?? false)) {
-                // Just turned ON → show the onboarding overlay
-                setShowTutorialOnboarding(true);
+                // Just turned ON → trigger the global tutorial onboarding overlay
+                triggerTutorialOnboarding();
               }
             }}
             className={cn(
@@ -97,14 +97,6 @@ export function SettingsTab() {
           </button>
         </div>
       </div>
-
-      {/* Tutorial onboarding overlay — shows when tutorial is turned ON.
-          Teaches the user to long-press tabs to find the ? button. */}
-      <AnimatePresence>
-        {showTutorialOnboarding && (
-          <TutorialOnboarding onClose={() => setShowTutorialOnboarding(false)} />
-        )}
-      </AnimatePresence>
 
       {SECTIONS.map((sec) => {
         const Icon = sec.icon;
@@ -157,11 +149,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.7.0</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.7.1</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.7.1</strong> — Fix tutorial hand position (measure actual tab DOM position); overlay doesn't cover bottom nav (tabs tappable); only dismissable via 'I understood' or long-pressing correct tab; long-press progress ring</div>
             <div><strong className="text-white/70">v2.7.0</strong> — Long-press ALL tabs for full-screen overlay (top 50% / bottom 50% actions + ? tutorial); removed always-visible ? button; moved Tutorial toggle to header (left of Minimal); tutorial onboarding with hand animation + timer</div>
             <div><strong className="text-white/70">v2.6.7</strong> — Fix 90°/270° rotation swap (gamma mapping was backwards); adapt landscape layout (row flexDirection so controls visible); add orientation lock (long-press = persistent, double-tap = temporary)</div>
             <div><strong className="text-white/70">v2.6.6</strong> — Fill TopBar empty space (reduced paddingTop to safe-area only); move Build Syllabus + Formula Vault to Syllabus tab long-press; add TabInfoButton (tutorial + hidden features) to all tabs except Settings</div>
@@ -987,103 +980,3 @@ function PreviewStat({ label, value }: { label: string; value: number }) {
   );
 }
 
-// === Tutorial Onboarding Overlay ===
-// Shown when the user turns ON the Tutorial toggle in the header.
-// Teaches them to LONG-PRESS a tab in the bottom nav to find the ?
-// tutorial button. Shows a hand animation pointing at a random tab,
-// a countdown timer, and locks the rest of the UI. The user must
-// either long-press a tab (to discover the ? button) or tap "I understood".
-function TutorialOnboarding({ onClose }: { onClose: () => void }) {
-  // Pick a random tab to point at (excludes settings)
-  const [targetTab] = useState(() => {
-    const tabs = ['home', 'study', 'syllabus', 'history', 'tests', 'stats'];
-    return tabs[Math.floor(Math.random() * tabs.length)];
-  });
-  const [timer, setTimer] = useState(15); // 15-second countdown
-
-  useEffect(() => {
-    if (timer <= 0) return;
-    const i = setInterval(() => setTimer((t) => t - 1), 1000);
-    return () => clearInterval(i);
-  }, [timer]);
-
-  // Tab position in the bottom nav (1-indexed, left to right).
-  // The nav has: home(1), study(2), syllabus(3), history(4), tests(5), stats(6), settings(7)
-  // We point at the center of the target tab's button.
-  const tabIndex = ['home', 'study', 'syllabus', 'history', 'tests', 'stats', 'settings'].indexOf(targetTab);
-  // Each tab button is ~1/7 of the screen width. Center = (tabIndex + 0.5) / 7 * 100%
-  const targetX = ((tabIndex + 0.5) / 7) * 100;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center p-6"
-    >
-      <div className="absolute inset-0 bg-black/85 backdrop-blur-md" />
-
-      {/* Hand animation pointing down at the target tab in the bottom nav */}
-      <motion.div
-        className="absolute bottom-24 z-10"
-        style={{ left: `${targetX}%`, transform: 'translateX(-50%)' }}
-      >
-        <motion.div
-          animate={{ y: [0, -12, 0], rotate: [0, -5, 0] }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
-          className="text-5xl"
-          style={{ filter: 'drop-shadow(0 4px 12px rgba(168,85,247,0.5))' }}
-        >
-          👆
-        </motion.div>
-        {/* Pulsing ring around the target tab */}
-        <motion.div
-          className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full border-2 border-purple-400"
-          animate={{ scale: [1, 1.4, 1], opacity: [0.8, 0.3, 0.8] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      </motion.div>
-
-      {/* Center content */}
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="relative z-10 text-center max-w-sm"
-      >
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          className="text-5xl mb-4"
-        >
-          🎓
-        </motion.div>
-        <h2 className="text-lg font-bold text-white mb-2">Tutorial Mode On!</h2>
-        <p className="text-sm text-white/70 mb-4 leading-snug">
-          <strong className="text-purple-300">Long-press any tab</strong> in the bottom nav
-          to discover its quick actions + the <HelpCircle size={12} className="inline text-teal-400" /> tutorial button.
-        </p>
-        <p className="text-xs text-white/50 mb-1">
-          Try long-pressing the <strong className="text-purple-300 capitalize">{targetTab}</strong> tab 👇
-        </p>
-        {/* Countdown timer */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/15 border border-purple-500/30 mb-4">
-          <Timer size={12} className="text-purple-400" />
-          <span className="text-xs font-bold tabular text-purple-300">
-            {timer > 0 ? `${timer}s` : 'Go!'}
-          </span>
-        </div>
-        <div>
-          <button
-            onClick={() => { vibrate(10); onClose(); }}
-            className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-semibold transition active:scale-95"
-          >
-            I understood
-          </button>
-        </div>
-        <p className="text-[10px] text-white/40 mt-3">
-          You can turn tutorials off anytime with the Tutorial toggle above.
-        </p>
-      </motion.div>
-    </motion.div>
-  );
-}

@@ -46,6 +46,7 @@ export function TabLongPressOverlay({ tab, topAction, bottomAction, onTutorial, 
 
   return (
     <motion.div
+      data-tab-long-press-overlay
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

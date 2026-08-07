@@ -39,6 +39,7 @@ import { usePartnerSync } from '@/hooks/usePartnerSync';
 import { SleepLockScreen } from '@/components/dailylog/SleepLockScreen';
 import { TabLongPressOverlay } from '@/components/shared/TabLongPressOverlay';
 import { TabInfoSheet, type TabKey as InfoTabKey } from '@/components/shared/TabInfoSheet';
+import { TutorialOnboarding } from '@/components/shared/TutorialOnboarding';
 
 // Global state for showing the active recall challenge (avoids prop drilling)
 let _showRecallChallenge: () => void = () => {};
@@ -47,6 +48,10 @@ export function triggerRecallChallenge() { _showRecallChallenge(); }
 // Global state for showing the progress timeline
 let _showTimeline: () => void = () => {};
 export function triggerTimeline() { _showTimeline(); }
+
+// Global state for showing the tutorial onboarding overlay
+let _showTutorialOnboarding: () => void = () => {};
+export function triggerTutorialOnboarding() { _showTutorialOnboarding(); }
 
 const TABS: { key: TabKey; label: string; icon: typeof Home }[] = [
   { key: 'home', label: 'Home', icon: Home },
@@ -72,6 +77,8 @@ export function AppShell() {
   const [longPressTab, setLongPressTab] = useState<InfoTabKey | null>(null);
   // Tutorial info sheet — shown when user taps the ? button in the long-press overlay
   const [infoTab, setInfoTab] = useState<InfoTabKey | null>(null);
+  // Tutorial onboarding overlay — shown when user turns ON tutorial toggle
+  const [showTutorialOnboarding, setShowTutorialOnboarding] = useState(false);
   const [showBuildSheet, setShowBuildSheet] = useState(false);
   const [showFormulaVault, setShowFormulaVault] = useState(false);
   const [showPaperTestPicker, setShowPaperTestPicker] = useState(false);
@@ -86,10 +93,11 @@ export function AppShell() {
   // Track previous tab for directional page transitions
   const prevTabRef = useRef<TabKey | null>(null);
 
-  // Register the recall trigger
+  // Register the recall + tutorial triggers
   useEffect(() => {
     _showRecallChallenge = () => setShowRecall(true);
     _showTimeline = () => setShowTimeline(true);
+    _showTutorialOnboarding = () => setShowTutorialOnboarding(true);
 
     // Restore session on app load — auto-pause if was running
     useSession.getState().restoreSession();
@@ -390,6 +398,12 @@ export function AppShell() {
                   const isLongPressable = tab.key !== 'settings';
                   const longPressHandler = isLongPressable ? () => {
                     studyTabLongPress.current = setTimeout(() => {
+                      // If tutorial onboarding is active, dismiss it (the user
+                      // successfully long-pressed a tab — that's the goal).
+                      // Then show the overlay for this tab.
+                      if (showTutorialOnboarding) {
+                        setShowTutorialOnboarding(false);
+                      }
                       // Show the full-screen overlay for this tab
                       setLongPressTab(tab.key as InfoTabKey);
                       vibrate(20);
@@ -613,6 +627,16 @@ export function AppShell() {
           a bluish night scene. Double-tap + solve a math problem to
           wake up and unlock the app. === */}
       <SleepLockScreen />
+
+      {/* === Tutorial Onboarding — shown when user turns ON the Tutorial toggle.
+          Teaches the user to long-press tabs. Covers everything EXCEPT the
+          bottom nav so the user can actually long-press tabs. Only dismissable
+          via "I understood" or actually long-pressing the target tab. === */}
+      <AnimatePresence>
+        {showTutorialOnboarding && (
+          <TutorialOnboarding onClose={() => setShowTutorialOnboarding(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
