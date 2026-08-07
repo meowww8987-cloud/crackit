@@ -171,43 +171,8 @@ export function TutorialOnboarding({ onClose }: Props) {
         WebkitMaskImage: 'linear-gradient(180deg, black 0%, black calc(100% - 100px), transparent calc(100% - 100px), transparent 100%)',
       }}
     >
-      {/* === Hand pointing at the target tab === */}
-      {handPos && (
-        <motion.div
-          className="absolute pointer-events-none"
-          style={{
-            left: handPos.x,
-            top: handPos.y - 70, // 70px above the tab button
-            transform: 'translateX(-50%)',
-          }}
-        >
-          {/* Bouncing hand */}
-          <motion.div
-            animate={{ y: [0, 10, 0] }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
-            className="text-5xl"
-            style={{ filter: 'drop-shadow(0 4px 12px rgba(168,85,247,0.6))' }}
-          >
-            👆
-          </motion.div>
-          {/* Long-press progress ring (shows when user is pressing) */}
-          {pressProgress > 0 && (
-            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
-              <svg width="32" height="32" viewBox="0 0 32 32" className="-rotate-90">
-                <circle cx="16" cy="16" r="13" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="3" />
-                <circle
-                  cx="16" cy="16" r="13" fill="none" stroke="#a855f7" strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeDasharray={`${(pressProgress / 100) * 81.68} 81.68`}
-                  style={{ transition: 'stroke-dasharray 0.05s linear' }}
-                />
-              </svg>
-            </div>
-          )}
-        </motion.div>
-      )}
-
-      {/* === Pulsing ring around the target tab === */}
+      {/* === Pulsing ring around the target tab (no hand emoji — it was
+          misaligned and made the UI feel cluttered) === */}
       {handPos && (
         <motion.div
           className="absolute pointer-events-none"
@@ -217,11 +182,27 @@ export function TutorialOnboarding({ onClose }: Props) {
             transform: 'translate(-50%, -50%)',
           }}
         >
+          {/* Pulsing ring */}
           <motion.div
-            animate={{ scale: [1, 1.5, 1], opacity: [0.8, 0.2, 0.8] }}
+            animate={{ scale: [1, 1.6, 1], opacity: [0.9, 0.2, 0.9] }}
             transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
             className="w-12 h-12 rounded-full border-2 border-purple-400"
+            style={{ boxShadow: '0 0 20px rgba(168,85,247,0.4)' }}
           />
+          {/* Long-press progress ring (shows when user is pressing) */}
+          {pressProgress > 0 && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg width="48" height="48" viewBox="0 0 48 48" className="-rotate-90">
+                <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="4" />
+                <circle
+                  cx="24" cy="24" r="20" fill="none" stroke="#a855f7" strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(pressProgress / 100) * 125.66} 125.66`}
+                  style={{ transition: 'stroke-dasharray 0.05s linear' }}
+                />
+              </svg>
+            </div>
+          )}
         </motion.div>
       )}
 

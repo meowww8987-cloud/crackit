@@ -599,6 +599,22 @@ html.gold img[src="/logo.svg"] {
   }
   * {
     @apply border-border outline-ring/50;
+    /* Disable text selection globally — prevents the Android long-press
+       "copy" popup from appearing on every UI element. Only inputs,
+       textareas, and contenteditable elements (typing areas) can be
+       selected. This is the standard mobile-app behavior. */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none; /* iOS: disable long-press callout */
+  }
+  /* Re-enable text selection for typing areas — users need to select
+     + edit text inside inputs, textareas, and contenteditable elements. */
+  input, textarea, [contenteditable="true"], [contenteditable=""] {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
   }
   body {
     @apply bg-background text-foreground;

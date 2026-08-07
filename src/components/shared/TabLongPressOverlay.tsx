@@ -55,13 +55,15 @@ export function TabLongPressOverlay({ tab, topAction, bottomAction, onTutorial, 
     >
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
 
-      {/* Close button — top-right */}
+      {/* Close button — top-right, clearly visible.
+          Single tap returns to the tab (closes the overlay). */}
       <button
-        onClick={(e) => { e.stopPropagation(); onClose(); }}
-        className="absolute top-[env(safe-area-inset-top,0px)] top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition"
-        aria-label="Close"
+        onClick={(e) => { e.stopPropagation(); vibrate(8); onClose(); }}
+        className="absolute top-[env(safe-area-inset-top,0px)] top-4 right-4 z-10 w-11 h-11 rounded-full bg-white/15 border border-white/25 flex items-center justify-center text-white hover:bg-white/25 transition shadow-lg active:scale-90"
+        aria-label="Close — back to tab"
+        title="Close — back to tab"
       >
-        <X size={20} />
+        <X size={22} strokeWidth={2.5} />
       </button>
 
       {/* === Single action takes full screen === */}
