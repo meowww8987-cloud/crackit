@@ -25,8 +25,14 @@ export function FocusTimer() {
   const [timerPos, setTimerPos] = useState({ x: 0, y: 0 });
   const [wasteFlash, setWasteFlash] = useState<number | null>(null); // seconds wasted on return
   const [showPulse, setShowPulse] = useState(false);
-  // Landscape detection — rotates the timer layout when phone is sideways
-  const [isLandscape, setIsLandscape] = useState(false);
+  // === Orientation detection — supports all 4 directions (0°, 90°, 180°, 270°).
+  // Uses the Screen Orientation API (screen.orientation.angle) when available,
+  // falls back to the deprecated window.orientation. Always-on in fullscreen —
+  // no longer gated behind settings.allowLandscape (the user wants the focus
+  // session to ALWAYS respect device orientation).
+  // orientationAngle: 0 = portrait upright, 90 = landscape (home button left),
+  // 180 = portrait upside-down, 270 = landscape (home button right).
+  const [orientationAngle, setOrientationAngle] = useState(0);
   const lastWastedRef = useRef(0);
   const lastInteractRef = useRef(Date.now());
 
@@ -36,21 +42,42 @@ export function FocusTimer() {
     return () => clearInterval(i);
   }, []);
 
-  // === Landscape detection ===
+  // === Orientation detection — auto-detects device rotation in all 4 directions ===
   useEffect(() => {
-    if (!settings.allowLandscape) return;
-    const checkOrientation = () => {
-      const landscape = window.innerWidth > window.innerHeight;
-      setIsLandscape(landscape);
+    const detectOrientation = () => {
+      let angle = 0;
+      // Preferred: Screen Orientation API (Chrome, Firefox, Safari 16.4+)
+      if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.angle === 'number') {
+        angle = screen.orientation.angle;
+      } else if (typeof window !== 'undefined' && typeof (window as any).orientation === 'number') {
+        // Deprecated fallback (older Safari, stock Android browsers)
+        angle = (window as any).orientation;
+      } else {
+        // Last-resort fallback: infer from aspect ratio (only detects 0 vs 90)
+        angle = window.innerWidth > window.innerHeight ? 90 : 0;
+      }
+      // Normalize to [0, 360)
+      angle = ((angle % 360) + 360) % 360;
+      setOrientationAngle(angle);
     };
-    checkOrientation();
-    window.addEventListener('resize', checkOrientation);
-    window.addEventListener('orientationchange', checkOrientation);
+
+    detectOrientation();
+    // 'orientationchange' fires on mobile when the device rotates.
+    // 'resize' fires on desktop when the window is resized.
+    // 'change' on screen.orientation is the modern equivalent.
+    window.addEventListener('orientationchange', detectOrientation);
+    window.addEventListener('resize', detectOrientation);
+    if (typeof screen !== 'undefined' && screen.orientation) {
+      screen.orientation.addEventListener('change', detectOrientation);
+    }
     return () => {
-      window.removeEventListener('resize', checkOrientation);
-      window.removeEventListener('orientationchange', checkOrientation);
+      window.removeEventListener('orientationchange', detectOrientation);
+      window.removeEventListener('resize', detectOrientation);
+      if (typeof screen !== 'undefined' && screen.orientation) {
+        screen.orientation.removeEventListener('change', detectOrientation);
+      }
     };
-  }, [settings.allowLandscape]);
+  }, []);
 
   // Watch for wasted seconds increase (returning from background) — show flash
   useEffect(() => {
@@ -245,20 +272,29 @@ export function FocusTimer() {
         transition: 'background-image 800ms ease-in-out, background-color 800ms ease-in-out',
       }}
     >
-      {/* === Inner wrapper for landscape rotation === */}
+      {/* === Inner wrapper for orientation rotation === */}
       {/* The outer div stays fixed inset-0 (always fills screen, always black). */}
-      {/* The inner div rotates its CONTENT without breaking the full-screen layout. */}
+      {/* The inner div rotates its CONTENT to match the device's physical
+          orientation. Supports all 4 angles: 0° (upright), 90° (landscape left),
+          180° (upside-down), 270° (landscape right). */}
       <div style={{
         width: '100%',
         height: '100%',
         display: 'flex',
-        flexDirection: isLandscape ? 'row' : 'column',
+        flexDirection: (orientationAngle === 90 || orientationAngle === 270) ? 'row' : 'column',
         alignItems: 'center',
-        justifyContent: isLandscape ? 'center' : 'space-between',
-        gap: isLandscape ? '2rem' : undefined,
-        padding: isLandscape ? '1.5rem 3rem' : '3rem 1.5rem',
-        transform: isLandscape ? 'rotate(90deg)' : 'none',
+        justifyContent: (orientationAngle === 90 || orientationAngle === 270) ? 'center' : 'space-between',
+        gap: (orientationAngle === 90 || orientationAngle === 270) ? '2rem' : undefined,
+        padding: (orientationAngle === 90 || orientationAngle === 270) ? '1.5rem 3rem' : '3rem 1.5rem',
+        transform: `rotate(${orientationAngle}deg)`,
         transformOrigin: 'center center',
+        // In landscape (90°/270°), give the rotated content portrait-shaped
+        // bounds so it fills the landscape viewport after rotation.
+        ...((orientationAngle === 90 || orientationAngle === 270) ? {
+          maxWidth: '100vh',
+          maxHeight: '100vw',
+          margin: 'auto',
+        } : {}),
       }}>
       {/* Wasted time flash — shows when returning from background */}
       {wasteFlash !== null && (
@@ -515,21 +551,26 @@ export function FocusTimer() {
           >
             <ChevronDown size={16} /> Min
           </button>
-          {/* Landscape toggle button — manually switch between portrait/landscape layout */}
-          {settings.allowLandscape && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleInteraction();
-                setIsLandscape(!isLandscape);
-                vibrate(8);
-              }}
-              className="px-4 py-4 rounded-2xl font-semibold text-sm bg-white/5 text-white/70 active:scale-[0.98] transition flex items-center justify-center gap-1.5"
-              title="Toggle landscape mode"
-            >
-              <RotateCw size={16} className={isLandscape ? 'rotate-90 transition-transform' : 'transition-transform'} />
-            </button>
-          )}
+          {/* Orientation rotate button — cycles through all 4 directions
+              (0° → 90° → 180° → 270° → 0°). Always available (no setting gate)
+              so the user can manually rotate the timer in any direction.
+              The icon rotates to match the current orientation. */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleInteraction();
+              setOrientationAngle((prev) => (prev + 90) % 360);
+              vibrate(8);
+            }}
+            className="px-4 py-4 rounded-2xl font-semibold text-sm bg-white/5 text-white/70 active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+            title={`Rotate (current: ${orientationAngle}°)`}
+            aria-label="Rotate orientation"
+          >
+            <RotateCw
+              size={16}
+              style={{ transform: `rotate(${orientationAngle}deg)`, transition: 'transform 0.3s ease' }}
+            />
+          </button>
         </div>
       </div>
       </div>
