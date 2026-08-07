@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff, PlayCircle, Brain, ChevronRight, Plus, Sigma, HelpCircle, Target, Trophy, ClipboardList, TrendingUp } from 'lucide-react';
 import { useNav, type TabKey, TAB_ORDER } from '@/lib/store/nav';
 import { useSession } from '@/lib/store/session';
-import { cn, vibrate } from '@/lib/utils';
+import { cn, vibrate, todayKey } from '@/lib/utils';
 import { FocusTimer } from '@/components/timer/FocusTimer';
 import { FloatingWidget } from '@/components/widget/FloatingWidget';
 import { MoodPicker } from '@/components/timer/MoodPicker';
@@ -21,7 +21,9 @@ import { FreeStudyPicker } from '@/components/study/FreeStudyPicker';
 import { BuildSyllabusSheet } from '@/components/syllabus/BuildSyllabusSheet';
 import { FormulaVault } from '@/components/syllabus/FormulaVault';
 import { WeeklyGoalCard } from '@/components/home/WeeklyGoalCard';
-import { useHistory } from '@/lib/store/history';
+import { useDragState } from '@/lib/store/dragState';
+import { useTargets } from '@/lib/store/targets';
+import { useSyllabus as useSyllabusStore } from '@/lib/store/syllabus';
 import { PWARegister } from '@/components/pwa/PWARegister';
 import { ToastContainer, pushToast } from '@/components/shared/Toast';
 import { ProgressTimeline } from '@/components/timeline/ProgressTimeline';
@@ -90,6 +92,11 @@ export function AppShell() {
   const [activePaperTestId, setActivePaperTestId] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  // === Drag-from-Syllabus-to-Study state ===
+  const draggedLectureId = useDragState((s) => s.draggedLectureId);
+  const isOverStudyTab = useDragState((s) => s.isOverStudyTab);
+  const setOverStudyTab = useDragState((s) => s.setOverStudyTab);
+  const endDrag = useDragState((s) => s.endDrag);
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -97,6 +104,44 @@ export function AppShell() {
   const studyTabLongPress = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track previous tab for directional page transitions
   const prevTabRef = useRef<TabKey | null>(null);
+
+  // === Handle drop on Study tab (drag from Syllabus) ===
+  const handleDropOnStudyTab = useCallback(() => {
+    if (!draggedLectureId || !isOverStudyTab) {
+      endDrag();
+      return;
+    }
+    // Find the lecture + chapter + subject from the syllabus
+    const lectures = useSyllabusStore.getState().lectures;
+    const chapters = useSyllabusStore.getState().chapters;
+    const subjects = useSyllabusStore.getState().subjects;
+    const lec = lectures.find((l) => l.id === draggedLectureId);
+    if (lec) {
+      const ch = chapters.find((c) => c.id === lec.chapterId);
+      const subj = subjects.find((s) => s.id === ch?.subjectId);
+      if (ch && subj) {
+        // Create a target with learned expected time
+        import('@/lib/learnedTime').then(({ getLearnedExpectedMinutes }) => {
+          const expectedMin = getLearnedExpectedMinutes(subj.name as any, 'Lecture');
+          useTargets.getState().addTarget({
+            date: todayKey(),
+            subject: subj.name as any,
+            activity: 'Lecture',
+            chapter: ch.name,
+            lecture: `L${lec.lecNo}`,
+            topic: lec.topic,
+            expectedMinutes: expectedMin,
+            lectureId: lec.id,
+            chapterId: ch.id,
+          });
+          vibrate([10, 30, 10]);
+          // Switch to Study tab so user sees the new target
+          setTab('study');
+        });
+      }
+    }
+    endDrag();
+  }, [draggedLectureId, isOverStudyTab, endDrag]);
 
   // Register the recall + tutorial triggers
   useEffect(() => {
@@ -471,6 +516,12 @@ export function AppShell() {
                     <button
                       key={tab.key}
                       onClick={() => {
+                        if (draggedLectureId) {
+                          // If dragging, clicking the Study tab = drop
+                          if (tab.key === 'study') handleDropOnStudyTab();
+                          else endDrag();
+                          return;
+                        }
                         if (activeTab !== tab.key) {
                           setTab(tab.key);
                           vibrate(8);
@@ -479,13 +530,31 @@ export function AppShell() {
                       }}
                       onContextMenu={(e) => e.preventDefault()}
                       onPointerDown={longPressHandler}
-                      onPointerUp={clearLongPress}
-                      onPointerLeave={clearLongPress}
+                      onPointerUp={(e) => {
+                        clearLongPress();
+                        // Handle drag-drop on Study tab
+                        if (draggedLectureId && tab.key === 'study') {
+                          handleDropOnStudyTab();
+                        }
+                      }}
+                      onPointerEnter={() => {
+                        if (draggedLectureId && tab.key === 'study') {
+                          setOverStudyTab(true);
+                          vibrate(8);
+                        }
+                      }}
+                      onPointerLeave={() => {
+                        if (draggedLectureId && tab.key === 'study') {
+                          setOverStudyTab(false);
+                        }
+                      }}
                       onPointerCancel={clearLongPress}
                       className={cn(
                         'relative flex flex-col items-center justify-center rounded-xl transition-all',
                         'min-w-[42px] h-12 px-1.5',
                         isActive ? 'text-adaptive' : 'text-adaptive-muted hover:text-adaptive',
+                        // Highlight Study tab when dragging a lecture from Syllabus
+                        draggedLectureId && tab.key === 'study' && 'bg-teal-500/20 ring-2 ring-teal-400/50 scale-110',
                         // Hide History, Tests, Stats tabs in Minimal Mode
                         minimalMode && (tab.key === 'history' || tab.key === 'tests' || tab.key === 'stats') && 'minimal-hide'
                       )}

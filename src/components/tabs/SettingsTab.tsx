@@ -146,12 +146,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.10.0</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.11.0</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
-            <div><strong className="text-white/70">v2.10.0</strong> — Confetti on goal hit; streak flame growth (30+ sparks, 100+ golden); done checkmark draw animation; empty state illustrations; removed partner toasts; auto-fill expected time from learned patterns</div>
+            <div><strong className="text-white/70">v2.11.0</strong> — 3-step Add Target wizard (subject→chapter+lecture→confirm); expected time slider with preset snap points; activity color-coded icons; smart default subject (last studied); auto-scroll to current chapter; drag-from-Syllabus-to-Study-tab creates target with learned time</div>
             <div><strong className="text-white/70">v2.7.5</strong> — PWA fullscreen: manifest display='fullscreen' + display_override. Install (Add to Home Screen) for true fullscreen with NO browser banner. Updated install prompt + fullscreen hint.</div>
             <div><strong className="text-white/70">v2.7.4</strong> — Remove ALL requestFullscreen() calls (browser 'To exit full screen, press Esc' banner is gone). App still looks fullscreen via CSS viewport-fit:cover.</div>
             <div><strong className="text-white/70">v2.7.3</strong> — Fix fullscreen: request on first user gesture (browsers block it on load), early inline script in layout.tsx, address bar hidden on load via scrollTo</div>
