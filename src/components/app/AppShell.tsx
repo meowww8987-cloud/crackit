@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff } from 'lucide-react';
+import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff, PlayCircle, Brain, ChevronRight } from 'lucide-react';
 import { useNav, type TabKey, TAB_ORDER } from '@/lib/store/nav';
 import { useSession } from '@/lib/store/session';
 import { cn, vibrate } from '@/lib/utils';
@@ -64,6 +64,7 @@ export function AppShell() {
   const [navVisible, setNavVisible] = useState(true);
   const [showRecall, setShowRecall] = useState(false);
   const [showFreeStudy, setShowFreeStudy] = useState(false);
+  const [showStudyActions, setShowStudyActions] = useState(false);
   const [showPaperTestPicker, setShowPaperTestPicker] = useState(false);
   const [activePaperTestId, setActivePaperTestId] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
@@ -382,7 +383,8 @@ export function AppShell() {
                   const longPressHandler = isStudyTab || isTestsTab ? () => {
                     if (isStudyTab) {
                       studyTabLongPress.current = setTimeout(() => {
-                        setShowFreeStudy(true);
+                        // Show the action sheet with both options (Free Study + Daily Recall)
+                        setShowStudyActions(true);
                         vibrate(20);
                       }, 500);
                     } else {
@@ -474,6 +476,17 @@ export function AppShell() {
         {showRecall && <ActiveRecallChallenge key="recall" onClose={() => setShowRecall(false)} />}
       </AnimatePresence>
 
+      {/* === Study tab long-press action sheet — shows both Free Study + Daily Recall === */}
+      <AnimatePresence>
+        {showStudyActions && (
+          <StudyActionsSheet
+            onClose={() => setShowStudyActions(false)}
+            onFreeStudy={() => { setShowStudyActions(false); setShowFreeStudy(true); }}
+            onRecall={() => { setShowStudyActions(false); setShowRecall(true); }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Free Study Picker */}
       <AnimatePresence>
         {showFreeStudy && <FreeStudyPicker key="freestudy" onClose={() => setShowFreeStudy(false)} />}
@@ -548,4 +561,78 @@ function enterFullscreen() {
       document.documentElement.requestFullscreen().catch(() => {});
     }
   } catch {}
+}
+
+// === Study tab long-press action sheet — two options:
+//   1. Free Study (start a session without a specific target)
+//   2. Daily Recall Challenge (spaced-repetition memory test)
+// Replaces the old behavior where long-press only opened Free Study.
+function StudyActionsSheet({
+  onClose,
+  onFreeStudy,
+  onRecall,
+}: {
+  onClose: () => void;
+  onFreeStudy: () => void;
+  onRecall: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[90] flex items-end justify-center"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md glass-strong rounded-t-3xl p-5 pb-8"
+      >
+        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+        <h2 className="text-base font-bold mb-4 text-center">Quick Actions</h2>
+
+        {/* Free Study */}
+        <button
+          onClick={onFreeStudy}
+          className="w-full p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition flex items-center gap-3 mb-2 active:scale-[0.98]"
+        >
+          <div className="w-11 h-11 rounded-xl bg-teal-500/15 flex items-center justify-center shrink-0">
+            <PlayCircle size={22} className="text-teal-400" />
+          </div>
+          <div className="flex-1 text-left">
+            <div className="text-sm font-semibold text-teal-300">Free Study</div>
+            <div className="text-[11px] text-t-muted">Start a focus session without a target</div>
+          </div>
+          <ChevronRight size={16} className="text-white/30" />
+        </button>
+
+        {/* Daily Recall Challenge */}
+        <button
+          onClick={onRecall}
+          className="w-full p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition flex items-center gap-3 active:scale-[0.98]"
+        >
+          <div className="w-11 h-11 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0">
+            <Brain size={22} className="text-purple-400" />
+          </div>
+          <div className="flex-1 text-left">
+            <div className="text-sm font-semibold text-purple-300">Daily Recall Challenge</div>
+            <div className="text-[11px] text-t-muted">Test your memory of recent topics</div>
+          </div>
+          <ChevronRight size={16} className="text-white/30" />
+        </button>
+
+        <button
+          onClick={onClose}
+          className="w-full mt-4 py-3 rounded-xl bg-white/5 text-t-secondary text-sm font-medium hover:bg-white/10 transition"
+        >
+          Cancel
+        </button>
+      </motion.div>
+    </motion.div>
+  );
 }

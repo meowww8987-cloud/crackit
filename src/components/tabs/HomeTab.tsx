@@ -2,15 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, TrendingUp, Calendar, FileText, Brain, Clock, ChevronRight } from 'lucide-react';
+import { Target, TrendingUp, Calendar, FileText, Clock } from 'lucide-react';
 import { useHistory } from '@/lib/store/history';
 import { useSettings } from '@/lib/store/settings';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTests } from '@/lib/store/tests';
 import { useTimetable } from '@/lib/store/timetable';
 import { useRecall } from '@/lib/store/recall';
-import { formatHM, longDate, diffDays, todayKey, isRevisionOverdue } from '@/lib/utils';
-import { triggerRecallChallenge } from '@/components/app/AppShell';
+import { formatHM, longDate, diffDays, todayKey, isRevisionOverdue, vibrate } from '@/lib/utils';
 import { AchievementBadges } from '@/components/shared/AchievementBadges';
 import { ScorePredictionCard } from '@/components/home/ScorePredictionCard';
 import { MiniHeatmap } from '@/components/home/MiniHeatmap';
@@ -24,7 +23,6 @@ import { NumberMorph } from '@/components/shared/NumberMorph';
 import { StreakFlame } from '@/components/shared/StreakFlame';
 import { useDailyLog } from '@/lib/store/dailyLog';
 import { SleepLogSheet } from '@/components/dailylog/SleepLogSheet';
-import { SleepBanner } from '@/components/dailylog/SleepBanner';
 import { useSleep } from '@/lib/store/sleep';
 import { useDoubts } from '@/lib/store/doubts';
 import { getSubjectHealthScores } from '@/lib/healthScore';
@@ -40,10 +38,16 @@ export function HomeTab() {
   const dailyGoal = useSettings((s) => s.dailyGoalHours);
   const examDate = useSettings((s) => s.examDate);
   const prepStart = useSettings((s) => s.prepStartDate);
+  const haptics = useSettings((s) => s.haptics);
+  // Sleep — tapping the NEET logo starts sleep mode (the logo is the universal
+  // sleep trigger; no extra banner needed).
+  const startSleep = useSleep((s) => s.startSleep);
+  const activeSleep = useSleep((s) => s.activeSleep);
   const syllabusLectures = useSyllabus((s) => s.lectures);
   const tests = useTests((s) => s.tests);
   const timetableSlots = useTimetable((s) => s.slots);
   const recallChallenges = useRecall((s) => s.challenges);
+  void recallChallenges; // kept for future use; recall trigger now lives in Study tab long-press
 
   // Compute derived values with useMemo
   const todaySec = useMemo(() => {
@@ -105,11 +109,6 @@ export function HomeTab() {
       .sort((a, b) => a.startHour - b.startHour);
   }, [timetableSlots]);
 
-  const todayRecall = useMemo(
-    () => recallChallenges.find((c) => c.date === todayKey()),
-    [recallChallenges]
-  );
-
   const todayPct = Math.min(100, Math.round((todaySec / (dailyGoal * 3600)) * 100));
   const yestPct = Math.min(100, Math.round((yestSec / (dailyGoal * 3600)) * 100));
 
@@ -125,11 +124,33 @@ export function HomeTab() {
     <div className="pt-2 pb-4 space-y-4">
       {/* Mission Control Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {/* NEET logo mark — replaces the generic Target icon for brand identity */}
-          <img src="/logo.svg" alt="" className="w-7 h-7" />
+        {/* NEET logo + title — TAPPING THE LOGO starts sleep mode.
+            The logo is the universal sleep trigger (no extra banner needed).
+            Long-press the logo to open the manual sleep log sheet. */}
+        <button
+          onClick={() => {
+            if (activeSleep) return; // already sleeping — lock screen handles it
+            if (haptics) vibrate(12);
+            // Request notification permission if not granted
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+              Notification.requestPermission();
+            }
+            startSleep();
+          }}
+          className="flex items-center gap-2 group active:scale-[0.97] transition"
+          title="Tap to start sleep mode"
+          aria-label="Tap logo to start sleep mode"
+        >
+          <motion.img
+            src="/logo.svg"
+            alt=""
+            className="w-7 h-7"
+            animate={haptics ? { rotate: [0, -8, 8, 0] } : {}}
+            transition={{ duration: 0.4 }}
+            whileHover={{ scale: 1.1 }}
+          />
           <h1 className="text-xl font-bold">NEET 2027</h1>
-        </div>
+        </button>
         {/* StreakFlame is gated behind `mounted` because `streak` is derived
             from persisted Zustand state (sessions) — 0 on server, real value
             on client after rehydration. Rendering conditionally without this
@@ -137,10 +158,6 @@ export function HomeTab() {
         {mounted && <StreakFlame streak={streak} />}
       </motion.div>
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-sm text-white/50 -mt-2" suppressHydrationWarning>{longDate()}</motion.p>
-
-      {/* === Sleep Banner — persistent at top. When sleeping, shows live
-          timer + drag-to-wake. When awake, shows "Going to sleep?" button. === */}
-      <SleepBanner />
 
       {/* Countdown Card */}
       <motion.div
@@ -202,22 +219,6 @@ export function HomeTab() {
           a focused, calming test-day layout. */}
       <TestDayMode />
 
-      {/* Active Recall Challenge CTA */}
-      {!todayRecall?.completedAt && (
-        <button
-          onClick={() => triggerRecallChallenge()}
-          className="w-full glass rounded-2xl p-3 flex items-center gap-3 hover:bg-white/[0.07] transition border border-purple-500/20"
-        >
-          <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
-            <Brain size={18} className="text-purple-400" />
-          </div>
-          <div className="flex-1 text-left">
-            <div className="text-sm font-semibold text-purple-300">Daily Recall Challenge</div>
-            <div className="text-[10px] text-white/40">Test your memory of recent topics</div>
-          </div>
-          <ChevronRight size={16} className="text-white/40" />
-        </button>
-      )}
       <div className="grid grid-cols-2 gap-3">
         <RingComparison
           title="Today vs Yesterday"
