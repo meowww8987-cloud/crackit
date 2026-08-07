@@ -243,16 +243,22 @@ export function CircularSlider({
         aria-valuenow={value}
         aria-label={ariaLabel}
         tabIndex={0}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
         onKeyDown={handleKeyDown}
         className={cn('outline-none cursor-pointer', dragging && 'cursor-grabbing')}
-        style={{ touchAction: 'none' as const }}
+        // pointer-events: none on the SVG ROOT so the empty center area
+        // doesn't capture events. Only the hit-zone <circle> inside (which
+        // has pointer-events: stroke + the pointer handlers) captures
+        // events — and only on its own stroke. This lets clicks on the
+        // outer ring pass THROUGH the inner ring's empty SVG to reach the
+        // outer ring's hit-zone below. Critical for concentric stacking.
+        style={{ touchAction: 'none' as const, pointerEvents: 'none' }}
       >
         {/* Transparent wider hit-zone — a full circle so the user can grab
-            anywhere near the ring. strokeWidth + 8 (was + 14) keeps the grab
-            zone tight enough that two stacked rings don't collide. */}
+            anywhere near the ring. strokeWidth + 8 keeps the grab zone tight
+            enough that two stacked rings don't collide.
+            POINTER EVENTS LIVE HERE (not on the SVG root) because the SVG
+            root has pointer-events: none to let clicks pass through empty
+            space in concentric setups. */}
         <circle
           cx={cx}
           cy={cy}
@@ -260,7 +266,10 @@ export function CircularSlider({
           fill="none"
           stroke="transparent"
           strokeWidth={strokeWidth + 8}
-          style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+          style={{ pointerEvents: 'stroke', cursor: dragging ? 'grabbing' : 'pointer' }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
         />
         {/* Track — full circle */}
         <circle
@@ -296,13 +305,18 @@ export function CircularSlider({
         )}
         {/* Thumb — wider transparent hit circle + visible colored circle.
             Hit zone reduced from +6 to +3 so two stacked rings' thumbs don't
-            collide when both arcs end in the same quadrant. */}
+            collide when both arcs end in the same quadrant.
+            POINTER EVENTS also live here so the user can grab the thumb
+            directly (the SVG root has pointer-events: none). */}
         <circle
           cx={thumb.x}
           cy={thumb.y}
           r={thumbRadius + 3}
           fill="transparent"
-          style={{ pointerEvents: 'all', cursor: 'grab' }}
+          style={{ pointerEvents: 'all', cursor: dragging ? 'grabbing' : 'grab' }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
         />
         <circle
           cx={thumb.x}
