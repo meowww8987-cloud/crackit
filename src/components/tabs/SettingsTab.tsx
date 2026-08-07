@@ -149,12 +149,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.7.6</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.7.7</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
-            <div><strong className="text-white/70">v2.7.6</strong> — Fix PWA install: PNG icons (SVG doesn't trigger install on Android), SW v3, single requestFullscreen on first gesture (banner shows once then auto-dismisses, fullscreen persists)</div>
+            <div><strong className="text-white/70">v2.7.7</strong> — Reverted fullscreen to v2.7.2 aggressive style (works on launch/refresh). Kept PNG icons + manifest display:fullscreen for PWA install. Status bar now hidden.</div>
             <div><strong className="text-white/70">v2.7.5</strong> — PWA fullscreen: manifest display='fullscreen' + display_override. Install (Add to Home Screen) for true fullscreen with NO browser banner. Updated install prompt + fullscreen hint.</div>
             <div><strong className="text-white/70">v2.7.4</strong> — Remove ALL requestFullscreen() calls (browser 'To exit full screen, press Esc' banner is gone). App still looks fullscreen via CSS viewport-fit:cover.</div>
             <div><strong className="text-white/70">v2.7.3</strong> — Fix fullscreen: request on first user gesture (browsers block it on load), early inline script in layout.tsx, address bar hidden on load via scrollTo</div>

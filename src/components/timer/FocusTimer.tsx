@@ -229,23 +229,20 @@ export function FocusTimer() {
   // Chrome for Android), the OS stops auto-rotating and WE handle all rotation
   // ourselves via the gravity sensor. On iOS Safari, screen.orientation.lock()
   // isn't supported, but Safari doesn't auto-rotate web content anyway, so no
-  // Fullscreen REMOVED — the browser's requestFullscreen() triggers a native
-  // "To exit full screen, press Esc" banner that ruins UX. The focus timer
-  // already fills the screen via CSS (fixed inset-0 z-[9999]). We keep the
-  // screen orientation lock attempt (silently fails without fullscreen on
-  // some browsers — acceptable tradeoff) + iOS motion permission request.
+  // Fullscreen on mount + lock screen orientation + request iOS motion permission.
+  // Fullscreen is REQUIRED for screen.orientation.lock on Android.
   useEffect(() => {
-    const setupOrientationAndPermission = async () => {
-      // 1. Try to lock screen to portrait (prevents OS auto-rotation so our
-      //    gravity-based content rotation doesn't double up). May fail without
-      //    fullscreen — that's OK, gravity-based rotation still works.
+    const enterFullscreenAndLock = async () => {
+      try {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch {}
       try {
         if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).lock === 'function') {
           await (screen.orientation as any).lock('portrait').catch(() => {});
         }
       } catch {}
-
-      // 2. Request iOS motion permission (iOS 13+ requires explicit user gesture)
       try {
         const anyDeviceOrientation = (window as any).DeviceOrientationEvent;
         if (anyDeviceOrientation && typeof anyDeviceOrientation.requestPermission === 'function') {
@@ -254,10 +251,9 @@ export function FocusTimer() {
       } catch {}
     };
 
-    setupOrientationAndPermission();
+    enterFullscreenAndLock();
 
     return () => {
-      // Release screen orientation lock on unmount
       try {
         if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).unlock === 'function') {
           (screen.orientation as any).unlock();
@@ -295,8 +291,21 @@ export function FocusTimer() {
     };
   }, [active]);
 
-  // Fullscreen re-entry on visibility return — REMOVED (causes browser banner).
-  // The focus timer already fills the screen via CSS (fixed inset-0 z-[9999]).
+  // Re-enter fullscreen on visibility return (user came back from
+  // notification panel or app switcher)
+  useEffect(() => {
+    const onVis = () => {
+      if (!document.hidden && active) {
+        try {
+          if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+          }
+        } catch {}
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [active]);
 
   // Auto-reposition timer when dimmed (burn protection)
   // First reposition happens immediately when dimming starts (synced with dimming)

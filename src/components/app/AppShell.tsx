@@ -111,19 +111,46 @@ export function AppShell() {
     });
   }, []);
 
-  // === Fullscreen REMOVED ===
-  // The browser's requestFullscreen() API triggers a native "To exit full
-  // screen, press Esc" banner every time it's called — especially annoying
-  // because our re-entry logic (on touchend/resize/visibilitychange) re-triggered
-  // it repeatedly. The app already looks fullscreen via CSS (viewport-fit: cover
-  // + overscroll-none), so the native Fullscreen API is not needed.
-  // Only the address-bar-hiding scrollTo trick is kept (no banner side-effect).
+  // === True fullscreen (v2.7.2 style — aggressive, works reliably) ===
+  // Hides the status bar (mobile tower, date, battery) + browser chrome.
+  // Re-enters fullscreen automatically when the user returns from the
+  // notification panel (which exits fullscreen).
   useEffect(() => {
-    try {
-      window.scrollTo(0, 1);
-      setTimeout(() => { try { window.scrollTo(0, 1); } catch {} }, 100);
-      setTimeout(() => { try { window.scrollTo(0, 1); } catch {} }, 500);
-    } catch {}
+    const enterFullscreen = async () => {
+      try {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch {}
+      try { window.scrollTo(0, 1); } catch {}
+    };
+
+    enterFullscreen();
+
+    const onVisibilityChange = () => {
+      if (!document.hidden && !document.fullscreenElement) enterFullscreen();
+    };
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    const onResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (!document.fullscreenElement) enterFullscreen();
+      }, 300);
+    };
+    const onTouchEnd = () => {
+      if (!document.fullscreenElement) enterFullscreen();
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('resize', onResize);
+    document.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('touchend', onTouchEnd);
+      if (resizeTimer) clearTimeout(resizeTimer);
+    };
   }, []);
 
   // Apply OLED Black when setting changes
@@ -202,6 +229,14 @@ export function AppShell() {
     };
     const handleReturn = () => {
       useSession.getState().handleReturn();
+      // Re-enter fullscreen if focus timer was open
+      if (useSession.getState().active && useSession.getState().focusOpen) {
+        try {
+          if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+          }
+        } catch {}
+      }
     };
 
     // visibilitychange — fires when tab is hidden/shown (desktop + mobile)

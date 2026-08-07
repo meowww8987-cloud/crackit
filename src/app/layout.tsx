@@ -65,34 +65,32 @@ export default function RootLayout({
                   document.documentElement.classList.add('dark');
                 }
 
-                // === Fullscreen on first user gesture ===
-                // Browsers require a user gesture for requestFullscreen().
-                // We call it ONCE on the first tap — the browser shows a
-                // brief "press Esc" banner that auto-dismisses after ~3s.
-                // After that, the app stays in fullscreen (no status bar).
-                // In PWA mode (installed), display:fullscreen handles it
-                // without any banner.
-                var fsDone = false;
-                function doFs() {
-                  if (fsDone) return;
-                  fsDone = true;
+                // === Fullscreen (v2.7.2 style — aggressive, works on launch) ===
+                // Request fullscreen immediately (browsers may block without gesture,
+                // but we also retry on first interaction + visibilitychange + touchend).
+                // The "press Esc" banner is a minor annoyance but FULLSCREEN WORKS.
+                function requestFsNow() {
                   try {
                     var el = document.documentElement;
                     var p = el.requestFullscreen ? el.requestFullscreen() : null;
                     if (p && p.catch) p.catch(function(){});
                   } catch(e) {}
-                  document.removeEventListener('pointerdown', doFs);
-                  document.removeEventListener('touchstart', doFs);
                 }
-                // Only attach if NOT already in PWA fullscreen mode
-                if (!window.matchMedia('(display-mode: fullscreen)').matches
-                    && !window.matchMedia('(display-mode: standalone)').matches
-                    && !(navigator.standalone)) {
-                  document.addEventListener('pointerdown', doFs, { passive: true });
-                  document.addEventListener('touchstart', doFs, { passive: true });
+                // Try immediately (may fail without gesture, that's OK)
+                requestFsNow();
+                // Retry on first interaction
+                function onFirstGesture() {
+                  requestFsNow();
+                  document.removeEventListener('pointerdown', onFirstGesture);
+                  document.removeEventListener('touchstart', onFirstGesture);
                 }
-
-                // Hide address bar on load (no gesture needed)
+                document.addEventListener('pointerdown', onFirstGesture, { passive: true });
+                document.addEventListener('touchstart', onFirstGesture, { passive: true });
+                // Re-enter on visibilitychange (returning from notification panel)
+                document.addEventListener('visibilitychange', function() {
+                  if (!document.hidden) requestFsNow();
+                });
+                // Hide address bar on load
                 window.addEventListener('load', function() {
                   setTimeout(function() { window.scrollTo(0, 1); }, 0);
                   setTimeout(function() { window.scrollTo(0, 1); }, 100);
