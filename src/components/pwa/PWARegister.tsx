@@ -8,6 +8,26 @@ export function PWARegister() {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstall, setShowInstall] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
+  const [isFullscreenMode, setIsFullscreenMode] = useState(false);
+
+  // Check if the app is running in PWA fullscreen/standalone mode.
+  // If NOT, the user is in a browser tab — we should encourage installation
+  // for the true fullscreen (no status bar) experience.
+  useEffect(() => {
+    const checkDisplayMode = () => {
+      const isFS = window.matchMedia('(display-mode: fullscreen)').matches
+        || window.matchMedia('(display-mode: standalone)').matches
+        || (navigator as any).standalone === true; // iOS Safari
+      setIsFullscreenMode(isFS);
+    };
+    checkDisplayMode();
+    window.matchMedia('(display-mode: fullscreen)').addEventListener('change', checkDisplayMode);
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkDisplayMode);
+    return () => {
+      window.matchMedia('(display-mode: fullscreen)').removeEventListener('change', checkDisplayMode);
+      window.matchMedia('(display-mode: standalone)').removeEventListener('change', checkDisplayMode);
+    };
+  }, []);
 
   // Register service worker + clear old caches
   useEffect(() => {
@@ -88,7 +108,9 @@ export function PWARegister() {
         )}
       </AnimatePresence>
 
-      {/* Install prompt */}
+      {/* Install prompt — shown when the app is NOT in fullscreen mode.
+          Emphasizes that installing gives true fullscreen (no status bar,
+          no browser chrome, no distractions). */}
       <AnimatePresence>
         {showInstall && installPrompt && (
           <motion.div
@@ -102,8 +124,12 @@ export function PWARegister() {
                 <Download size={16} className="text-black" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold">Install NEET 2027</div>
-                <div className="text-[10px] text-white/50">Add to home screen for offline use</div>
+                <div className="text-sm font-semibold">Install for Fullscreen</div>
+                <div className="text-[10px] text-white/50">
+                  {isFullscreenMode
+                    ? 'Add to home screen for offline use'
+                    : 'No status bar, no browser chrome — zero distractions'}
+                </div>
               </div>
               <button
                 onClick={handleInstall}
@@ -120,6 +146,48 @@ export function PWARegister() {
             </div>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* === Fullscreen hint — shown when the app is NOT installed (running in
+          a browser tab) and the user hasn't dismissed it. Encourages the user
+          to "Add to Home Screen" for true fullscreen. === */}
+      <AnimatePresence>
+        {!isFullscreenMode && !installPrompt && (() => {
+          // Only show this hint if there's no beforeinstallprompt (iOS Safari
+          // doesn't support it — those users need manual instructions).
+          const dismissed = typeof window !== 'undefined' && localStorage.getItem('neet-fullscreen-hint-dismissed');
+          if (dismissed) return null;
+          return (
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ delay: 2 }}
+              className="fixed bottom-20 left-3 right-3 z-[140] max-w-md mx-auto"
+            >
+              <div className="glass rounded-2xl p-3 flex items-center gap-3 border border-purple-500/30 shadow-2xl">
+                <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0 text-lg">
+                  📱
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-purple-300">Add to Home Screen</div>
+                  <div className="text-[10px] text-white/50">
+                    For true fullscreen (no status bar) → tap your browser menu → "Add to Home Screen"
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    localStorage.setItem('neet-fullscreen-hint-dismissed', '1');
+                    setShowInstall(false);
+                  }}
+                  className="text-white/40 hover:text-white p-1"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
     </>
   );
