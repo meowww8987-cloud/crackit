@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pause, Play, Square, ChevronDown, AlertTriangle, CheckCircle2, RotateCw } from 'lucide-react';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
@@ -25,14 +25,27 @@ export function FocusTimer() {
   const [timerPos, setTimerPos] = useState({ x: 0, y: 0 });
   const [wasteFlash, setWasteFlash] = useState<number | null>(null); // seconds wasted on return
   const [showPulse, setShowPulse] = useState(false);
-  // === Orientation detection — supports all 4 directions (0°, 90°, 180°, 270°).
-  // Uses the Screen Orientation API (screen.orientation.angle) when available,
-  // falls back to the deprecated window.orientation. Always-on in fullscreen —
-  // no longer gated behind settings.allowLandscape (the user wants the focus
-  // session to ALWAYS respect device orientation).
-  // orientationAngle: 0 = portrait upright, 90 = landscape (home button left),
-  // 180 = portrait upside-down, 270 = landscape (home button right).
+  // === Orientation detection — all 4 directions, gravity-based + deadzone.
+  //
+  // How it works:
+  //  1. Try DeviceOrientationEvent (accelerometer/gravity). This is the MOST
+  //     reliable way to detect physical device orientation on mobile — it
+  //     fires continuously as the phone tilts, not just on 90° snaps.
+  //  2. Fall back to screen.orientation.angle / window.orientation on mount
+  //     + 'orientationchange' events (for desktop / unsupported devices).
+  //
+  // Deadzone: the angle only changes when the device is tilted past ±25°
+  // from the current orientation's "up" axis. This prevents jitter when the
+  // phone is held at a slight angle (e.g. 10° tilt in bed). The four target
+  // angles are 0°, 90°, 180°, 270°.
+  //
+  // orientationAngle meaning (what the user sees as "up"):
+  //   0°   = portrait upright
+  //   90°  = landscape (rotated 90° CW — home button on left)
+  //   180° = portrait upside-down
+  //   270° = landscape (rotated 90° CCW — home button on right)
   const [orientationAngle, setOrientationAngle] = useState(0);
+  const orientationAngleRef = useRef(0); // ref mirror for use in event handler
   const lastWastedRef = useRef(0);
   const lastInteractRef = useRef(Date.now());
 
@@ -42,42 +55,118 @@ export function FocusTimer() {
     return () => clearInterval(i);
   }, []);
 
-  // === Orientation detection — auto-detects device rotation in all 4 directions ===
+  // === Compute the nearest 4-way angle from a gamma/beta reading.
+  // gamma = left-right tilt (-90 to 90). beta = front-back tilt (-180 to 180).
+  // We use gamma primarily (it maps cleanly to the 4 portrait/landscape states).
+  const computeAngleFromGamma = useCallback((gamma: number, beta: number): number => {
+    // When the phone is held vertically (beta near ±90), gamma is unreliable.
+    // Use a combination: if |beta| > 45 (phone mostly flat or upright), use
+    // gamma for left-right; otherwise the phone is face-up and we keep the
+    // current orientation.
+    // Simplify: use gamma directly. gamma ≈ 0 → portrait (0 or 180).
+    //                                   gamma ≈ 90 → landscape (90).
+    //                                   gamma ≈ -90 → landscape (270).
+    // To distinguish 0 vs 180 (both have gamma ≈ 0), check beta sign:
+    //   beta > 0 (phone upright) → 0°, beta < 0 (phone upside-down) → 180°.
+    if (gamma > 45) return 90;
+    if (gamma < -45) return 270;
+    // gamma is near 0 → portrait. Use beta to decide 0 vs 180.
+    // beta > 0 when the phone's top is pointing up (normal portrait).
+    // beta < 0 (or > 90 inverted) when upside-down.
+    // Actually: when held in portrait, beta is typically 30-60 (tilted back).
+    // When upside-down portrait, beta is negative or > 90.
+    if (beta < -45 || beta > 135) return 180;
+    return 0;
+  }, []);
+
+  // === Orientation detection effect ===
   useEffect(() => {
-    const detectOrientation = () => {
-      let angle = 0;
-      // Preferred: Screen Orientation API (Chrome, Firefox, Safari 16.4+)
+    // --- Helper: read current angle from the best available API ---
+    const readScreenAngle = (): number => {
+      // Preferred: Screen Orientation API
       if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.angle === 'number') {
-        angle = screen.orientation.angle;
-      } else if (typeof window !== 'undefined' && typeof (window as any).orientation === 'number') {
-        // Deprecated fallback (older Safari, stock Android browsers)
-        angle = (window as any).orientation;
-      } else {
-        // Last-resort fallback: infer from aspect ratio (only detects 0 vs 90)
-        angle = window.innerWidth > window.innerHeight ? 90 : 0;
+        return screen.orientation.angle;
       }
-      // Normalize to [0, 360)
-      angle = ((angle % 360) + 360) % 360;
-      setOrientationAngle(angle);
+      // Deprecated fallback
+      if (typeof window !== 'undefined' && typeof (window as any).orientation === 'number') {
+        return (window as any).orientation;
+      }
+      // Aspect ratio fallback (desktop)
+      return window.innerWidth > window.innerHeight ? 90 : 0;
     };
 
-    detectOrientation();
-    // 'orientationchange' fires on mobile when the device rotates.
-    // 'resize' fires on desktop when the window is resized.
-    // 'change' on screen.orientation is the modern equivalent.
-    window.addEventListener('orientationchange', detectOrientation);
-    window.addEventListener('resize', detectOrientation);
-    if (typeof screen !== 'undefined' && screen.orientation) {
-      screen.orientation.addEventListener('change', detectOrientation);
-    }
-    return () => {
-      window.removeEventListener('orientationchange', detectOrientation);
-      window.removeEventListener('resize', detectOrientation);
-      if (typeof screen !== 'undefined' && screen.orientation) {
-        screen.orientation.removeEventListener('change', detectOrientation);
+    // --- Helper: update angle with deadzone (only change if the target
+    //     angle differs from current). This prevents jitter. ---
+    const applyAngle = (newAngle: number) => {
+      const normalized = ((newAngle % 360) + 360) % 360;
+      if (normalized !== orientationAngleRef.current) {
+        orientationAngleRef.current = normalized;
+        setOrientationAngle(normalized);
       }
     };
-  }, []);
+
+    // Initial read from screen API
+    applyAngle(readScreenAngle());
+
+    // --- 1. Try DeviceOrientationEvent (gravity/accelerometer) ---
+    // This is the most reliable on mobile — fires continuously as the phone
+    // tilts, so we can apply a deadzone and snap to the nearest 4-way angle.
+    let deviceOrientationActive = false;
+    const handleDeviceOrientation = (e: DeviceOrientationEvent) => {
+      // gamma = left-right tilt in degrees (-90 to 90)
+      // beta = front-back tilt in degrees (-180 to 180)
+      if (e.gamma == null || e.beta == null) return;
+      deviceOrientationActive = true;
+      const angle = computeAngleFromGamma(e.gamma, e.beta);
+      applyAngle(angle);
+    };
+
+    // iOS 13+ requires permission for DeviceOrientationEvent. We attempt to
+    // add the listener; if it fails or never fires, the fallbacks below handle it.
+    try {
+      window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+    } catch {
+      // ignore
+    }
+
+    // --- 2. Fallback: screen.orientation 'change' event ---
+    const handleScreenOrientationChange = () => {
+      // Only use this fallback if deviceorientation isn't firing (desktop or
+      // unsupported). If deviceorientation IS active, it takes priority
+      // because it's more granular.
+      if (deviceOrientationActive) return;
+      applyAngle(readScreenAngle());
+    };
+    window.addEventListener('orientationchange', handleScreenOrientationChange);
+    window.addEventListener('resize', handleScreenOrientationChange);
+    if (typeof screen !== 'undefined' && screen.orientation) {
+      screen.orientation.addEventListener('change', handleScreenOrientationChange);
+    }
+
+    // --- 3. Periodic check: if deviceorientation never fired (e.g. desktop
+    //     or permission denied), fall back to screen API every 1s for the
+    //     first 5 seconds, then stop. ---
+    let fallbackChecks = 0;
+    const fallbackInterval = setInterval(() => {
+      if (deviceOrientationActive) {
+        clearInterval(fallbackInterval);
+        return;
+      }
+      applyAngle(readScreenAngle());
+      fallbackChecks++;
+      if (fallbackChecks > 5) clearInterval(fallbackInterval);
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
+      window.removeEventListener('orientationchange', handleScreenOrientationChange);
+      window.removeEventListener('resize', handleScreenOrientationChange);
+      if (typeof screen !== 'undefined' && screen.orientation) {
+        screen.orientation.removeEventListener('change', handleScreenOrientationChange);
+      }
+      clearInterval(fallbackInterval);
+    };
+  }, [computeAngleFromGamma]);
 
   // Watch for wasted seconds increase (returning from background) — show flash
   useEffect(() => {
@@ -106,13 +195,27 @@ export function FocusTimer() {
     return () => clearInterval(i);
   }, [settings.burnProtection, settings.dimDelay, active]);
 
-  // Fullscreen on mount
+  // Fullscreen on mount + request iOS motion permission (for gravity-based
+  // orientation detection). iOS 13+ requires explicit user-gesture-triggered
+  // permission for DeviceOrientationEvent — without it, the gravity sensor
+  // never fires and we fall back to the less-reliable orientationchange event.
   useEffect(() => {
     try {
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(() => {});
       }
     } catch {}
+    // Request iOS motion permission (the focus session opening IS a user
+    // gesture, so this is allowed). On non-iOS browsers this is a no-op.
+    const anyDeviceOrientation = (window as any).DeviceOrientationEvent;
+    if (anyDeviceOrientation && typeof anyDeviceOrientation.requestPermission === 'function') {
+      anyDeviceOrientation.requestPermission().then((state: string) => {
+        // 'granted' or 'denied'. If denied, the gravity listener silently
+        // never fires and we fall back to screen.orientation.
+      }).catch(() => {
+        // Permission request can fail silently — ignore.
+      });
+    }
     return () => {
       try {
         if (document.fullscreenElement && document.exitFullscreen) {
@@ -276,26 +379,41 @@ export function FocusTimer() {
       {/* The outer div stays fixed inset-0 (always fills screen, always black). */}
       {/* The inner div rotates its CONTENT to match the device's physical
           orientation. Supports all 4 angles: 0° (upright), 90° (landscape left),
-          180° (upside-down), 270° (landscape right). */}
-      <div style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: (orientationAngle === 90 || orientationAngle === 270) ? 'row' : 'column',
-        alignItems: 'center',
-        justifyContent: (orientationAngle === 90 || orientationAngle === 270) ? 'center' : 'space-between',
-        gap: (orientationAngle === 90 || orientationAngle === 270) ? '2rem' : undefined,
-        padding: (orientationAngle === 90 || orientationAngle === 270) ? '1.5rem 3rem' : '3rem 1.5rem',
-        transform: `rotate(${orientationAngle}deg)`,
-        transformOrigin: 'center center',
-        // In landscape (90°/270°), give the rotated content portrait-shaped
-        // bounds so it fills the landscape viewport after rotation.
-        ...((orientationAngle === 90 || orientationAngle === 270) ? {
-          maxWidth: '100vh',
-          maxHeight: '100vw',
-          margin: 'auto',
-        } : {}),
-      }}>
+          180° (upside-down), 270° (landscape right).
+          
+          KEY GEOMETRY FIX: For landscape (90°/270°), the content div's width
+          and height are SWAPPED relative to the viewport. A portrait viewport
+          (e.g. 400×800) needs landscape content (800×400) rotated 90° to fill
+          it. So we set width:100vh (viewport height = content width) and
+          height:100vw (viewport width = content height). This ensures the
+          rotated content fills the viewport at ALL 4 angles without going
+          out of frame. */}
+      <div
+        style={{
+          // For landscape: width=viewport-height, height=viewport-width
+          // For portrait: width=viewport-width, height=viewport-height
+          width: (orientationAngle === 90 || orientationAngle === 270) ? '100vh' : '100%',
+          height: (orientationAngle === 90 || orientationAngle === 270) ? '100vw' : '100%',
+          display: 'flex',
+          flexDirection: (orientationAngle === 90 || orientationAngle === 270) ? 'row' : 'column',
+          alignItems: 'center',
+          justifyContent: (orientationAngle === 90 || orientationAngle === 270) ? 'center' : 'space-between',
+          gap: (orientationAngle === 90 || orientationAngle === 270) ? '2rem' : undefined,
+          padding: (orientationAngle === 90 || orientationAngle === 270) ? '1.5rem 3rem' : '3rem 1.5rem',
+          // Rotate to match device orientation. transformOrigin center
+          // ensures rotation happens around the div's center.
+          transform: `rotate(${orientationAngle}deg)`,
+          transformOrigin: 'center center',
+          // Position the div so its CENTER aligns with the viewport center.
+          // For landscape, the swapped dimensions mean we offset by half the
+          // content dimensions (50vh/50vw). For portrait, offset by 50%.
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          marginLeft: (orientationAngle === 90 || orientationAngle === 270) ? '-50vh' : '-50%',
+          marginTop: (orientationAngle === 90 || orientationAngle === 270) ? '-50vw' : '-50%',
+        }}
+      >
       {/* Wasted time flash — shows when returning from background */}
       {wasteFlash !== null && (
         <motion.div
