@@ -10,7 +10,6 @@ import { SmartEmptyState } from '@/components/shared/SmartEmptyState';
 import { subjectColor } from '@/lib/colors';
 import type { Test } from '@/lib/types';
 import { formatHM, moodEmoji, todayKey, addDays, dateKey } from '@/lib/utils';
-import { TabInfoButton } from '@/components/shared/TabInfoButton';
 
 interface TimelineEntry {
   type: 'session' | 'test';
@@ -153,9 +152,6 @@ export function HistoryTab() {
           );
         })}
       </div>
-
-      {/* Tab info + hidden features button (bottom-right) */}
-      <TabInfoButton tab="history" />
     </div>
   );
 }

@@ -27,7 +27,6 @@ import { BuildSyllabusSheet } from '@/components/syllabus/BuildSyllabusSheet';
 import { FormulaVault } from '@/components/syllabus/FormulaVault';
 import { AddLectureSheet } from '@/components/syllabus/AddLectureSheet';
 import { triggerTimeline } from '@/components/app/AppShell';
-import { TabInfoButton } from '@/components/shared/TabInfoButton';
 
 type ProgressFilter = 'all' | 'studying' | 'next' | 'done' | 'overdue';
 
@@ -281,9 +280,6 @@ export function SyllabusTab() {
       {showBuildSheet && (<BuildSyllabusSheet onClose={() => setShowBuildSheet(false)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {addLectureFor && (<AddLectureSheet chapter={addLectureFor.chapter} subject={addLectureFor.subject} onClose={() => setAddLectureFor(null)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {showFormulaVault && (<FormulaVaultInline onClose={() => setShowFormulaVault(false)} />)}
-
-      {/* Tab info + hidden features button (bottom-right) */}
-      <TabInfoButton tab="syllabus" />
     </div>
   );
 }

@@ -30,7 +30,6 @@ import {
 } from '@/lib/analytics';
 import { formatHM, isRevisionOverdue } from '@/lib/utils';
 import { CountUp } from '@/components/shared/CountUp';
-import { TabInfoButton } from '@/components/shared/TabInfoButton';
 
 export function StatsTab() {
   const sessions = useHistory((s) => s.sessions);
@@ -368,9 +367,6 @@ export function StatsTab() {
       {prefer2D && (
         <p className="text-center text-[10px] text-white/30">2D graph mode enabled in settings</p>
       )}
-
-      {/* Tab info + hidden features button (bottom-right) */}
-      <TabInfoButton tab="stats" />
     </div>
   );
 }

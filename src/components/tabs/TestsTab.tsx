@@ -12,7 +12,6 @@ import type { Test, CoachingSource } from '@/lib/types';
 import { cn, diffDays, todayKey, vibrate } from '@/lib/utils';
 import { AddTestSheet } from '@/components/tests/AddTestSheet';
 import { TestDetailSheet } from '@/components/tests/TestDetailSheet';
-import { TabInfoButton } from '@/components/shared/TabInfoButton';
 
 type FilterKey = 'upcoming' | 'past' | 'all';
 
@@ -233,9 +232,6 @@ export function TestsTab() {
           />
         )}
       </AnimatePresence>
-
-      {/* Tab info + hidden features button (bottom-right) */}
-      <TabInfoButton tab="tests" />
     </div>
   );
 }

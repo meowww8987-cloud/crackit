@@ -24,7 +24,6 @@ import { StreakFlame } from '@/components/shared/StreakFlame';
 import { useDailyLog } from '@/lib/store/dailyLog';
 import { SleepLogSheet } from '@/components/dailylog/SleepLogSheet';
 import { useSleep } from '@/lib/store/sleep';
-import { TabInfoButton } from '@/components/shared/TabInfoButton';
 import { useDoubts } from '@/lib/store/doubts';
 import { getSubjectHealthScores } from '@/lib/healthScore';
 
@@ -303,9 +302,6 @@ export function HomeTab() {
         </div>
         <TrendingUp size={24} className="text-teal-400/60" />
       </div>
-
-      {/* Tab info + hidden features button (bottom-right) */}
-      <TabInfoButton tab="home" />
     </div>
   );
 }
