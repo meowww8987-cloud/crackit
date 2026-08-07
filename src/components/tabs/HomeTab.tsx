@@ -16,7 +16,6 @@ import { ScorePredictionCard } from '@/components/home/ScorePredictionCard';
 import { MiniHeatmap } from '@/components/home/MiniHeatmap';
 import { CoachCard } from '@/components/home/CoachCard';
 import { PartnerCard } from '@/components/home/PartnerCard';
-import { PactCard } from '@/components/partner/PactCard';
 import { WeeklyGoalCard } from '@/components/home/WeeklyGoalCard';
 import { NextTestCard, TestDayMode } from '@/components/home/NextTestCard';
 import { useMounted } from '@/lib/hooks/useMounted';
@@ -249,9 +248,6 @@ export function HomeTab() {
 
       {/* === Study with Friend — compare with a friend === */}
       <PartnerCard />
-
-      {/* === Study Pact — mutual commitment (only shows if paired) === */}
-      <PactCard />
 
       {/* === AI Study Coach === */}
       <CoachCard />

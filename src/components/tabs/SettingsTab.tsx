@@ -21,7 +21,7 @@ import { useSettings, applyTextSize, applyTheme } from '@/lib/store/settings';
 import { cn, vibrate } from '@/lib/utils';
 import type { Settings } from '@/lib/types';
 import { TimetableEditor } from '@/components/timetable/TimetableEditor';
-import { CircularSlider } from '@/components/ui/circular-slider';
+import { ConcentricRings } from '@/components/ui/concentric-rings';
 
 type SectionKey = 'goals' | 'focus' | 'appearance' | 'notifications' | 'timetable' | 'data';
 
@@ -119,11 +119,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.5.2</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.6.0</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.6.0</strong> — Rebuild Pomodoro as single ConcentricRings (fixes outer ring definitively); immersive Sleep Lock Screen (full-screen bluish night scenery + double-tap + math problem to wake); remove BreakExercise + Study Pact</div>
             <div><strong className="text-white/70">v2.5.2</strong> — Really fix outer Pomodoro ring: wrapper DIV (not just SVG) was intercepting pointer events over the outer ring. Added pointer-events: none to the div; hit-zone circles still receive events.</div>
             <div><strong className="text-white/70">v2.5.1</strong> — Fix outer Pomodoro ring not sliding (inner ring's SVG was intercepting pointer events on its empty center, blocking the outer ring below)</div>
             <div><strong className="text-white/70">v2.5.0</strong> — Sleep tracking with persistent banner + drag-to-wake + browser notification; Micro-break exercises (box breathing, 20-20-20, stretch); Study Pact with partner</div>
@@ -289,53 +290,43 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
           <label className="text-xs font-bold text-white/85 uppercase tracking-wide">Pomodoro Cycle</label>
         </div>
         <div className="rounded-2xl bg-white/5 border border-white/10 p-3 flex flex-col items-center gap-2">
-          {/* Stacked circular sliders — centered, full width available.
-              BOTH rings get the SAME canvasSize so they share the same center
-              coordinate. Without this, each ring computes its own canvas from
-              its own radius → different centers → rings look off-center / overlapping. */}
-          <div className="relative" style={{ width: CANVAS, height: CANVAS }}>
-            {/* Outer ring: WORK (large) */}
-            <div className="absolute inset-0">
-              <CircularSlider
-                value={s.pomodoroWork}
-                min={15}
-                max={90}
-                step={5}
-                radius={OUTER_R}
-                strokeWidth={STROKE}
-                color={WORK_COLOR}
-                canvasSize={CANVAS}
-                ariaLabel="Pomodoro work duration in minutes"
-                onChange={(v) => update('pomodoroWork', v)}
-                onCommit={(v) => update('pomodoroWork', v)}
-              />
-            </div>
-            {/* Inner ring: BREAK (small) */}
-            <div className="absolute inset-0">
-              <CircularSlider
-                value={s.pomodoroBreak}
-                min={5}
-                max={30}
-                step={5}
-                radius={INNER_R}
-                strokeWidth={STROKE}
-                color={BREAK_COLOR}
-                canvasSize={CANVAS}
-                ariaLabel="Pomodoro break duration in minutes"
-                onChange={(v) => update('pomodoroBreak', v)}
-                onCommit={(v) => update('pomodoroBreak', v)}
-              />
-            </div>
-            {/* Center label — shows the work/break values in their colors */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <div className="text-lg font-bold tabular leading-none">
-                <span style={{ color: WORK_COLOR }}>{s.pomodoroWork}</span>
-                <span className="text-white/30 mx-0.5 text-sm">/</span>
-                <span style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}</span>
-              </div>
-              <div className="text-[8px] text-white/45 leading-none mt-1 uppercase tracking-widest">min</div>
-            </div>
-          </div>
+          {/* Single ConcentricRings component — both rings in ONE SVG.
+              No more pointer-event layering issues: hit-testing is done
+              manually in onPointerDown (distance from center → which ring). */}
+          <ConcentricRings
+            outer={{
+              value: s.pomodoroWork,
+              min: 15,
+              max: 90,
+              step: 5,
+              radius: OUTER_R,
+              strokeWidth: STROKE,
+              color: WORK_COLOR,
+              ariaLabel: 'Work duration',
+              onChange: (v) => update('pomodoroWork', v),
+            }}
+            inner={{
+              value: s.pomodoroBreak,
+              min: 5,
+              max: 30,
+              step: 5,
+              radius: INNER_R,
+              strokeWidth: STROKE,
+              color: BREAK_COLOR,
+              ariaLabel: 'Break duration',
+              onChange: (v) => update('pomodoroBreak', v),
+            }}
+            centerLabel={
+              <>
+                <div className="text-lg font-bold tabular leading-none">
+                  <span style={{ color: WORK_COLOR }}>{s.pomodoroWork}</span>
+                  <span className="text-white/30 mx-0.5 text-sm">/</span>
+                  <span style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}</span>
+                </div>
+                <div className="text-[8px] text-white/45 leading-none mt-1 uppercase tracking-widest">min</div>
+              </>
+            }
+          />
 
           {/* Compact legend — single horizontal row below the ring */}
           <div className="flex items-center justify-center gap-4 w-full">
