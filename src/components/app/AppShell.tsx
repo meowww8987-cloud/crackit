@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff, PlayCircle, Brain, ChevronRight } from 'lucide-react';
+import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff, PlayCircle, Brain, ChevronRight, Plus, Sigma, HelpCircle } from 'lucide-react';
 import { useNav, type TabKey, TAB_ORDER } from '@/lib/store/nav';
 import { useSession } from '@/lib/store/session';
 import { cn, vibrate } from '@/lib/utils';
@@ -18,6 +18,8 @@ import { StatsTab } from '@/components/tabs/StatsTab';
 import { SettingsTab } from '@/components/tabs/SettingsTab';
 import { ActiveRecallChallenge } from '@/components/recall/ActiveRecallChallenge';
 import { FreeStudyPicker } from '@/components/study/FreeStudyPicker';
+import { BuildSyllabusSheet } from '@/components/syllabus/BuildSyllabusSheet';
+import { FormulaVault } from '@/components/syllabus/FormulaVault';
 import { useHistory } from '@/lib/store/history';
 import { PWARegister } from '@/components/pwa/PWARegister';
 import { ToastContainer, pushToast } from '@/components/shared/Toast';
@@ -65,6 +67,9 @@ export function AppShell() {
   const [showRecall, setShowRecall] = useState(false);
   const [showFreeStudy, setShowFreeStudy] = useState(false);
   const [showStudyActions, setShowStudyActions] = useState(false);
+  const [showSyllabusActions, setShowSyllabusActions] = useState(false);
+  const [showBuildSheet, setShowBuildSheet] = useState(false);
+  const [showFormulaVault, setShowFormulaVault] = useState(false);
   const [showPaperTestPicker, setShowPaperTestPicker] = useState(false);
   const [activePaperTestId, setActivePaperTestId] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
@@ -75,6 +80,7 @@ export function AppShell() {
   const touchStartTarget = useRef<HTMLElement | null>(null);
   const studyTabLongPress = useRef<ReturnType<typeof setTimeout> | null>(null);
   const testsTabLongPress = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syllabusTabLongPress = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track previous tab for directional page transitions
   const prevTabRef = useRef<TabKey | null>(null);
 
@@ -321,7 +327,9 @@ export function AppShell() {
         className="flex-1 overflow-y-auto overflow-x-hidden scroll-area relative z-10"
         style={{
           paddingBottom: 'calc(88px + env(safe-area-inset-bottom))',
-          paddingTop: '52px',
+          // Top padding: just the safe-area-inset-top (status bar / notch).
+          // The old 52px was reserving space for the removed TopBar — now gone.
+          paddingTop: 'env(safe-area-inset-top, 0px)',
         }}
       >
         <div className="max-w-md mx-auto px-4 pb-6">
@@ -378,11 +386,18 @@ export function AppShell() {
                   const isActive = activeTab === tab.key;
                   const isStudyTab = tab.key === 'study';
                   const isTestsTab = tab.key === 'tests';
-                  const longPressHandler = isStudyTab || isTestsTab ? () => {
+                  const isSyllabusTab = tab.key === 'syllabus';
+                  const longPressHandler = isStudyTab || isTestsTab || isSyllabusTab ? () => {
                     if (isStudyTab) {
                       studyTabLongPress.current = setTimeout(() => {
                         // Show the action sheet with both options (Free Study + Daily Recall)
                         setShowStudyActions(true);
+                        vibrate(20);
+                      }, 500);
+                    } else if (isSyllabusTab) {
+                      syllabusTabLongPress.current = setTimeout(() => {
+                        // Show the action sheet with Build Syllabus + Formula Vault
+                        setShowSyllabusActions(true);
                         vibrate(20);
                       }, 500);
                     } else {
@@ -392,7 +407,7 @@ export function AppShell() {
                       }, 500);
                     }
                   } : undefined;
-                  const clearLongPress = isStudyTab || isTestsTab ? () => {
+                  const clearLongPress = isStudyTab || isTestsTab || isSyllabusTab ? () => {
                     if (isStudyTab && studyTabLongPress.current) {
                       clearTimeout(studyTabLongPress.current);
                       studyTabLongPress.current = null;
@@ -400,6 +415,10 @@ export function AppShell() {
                     if (isTestsTab && testsTabLongPress.current) {
                       clearTimeout(testsTabLongPress.current);
                       testsTabLongPress.current = null;
+                    }
+                    if (isSyllabusTab && syllabusTabLongPress.current) {
+                      clearTimeout(syllabusTabLongPress.current);
+                      syllabusTabLongPress.current = null;
                     }
                   } : undefined;
                   return (
@@ -482,6 +501,59 @@ export function AppShell() {
             onFreeStudy={() => { setShowStudyActions(false); setShowFreeStudy(true); }}
             onRecall={() => { setShowStudyActions(false); setShowRecall(true); }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* === Syllabus tab long-press action sheet — Build Syllabus + Formula Vault === */}
+      <AnimatePresence>
+        {showSyllabusActions && (
+          <SyllabusActionsSheet
+            onClose={() => setShowSyllabusActions(false)}
+            onBuildSyllabus={() => { setShowSyllabusActions(false); setShowBuildSheet(true); }}
+            onFormulaVault={() => { setShowSyllabusActions(false); setShowFormulaVault(true); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Build Syllabus sheet — triggered from Syllabus tab long-press */}
+      {showBuildSheet && (
+        <BuildSyllabusSheet
+          onClose={() => setShowBuildSheet(false)}
+          showToast={(msg, sub) => pushToast(msg, sub, 'success')}
+        />
+      )}
+
+      {/* Formula Vault — triggered from Syllabus tab long-press */}
+      <AnimatePresence>
+        {showFormulaVault && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-end justify-center"
+            onClick={() => setShowFormulaVault(false)}
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[88vh] flex flex-col"
+            >
+              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold">Formula Vault</h2>
+                  <button onClick={() => setShowFormulaVault(false)} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">✕</button>
+                </div>
+              </div>
+              <div className="overflow-y-auto scroll-area px-5 py-5">
+                <FormulaVault />
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -611,6 +683,80 @@ function StudyActionsSheet({
           <div className="flex-1 text-left">
             <div className="text-sm font-semibold text-purple-300">Daily Recall Challenge</div>
             <div className="text-[11px] text-t-muted">Test your memory of recent topics</div>
+          </div>
+          <ChevronRight size={16} className="text-white/30" />
+        </button>
+
+        <button
+          onClick={onClose}
+          className="w-full mt-4 py-3 rounded-xl bg-white/5 text-t-secondary text-sm font-medium hover:bg-white/10 transition"
+        >
+          Cancel
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// === Syllabus tab long-press action sheet — two options:
+//   1. Build Syllabus (add subjects, chapters, lectures)
+//   2. Formula Vault (store + review important formulas)
+// Triggered by long-pressing the Syllabus tab in the bottom nav.
+function SyllabusActionsSheet({
+  onClose,
+  onBuildSyllabus,
+  onFormulaVault,
+}: {
+  onClose: () => void;
+  onBuildSyllabus: () => void;
+  onFormulaVault: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[90] flex items-end justify-center"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md glass-strong rounded-t-3xl p-5 pb-8"
+      >
+        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+        <h2 className="text-base font-bold mb-4 text-center">Syllabus Actions</h2>
+
+        {/* Build Syllabus */}
+        <button
+          onClick={onBuildSyllabus}
+          className="w-full p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition flex items-center gap-3 mb-2 active:scale-[0.98]"
+        >
+          <div className="w-11 h-11 rounded-xl bg-teal-500/15 flex items-center justify-center shrink-0">
+            <Plus size={22} className="text-teal-400" />
+          </div>
+          <div className="flex-1 text-left">
+            <div className="text-sm font-semibold text-teal-300">Build Syllabus</div>
+            <div className="text-[11px] text-t-muted">Add subjects, chapters, lectures</div>
+          </div>
+          <ChevronRight size={16} className="text-white/30" />
+        </button>
+
+        {/* Formula Vault */}
+        <button
+          onClick={onFormulaVault}
+          className="w-full p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition flex items-center gap-3 active:scale-[0.98]"
+        >
+          <div className="w-11 h-11 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0">
+            <Sigma size={22} className="text-purple-400" />
+          </div>
+          <div className="flex-1 text-left">
+            <div className="text-sm font-semibold text-purple-300">Formula Vault</div>
+            <div className="text-[11px] text-t-muted">Store + review important formulas</div>
           </div>
           <ChevronRight size={16} className="text-white/30" />
         </button>

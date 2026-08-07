@@ -18,6 +18,7 @@ import { DetailSheet } from '@/components/study/DetailSheet';
 import { LiquidProgress } from '@/components/shared/LiquidProgress';
 import { DoubtSheet } from '@/components/doubts/DoubtSheet';
 import { useDoubts } from '@/lib/store/doubts';
+import { TabInfoButton } from '@/components/shared/TabInfoButton';
 
 const EMPTY_TARGETS: Target[] = [];
 
@@ -354,6 +355,9 @@ export function StudyTab() {
       <AnimatePresence>
         {showDoubts && <DoubtSheet key="doubts" onClose={() => setShowDoubts(false)} />}
       </AnimatePresence>
+
+      {/* Tab info + hidden features button (bottom-right) */}
+      <TabInfoButton tab="study" />
     </div>
   );
 }

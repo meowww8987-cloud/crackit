@@ -27,6 +27,7 @@ import { BuildSyllabusSheet } from '@/components/syllabus/BuildSyllabusSheet';
 import { FormulaVault } from '@/components/syllabus/FormulaVault';
 import { AddLectureSheet } from '@/components/syllabus/AddLectureSheet';
 import { triggerTimeline } from '@/components/app/AppShell';
+import { TabInfoButton } from '@/components/shared/TabInfoButton';
 
 type ProgressFilter = 'all' | 'studying' | 'next' | 'done' | 'overdue';
 
@@ -162,14 +163,9 @@ export function SyllabusTab() {
         <FilterPill small active={progressFilter === 'overdue'} onClick={() => handleProgressFilter('overdue')}>⚠ Overdue</FilterPill>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => { setShowBuildSheet(true); vibrate(10); }} className="py-3 rounded-xl bg-gradient-to-r from-teal-500 to-green-500 text-black font-bold text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition shadow-lg shadow-teal-500/20 minimal-hide">
-          <Plus size={16} /> Build Syllabus
-        </button>
-        <button onClick={() => { setShowFormulaVault(true); vibrate(10); }} className="py-3 rounded-xl bg-white/5 border border-white/10 text-t-primary font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] hover:bg-white/10 transition">
-          <Sigma size={16} /> Formula Vault
-        </button>
-      </div>
+      {/* Build Syllabus + Formula Vault buttons moved to Syllabus tab
+          long-press action sheet (like Free Study + Daily Recall on Study tab).
+          This saves vertical space in the Syllabus tab. */}
 
       {reorderMode && (
         <div className="flex items-center gap-2 p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/30">
@@ -285,6 +281,9 @@ export function SyllabusTab() {
       {showBuildSheet && (<BuildSyllabusSheet onClose={() => setShowBuildSheet(false)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {addLectureFor && (<AddLectureSheet chapter={addLectureFor.chapter} subject={addLectureFor.subject} onClose={() => setAddLectureFor(null)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {showFormulaVault && (<FormulaVaultInline onClose={() => setShowFormulaVault(false)} />)}
+
+      {/* Tab info + hidden features button (bottom-right) */}
+      <TabInfoButton tab="syllabus" />
     </div>
   );
 }
