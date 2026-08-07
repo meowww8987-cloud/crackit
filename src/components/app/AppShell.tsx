@@ -111,86 +111,19 @@ export function AppShell() {
     });
   }, []);
 
-  // === True fullscreen (immersive mode) ===
-  // Hides the status bar (mobile tower, date, battery) + browser chrome so
-  // the app runs in TRUE fullscreen like a native app.
-  //
-  // CHALLENGE: Browsers require a USER GESTURE (tap/click) to call
-  // requestFullscreen() — it CANNOT be called on page load. So the strategy is:
-  // 1. On mount: use window.scrollTo(0,1) to hide the address bar (works
-  //    without a gesture on mobile Safari + Chrome).
-  // 2. On the FIRST user interaction (pointerdown anywhere): call
-  //    requestFullscreen(). This is the earliest allowed moment.
-  // 3. After that: re-enter fullscreen on visibilitychange/resize/touchend
-  //    (these count as user gestures, so the re-entry is allowed).
+  // === Fullscreen REMOVED ===
+  // The browser's requestFullscreen() API triggers a native "To exit full
+  // screen, press Esc" banner every time it's called — especially annoying
+  // because our re-entry logic (on touchend/resize/visibilitychange) re-triggered
+  // it repeatedly. The app already looks fullscreen via CSS (viewport-fit: cover
+  // + overscroll-none), so the native Fullscreen API is not needed.
+  // Only the address-bar-hiding scrollTo trick is kept (no banner side-effect).
   useEffect(() => {
-    let fullscreenActivated = false;
-
-    const enterFullscreen = async () => {
-      if (fullscreenActivated && document.fullscreenElement) return;
-      try {
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen().catch(() => {});
-          fullscreenActivated = true;
-        }
-      } catch {}
-    };
-
-    // Hide address bar on mount (no gesture needed for scrollTo)
     try {
       window.scrollTo(0, 1);
-      // Retry after a short delay — sometimes the layout isn't ready
       setTimeout(() => { try { window.scrollTo(0, 1); } catch {} }, 100);
       setTimeout(() => { try { window.scrollTo(0, 1); } catch {} }, 500);
     } catch {}
-
-    // === FIRST user interaction → request fullscreen ===
-    // Browsers require a user gesture for requestFullscreen. The first
-    // pointerdown anywhere on the page counts as that gesture. After this,
-    // subsequent re-entries (on visibilitychange etc.) are also allowed.
-    const onFirstInteraction = () => {
-      enterFullscreen();
-      // Remove the listeners after the first activation — subsequent
-      // re-entries are handled by the listeners below.
-      document.removeEventListener('pointerdown', onFirstInteraction);
-      document.removeEventListener('touchstart', onFirstInteraction);
-    };
-    document.addEventListener('pointerdown', onFirstInteraction, { once: false, passive: true });
-    document.addEventListener('touchstart', onFirstInteraction, { once: false, passive: true });
-
-    // === Re-enter fullscreen when returning from notification panel ===
-    const onVisibilityChange = () => {
-      if (!document.hidden && !document.fullscreenElement) {
-        // visibilitychange returning to visible counts as a gesture context
-        enterFullscreen();
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    // === Re-enter on resize (orientation change can exit fullscreen) ===
-    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-    const onResize = () => {
-      if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        if (!document.fullscreenElement) enterFullscreen();
-      }, 300);
-    };
-    window.addEventListener('resize', onResize);
-
-    // === Re-enter on touchend (catches cases where fullscreen was exited) ===
-    const onTouchEnd = () => {
-      if (!document.fullscreenElement) enterFullscreen();
-    };
-    document.addEventListener('touchend', onTouchEnd, { passive: true });
-
-    return () => {
-      document.removeEventListener('pointerdown', onFirstInteraction);
-      document.removeEventListener('touchstart', onFirstInteraction);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-      window.removeEventListener('resize', onResize);
-      document.removeEventListener('touchend', onTouchEnd);
-      if (resizeTimer) clearTimeout(resizeTimer);
-    };
   }, []);
 
   // Apply OLED Black when setting changes
@@ -269,10 +202,6 @@ export function AppShell() {
     };
     const handleReturn = () => {
       useSession.getState().handleReturn();
-      // Re-enter fullscreen if focus timer was open
-      if (useSession.getState().active && useSession.getState().focusOpen) {
-        enterFullscreen();
-      }
     };
 
     // visibilitychange — fires when tab is hidden/shown (desktop + mobile)
@@ -727,11 +656,7 @@ export function AppShell() {
 // corner was redundant with the Home tab's own header (which has the full
 // NEET logo + title). Removed per user request to keep the UI clean.
 
-function enterFullscreen() {
-  try {
-    if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen().catch(() => {});
-    }
-  } catch {}
-}
+// enterFullscreen() removed — requestFullscreen() triggers a browser-native
+// "To exit full screen, press Esc" banner that ruins UX. App is fullscreen
+// via CSS (viewport-fit: cover + overscroll-none).
 

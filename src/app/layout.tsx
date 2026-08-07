@@ -65,46 +65,18 @@ export default function RootLayout({
                 }
 
                 // === Early fullscreen setup (runs before React loads) ===
-                // 1. Hide the address bar ASAP via scrollTo (no gesture needed).
+                // NOTE: requestFullscreen() has been REMOVED — it triggers a
+                // browser-native "To exit full screen, press Esc" banner that
+                // appears every time fullscreen is entered/re-entered, which
+                // ruins the UX. The app still looks fullscreen via CSS
+                // (viewport-fit: cover + overscroll-none).
+                // We only keep the address-bar-hiding scrollTo trick (no banner).
                 window.addEventListener('load', function() {
                   setTimeout(function() { window.scrollTo(0, 1); }, 0);
                   setTimeout(function() { window.scrollTo(0, 1); }, 100);
                 });
-                // Also try on DOMContentLoaded
                 document.addEventListener('DOMContentLoaded', function() {
                   setTimeout(function() { window.scrollTo(0, 1); }, 0);
-                });
-
-                // 2. Request fullscreen on the FIRST user gesture (required
-                //    by browsers — can't do it on load). We attach a one-time
-                //    pointerdown/touchstart listener at the document level so
-                //    it fires no matter where the user first taps.
-                var fsActivated = false;
-                function requestFs() {
-                  if (fsActivated) return;
-                  fsActivated = true;
-                  try {
-                    var el = document.documentElement;
-                    if (el.requestFullscreen) {
-                      el.requestFullscreen().catch(function(){});
-                    }
-                  } catch(e) {}
-                  document.removeEventListener('pointerdown', requestFs);
-                  document.removeEventListener('touchstart', requestFs);
-                }
-                document.addEventListener('pointerdown', requestFs, { passive: true });
-                document.addEventListener('touchstart', requestFs, { passive: true });
-
-                // 3. Re-enter fullscreen when returning from notification panel.
-                document.addEventListener('visibilitychange', function() {
-                  if (!document.hidden && !document.fullscreenElement) {
-                    try {
-                      var el = document.documentElement;
-                      if (el.requestFullscreen) {
-                        el.requestFullscreen().catch(function(){});
-                      }
-                    } catch(e) {}
-                  }
                 });
               })();
             `,
