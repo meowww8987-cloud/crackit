@@ -195,28 +195,55 @@ export function FocusTimer() {
     return () => clearInterval(i);
   }, [settings.burnProtection, settings.dimDelay, active]);
 
-  // Fullscreen on mount + request iOS motion permission (for gravity-based
-  // orientation detection). iOS 13+ requires explicit user-gesture-triggered
-  // permission for DeviceOrientationEvent — without it, the gravity sensor
-  // never fires and we fall back to the less-reliable orientationchange event.
+  // Fullscreen on mount + lock screen orientation + request iOS motion permission.
+  //
+  // Why lock screen orientation? On Android with auto-rotate ON, the OS rotates
+  // the display when the phone turns. If we ALSO rotate our content (via
+  // deviceorientation), we get a DOUBLE rotation — content appears upside down
+  // or sideways. By locking the screen to 'portrait' (supported in fullscreen on
+  // Chrome for Android), the OS stops auto-rotating and WE handle all rotation
+  // ourselves via the gravity sensor. On iOS Safari, screen.orientation.lock()
+  // isn't supported, but Safari doesn't auto-rotate web content anyway, so no
+  // double-rotation issue there.
   useEffect(() => {
-    try {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      }
-    } catch {}
-    // Request iOS motion permission (the focus session opening IS a user
-    // gesture, so this is allowed). On non-iOS browsers this is a no-op.
-    const anyDeviceOrientation = (window as any).DeviceOrientationEvent;
-    if (anyDeviceOrientation && typeof anyDeviceOrientation.requestPermission === 'function') {
-      anyDeviceOrientation.requestPermission().then((state: string) => {
-        // 'granted' or 'denied'. If denied, the gravity listener silently
-        // never fires and we fall back to screen.orientation.
-      }).catch(() => {
-        // Permission request can fail silently — ignore.
-      });
-    }
+    const enterFullscreenAndLock = async () => {
+      try {
+        // 1. Enter fullscreen (required for screen.orientation.lock on Android)
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch {}
+
+      // 2. Lock screen to portrait — prevents OS auto-rotation so our gravity-
+      //    based content rotation doesn't double up. Must be in fullscreen.
+      try {
+        if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).lock === 'function') {
+          await (screen.orientation as any).lock('portrait').catch(() => {
+            // Lock failed (iOS Safari doesn't support it, or not in fullscreen).
+            // On these devices, the OS/browser won't auto-rotate web content
+            // anyway, so our gravity-based rotation works without double-rotation.
+          });
+        }
+      } catch {}
+
+      // 3. Request iOS motion permission (iOS 13+ requires explicit user gesture)
+      try {
+        const anyDeviceOrientation = (window as any).DeviceOrientationEvent;
+        if (anyDeviceOrientation && typeof anyDeviceOrientation.requestPermission === 'function') {
+          await anyDeviceOrientation.requestPermission().catch(() => {});
+        }
+      } catch {}
+    };
+
+    enterFullscreenAndLock();
+
     return () => {
+      try {
+        // Release screen orientation lock
+        if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).unlock === 'function') {
+          (screen.orientation as any).unlock();
+        }
+      } catch {}
       try {
         if (document.fullscreenElement && document.exitFullscreen) {
           document.exitFullscreen().catch(() => {});
@@ -375,43 +402,46 @@ export function FocusTimer() {
         transition: 'background-image 800ms ease-in-out, background-color 800ms ease-in-out',
       }}
     >
-      {/* === Inner wrapper for orientation rotation === */}
-      {/* The outer div stays fixed inset-0 (always fills screen, always black). */}
-      {/* The inner div rotates its CONTENT to match the device's physical
-          orientation. Supports all 4 angles: 0° (upright), 90° (landscape left),
-          180° (upside-down), 270° (landscape right).
-          
-          KEY GEOMETRY FIX: For landscape (90°/270°), the content div's width
-          and height are SWAPPED relative to the viewport. A portrait viewport
-          (e.g. 400×800) needs landscape content (800×400) rotated 90° to fill
-          it. So we set width:100vh (viewport height = content width) and
-          height:100vw (viewport width = content height). This ensures the
-          rotated content fills the viewport at ALL 4 angles without going
-          out of frame. */}
+      {/* === FLEX CENTERING WRAPPER ===
+          This div fills the viewport (fixed inset-0) and uses flexbox to
+          CENTER the rotated content div below. The content div is always
+          portrait-shaped (100vmin × 100vmax); flexbox centering ensures
+          its center = viewport center, so the CSS rotation pivots around
+          the viewport center — content stays perfectly framed at all 4 angles. */}
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+      {/* === ROTATED CONTENT DIV ===
+          ALWAYS portrait dimensions: 100vmin (short) × 100vmax (long).
+          vmin/vmax are ORIENTATION-INDEPENDENT — 100vmin is always the
+          shorter screen dimension, 100vmax is always the longer one,
+          regardless of whether the phone is in portrait or landscape.
+
+          Why not 100vw/100vh? Because vw/vh track the CURRENT viewport,
+          which SWAPS when the device rotates. At 90°, 100vw becomes the
+          long dimension and 100vh becomes the short one — the opposite
+          of what we need. vmin/vmax don't have this problem.
+
+          The flexbox parent centers this div, so transformOrigin: center
+          rotates around the viewport center. After rotation, the content
+          fills the viewport exactly at all 4 angles (verified by geometry):
+            0°:   400×800 in 400×800 viewport → fills ✓
+            90°:  400×800 rotated 90° = 800×400 in 800×400 viewport → fills ✓
+            180°: 400×800 rotated 180° = 400×800 in 400×800 viewport → fills ✓
+            270°: 400×800 rotated 270° = 800×400 in 800×400 viewport → fills ✓ */}
       <div
         style={{
-          // For landscape: width=viewport-height, height=viewport-width
-          // For portrait: width=viewport-width, height=viewport-height
-          width: (orientationAngle === 90 || orientationAngle === 270) ? '100vh' : '100%',
-          height: (orientationAngle === 90 || orientationAngle === 270) ? '100vw' : '100%',
+          // Always portrait dimensions (short × long)
+          width: '100vmin',
+          height: '100vmax',
           display: 'flex',
-          flexDirection: (orientationAngle === 90 || orientationAngle === 270) ? 'row' : 'column',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: (orientationAngle === 90 || orientationAngle === 270) ? 'center' : 'space-between',
-          gap: (orientationAngle === 90 || orientationAngle === 270) ? '2rem' : undefined,
-          padding: (orientationAngle === 90 || orientationAngle === 270) ? '1.5rem 3rem' : '3rem 1.5rem',
-          // Rotate to match device orientation. transformOrigin center
-          // ensures rotation happens around the div's center.
+          justifyContent: 'space-between',
+          padding: '3rem 1.5rem',
+          // Rotate to match device orientation
           transform: `rotate(${orientationAngle}deg)`,
           transformOrigin: 'center center',
-          // Position the div so its CENTER aligns with the viewport center.
-          // For landscape, the swapped dimensions mean we offset by half the
-          // content dimensions (50vh/50vw). For portrait, offset by 50%.
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          marginLeft: (orientationAngle === 90 || orientationAngle === 270) ? '-50vh' : '-50%',
-          marginTop: (orientationAngle === 90 || orientationAngle === 270) ? '-50vw' : '-50%',
+          // Smooth transition when angle changes
+          transition: 'transform 0.3s ease',
         }}
       >
       {/* Wasted time flash — shows when returning from background */}
@@ -690,6 +720,7 @@ export function FocusTimer() {
             />
           </button>
         </div>
+      </div>
       </div>
       </div>
     </motion.div>
