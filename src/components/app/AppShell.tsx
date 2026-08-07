@@ -309,10 +309,8 @@ export function AppShell() {
       <div className="aurora-noise" aria-hidden />
       <div className="aurora-vignette" aria-hidden />
 
-      {/* Top bar — sticky settings gear */}
-      <div className="relative z-30">
-        <TopBar />
-      </div>
+      {/* Top bar removed — the green NEET logo in the top-left corner was
+          redundant with the Home tab's header. Removed per user request. */}
 
       {/* Main scroll area — touch-driven nav */}
       <div
@@ -542,18 +540,9 @@ export function AppShell() {
   );
 }
 
-function TopBar() {
-  return (
-    <div className="absolute top-0 left-0 right-0 z-30 h-13 px-4 py-2.5 flex items-center pointer-events-none">
-      <div className="flex items-center gap-1.5 pointer-events-auto">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-400 to-green-500 flex items-center justify-center text-xs font-bold text-black shadow-lg shadow-teal-500/20">
-          N
-        </div>
-        <span className="text-sm font-semibold tracking-tight gradient-text">NEET 2027</span>
-      </div>
-    </div>
-  );
-}
+// TopBar removed — the green "N" logo + "NEET 2027" text in the top-left
+// corner was redundant with the Home tab's own header (which has the full
+// NEET logo + title). Removed per user request to keep the UI clean.
 
 function enterFullscreen() {
   try {

@@ -119,11 +119,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.6.2</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.6.3</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.6.3</strong> — Removed the green 'N' logo + 'NEET 2027' text from the top-left corner (redundant with Home tab header)</div>
             <div><strong className="text-white/70">v2.6.2</strong> — Focus session now auto-detects device orientation in all 4 directions (0°/90°/180°/270°) using Screen Orientation API. Rotate button cycles through all 4 orientations. Always-on (no setting gate).</div>
             <div><strong className="text-white/70">v2.6.1</strong> — Tap NEET 2027 logo to start sleep (removed extra sleep banner); removed Daily Recall card from Home (now in Study tab long-press menu); Study tab long-press now shows action sheet with Free Study + Daily Recall options</div>
             <div><strong className="text-white/70">v2.6.0</strong> — Rebuild Pomodoro as single ConcentricRings (fixes outer ring definitively); immersive Sleep Lock Screen (full-screen bluish night scenery + double-tap + math problem to wake); remove BreakExercise + Study Pact</div>
