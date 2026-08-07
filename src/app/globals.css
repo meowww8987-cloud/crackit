@@ -106,40 +106,41 @@
 }
 
 .dark {
-  --ring-track: rgba(255, 255, 255, 0.10);
-  --ring-outer: #9ca3af;
-  --bar-track: rgba(255, 255, 255, 0.08);
-  --card-bg: #14161e;
-  --background: oklch(0.08 0.005 250);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.14 0.008 250);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.16 0.008 250);
-  --popover-foreground: oklch(0.985 0 0);
+  /* True black OLED backgrounds for premium look + battery saving */
+  --background: oklch(0 0 0);
+  --foreground: oklch(0.96 0.003 250);
+  --card: oklch(0.06 0.005 250);
+  --card-foreground: oklch(0.96 0.003 250);
+  --popover: oklch(0.07 0.005 250);
+  --popover-foreground: oklch(0.96 0.003 250);
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.22 0.01 250);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.22 0.01 250);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.10 0.005 250);
+  --secondary-foreground: oklch(0.96 0.003 250);
+  --muted: oklch(0.10 0.005 250);
+  --muted-foreground: oklch(0.65 0.005 250);
+  --accent: oklch(0.12 0.005 250);
+  --accent-foreground: oklch(0.96 0.003 250);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
   --ring: oklch(0.556 0 0);
+  --ring-track: rgba(255, 255, 255, 0.08);
+  --ring-outer: #9ca3af;
+  --bar-track: rgba(255, 255, 255, 0.06);
+  --card-bg: #08090d;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.14 0.008 250);
-  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.06 0.005 250);
+  --sidebar-foreground: oklch(0.96 0.003 250);
   --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-primary-foreground: oklch(0.96 0.003 250);
+  --sidebar-accent: oklch(0.12 0.005 250);
+  --sidebar-accent-foreground: oklch(0.96 0.003 250);
+  --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.556 0 0);
 }
 
@@ -762,12 +763,13 @@ html.gold img[src="/logo.svg"] {
     inset 0 -1px 0 rgba(0, 0, 0, 0.04);      /* bottom inner shadow (bevel) */
 }
 .dark .glass {
-  background: rgba(20, 22, 30, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(12, 14, 20, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   box-shadow:
-    0 4px 20px -4px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    0 4px 24px -6px rgba(0, 0, 0, 0.6),       /* deeper drop shadow for depth */
+    0 1px 3px -1px rgba(0, 0, 0, 0.4),        /* tight shadow for grounding */
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),  /* subtle top bevel highlight */
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);        /* bottom inner shadow */
 }
 /* Light mode: glass cards need SOLID background + stronger border */
 html:not(.dark):not(.warm) .glass {
@@ -1077,8 +1079,93 @@ button:active:not(:disabled) {
 /* Smooth color transitions on state changes */
 .glass {
   transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* === Glassmorphism 2.0 — button micro-shadows ===
+ * Buttons get soft layered shadows for a physical, tactile feel.
+ * On press (active), the shadow compresses + scale 0.97 = physical depression.
+ */
+.btn-soft {
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.15),          /* drop shadow */
+    inset 0 1px 0 rgba(255, 255, 255, 0.15); /* top bevel highlight */
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+}
+.btn-soft:active {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.2),            /* compressed shadow */
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);      /* pressed-in look */
+  transform: scale(0.97);
+}
+
+/* === Card Stagger Animation ===
+ * When tab content loads, direct children fade in one-by-one with a 40ms stagger.
+ * Applied via a wrapper class on the tab root div.
+ */
+.stagger-children > * {
+  opacity: 0;
+  animation: stagger-in 0.4s ease-out forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 40ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 80ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 160ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 280ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 320ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 360ms; }
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* === Liquid Progress Bar Shimmer ===
+ * A subtle shimmer sweeps across progress bar fills every 3s.
+ */
+.liquid-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-sweep 3s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+@keyframes shimmer-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* === Subject Ambient Glow ===
+ * A very faint radial glow in the subject's color, positioned top-right.
+ * Breathing animation (opacity 0.03 → 0.08 → 0.03 over 8s).
+ */
+.ambient-glow {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 50vw;
+  height: 50vh;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.05;
+  animation: ambient-breathe 8s ease-in-out infinite;
+}
+@keyframes ambient-breathe {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.08; }
 }
 
 /* OLED Black mode — pure #000000 backgrounds for battery saving */

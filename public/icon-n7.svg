@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NEET 2027 Study Tracker — App Icon Option F: "N7" Badge
+     Design: Bold "N7" monogram on pure black background.
+     N = teal (#14b8a6), 7 = green (#22c55e).
+     Subtle inner glow around the text. Minimalist + premium.
+     Works at all sizes (16px favicon to 512px home screen). -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="n7-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14b8a6"/>
+      <stop offset="50%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <filter id="n7-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="squircle">
+      <rect x="0" y="0" width="512" height="512" rx="115" ry="115"/>
+    </clipPath>
+  </defs>
+
+  <!-- Pure black squircle background -->
+  <rect x="0" y="0" width="512" height="512" rx="115" ry="115" fill="#000000"/>
+
+  <!-- Subtle radial glow behind the text -->
+  <circle cx="256" cy="256" r="140" fill="url(#n7-grad)" opacity="0.08"/>
+
+  <!-- "N7" text — bold, modern, gradient fill -->
+  <text x="256" y="300" text-anchor="middle" font-family="Arial Black, Helvetica, sans-serif"
+        font-size="220" font-weight="900" fill="url(#n7-grad)"
+        filter="url(#n7-glow)" letter-spacing="-8">
+    N7
+  </text>
+
+  <!-- Small "NEET" label at bottom -->
+  <text x="256" y="390" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+        font-size="28" font-weight="bold" fill="#ffffff" opacity="0.3" letter-spacing="6">
+    NEET
+  </text>
+</svg>

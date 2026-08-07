@@ -29,6 +29,7 @@ import { ConfettiCanvas, triggerConfetti } from '@/components/shared/Effects';
 import { GradientMesh } from '@/components/shared/GradientMesh';
 import { Scene3D } from '@/components/shared/Scene3D';
 import { Splash3D } from '@/components/shared/Splash3D';
+import { SplashScreen } from '@/components/shared/SplashScreen';
 import { DailySummaryCard } from '@/components/home/DailySummaryCard';
 import { PaperTestCompanion } from '@/components/tests/PaperTestCompanion';
 import { PaperTestPicker } from '@/components/tests/PaperTestPicker';
@@ -341,7 +342,8 @@ export function AppShell() {
     <div className="fixed inset-0 bg-adaptive text-adaptive overflow-hidden flex flex-col">
       {/* 3D Splash screen — shown on first mount, fades out after ~1.8s.
           Displays rotating atom + NEET 2027 countdown. */}
-      {showSplash && <Splash3D onDone={() => setShowSplash(false)} />}
+      {/* === Random Splash Screen — picks one of 5 animations on each launch === */}
+      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
 
       {/* Aurora 2.0 — animated multi-layer gradient background with parallax
           depth + subject-aware brightness boost when a session is running. */}
