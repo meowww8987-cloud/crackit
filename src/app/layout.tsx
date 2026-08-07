@@ -9,15 +9,16 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
-      { url: "/logo.svg", type: "image/svg+xml" },
-      { url: "/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
-      { url: "/icon-512.svg", sizes: "512x512", type: "image/svg+xml" },
+      { url: "/favicon-32.png", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
-      { url: "/icon-512.svg", sizes: "512x512", type: "image/svg+xml" },
+      { url: "/icon-180.png", sizes: "180x180", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    shortcut: ["/logo.svg"],
+    shortcut: ["/favicon-32.png"],
   },
   appleWebApp: {
     capable: true,
@@ -64,13 +65,34 @@ export default function RootLayout({
                   document.documentElement.classList.add('dark');
                 }
 
-                // === Early fullscreen setup (runs before React loads) ===
-                // NOTE: requestFullscreen() has been REMOVED — it triggers a
-                // browser-native "To exit full screen, press Esc" banner that
-                // appears every time fullscreen is entered/re-entered, which
-                // ruins the UX. The app still looks fullscreen via CSS
-                // (viewport-fit: cover + overscroll-none).
-                // We only keep the address-bar-hiding scrollTo trick (no banner).
+                // === Fullscreen on first user gesture ===
+                // Browsers require a user gesture for requestFullscreen().
+                // We call it ONCE on the first tap — the browser shows a
+                // brief "press Esc" banner that auto-dismisses after ~3s.
+                // After that, the app stays in fullscreen (no status bar).
+                // In PWA mode (installed), display:fullscreen handles it
+                // without any banner.
+                var fsDone = false;
+                function doFs() {
+                  if (fsDone) return;
+                  fsDone = true;
+                  try {
+                    var el = document.documentElement;
+                    var p = el.requestFullscreen ? el.requestFullscreen() : null;
+                    if (p && p.catch) p.catch(function(){});
+                  } catch(e) {}
+                  document.removeEventListener('pointerdown', doFs);
+                  document.removeEventListener('touchstart', doFs);
+                }
+                // Only attach if NOT already in PWA fullscreen mode
+                if (!window.matchMedia('(display-mode: fullscreen)').matches
+                    && !window.matchMedia('(display-mode: standalone)').matches
+                    && !(navigator.standalone)) {
+                  document.addEventListener('pointerdown', doFs, { passive: true });
+                  document.addEventListener('touchstart', doFs, { passive: true });
+                }
+
+                // Hide address bar on load (no gesture needed)
                 window.addEventListener('load', function() {
                   setTimeout(function() { window.scrollTo(0, 1); }, 0);
                   setTimeout(function() { window.scrollTo(0, 1); }, 100);

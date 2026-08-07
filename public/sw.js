@@ -1,12 +1,14 @@
 // NEET 2027 Study Tracker — Service Worker
 // Caches app shell for offline use
 
-const CACHE_NAME = 'neet-2027-v2';
+const CACHE_NAME = 'neet-2027-v3';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
-  '/icon-192.svg',
-  '/icon-512.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-180.png',
+  '/favicon-32.png',
 ];
 
 // Install: cache app shell
