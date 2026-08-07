@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pause, Play, Square, ChevronDown, AlertTriangle, CheckCircle2, RotateCw } from 'lucide-react';
+import { Pause, Play, Square, ChevronDown, AlertTriangle, CheckCircle2, RotateCw, Lock, Unlock } from 'lucide-react';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
 import { useTargets } from '@/lib/store/targets';
 import { useSettings } from '@/lib/store/settings';
@@ -46,6 +46,13 @@ export function FocusTimer() {
   //   270° = landscape (rotated 90° CCW — home button on right)
   const [orientationAngle, setOrientationAngle] = useState(0);
   const orientationAngleRef = useRef(0); // ref mirror for use in event handler
+  // Temporary lock (double-tap rotate button) — only for current session.
+  // Persistent lock (long-press) is stored in settings.lockedOrientation.
+  const [tempLockAngle, setTempLockAngle] = useState<number | null>(null);
+  // Lock button state: long-press timer + double-tap detection + toast
+  const rotateLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastRotateTapRef = useRef(0);
+  const [lockToast, setLockToast] = useState<string | null>(null);
   const lastWastedRef = useRef(0);
   const lastInteractRef = useRef(Date.now());
 
@@ -57,30 +64,48 @@ export function FocusTimer() {
 
   // === Compute the nearest 4-way angle from a gamma/beta reading.
   // gamma = left-right tilt (-90 to 90). beta = front-back tilt (-180 to 180).
-  // We use gamma primarily (it maps cleanly to the 4 portrait/landscape states).
+  //
+  // CRITICAL: The rotation we apply to CONTENT must be the OPPOSITE of the
+  // device's physical rotation, so the content appears upright to the user.
+  //
+  // When the user tilts the phone to the RIGHT (clockwise, home button moves
+  // to the LEFT), gamma is POSITIVE. The screen's "up" is now pointing RIGHT,
+  // so content must rotate 270° (counter-clockwise) to appear upright.
+  //
+  // When the user tilts the phone to the LEFT (counter-clockwise, home button
+  // moves to the RIGHT), gamma is NEGATIVE. The screen's "up" is now pointing
+  // LEFT, so content must rotate 90° (clockwise) to appear upright.
+  //
+  // (Previous code had this backwards — gamma>45→90 and gamma<-45→270 — which
+  //  made 90° and 270° feel swapped.)
   const computeAngleFromGamma = useCallback((gamma: number, beta: number): number => {
-    // When the phone is held vertically (beta near ±90), gamma is unreliable.
-    // Use a combination: if |beta| > 45 (phone mostly flat or upright), use
-    // gamma for left-right; otherwise the phone is face-up and we keep the
-    // current orientation.
-    // Simplify: use gamma directly. gamma ≈ 0 → portrait (0 or 180).
-    //                                   gamma ≈ 90 → landscape (90).
-    //                                   gamma ≈ -90 → landscape (270).
-    // To distinguish 0 vs 180 (both have gamma ≈ 0), check beta sign:
-    //   beta > 0 (phone upright) → 0°, beta < 0 (phone upside-down) → 180°.
-    if (gamma > 45) return 90;
-    if (gamma < -45) return 270;
-    // gamma is near 0 → portrait. Use beta to decide 0 vs 180.
-    // beta > 0 when the phone's top is pointing up (normal portrait).
-    // beta < 0 (or > 90 inverted) when upside-down.
-    // Actually: when held in portrait, beta is typically 30-60 (tilted back).
-    // When upside-down portrait, beta is negative or > 90.
+    // Tilt right (gamma > 45) → content rotates 270° to stay upright
+    if (gamma > 45) return 270;
+    // Tilt left (gamma < -45) → content rotates 90° to stay upright
+    if (gamma < -45) return 90;
+    // gamma near 0 → portrait. Use beta to decide 0 vs 180.
+    // beta > 0 (phone upright, tilted back slightly) → 0° (normal portrait)
+    // beta < -45 or > 135 (phone upside-down) → 180°
     if (beta < -45 || beta > 135) return 180;
     return 0;
   }, []);
 
+  // The EFFECTIVE angle: if locked (persistent or temp), use the lock value.
+  // Otherwise use the auto-detected orientationAngle.
+  const effectiveAngle = tempLockAngle ?? settings.lockedOrientation ?? orientationAngle;
+
   // === Orientation detection effect ===
+  // When locked (persistent or temp), skip sensor listening entirely.
   useEffect(() => {
+    // If locked, just set the angle to the lock value and don't listen to sensors.
+    const lockAngle = tempLockAngle ?? settings.lockedOrientation;
+    if (lockAngle !== null && lockAngle !== undefined) {
+      const normalized = ((lockAngle % 360) + 360) % 360;
+      orientationAngleRef.current = normalized;
+      setOrientationAngle(normalized);
+      return; // no sensors while locked
+    }
+
     // --- Helper: read current angle from the best available API ---
     const readScreenAngle = (): number => {
       // Preferred: Screen Orientation API
@@ -166,7 +191,7 @@ export function FocusTimer() {
       }
       clearInterval(fallbackInterval);
     };
-  }, [computeAngleFromGamma]);
+  }, [computeAngleFromGamma, tempLockAngle, settings.lockedOrientation]);
 
   // Watch for wasted seconds increase (returning from background) — show flash
   useEffect(() => {
@@ -415,30 +440,30 @@ export function FocusTimer() {
           shorter screen dimension, 100vmax is always the longer one,
           regardless of whether the phone is in portrait or landscape.
 
-          Why not 100vw/100vh? Because vw/vh track the CURRENT viewport,
-          which SWAPS when the device rotates. At 90°, 100vw becomes the
-          long dimension and 100vh becomes the short one — the opposite
-          of what we need. vmin/vmax don't have this problem.
-
           The flexbox parent centers this div, so transformOrigin: center
           rotates around the viewport center. After rotation, the content
-          fills the viewport exactly at all 4 angles (verified by geometry):
-            0°:   400×800 in 400×800 viewport → fills ✓
-            90°:  400×800 rotated 90° = 800×400 in 800×400 viewport → fills ✓
-            180°: 400×800 rotated 180° = 400×800 in 400×800 viewport → fills ✓
-            270°: 400×800 rotated 270° = 800×400 in 800×400 viewport → fills ✓ */}
+          fills the viewport exactly at all 4 angles.
+
+          LAYOUT ADAPTATION: When the effective angle is 90° or 270°
+          (landscape), the content switches to a ROW layout (timer on
+          left, controls on right) so everything is visible and reachable
+          on a wide landscape screen. In portrait (0°/180°) it stays
+          COLUMN (timer on top, controls on bottom). */}
       <div
         style={{
           // Always portrait dimensions (short × long)
           width: '100vmin',
           height: '100vmax',
           display: 'flex',
-          flexDirection: 'column',
+          // Landscape (90°/270°) → row layout; Portrait (0°/180°) → column
+          flexDirection: (effectiveAngle === 90 || effectiveAngle === 270) ? 'row' : 'column',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '3rem 1.5rem',
-          // Rotate to match device orientation
-          transform: `rotate(${orientationAngle}deg)`,
+          justifyContent: (effectiveAngle === 90 || effectiveAngle === 270) ? 'center' : 'space-between',
+          gap: (effectiveAngle === 90 || effectiveAngle === 270) ? '2rem' : undefined,
+          // Landscape: more horizontal padding; Portrait: more vertical padding
+          padding: (effectiveAngle === 90 || effectiveAngle === 270) ? '1.5rem 3rem' : '3rem 1.5rem',
+          // Rotate to match device orientation (or locked angle)
+          transform: `rotate(${effectiveAngle}deg)`,
           transformOrigin: 'center center',
           // Smooth transition when angle changes
           transition: 'transform 0.3s ease',
@@ -699,26 +724,112 @@ export function FocusTimer() {
           >
             <ChevronDown size={16} /> Min
           </button>
-          {/* Orientation rotate button — cycles through all 4 directions
-              (0° → 90° → 180° → 270° → 0°). Always available (no setting gate)
-              so the user can manually rotate the timer in any direction.
+          {/* Orientation rotate + lock button.
+              - Single tap: cycle through 4 angles (0°→90°→180°→270°→0°).
+              - Double-tap: temporary lock at current angle (current session only).
+              - Long-press (500ms): persistent lock (saved to settings, survives
+                app restart). Long-press again to unlock.
+              When locked, shows a Lock icon; when unlocked, shows RotateCw.
               The icon rotates to match the current orientation. */}
           <button
-            onClick={(e) => {
+            onPointerDown={(e) => {
               e.stopPropagation();
               handleInteraction();
-              setOrientationAngle((prev) => (prev + 90) % 360);
-              vibrate(8);
+              // Start long-press timer
+              rotateLongPressRef.current = setTimeout(() => {
+                // Long-press fired → toggle persistent lock
+                const isCurrentlyLocked = settings.lockedOrientation !== null;
+                if (isCurrentlyLocked) {
+                  // Unlock
+                  settings.set('lockedOrientation', null);
+                  setTempLockAngle(null);
+                  setLockToast('🔓 Orientation unlocked — auto-rotate on');
+                  vibrate([10, 30, 10]);
+                } else {
+                  // Lock at current effective angle
+                  settings.set('lockedOrientation', effectiveAngle);
+                  setLockToast(`🔒 Orientation locked at ${effectiveAngle}° — stays even after restart`);
+                  vibrate([10, 30, 10, 30, 50]);
+                }
+                setTimeout(() => setLockToast(null), 2500);
+                rotateLongPressRef.current = null;
+              }, 500);
             }}
-            className="px-4 py-4 rounded-2xl font-semibold text-sm bg-white/5 text-white/70 active:scale-[0.98] transition flex items-center justify-center gap-1.5"
-            title={`Rotate (current: ${orientationAngle}°)`}
-            aria-label="Rotate orientation"
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              // If long-press already fired, do nothing
+              if (rotateLongPressRef.current === null) return;
+              // Cancel long-press
+              clearTimeout(rotateLongPressRef.current);
+              rotateLongPressRef.current = null;
+              // Detect double-tap
+              const now = Date.now();
+              const isDoubleTap = now - lastRotateTapRef.current < 300;
+              lastRotateTapRef.current = now;
+              if (isDoubleTap) {
+                // Double-tap → toggle temporary lock
+                if (tempLockAngle !== null) {
+                  setTempLockAngle(null);
+                  setLockToast('🔓 Temporary lock released');
+                  vibrate([10, 30]);
+                } else if (settings.lockedOrientation === null) {
+                  // Only set temp lock if not already persistently locked
+                  setTempLockAngle(effectiveAngle);
+                  setLockToast(`⏸ Temporarily locked at ${effectiveAngle}° (double-tap to release)`);
+                  vibrate([10, 30]);
+                }
+                setTimeout(() => setLockToast(null), 2000);
+              } else {
+                // Single tap → cycle angle by 90°
+                // If currently locked (persistent or temp), unlock first then cycle
+                if (settings.lockedOrientation !== null) {
+                  settings.set('lockedOrientation', null);
+                }
+                if (tempLockAngle !== null) {
+                  setTempLockAngle(null);
+                }
+                setOrientationAngle((prev) => (prev + 90) % 360);
+                vibrate(8);
+              }
+            }}
+            onPointerLeave={() => {
+              if (rotateLongPressRef.current) {
+                clearTimeout(rotateLongPressRef.current);
+                rotateLongPressRef.current = null;
+              }
+            }}
+            className="px-4 py-4 rounded-2xl font-semibold text-sm bg-white/5 text-white/70 active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
+            title={`Rotate (current: ${effectiveAngle}°${settings.lockedOrientation !== null ? ' · locked' : ''}${tempLockAngle !== null ? ' · temp-locked' : ''})\n• Tap: rotate 90°\n• Double-tap: temp lock\n• Long-press: persistent lock`}
+            aria-label="Rotate or lock orientation"
           >
-            <RotateCw
-              size={16}
-              style={{ transform: `rotate(${orientationAngle}deg)`, transition: 'transform 0.3s ease' }}
-            />
+            {/* Show Lock icon when locked, RotateCw when unlocked */}
+            {(settings.lockedOrientation !== null || tempLockAngle !== null) ? (
+              <Lock
+                size={16}
+                className="text-amber-400"
+                style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }}
+              />
+            ) : (
+              <RotateCw
+                size={16}
+                style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }}
+              />
+            )}
           </button>
+
+          {/* Lock toast — shows briefly when lock state changes */}
+          <AnimatePresence>
+            {lockToast && (
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                className="absolute bottom-32 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/15 text-white text-xs font-semibold whitespace-nowrap z-50 pointer-events-none"
+              >
+                {lockToast}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
       </div>

@@ -361,6 +361,10 @@ export interface Settings {
   screenDimOpacity: number;
   /** Allow landscape rotation in focus timer. */
   allowLandscape: boolean;
+  /** Locked orientation angle for focus timer (null = auto-rotate via gravity).
+   *  When set to 0/90/180/270, the focus timer stays at that angle regardless
+   *  of device orientation. Set by long-pressing the rotate button. */
+  lockedOrientation: number | null;
   /** Minimal mode — hides non-essential UI (streak, partner, coach, badges) */
   minimalMode: boolean;
   /** OLED Black — uses pure #000000 for dark mode backgrounds */

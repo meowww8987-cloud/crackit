@@ -44,6 +44,8 @@ const DEFAULTS: Settings = {
   screenDimOpacity: 30,
   // Allow landscape rotation in focus timer
   allowLandscape: true,
+  // Locked orientation for focus timer (null = auto-rotate, 0/90/180/270 = locked)
+  lockedOrientation: null,
   // Minimal mode — hides non-essential UI for deep focus
   minimalMode: false,
   // OLED Black — pure #000000 backgrounds for battery saving

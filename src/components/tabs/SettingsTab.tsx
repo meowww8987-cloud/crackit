@@ -119,11 +119,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.6.6</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.6.7</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.6.7</strong> — Fix 90°/270° rotation swap (gamma mapping was backwards); adapt landscape layout (row flexDirection so controls visible); add orientation lock (long-press = persistent, double-tap = temporary)</div>
             <div><strong className="text-white/70">v2.6.6</strong> — Fill TopBar empty space (reduced paddingTop to safe-area only); move Build Syllabus + Formula Vault to Syllabus tab long-press; add TabInfoButton (tutorial + hidden features) to all tabs except Settings</div>
             <div><strong className="text-white/70">v2.6.5</strong> — Fix rotation frame overflow at 90°/270° (use vmin/vmax + flexbox centering instead of vh/vw which swap with orientation); fix Android auto-rotate (lock screen to portrait on mount so gravity sensor handles rotation without OS double-rotating)</div>
             <div><strong className="text-white/70">v2.6.4</strong> — Fix Focus Timer rotation: gravity-based orientation detection (DeviceOrientationEvent + iOS permission), deadzone threshold, fixed content going out of frame at 180°/270° (swapped width/height for landscape + centered with margin offsets)</div>
