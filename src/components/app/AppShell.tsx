@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff, PlayCircle, Brain, ChevronRight, Plus, Sigma, HelpCircle } from 'lucide-react';
+import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff, PlayCircle, Brain, ChevronRight, Plus, Sigma, HelpCircle, Target, Trophy, ClipboardList, TrendingUp } from 'lucide-react';
 import { useNav, type TabKey, TAB_ORDER } from '@/lib/store/nav';
 import { useSession } from '@/lib/store/session';
 import { cn, vibrate } from '@/lib/utils';
@@ -20,6 +20,7 @@ import { ActiveRecallChallenge } from '@/components/recall/ActiveRecallChallenge
 import { FreeStudyPicker } from '@/components/study/FreeStudyPicker';
 import { BuildSyllabusSheet } from '@/components/syllabus/BuildSyllabusSheet';
 import { FormulaVault } from '@/components/syllabus/FormulaVault';
+import { WeeklyGoalCard } from '@/components/home/WeeklyGoalCard';
 import { useHistory } from '@/lib/store/history';
 import { PWARegister } from '@/components/pwa/PWARegister';
 import { ToastContainer, pushToast } from '@/components/shared/Toast';
@@ -81,6 +82,9 @@ export function AppShell() {
   const [showTutorialOnboarding, setShowTutorialOnboarding] = useState(false);
   const [showBuildSheet, setShowBuildSheet] = useState(false);
   const [showFormulaVault, setShowFormulaVault] = useState(false);
+  const [showWeeklyGoals, setShowWeeklyGoals] = useState(false);
+  const [showTestHistory, setShowTestHistory] = useState(false);
+  const [showWeeklyReport, setShowWeeklyReport] = useState(false);
   const [showPaperTestPicker, setShowPaperTestPicker] = useState(false);
   const [activePaperTestId, setActivePaperTestId] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
@@ -554,8 +558,17 @@ export function AppShell() {
                 icon: Plus, label: 'Build Syllabus', description: 'Add subjects, chapters, lectures',
                 color: '#14b8a6', onClick: () => { setLongPressTab(null); setShowBuildSheet(true); },
               } : longPressTab === 'tests' ? {
-                icon: FileText, label: 'Paper Test', description: 'Practice with a real exam paper + timer',
+                icon: ClipboardList, label: 'CBT Mode', description: 'Computer-based test simulation with timer',
                 color: '#a855f7', onClick: () => { setLongPressTab(null); setShowPaperTestPicker(true); },
+              } : longPressTab === 'home' ? {
+                icon: Target, label: 'Weekly Goals', description: 'Set + track your weekly study goals',
+                color: '#14b8a6', onClick: () => { setLongPressTab(null); setShowWeeklyGoals(true); },
+              } : longPressTab === 'history' ? {
+                icon: Trophy, label: 'Test History', description: 'View all past tests + detailed analysis',
+                color: '#f59e0b', onClick: () => { setLongPressTab(null); setShowTestHistory(true); },
+              } : longPressTab === 'stats' ? {
+                icon: TrendingUp, label: 'Weekly Report', description: 'What you accomplished this week',
+                color: '#14b8a6', onClick: () => { setLongPressTab(null); setShowWeeklyReport(true); },
               } : null
             }
             bottomAction={
@@ -565,6 +578,12 @@ export function AppShell() {
               } : longPressTab === 'syllabus' ? {
                 icon: Sigma, label: 'Formula Vault', description: 'Store + review important formulas',
                 color: '#a855f7', onClick: () => { setLongPressTab(null); setShowFormulaVault(true); },
+              } : longPressTab === 'tests' ? {
+                icon: FileText, label: 'Practice Mode', description: 'Practice questions without exam pressure',
+                color: '#3b82f6', onClick: () => { setLongPressTab(null); setShowPaperTestPicker(true); },
+              } : longPressTab === 'stats' ? {
+                icon: BarChart3, label: 'Monthly Report', description: 'Your full month progression + graphs',
+                color: '#a855f7', onClick: () => { setLongPressTab(null); setShowWeeklyReport(true); },
               } : null
             }
             onTutorial={() => { setInfoTab(longPressTab); setLongPressTab(null); }}
@@ -616,6 +635,96 @@ export function AppShell() {
               </div>
               <div className="overflow-y-auto scroll-area px-5 py-5">
                 <FormulaVault />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* === Weekly Goals sheet — triggered from Home tab long-press === */}
+      <AnimatePresence>
+        {showWeeklyGoals && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-end justify-center"
+            onClick={() => setShowWeeklyGoals(false)}
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[88vh] flex flex-col"
+            >
+              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold">Weekly Goals</h2>
+                  <button onClick={() => setShowWeeklyGoals(false)} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">✕</button>
+                </div>
+              </div>
+              <div className="overflow-y-auto scroll-area px-5 py-5">
+                <WeeklyGoalCard />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* === Test History sheet — triggered from History tab long-press === */}
+      <AnimatePresence>
+        {showTestHistory && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-end justify-center"
+            onClick={() => setShowTestHistory(false)}
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[88vh] flex flex-col"
+            >
+              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold">Test History</h2>
+                  <button onClick={() => setShowTestHistory(false)} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">✕</button>
+                </div>
+              </div>
+              <div className="overflow-y-auto scroll-area px-5 py-5">
+                <TestHistoryInline onClose={() => setShowTestHistory(false)} />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* === Weekly/Monthly Report sheet — triggered from Stats tab long-press === */}
+      <AnimatePresence>
+        {showWeeklyReport && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-end justify-center"
+            onClick={() => setShowWeeklyReport(false)}
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[88vh] flex flex-col"
+            >
+              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold">Progression Report</h2>
+                  <button onClick={() => setShowWeeklyReport(false)} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">✕</button>
+                </div>
+              </div>
+              <div className="overflow-y-auto scroll-area px-5 py-5">
+                <WeeklyReportInline />
               </div>
             </motion.div>
           </motion.div>
@@ -695,3 +804,121 @@ export function AppShell() {
 // "To exit full screen, press Esc" banner that ruins UX. App is fullscreen
 // via CSS (viewport-fit: cover + overscroll-none).
 
+
+// === Test History Inline — shows all past tests with scores + analysis ===
+function TestHistoryInline({ onClose }: { onClose: () => void }) {
+  const tests = useTestsHook();
+  if (tests.length === 0) {
+    return (
+      <div className="text-center py-10">
+        <Trophy size={32} className="text-white/20 mx-auto mb-3" />
+        <p className="text-sm text-white/50">No tests logged yet.</p>
+        <p className="text-[10px] text-white/40 mt-1">Long-press the Tests tab to add a test.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {tests.sort((a: any, b: any) => b.date.localeCompare(a.date)).map((t: any) => (
+        <div key={t.id} className="glass rounded-xl p-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-semibold">{t.name || `${t.subject || 'Test'}`}</span>
+            <span className="text-xs tabular font-bold text-teal-400">{t.totalMarks ?? '—'}/{t.maxMarks ?? 720}</span>
+          </div>
+          <div className="text-[10px] text-white/40">{t.date} · {t.source}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// === Weekly Report Inline — shows weekly + monthly progression with graph ===
+function WeeklyReportInline() {
+  const sessions = useHistory((s: any) => s.sessions);
+  // Build last 7 days study hours
+  const last7 = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const sec = sessions.filter((s: any) => s.date === key).reduce((a: number, s: any) => a + s.studySeconds, 0);
+    return { label: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2), hours: sec / 3600 };
+  });
+  const maxH = Math.max(...last7.map(d => d.hours), 1);
+  const totalH = last7.reduce((a, d) => a + d.hours, 0);
+
+  // Build last 4 weeks
+  const last4Weeks = Array.from({ length: 4 }, (_, i) => {
+    const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - (3 - i) * 7);
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
+    const sec = sessions.filter((s: any) => {
+      const sDate = new Date(s.endedAt);
+      return sDate >= weekStart && sDate < weekEnd;
+    }).reduce((a: number, s: any) => a + s.studySeconds, 0);
+    return { label: `W${i+1}`, hours: sec / 3600 };
+  });
+  const maxWeekH = Math.max(...last4Weeks.map(d => d.hours), 1);
+
+  return (
+    <div className="space-y-5">
+      {/* Summary */}
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="glass rounded-xl p-2.5">
+          <div className="text-[9px] uppercase text-white/40 font-semibold">This Week</div>
+          <div className="text-lg font-bold tabular text-teal-400">{totalH.toFixed(1)}h</div>
+        </div>
+        <div className="glass rounded-xl p-2.5">
+          <div className="text-[9px] uppercase text-white/40 font-semibold">Daily Avg</div>
+          <div className="text-lg font-bold tabular text-purple-400">{(totalH/7).toFixed(1)}h</div>
+        </div>
+        <div className="glass rounded-xl p-2.5">
+          <div className="text-[9px] uppercase text-white/40 font-semibold">Sessions</div>
+          <div className="text-lg font-bold tabular text-amber-400">{sessions.filter((s:any) => { const d = new Date(); d.setDate(d.getDate()-7); return s.endedAt >= d.getTime(); }).length}</div>
+        </div>
+      </div>
+
+      {/* Daily bar chart */}
+      <div>
+        <div className="text-xs font-bold text-white/70 mb-2">Daily Study (Last 7 Days)</div>
+        <div className="flex items-end justify-between gap-1.5 h-24">
+          {last7.map((d, i) => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+              <div className="text-[8px] text-white/40 tabular">{d.hours > 0 ? d.hours.toFixed(1) : ''}</div>
+              <div className="w-full flex-1 flex items-end">
+                <div className="w-full rounded-t bg-gradient-to-t from-teal-500 to-green-400 transition-all"
+                  style={{ height: `${(d.hours / maxH) * 100}%`, minHeight: d.hours > 0 ? '4px' : '2px', opacity: d.hours > 0 ? 1 : 0.2 }} />
+              </div>
+              <div className="text-[8px] text-white/50 font-semibold">{d.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Weekly bar chart */}
+      <div>
+        <div className="text-xs font-bold text-white/70 mb-2">Weekly Progression (Last 4 Weeks)</div>
+        <div className="flex items-end justify-between gap-2 h-24">
+          {last4Weeks.map((d, i) => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+              <div className="text-[8px] text-white/40 tabular">{d.hours > 0 ? d.hours.toFixed(1) + 'h' : ''}</div>
+              <div className="w-full flex-1 flex items-end">
+                <div className="w-full rounded-t bg-gradient-to-t from-purple-500 to-pink-400 transition-all"
+                  style={{ height: `${(d.hours / maxWeekH) * 100}%`, minHeight: d.hours > 0 ? '4px' : '2px', opacity: d.hours > 0 ? 1 : 0.2 }} />
+              </div>
+              <div className="text-[8px] text-white/50 font-semibold">{d.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Hook to get tests for TestHistoryInline
+function useTestsHook() {
+  const [tests, setTests] = useState<any[]>([]);
+  useEffect(() => {
+    import('@/lib/store/tests').then(({ useTests }) => {
+      setTests(useTests.getState().tests);
+    });
+  }, []);
+  return tests;
+}

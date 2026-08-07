@@ -21,18 +21,16 @@ import {
 import { useSettings, applyTextSize, applyTheme } from '@/lib/store/settings';
 import { cn, vibrate } from '@/lib/utils';
 import type { Settings } from '@/lib/types';
-import { TimetableEditor } from '@/components/timetable/TimetableEditor';
 import { ConcentricRings } from '@/components/ui/concentric-rings';
 import { triggerTutorialOnboarding } from '@/components/app/AppShell';
 
-type SectionKey = 'goals' | 'focus' | 'appearance' | 'notifications' | 'timetable' | 'data';
+type SectionKey = 'goals' | 'focus' | 'appearance' | 'notifications' | 'data';
 
 const SECTIONS: { key: SectionKey; label: string; icon: typeof TargetIcon; color: string }[] = [
   { key: 'goals', label: 'Study Goals', icon: TargetIcon, color: '#22c55e' },
   { key: 'focus', label: 'Focus & Timer', icon: Timer, color: '#f59e0b' },
   { key: 'appearance', label: 'Appearance', icon: Palette, color: '#a855f7' },
   { key: 'notifications', label: 'Notifications', icon: Bell, color: '#14b8a6' },
-  { key: 'timetable', label: 'Weekly Timetable', icon: Calendar, color: '#f97316' },
   { key: 'data', label: 'Data & Account', icon: Database, color: '#ef4444' },
 ];
 
@@ -134,7 +132,6 @@ export function SettingsTab() {
                     {sec.key === 'focus' && <FocusSection s={s} update={update} />}
                     {sec.key === 'appearance' && <AppearanceSection s={s} update={update} />}
                     {sec.key === 'notifications' && <NotificationsSection s={s} update={update} />}
-                    {sec.key === 'timetable' && <TimetableEditor />}
                     {sec.key === 'data' && <DataSection s={s} />}
                   </div>
                 </motion.div>
@@ -149,12 +146,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.7.7</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.8.0</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
-            <div><strong className="text-white/70">v2.7.7</strong> — Reverted fullscreen to v2.7.2 aggressive style (works on launch/refresh). Kept PNG icons + manifest display:fullscreen for PWA install. Status bar now hidden.</div>
+            <div><strong className="text-white/70">v2.8.0</strong> — Sleep Lock Screen v2 (clouds, shooting stars, breathing moon, sunrise transition); long-press Home→Weekly Goals, History→Test History, Tests→CBT+Practice, Stats→Weekly+Monthly Report with graphs; removed Weekly Goals card from Home + Timetable from Settings</div>
             <div><strong className="text-white/70">v2.7.5</strong> — PWA fullscreen: manifest display='fullscreen' + display_override. Install (Add to Home Screen) for true fullscreen with NO browser banner. Updated install prompt + fullscreen hint.</div>
             <div><strong className="text-white/70">v2.7.4</strong> — Remove ALL requestFullscreen() calls (browser 'To exit full screen, press Esc' banner is gone). App still looks fullscreen via CSS viewport-fit:cover.</div>
             <div><strong className="text-white/70">v2.7.3</strong> — Fix fullscreen: request on first user gesture (browsers block it on load), early inline script in layout.tsx, address bar hidden on load via scrollTo</div>

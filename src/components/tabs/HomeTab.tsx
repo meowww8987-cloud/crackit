@@ -15,7 +15,6 @@ import { ScorePredictionCard } from '@/components/home/ScorePredictionCard';
 import { MiniHeatmap } from '@/components/home/MiniHeatmap';
 import { CoachCard } from '@/components/home/CoachCard';
 import { PartnerCard } from '@/components/home/PartnerCard';
-import { WeeklyGoalCard } from '@/components/home/WeeklyGoalCard';
 import { NextTestCard, TestDayMode } from '@/components/home/NextTestCard';
 import { useMounted } from '@/lib/hooks/useMounted';
 import { CountUp } from '@/components/shared/CountUp';
@@ -278,8 +277,7 @@ export function HomeTab() {
       {/* Sleep & Energy + Doubts */}
       <div className="minimal-hide"><SleepAndDoubtCard /></div>
 
-      {/* Weekly Goals */}
-      <div className="minimal-hide"><WeeklyGoalCard /></div>
+      {/* Weekly Goals — moved to Home tab long-press overlay */}
 
       {/* Predicted Score */}
       <ScorePredictionCard />
