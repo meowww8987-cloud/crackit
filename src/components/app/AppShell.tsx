@@ -113,59 +113,79 @@ export function AppShell() {
 
   // === True fullscreen (immersive mode) ===
   // Hides the status bar (mobile tower, date, battery) + browser chrome so
-  // the app runs in TRUE fullscreen like a native app. Re-enters fullscreen
-  // automatically when the user returns from the notification panel (which
-  // exits fullscreen).
+  // the app runs in TRUE fullscreen like a native app.
+  //
+  // CHALLENGE: Browsers require a USER GESTURE (tap/click) to call
+  // requestFullscreen() — it CANNOT be called on page load. So the strategy is:
+  // 1. On mount: use window.scrollTo(0,1) to hide the address bar (works
+  //    without a gesture on mobile Safari + Chrome).
+  // 2. On the FIRST user interaction (pointerdown anywhere): call
+  //    requestFullscreen(). This is the earliest allowed moment.
+  // 3. After that: re-enter fullscreen on visibilitychange/resize/touchend
+  //    (these count as user gestures, so the re-entry is allowed).
   useEffect(() => {
+    let fullscreenActivated = false;
+
     const enterFullscreen = async () => {
+      if (fullscreenActivated && document.fullscreenElement) return;
       try {
-        // Request fullscreen on the document root
         if (document.documentElement.requestFullscreen) {
           await document.documentElement.requestFullscreen().catch(() => {});
+          fullscreenActivated = true;
         }
-      } catch {}
-      // Hide address bar on mobile browsers (scroll trick)
-      try {
-        window.scrollTo(0, 1);
       } catch {}
     };
 
-    enterFullscreen();
+    // Hide address bar on mount (no gesture needed for scrollTo)
+    try {
+      window.scrollTo(0, 1);
+      // Retry after a short delay — sometimes the layout isn't ready
+      setTimeout(() => { try { window.scrollTo(0, 1); } catch {} }, 100);
+      setTimeout(() => { try { window.scrollTo(0, 1); } catch {} }, 500);
+    } catch {}
 
-    // Re-enter fullscreen when the page becomes visible again (user swiped
-    // down the notification panel, which exits fullscreen, then swiped it
-    // back up). The 'visibilitychange' event fires when the user returns.
+    // === FIRST user interaction → request fullscreen ===
+    // Browsers require a user gesture for requestFullscreen. The first
+    // pointerdown anywhere on the page counts as that gesture. After this,
+    // subsequent re-entries (on visibilitychange etc.) are also allowed.
+    const onFirstInteraction = () => {
+      enterFullscreen();
+      // Remove the listeners after the first activation — subsequent
+      // re-entries are handled by the listeners below.
+      document.removeEventListener('pointerdown', onFirstInteraction);
+      document.removeEventListener('touchstart', onFirstInteraction);
+    };
+    document.addEventListener('pointerdown', onFirstInteraction, { once: false, passive: true });
+    document.addEventListener('touchstart', onFirstInteraction, { once: false, passive: true });
+
+    // === Re-enter fullscreen when returning from notification panel ===
     const onVisibilityChange = () => {
-      if (!document.hidden) {
-        // Page is visible again — re-enter fullscreen if we exited
-        if (!document.fullscreenElement) {
-          enterFullscreen();
-        }
+      if (!document.hidden && !document.fullscreenElement) {
+        // visibilitychange returning to visible counts as a gesture context
+        enterFullscreen();
       }
     };
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
-    // Also re-enter on resize (orientation change can exit fullscreen)
+    // === Re-enter on resize (orientation change can exit fullscreen) ===
     let resizeTimer: ReturnType<typeof setTimeout> | null = null;
     const onResize = () => {
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        if (!document.fullscreenElement) {
-          enterFullscreen();
-        }
+        if (!document.fullscreenElement) enterFullscreen();
       }, 300);
     };
-
-    document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('resize', onResize);
-    // Re-enter on any touch/click (in case fullscreen was exited)
+
+    // === Re-enter on touchend (catches cases where fullscreen was exited) ===
     const onTouchEnd = () => {
-      if (!document.fullscreenElement) {
-        enterFullscreen();
-      }
+      if (!document.fullscreenElement) enterFullscreen();
     };
     document.addEventListener('touchend', onTouchEnd, { passive: true });
 
     return () => {
+      document.removeEventListener('pointerdown', onFirstInteraction);
+      document.removeEventListener('touchstart', onFirstInteraction);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('resize', onResize);
       document.removeEventListener('touchend', onTouchEnd);

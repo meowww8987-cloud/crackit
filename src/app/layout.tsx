@@ -63,6 +63,49 @@ export default function RootLayout({
                 } catch(e) {
                   document.documentElement.classList.add('dark');
                 }
+
+                // === Early fullscreen setup (runs before React loads) ===
+                // 1. Hide the address bar ASAP via scrollTo (no gesture needed).
+                window.addEventListener('load', function() {
+                  setTimeout(function() { window.scrollTo(0, 1); }, 0);
+                  setTimeout(function() { window.scrollTo(0, 1); }, 100);
+                });
+                // Also try on DOMContentLoaded
+                document.addEventListener('DOMContentLoaded', function() {
+                  setTimeout(function() { window.scrollTo(0, 1); }, 0);
+                });
+
+                // 2. Request fullscreen on the FIRST user gesture (required
+                //    by browsers — can't do it on load). We attach a one-time
+                //    pointerdown/touchstart listener at the document level so
+                //    it fires no matter where the user first taps.
+                var fsActivated = false;
+                function requestFs() {
+                  if (fsActivated) return;
+                  fsActivated = true;
+                  try {
+                    var el = document.documentElement;
+                    if (el.requestFullscreen) {
+                      el.requestFullscreen().catch(function(){});
+                    }
+                  } catch(e) {}
+                  document.removeEventListener('pointerdown', requestFs);
+                  document.removeEventListener('touchstart', requestFs);
+                }
+                document.addEventListener('pointerdown', requestFs, { passive: true });
+                document.addEventListener('touchstart', requestFs, { passive: true });
+
+                // 3. Re-enter fullscreen when returning from notification panel.
+                document.addEventListener('visibilitychange', function() {
+                  if (!document.hidden && !document.fullscreenElement) {
+                    try {
+                      var el = document.documentElement;
+                      if (el.requestFullscreen) {
+                        el.requestFullscreen().catch(function(){});
+                      }
+                    } catch(e) {}
+                  }
+                });
               })();
             `,
           }}

@@ -149,11 +149,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.7.2</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.7.3</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.7.3</strong> — Fix fullscreen: request on first user gesture (browsers block it on load), early inline script in layout.tsx, address bar hidden on load via scrollTo</div>
             <div><strong className="text-white/70">v2.7.2</strong> — Remove hand animation (just pulsing ring); visible X close button on long-press overlay; disable text selection globally (no more Android copy popup); true fullscreen (hide status bar, re-enter on notification panel return)</div>
             <div><strong className="text-white/70">v2.7.1</strong> — Fix tutorial hand position (measure actual tab DOM position); overlay doesn't cover bottom nav (tabs tappable); only dismissable via 'I understood' or long-pressing correct tab; long-press progress ring</div>
             <div><strong className="text-white/70">v2.7.0</strong> — Long-press ALL tabs for full-screen overlay (top 50% / bottom 50% actions + ? tutorial); removed always-visible ? button; moved Tutorial toggle to header (left of Minimal); tutorial onboarding with hand animation + timer</div>
