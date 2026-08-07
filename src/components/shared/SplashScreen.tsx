@@ -5,24 +5,37 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings } from '@/lib/store/settings';
 
 /**
- * SplashScreen — randomly picks one of 5 loading animations on each launch.
+ * SplashScreen — cycles through 6 splash animations SEQUENTIALLY (not random).
+ *
+ * Uses localStorage to track which splash to show next:
+ *   Launch 1 → Splash A (atom assembly)
+ *   Launch 2 → Splash B (liquid drop)
+ *   Launch 3 → Splash C (countdown)
+ *   Launch 4 → Splash D (DNA helix)
+ *   Launch 5 → Splash E (pulse line)
+ *   Launch 6 → Splash F (minimal fade — N7 logo only)
+ *   Launch 7 → Splash A again (cycles back to start)
  *
  * A: Atom Assembly — orbital rings draw themselves, nucleus pops in
  * B: Liquid Drop — teal drop falls + splashes into N7 logo
  * C: Countdown to NEET — counts down from 365 to actual days left
  * D: DNA Helix — double helix spins + unwinds into N7
  * E: Pulse Line — ECG heartbeat line morphs into N7
- *
- * Each animation lasts ~1.5s, then fades out to reveal the app.
+ * F: Minimal Fade — N7 logo fades in (Apple-style, clean)
  */
 
-type SplashType = 'A' | 'B' | 'C' | 'D' | 'E';
+const TOTAL_SPLASHES = 6;
+const STORAGE_KEY = 'neet-splash-index';
 
 export function SplashScreen({ onDone }: { onDone: () => void }) {
-  // Pick a random splash on mount — stable across re-renders
-  const [splashType] = useState<SplashType>(() => {
-    const types: SplashType[] = ['A', 'B', 'C', 'D', 'E'];
-    return types[Math.floor(Math.random() * types.length)];
+  // Read the next splash index from localStorage (sequential, not random)
+  const [splashIndex] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const current = stored ? parseInt(stored, 10) : 0;
+    const nextIndex = (current + 1) % TOTAL_SPLASHES; // advance for next launch
+    localStorage.setItem(STORAGE_KEY, String(nextIndex));
+    return current; // show the CURRENT one (0-5)
   });
 
   // Auto-dismiss after 1.8s
@@ -30,6 +43,9 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     const t = setTimeout(onDone, 1800);
     return () => clearTimeout(t);
   }, [onDone]);
+
+  const splashTypes = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
+  const splashType = splashTypes[splashIndex];
 
   return (
     <AnimatePresence>
@@ -45,10 +61,11 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         {splashType === 'C' && <SplashC />}
         {splashType === 'D' && <SplashD />}
         {splashType === 'E' && <SplashE />}
+        {splashType === 'F' && <SplashF />}
 
-        {/* Splash type indicator (tiny, bottom-right — for debugging) */}
+        {/* Splash index indicator (tiny, bottom-right — for debugging) */}
         <div className="absolute bottom-2 right-3 text-[8px] text-white/10 font-mono">
-          {splashType}
+          {splashType} ({splashIndex + 1}/{TOTAL_SPLASHES})
         </div>
       </motion.div>
     </AnimatePresence>
@@ -371,6 +388,39 @@ function SplashE() {
       <div className="mt-6">
         <N7Logo delay={0.9} />
       </div>
+    </div>
+  );
+}
+
+// ===================================================================
+// F: Minimal Fade — N7 logo fades in (Apple-style, clean)
+// ===================================================================
+function SplashF() {
+  return (
+    <div className="flex flex-col items-center">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        className="text-7xl font-black tracking-tighter"
+        style={{
+          background: 'linear-gradient(135deg, #14b8a6, #22c55e, #a855f7)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          filter: 'drop-shadow(0 0 30px rgba(20,184,166,0.3))',
+        }}
+      >
+        N7
+      </motion.div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.4 }}
+        transition={{ delay: 0.4, duration: 0.6 }}
+        className="text-xs font-bold tracking-[0.4em] text-white/40 mt-2"
+      >
+        NEET 2027
+      </motion.div>
     </div>
   );
 }
