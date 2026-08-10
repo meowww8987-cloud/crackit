@@ -145,7 +145,7 @@ export function TargetCard({
     <Reorder.Item
       value={target}
       data-card
-      layout
+      layout="position"
       dragListener={false}
       dragControls={dragControls}
       initial={reduceAnimations ? false : { opacity: 0, y: 8 }}
@@ -154,35 +154,24 @@ export function TargetCard({
         y: 0,
         scale: celebrate && !reduceAnimations ? 1.02 : 1,
       }}
-      whileDrag={
-        reduceAnimations
-          ? { zIndex: 50, cursor: 'grabbing' }
-          : {
-              scale: 1.03,
-              y: -2,
-              zIndex: 50,
-              cursor: 'grabbing',
-              boxShadow: '0 16px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05)',
-            }
-      }
-      dragTransition={
-        reduceAnimations
-          ? { bounceStiffness: 1000, bounceDamping: 100 }
-          : { bounceStiffness: 500, bounceDamping: 35 }
-      }
-      transition={
-        reduceAnimations
-          ? { duration: 0 }
-          : {
-              type: 'spring',
-              stiffness: 400 + (animationIntensity / 100) * 200,
-              damping: 45 - (animationIntensity / 100) * 20,
-              mass: 0.8,
-            }
-      }
+      whileDrag={{
+        scale: 1.04,
+        zIndex: 100,
+        cursor: 'grabbing',
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.08)',
+      }}
+      dragTransition={{
+        bounceStiffness: 600,
+        bounceDamping: 40,
+      }}
+      transition={{
+        type: 'spring',
+        stiffness: 500,
+        damping: 35,
+        mass: 0.6,
+      }}
       className={cn(
         'card-solid rounded-2xl relative overflow-hidden select-none',
-        // Tap opens detail; drag handle is separate
         'cursor-pointer',
         sessionState === 'studying' && 'glow-pulse',
         sessionState === 'wasting' && 'glow-pulse',
@@ -190,9 +179,14 @@ export function TargetCard({
         flashGreen && 'ring-2 ring-green-500',
       )}
       style={{
+        // ONLY transition border-color + box-shadow + background-color.
+        // Do NOT transition transform — that's handled by framer-motion.
+        // Including transform in CSS transition causes stutter during drag.
         transitionProperty: 'border-color, box-shadow, background-color',
-        transitionDuration: '250ms',
+        transitionDuration: '200ms',
         transitionTimingFunction: 'ease-out',
+        // GPU acceleration for smooth drag
+        willChange: 'transform',
         borderColor: flashGreen
           ? '#22c55e'
           : isThisActive

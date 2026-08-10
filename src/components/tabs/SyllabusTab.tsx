@@ -88,7 +88,9 @@ export function SyllabusTab() {
     !search || text.toLowerCase().includes(search.toLowerCase());
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8, delay: 0, tolerance: 5 },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -348,7 +350,16 @@ function SortableChapterCard({ chapter, color, lectureCount }: { chapter: Chapte
     <>
       <div
         ref={setNodeRef}
-        style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : undefined, opacity: isDragging ? 0.8 : 1 }}
+        style={{
+          transform: CSS.Transform.toString(transform),
+          transition,
+          zIndex: isDragging ? 100 : undefined,
+          opacity: isDragging ? 0.9 : 1,
+          // GPU acceleration for smooth drag
+          willChange: isDragging ? 'transform' : undefined,
+          // Stronger shadow when dragging for depth perception
+          boxShadow: isDragging ? '0 20px 60px rgba(0,0,0,0.4)' : undefined,
+        }}
         className="glass rounded-2xl p-3.5 flex items-center gap-3 mb-2"
         onPointerDown={() => {
           longPressRef.current = setTimeout(() => { setShowMenu(true); vibrate(20); }, 500);

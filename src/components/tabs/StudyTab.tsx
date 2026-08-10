@@ -244,7 +244,7 @@ export function StudyTab() {
                           }
                         }
                         reorderToday(result);
-                      }} className="space-y-2" layout>
+                      }} className="space-y-2" layoutScroll as="div">
                         {chGroup.items.map((t, idx) => (
                           <TargetCard
                             key={t.id}
