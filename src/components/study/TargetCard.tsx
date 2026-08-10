@@ -11,7 +11,6 @@ import { subjectColor } from '@/lib/colors';
 import type { Target, ActivityType } from '@/lib/types';
 import { cn, formatHM, vibrate } from '@/lib/utils';
 import { playSound } from '@/lib/sounds';
-import { LiquidProgress } from '@/components/shared/LiquidProgress';
 
 interface Props {
   target: Target;
@@ -341,14 +340,31 @@ export function TargetCard({
           {target.topic}
         </div>
 
-        {/* === Row 3: Liquid progress bar === */}
-        <LiquidProgress
-          pct={progressPct}
-          color={sessionState === 'wasting' ? '#ef4444' : color.hex}
-          color2={sessionState === 'wasting' ? '#ef4444aa' : `${color.hex}aa`}
-          className="mb-2"
-          height="h-1.5"
-        />
+        {/* === Row 3: Segment progress (no left-to-right stretch) ===
+            Discrete segments that "light up" — like a battery indicator.
+            No continuous bar that stretches; segments just change color/opacity. */}
+        <div className="flex gap-[3px] mb-2 h-1.5">
+          {Array.from({ length: 10 }, (_, i) => {
+            const segmentPct = (i + 1) * 10;
+            const isFilled = progressPct >= segmentPct;
+            const isPartial = !isFilled && progressPct > (i * 10);
+            const segColor = sessionState === 'wasting' ? '#ef4444' : color.hex;
+            return (
+              <div
+                key={i}
+                className="flex-1 rounded-full transition-all duration-300"
+                style={{
+                  background: isFilled
+                    ? segColor
+                    : isPartial
+                    ? `${segColor}60`
+                    : 'var(--bar-track, rgba(255,255,255,0.06))',
+                  opacity: isFilled ? 1 : isPartial ? 0.7 : 0.4,
+                }}
+              />
+            );
+          })}
+        </div>
 
         {/* === Row 4: Stats — studied / remaining / sessions + action buttons === */}
         <div className="flex items-center gap-2">

@@ -47,7 +47,7 @@ export function WaveformProgress({ pct, color = '#14b8a6', color2 = '#22c55e', c
       className={cn('relative flex items-end justify-between gap-[2px] rounded-2xl overflow-hidden', height, className)}
       style={{
         background: 'var(--bar-track, rgba(255,255,255,0.04))',
-        padding: '4px 6px',
+        padding: '2px 4px',
       }}
     >
       {bars.map((bar) => {

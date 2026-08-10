@@ -156,7 +156,7 @@ export function StudyTab() {
           pct={progressPct}
           color="#14b8a6"
           color2="#22c55e"
-          height="h-14"
+          height="h-8"
         />
         <div className="mt-2.5 flex items-center justify-between text-xs">
           <span className="tabular text-t-muted" suppressHydrationWarning>
