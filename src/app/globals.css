@@ -306,54 +306,53 @@
 .forest .bg-black\/60 { background: rgba(2, 44, 34, 0.6) !important; }
 .forest .bg-black\/70 { background: rgba(2, 44, 34, 0.7) !important; }
 
-/* ===== ROSE QUARTZ THEME — Soothing light palette for long study sessions =====
+/* ===== ROSE QUARTZ THEME — Rosy pink palette for long study sessions =====
  * Design goals:
- *  - CALM, not loud: soft warm off-white background (no busy radial gradients)
- *  - HIGH READABILITY: pure white cards + deep warm charcoal text (not faded pink)
- *  - SOOTHING ACCENTS: dusty rose primary, muted sage + amber secondaries (no neon)
- *  - NO VISUAL NOISE: aurora canvas / grid-bg hidden for distraction-free reading
+ *  - UNMISTAKABLY PINK: Misty Rose bg + 5 shades of pink accents
+ *  - HIGH READABILITY: pure white cards + Dark Raspberry text (WCAG AAA on white)
+ *  - COHESIVE: monochrome pink palette (no clashing amber/sage)
+ *  - 3D ANIMATION: pink-shaded atoms/DNA/molecules visible against pink-tinted bg
+ * Named palette: Misty Rose / Dark Raspberry / Tuscan Red / Old Rose / Rosy Brown
+ *                Rose Pink / China Rose / Pink Pearl / Rose Gold / Mauve Taupe
  */
 .rose {
-  --ring-track: rgba(184, 86, 113, 0.18);
-  --ring-outer: #B85671;
-  --bar-track: rgba(123, 167, 135, 0.22);
+  --ring-track: rgba(212, 115, 138, 0.18);
+  --ring-outer: #D4738A;
+  --bar-track: rgba(232, 172, 191, 0.30);
   --card-bg: #ffffff;
-  --bg-app: #FBEFEC;
+  --bg-app: #FFE4E1;
   --bg-card: #ffffff;
   --bg-card-solid: #ffffff;
   --bg-glass-strong: #ffffff;
-  --text-primary: #3F2E2E;
-  --text-secondary: #6B5050;
-  --text-muted: #9C8585;
-  --border-color: rgba(155, 100, 110, 0.18);
-  --border-card: rgba(155, 100, 110, 0.22);
-  --shadow-card: 0 2px 10px -2px rgba(155, 100, 110, 0.08);
-  --shadow-strong: 0 8px 28px -4px rgba(155, 100, 110, 0.12);
-  --background: oklch(0.97 0.012 25);
-  --foreground: oklch(0.28 0.02 25);
+  --text-primary: #5A1A2E;
+  --text-secondary: #7C4848;
+  --text-muted: #C08081;
+  --border-color: rgba(168, 81, 110, 0.22);
+  --border-card: rgba(168, 81, 110, 0.26);
+  --shadow-card: 0 2px 10px -2px rgba(168, 81, 110, 0.10);
+  --shadow-strong: 0 8px 28px -4px rgba(168, 81, 110, 0.14);
+  --background: oklch(0.97 0.018 350);
+  --foreground: oklch(0.28 0.06 350);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.28 0.02 25);
+  --card-foreground: oklch(0.28 0.06 350);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.28 0.02 25);
-  --primary: oklch(0.55 0.12 350);
+  --popover-foreground: oklch(0.28 0.06 350);
+  --primary: oklch(0.62 0.15 350);
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.94 0.015 25);
-  --secondary-foreground: oklch(0.35 0.02 25);
-  --muted: oklch(0.94 0.015 25);
-  --muted-foreground: oklch(0.50 0.02 25);
-  --accent: oklch(0.92 0.025 350);
-  --accent-foreground: oklch(0.35 0.02 25);
+  --secondary: oklch(0.94 0.02 350);
+  --secondary-foreground: oklch(0.35 0.06 350);
+  --muted: oklch(0.94 0.02 350);
+  --muted-foreground: oklch(0.55 0.05 350);
+  --accent: oklch(0.92 0.03 350);
+  --accent-foreground: oklch(0.35 0.06 350);
   --destructive: oklch(0.55 0.18 25);
-  --border: oklch(0.88 0.015 25);
-  --input: oklch(0.94 0.015 25);
-  --ring: oklch(0.55 0.10 350);
+  --border: oklch(0.88 0.02 350);
+  --input: oklch(0.94 0.02 350);
+  --ring: oklch(0.62 0.12 350);
 }
-/* Body background — flat soft pink-tinted off-white. The 3D canvas + aurora
- * canvas sit ON TOP of this bg, so the bg only shows through where the canvases
- * are transparent. We keep it pink-tinted to clearly differentiate from the
- * pure-white Light theme. */
+/* Body background — Misty Rose (clearly pink, distinct from Light's pure white) */
 html.rose body {
-  background: #FBEFEC !important;
+  background: #FFE4E1 !important;
   background-attachment: fixed !important;
 }
 /* Hide grid + noise overlays (visual clutter) — but LEAVE the 3D canvas visible
@@ -364,115 +363,190 @@ html.rose .aurora-vignette {
   display: none !important;
 }
 
-/* === Text color overrides — deep warm charcoal (NOT pink) for max readability ===
- * The original rose theme used faded pink text → failed WCAG contrast on white cards.
- * New approach: dark warm charcoal for primary, graduating to dusty mauve for muted text.
- * These MUST use !important to override inline Tailwind text-white/N utilities.
+/* === Text color overrides — Dark Raspberry (NOT brown) for max readability + pink identity ===
+ * Graduating opacity ladder: Dark Raspberry → Tuscan Red → Old Rose → Rosy Brown → Light Pink
  */
-.rose .text-white, .rose text-white { color: #3F2E2E !important; }
-.rose .text-white\/95 { color: rgba(63, 46, 46, 0.96) !important; }
-.rose .text-white\/90 { color: rgba(63, 46, 46, 0.92) !important; }
-.rose .text-white\/85 { color: rgba(63, 46, 46, 0.88) !important; }
-.rose .text-white\/80 { color: rgba(63, 46, 46, 0.84) !important; }
-.rose .text-white\/75 { color: rgba(107, 80, 80, 0.80) !important; }
-.rose .text-white\/70 { color: rgba(107, 80, 80, 0.76) !important; }
-.rose .text-white\/65 { color: rgba(107, 80, 80, 0.72) !important; }
-.rose .text-white\/60 { color: rgba(107, 80, 80, 0.68) !important; }
-.rose .text-white\/55 { color: rgba(140, 100, 100, 0.64) !important; }
-.rose .text-white\/50 { color: rgba(140, 100, 100, 0.60) !important; }
-.rose .text-white\/45 { color: rgba(140, 100, 100, 0.56) !important; }
-.rose .text-white\/40 { color: rgba(156, 133, 133, 0.52) !important; }
-.rose .text-white\/35 { color: rgba(156, 133, 133, 0.48) !important; }
-.rose .text-white\/30 { color: rgba(156, 133, 133, 0.42) !important; }
-.rose .text-white\/25 { color: rgba(180, 155, 155, 0.38) !important; }
-.rose .text-white\/20 { color: rgba(180, 155, 155, 0.32) !important; }
-.rose .text-white\/15 { color: rgba(180, 155, 155, 0.26) !important; }
-.rose .text-white\/10 { color: rgba(200, 175, 175, 0.20) !important; }
-.rose .text-white\/5  { color: rgba(200, 175, 175, 0.14) !important; }
+.rose .text-white, .rose text-white { color: #5A1A2E !important; }
+.rose .text-white\/95 { color: rgba(90, 26, 46, 0.95) !important; }
+.rose .text-white\/90 { color: rgba(90, 26, 46, 0.90) !important; }
+.rose .text-white\/85 { color: rgba(90, 26, 46, 0.85) !important; }
+.rose .text-white\/80 { color: rgba(90, 26, 46, 0.80) !important; }
+.rose .text-white\/75 { color: rgba(124, 72, 72, 0.81) !important; }
+.rose .text-white\/70 { color: rgba(124, 72, 72, 0.76) !important; }
+.rose .text-white\/65 { color: rgba(124, 72, 72, 0.71) !important; }
+.rose .text-white\/60 { color: rgba(124, 72, 72, 0.66) !important; }
+.rose .text-white\/55 { color: rgba(192, 128, 129, 0.65) !important; }
+.rose .text-white\/50 { color: rgba(192, 128, 129, 0.60) !important; }
+.rose .text-white\/45 { color: rgba(192, 128, 129, 0.55) !important; }
+.rose .text-white\/40 { color: rgba(188, 143, 143, 0.52) !important; }
+.rose .text-white\/35 { color: rgba(188, 143, 143, 0.47) !important; }
+.rose .text-white\/30 { color: rgba(188, 143, 143, 0.42) !important; }
+.rose .text-white\/25 { color: rgba(188, 143, 143, 0.37) !important; }
+.rose .text-white\/20  { color: rgba(212, 175, 175, 0.30) !important; }
+.rose .text-white\/15  { color: rgba(212, 175, 175, 0.25) !important; }
+.rose .text-white\/10  { color: rgba(212, 175, 175, 0.20) !important; }
+.rose .text-white\/5  { color: rgba(212, 175, 175, 0.15) !important; }
 
-/* === Background tint overrides — soft rose-tinted translucent overlays === */
-.rose .bg-white\/5  { background: rgba(184, 86, 113, 0.05) !important; }
-.rose .bg-white\/10 { background: rgba(184, 86, 113, 0.08) !important; }
-.rose .bg-white\/15 { background: rgba(184, 86, 113, 0.11) !important; }
-.rose .bg-white\/20 { background: rgba(184, 86, 113, 0.14) !important; }
-.rose .bg-white\/30 { background: rgba(184, 86, 113, 0.20) !important; }
+.rose .bg-white\/5 { background: rgba(212, 115, 138, 0.05) !important; }
+.rose .bg-white\/10 { background: rgba(212, 115, 138, 0.08) !important; }
+.rose .bg-white\/15 { background: rgba(212, 115, 138, 0.11) !important; }
+.rose .bg-white\/20 { background: rgba(212, 115, 138, 0.14) !important; }
+.rose .bg-white\/30 { background: rgba(212, 115, 138, 0.2) !important; }
 
-/* === Border overrides — soft dusty rose borders === */
-.rose .border-white\/5  { border-color: rgba(155, 100, 110, 0.12) !important; }
-.rose .border-white\/10 { border-color: rgba(155, 100, 110, 0.20) !important; }
-.rose .border-white\/20 { border-color: rgba(155, 100, 110, 0.30) !important; }
-.rose .ring-white\/30 { --tw-ring-color: rgba(184, 86, 113, 0.32) !important; }
+.rose .border-white\/5 { border-color: rgba(168, 81, 110, 0.14) !important; }
+.rose .border-white\/10 { border-color: rgba(168, 81, 110, 0.22) !important; }
+.rose .border-white\/20 { border-color: rgba(168, 81, 110, 0.32) !important; }
+.rose .ring-white\/30 { --tw-ring-color: rgba(212, 115, 138, 0.32) !important; }
 
-/* === Glass / cards — pure white with soft dusty rose borders ===
- * Use !important to beat the html:not(.dark):not(.warm) .glass rule (higher specificity).
- */
+/* === Glass / cards — pure white with Mauve Taupe borders === */
 .rose .glass {
   background: #ffffff !important;
-  border: 1px solid rgba(155, 100, 110, 0.18) !important;
-  box-shadow: 0 2px 12px -2px rgba(155, 100, 110, 0.08), inset 0 1px 0 rgba(255,255,255,0.7) !important;
+  border: 1px solid rgba(168, 81, 110, 0.20) !important;
+  box-shadow: 0 2px 12px -2px rgba(168, 81, 110, 0.10), inset 0 1px 0 rgba(255,255,255,0.7) !important;
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 .rose .glass-strong {
   background: #ffffff !important;
-  border: 1px solid rgba(155, 100, 110, 0.22) !important;
-  box-shadow: 0 8px 32px -4px rgba(155, 100, 110, 0.14), inset 0 1px 0 rgba(255,255,255,0.8) !important;
+  border: 1px solid rgba(168, 81, 110, 0.24) !important;
+  box-shadow: 0 8px 32px -4px rgba(168, 81, 110, 0.16), inset 0 1px 0 rgba(255,255,255,0.8) !important;
 }
 .rose .card-solid {
   background: #ffffff !important;
-  border: 1px solid rgba(155, 100, 110, 0.16) !important;
-  box-shadow: 0 2px 10px -2px rgba(155, 100, 110, 0.06), inset 0 1px 0 rgba(255,255,255,0.6) !important;
+  border: 1px solid rgba(168, 81, 110, 0.18) !important;
+  box-shadow: 0 2px 10px -2px rgba(168, 81, 110, 0.08), inset 0 1px 0 rgba(255,255,255,0.6) !important;
 }
 .rose .card-tint {
   mix-blend-mode: normal;
   opacity: 0.5;
 }
+/* Gradient text — Rose Pink → China Rose (pure pink, no amber) */
 .rose .gradient-text {
-  background: linear-gradient(135deg, #B85671, #C4956C) !important;
+  background: linear-gradient(135deg, #D4738A, #A8516E) !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
 }
 .rose .grid-bg {
-  background-image: linear-gradient(rgba(155, 100, 110, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(155, 100, 110, 0.04) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(168, 81, 110, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(168, 81, 110, 0.05) 1px, transparent 1px);
 }
-.rose .bg-black\/60 { background: rgba(245, 237, 234, 0.7) !important; }
-.rose .bg-black\/70 { background: rgba(245, 237, 234, 0.8) !important; }
+.rose .bg-black\/60 { background: rgba(255, 228, 225, 0.7) !important; }
+.rose .bg-black\/70 { background: rgba(255, 228, 225, 0.8) !important; }
 
-/* === Inputs — dark warm charcoal text on white, soft rose focus ring === */
+/* === Inputs — Dark Raspberry text on white, Rose Gold focus ring === */
 .rose input, .rose textarea, .rose select {
-  color: #3F2E2E !important;
+  color: #5A1A2E !important;
   background: #ffffff !important;
-  border-color: rgba(155, 100, 110, 0.22) !important;
+  border-color: rgba(168, 81, 110, 0.24) !important;
 }
 .rose input::placeholder, .rose textarea::placeholder {
-  color: rgba(140, 100, 100, 0.55) !important;
+  color: rgba(188, 143, 143, 0.6) !important;
 }
 .rose input:focus, .rose textarea:focus, .rose select:focus {
-  border-color: rgba(184, 86, 113, 0.45) !important;
-  box-shadow: 0 0 0 3px rgba(184, 86, 113, 0.12) !important;
+  border-color: #B76E79 !important;
+  box-shadow: 0 0 0 3px rgba(183, 110, 121, 0.18) !important;
   outline: none !important;
 }
 
-/* Range sliders — dusty rose track + thumb */
+/* Range sliders — Rose Pink track + thumb */
 .rose input[type="range"] {
-  background: rgba(184, 86, 113, 0.15) !important;
+  background: rgba(212, 115, 138, 0.15) !important;
 }
 .rose input[type="range"]::-webkit-slider-thumb {
-  border-color: #B85671 !important;
-  box-shadow: 0 2px 8px rgba(184, 86, 113, 0.25) !important;
+  border-color: #D4738A !important;
+  box-shadow: 0 2px 8px rgba(212, 115, 138, 0.25) !important;
 }
 .rose input[type="range"]::-moz-range-thumb {
-  border-color: #B85671 !important;
+  border-color: #D4738A !important;
 }
 
 /* === Minimal-mode overrides for rose — keep cards pure white === */
 .minimal-mode.rose {
-  --bg-app: #FBEFEC;
+  --bg-app: #FFE4E1;
   --bg-card: #ffffff;
   --bg-card-solid: #ffffff;
   --bg-glass-strong: #ffffff;
 }
+
+/* ===== FORCE DARK UI — Focus Timer / Splash / Sleep Lock Screen =====
+ * These full-screen overlays ALWAYS use pure black bg + white text.
+ * The rose/light theme overrides above turn text-white dark, which would
+ * make Focus Timer text invisible on its black background. This reset
+ * restores the original white-on-black UI within .force-dark-ui scope.
+ * (Dark themes don't override text-white, so this is a no-op for them.)
+ */
+html.rose .force-dark-ui .text-white,
+html:not(.dark):not(.warm) .force-dark-ui .text-white { color: #ffffff !important; }
+html.rose .force-dark-ui .text-white\/95,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/95 { color: rgba(255, 255, 255, 0.95) !important; }
+html.rose .force-dark-ui .text-white\/90,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/90 { color: rgba(255, 255, 255, 0.90) !important; }
+html.rose .force-dark-ui .text-white\/85,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/85 { color: rgba(255, 255, 255, 0.85) !important; }
+html.rose .force-dark-ui .text-white\/80,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/80 { color: rgba(255, 255, 255, 0.80) !important; }
+html.rose .force-dark-ui .text-white\/75,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/75 { color: rgba(255, 255, 255, 0.75) !important; }
+html.rose .force-dark-ui .text-white\/70,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/70 { color: rgba(255, 255, 255, 0.70) !important; }
+html.rose .force-dark-ui .text-white\/65,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/65 { color: rgba(255, 255, 255, 0.65) !important; }
+html.rose .force-dark-ui .text-white\/60,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/60 { color: rgba(255, 255, 255, 0.60) !important; }
+html.rose .force-dark-ui .text-white\/55,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/55 { color: rgba(255, 255, 255, 0.55) !important; }
+html.rose .force-dark-ui .text-white\/50,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/50 { color: rgba(255, 255, 255, 0.50) !important; }
+html.rose .force-dark-ui .text-white\/45,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/45 { color: rgba(255, 255, 255, 0.45) !important; }
+html.rose .force-dark-ui .text-white\/40,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/40 { color: rgba(255, 255, 255, 0.40) !important; }
+html.rose .force-dark-ui .text-white\/35,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/35 { color: rgba(255, 255, 255, 0.35) !important; }
+html.rose .force-dark-ui .text-white\/30,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/30 { color: rgba(255, 255, 255, 0.30) !important; }
+html.rose .force-dark-ui .text-white\/25,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/25 { color: rgba(255, 255, 255, 0.25) !important; }
+html.rose .force-dark-ui .text-white\/20,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/20 { color: rgba(255, 255, 255, 0.20) !important; }
+html.rose .force-dark-ui .text-white\/15,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/15 { color: rgba(255, 255, 255, 0.15) !important; }
+html.rose .force-dark-ui .text-white\/10,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/10 { color: rgba(255, 255, 255, 0.10) !important; }
+html.rose .force-dark-ui .text-white\/5,
+html:not(.dark):not(.warm) .force-dark-ui .text-white\/5 { color: rgba(255, 255, 255, 0.05) !important; }
+html.rose .force-dark-ui .bg-white\/5,
+html:not(.dark):not(.warm) .force-dark-ui .bg-white\/5 { background: rgba(255, 255, 255, 0.05) !important; }
+html.rose .force-dark-ui .bg-white\/10,
+html:not(.dark):not(.warm) .force-dark-ui .bg-white\/10 { background: rgba(255, 255, 255, 0.10) !important; }
+html.rose .force-dark-ui .bg-white\/15,
+html:not(.dark):not(.warm) .force-dark-ui .bg-white\/15 { background: rgba(255, 255, 255, 0.15) !important; }
+html.rose .force-dark-ui .bg-white\/20,
+html:not(.dark):not(.warm) .force-dark-ui .bg-white\/20 { background: rgba(255, 255, 255, 0.20) !important; }
+html.rose .force-dark-ui .bg-white\/30,
+html:not(.dark):not(.warm) .force-dark-ui .bg-white\/30 { background: rgba(255, 255, 255, 0.30) !important; }
+html.rose .force-dark-ui .border-white\/5,
+html:not(.dark):not(.warm) .force-dark-ui .border-white\/5 { border-color: rgba(255, 255, 255, 0.05) !important; }
+html.rose .force-dark-ui .border-white\/10,
+html:not(.dark):not(.warm) .force-dark-ui .border-white\/10 { border-color: rgba(255, 255, 255, 0.10) !important; }
+html.rose .force-dark-ui .border-white\/15,
+html:not(.dark):not(.warm) .force-dark-ui .border-white\/15 { border-color: rgba(255, 255, 255, 0.15) !important; }
+html.rose .force-dark-ui .border-white\/20,
+html:not(.dark):not(.warm) .force-dark-ui .border-white\/20 { border-color: rgba(255, 255, 255, 0.20) !important; }
+html.rose .force-dark-ui .ring-white\/30,
+html:not(.dark):not(.warm) .force-dark-ui .ring-white\/30 { --tw-ring-color: rgba(255, 255, 255, 0.30) !important; }
+html.rose .force-dark-ui .bg-black\/60,
+html:not(.dark):not(.warm) .force-dark-ui .bg-black\/60 { background: rgba(0, 0, 0, 0.60) !important; }
+html.rose .force-dark-ui .bg-black\/70,
+html:not(.dark):not(.warm) .force-dark-ui .bg-black\/70 { background: rgba(0, 0, 0, 0.70) !important; }
+html.rose .force-dark-ui .bg-black\/80,
+html:not(.dark):not(.warm) .force-dark-ui .bg-black\/80 { background: rgba(0, 0, 0, 0.80) !important; }
+html.rose .force-dark-ui input,
+html.rose .force-dark-ui textarea,
+html.rose .force-dark-ui select,
+html:not(.dark):not(.warm) .force-dark-ui input,
+html:not(.dark):not(.warm) .force-dark-ui textarea,
+html:not(.dark):not(.warm) .force-dark-ui select { color: #ffffff !important; background: rgba(255,255,255,0.08) !important; }
 
 /* ===== MIDNIGHT GOLD THEME — Slight black + premium gold ambient, pure black cards ===== */
 .gold {

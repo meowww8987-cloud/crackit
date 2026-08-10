@@ -199,15 +199,15 @@ const THEME_PALETTES: Record<Theme3DName, Theme3DPalette> = {
     opacityMul: 0.75,
   },
   rose: {
-    background: '#FBEFEC',  // soft pink-tinted off-white (distinct from pure white light mode)
-    electronRgb: [120, 50, 80],  // deep rose
-    // ALL shades of pink palette — distinct identity from light mode
+    background: '#FFE4E1',  // Misty Rose — clearly pink, distinct from Light's pure white
+    electronRgb: [90, 26, 46],  // Dark Raspberry — matches primary text
+    // 5 shades of pink — cohesive monochrome palette
     subjectColors: {
-      Physics:   { hex: '#B85671', rgb: [184, 86, 113] },   // dusty rose
-      Chemistry: { hex: '#9F6B8E', rgb: [159, 107, 142] },  // mauve
-      Botany:    { hex: '#E08585', rgb: [224, 133, 133] },  // coral pink
-      Zoology:   { hex: '#D64A6F', rgb: [214, 74, 111] },   // deep rose
-      General:   { hex: '#D4A5A5', rgb: [212, 165, 165] },  // blush
+      Physics:   { hex: '#D4738A', rgb: [212, 115, 138] },   // Rose Pink
+      Chemistry: { hex: '#9F6B8E', rgb: [159, 107, 142] },   // Mauve
+      Botany:    { hex: '#F08C8C', rgb: [240, 140, 140] },   // Salmon Pink
+      Zoology:   { hex: '#B22E5C', rgb: [178, 46, 92] },     // Raspberry Rose
+      General:   { hex: '#D4A5A5', rgb: [212, 165, 165] },   // Blush
     },
     opacityMul: 0.78,
   },

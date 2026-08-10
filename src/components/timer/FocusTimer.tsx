@@ -405,7 +405,7 @@ export function FocusTimer() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={handleInteraction}
-      className="fixed inset-0 z-[9999]"
+      className="fixed inset-0 z-[9999] force-dark-ui"
       style={{
         cursor: dimmed ? 'pointer' : 'default',
         // ALWAYS solid black background — never show app behind.

@@ -140,7 +140,7 @@ export function Splash3D({ onDone }: { onDone: () => void }) {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: 'easeInOut' }}
-          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center"
+          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center force-dark-ui"
           style={{
             background:
               'radial-gradient(ellipse at center, #0a0b15 0%, #050608 80%)',
