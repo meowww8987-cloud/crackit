@@ -63,6 +63,8 @@ export function SyllabusTab() {
   const [addLectureFor, setAddLectureFor] = useState<{ chapter: import('@/lib/types').Chapter; subject: SubjectEntity } | null>(null);
   const [showBuildSheet, setShowBuildSheet] = useState(false);
   const [showFormulaVault, setShowFormulaVault] = useState(false);
+  const [chapterMenu, setChapterMenu] = useState<Chapter | null>(null);
+  const chapterLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const todayTargets = useTargets((s) => s.byDate[todayKey()] || EMPTY_TARGETS);
 
@@ -230,7 +232,19 @@ export function SyllabusTab() {
                 const chOpen = openChapter === ch.id;
                 const chTodayCount = todayTargets.filter((t) => t.chapterId === ch.id).length;
                 return (
-                  <div key={ch.id} className="glass rounded-2xl overflow-hidden transition-all" style={{ borderColor: isInProgress ? `${color.hex}60` : 'var(--border-card)' }}>
+                  <div
+                    key={ch.id}
+                    className="glass rounded-2xl overflow-hidden transition-all"
+                    style={{ borderColor: isInProgress ? `${color.hex}60` : 'var(--border-card)' }}
+                    onPointerDown={() => {
+                      chapterLongPressRef.current = setTimeout(() => {
+                        setChapterMenu(ch);
+                        vibrate(20);
+                      }, 500);
+                    }}
+                    onPointerUp={() => { if (chapterLongPressRef.current) { clearTimeout(chapterLongPressRef.current); chapterLongPressRef.current = null; } }}
+                    onPointerLeave={() => { if (chapterLongPressRef.current) { clearTimeout(chapterLongPressRef.current); chapterLongPressRef.current = null; } }}
+                  >
                     <button onClick={() => setOpenChapter(chOpen ? null : ch.id)} className="w-full p-3.5 flex items-center gap-3 text-left">
                       <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold transition-all" style={{ background: isComplete ? '#22c55e' : isInProgress ? color.hex : 'rgba(255,255,255,0.06)', color: isComplete || isInProgress ? '#000' : '#fff' }}>{isComplete ? '✓' : isInProgress ? `${pct}` : ''}</div>
                       <div className="flex-1 min-w-0">
@@ -280,6 +294,16 @@ export function SyllabusTab() {
       {showBuildSheet && (<BuildSyllabusSheet onClose={() => setShowBuildSheet(false)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {addLectureFor && (<AddLectureSheet chapter={addLectureFor.chapter} subject={addLectureFor.subject} onClose={() => setAddLectureFor(null)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {showFormulaVault && (<FormulaVaultInline onClose={() => setShowFormulaVault(false)} />)}
+
+      {/* === Chapter context menu (long-press) — Mark All Done / Reset / Delete === */}
+      <AnimatePresence>
+        {chapterMenu && (
+          <ChapterContextMenu
+            chapter={chapterMenu}
+            onClose={() => setChapterMenu(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -288,9 +312,12 @@ function SortableChapterCard({ chapter, color, lectureCount }: { chapter: Chapte
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: chapter.id });
   const [showMenu, setShowMenu] = useState(false);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lectures = useSyllabus((s) => s.lectures.filter((l) => l.chapterId === chapter.id));
+  // Use stable selectors — filter inline creates a new array every render
+  // which causes infinite loops with Zustand's useSyncExternalStore.
+  const allLectures = useSyllabus((s) => s.lectures);
   const deleteChapter = useSyllabus((s) => s.deleteChapter);
   const updateLecture = useSyllabus((s) => s.updateLecture);
+  const lectures = useMemo(() => allLectures.filter((l) => l.chapterId === chapter.id), [allLectures, chapter.id]);
   const allDone = lectures.length > 0 && lectures.every((l) => l.done);
 
   const markAllDone = () => {
@@ -405,5 +432,77 @@ function FormulaVaultInline({ onClose }: { onClose: () => void }) {
         <FormulaVault />
       </div>
     </div>
+  );
+}
+
+// === Chapter Context Menu — shown on long-press in normal mode ===
+function ChapterContextMenu({ chapter, onClose }: { chapter: Chapter; onClose: () => void }) {
+  const allLectures = useSyllabus((s) => s.lectures);
+  const deleteChapter = useSyllabus((s) => s.deleteChapter);
+  const updateLecture = useSyllabus((s) => s.updateLecture);
+  const lectures = useMemo(() => allLectures.filter((l) => l.chapterId === chapter.id), [allLectures, chapter.id]);
+  const allDone = lectures.length > 0 && lectures.every((l) => l.done);
+
+  const markAllDone = () => {
+    vibrate(15);
+    lectures.forEach((l) => { if (!l.done) updateLecture(l.id, { done: true }); });
+    onClose();
+  };
+  const resetAll = () => {
+    vibrate(15);
+    lectures.forEach((l) => { if (l.done) updateLecture(l.id, { done: false }); });
+    onClose();
+  };
+  const handleDelete = () => {
+    vibrate([10, 30, 10]);
+    deleteChapter(chapter.id);
+    onClose();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <motion.div
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.9 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-sm glass-strong rounded-3xl p-5"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-bold">{chapter.name}</h3>
+            <p className="text-[10px] text-t-muted">{lectures.length} lectures · {lectures.filter(l => l.done).length} done</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-white/50"><X size={14} /></button>
+        </div>
+
+        <div className="space-y-1.5">
+          {!allDone && (
+            <button onClick={markAllDone} className="w-full p-3 rounded-xl bg-green-500/10 hover:bg-green-500/15 flex items-center gap-3 transition active:scale-95">
+              <CheckCircle2 size={18} className="text-green-400" />
+              <span className="text-sm font-semibold text-green-300">Mark All Done</span>
+            </button>
+          )}
+          {allDone && lectures.length > 0 && (
+            <button onClick={resetAll} className="w-full p-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 flex items-center gap-3 transition active:scale-95">
+              <RotateCcw size={18} className="text-amber-400" />
+              <span className="text-sm font-semibold text-amber-300">Reset All (Mark Undone)</span>
+            </button>
+          )}
+          <button onClick={handleDelete} className="w-full p-3 rounded-xl bg-red-500/10 hover:bg-red-500/15 flex items-center gap-3 transition active:scale-95">
+            <Trash2 size={18} className="text-red-400" />
+            <span className="text-sm font-semibold text-red-300">Delete Chapter</span>
+          </button>
+        </div>
+        <p className="text-[9px] text-white/30 text-center mt-3">Long-press any chapter to see this menu</p>
+      </motion.div>
+    </motion.div>
   );
 }
