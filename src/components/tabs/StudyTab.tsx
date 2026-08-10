@@ -124,53 +124,42 @@ export function StudyTab() {
         </div>
       </div>
 
-      {/* Today's Progress Card — Samsung One UI 9 inspired */}
-      <div className="glass rounded-2xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <TargetIcon size={16} className="text-teal-400" />
-            <span className="text-sm font-semibold">Today's Progress</span>
+      {/* Today's Progress Card — compact, waveform inline */}
+      <div className="glass rounded-2xl p-3">
+        <div className="flex items-center gap-3">
+          {/* Waveform — inline, fills remaining space */}
+          <div className="flex-1 min-w-0">
+            <WaveformProgress
+              pct={progressPct}
+              color="#14b8a6"
+              color2="#22c55e"
+              height="h-6"
+            />
           </div>
-          {/* Percentage — animates with a count-up feel via spring */}
-          <motion.span
-            key={progressPct}
-            initial={{ scale: 0.9, opacity: 0.5 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-            className="text-2xl font-bold tabular"
-            style={{
-              background: progressPct >= 100
-                ? 'linear-gradient(135deg, #22c55e, #16a34a)'
-                : 'linear-gradient(135deg, #14b8a6, #22c55e)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-            suppressHydrationWarning
-          >
-            {progressPct}%
-          </motion.span>
-        </div>
-        {/* Waveform progress — Samsung One UI 9 music visualizer style */}
-        <WaveformProgress
-          pct={progressPct}
-          color="#14b8a6"
-          color2="#22c55e"
-          height="h-8"
-        />
-        <div className="mt-2.5 flex items-center justify-between text-xs">
-          <span className="tabular text-t-muted" suppressHydrationWarning>
-            {formatHM(studySecToday)} <span className="text-t-muted/60">/ {dailyGoal}h</span>
-          </span>
-          {progressPct >= 100 ? (
-            <span className="text-green-400 font-semibold flex items-center gap-1">
-              ✓ Goal reached
+          {/* Percentage + time — right side, compact */}
+          <div className="text-right shrink-0">
+            <motion.span
+              key={progressPct}
+              initial={{ scale: 0.9, opacity: 0.5 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              className="text-lg font-bold tabular block"
+              style={{
+                background: progressPct >= 100
+                  ? 'linear-gradient(135deg, #22c55e, #16a34a)'
+                  : 'linear-gradient(135deg, #14b8a6, #22c55e)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+              suppressHydrationWarning
+            >
+              {progressPct}%
+            </motion.span>
+            <span className="text-[10px] tabular text-t-muted" suppressHydrationWarning>
+              {formatHM(studySecToday)}/{dailyGoal}h
             </span>
-          ) : (
-            <span className="tabular text-t-muted/60" suppressHydrationWarning>
-              {formatHM(Math.max(0, goalSec - studySecToday))} left
-            </span>
-          )}
+          </div>
         </div>
       </div>
 
