@@ -16,6 +16,7 @@ import { TargetCard } from '@/components/study/TargetCard';
 import { AddTargetSheet } from '@/components/study/AddTargetSheet';
 import { DetailSheet } from '@/components/study/DetailSheet';
 import { LiquidProgress } from '@/components/shared/LiquidProgress';
+import { WaveformProgress } from '@/components/shared/WaveformProgress';
 import { DoubtSheet } from '@/components/doubts/DoubtSheet';
 import { useDoubts } from '@/lib/store/doubts';
 
@@ -150,11 +151,12 @@ export function StudyTab() {
             {progressPct}%
           </motion.span>
         </div>
-        <LiquidProgress
+        {/* Waveform progress — Samsung One UI 9 music visualizer style */}
+        <WaveformProgress
           pct={progressPct}
           color="#14b8a6"
           color2="#22c55e"
-          height="h-3"
+          height="h-14"
         />
         <div className="mt-2.5 flex items-center justify-between text-xs">
           <span className="tabular text-t-muted" suppressHydrationWarning>
