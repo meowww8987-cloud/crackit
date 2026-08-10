@@ -306,105 +306,170 @@
 .forest .bg-black\/60 { background: rgba(2, 44, 34, 0.6) !important; }
 .forest .bg-black\/70 { background: rgba(2, 44, 34, 0.7) !important; }
 
-/* ===== ROSE QUARTZ THEME — Light pink + white cards + dark pink text ===== */
+/* ===== ROSE QUARTZ THEME — Soothing light palette for long study sessions =====
+ * Design goals:
+ *  - CALM, not loud: soft warm off-white background (no busy radial gradients)
+ *  - HIGH READABILITY: pure white cards + deep warm charcoal text (not faded pink)
+ *  - SOOTHING ACCENTS: dusty rose primary, muted sage + amber secondaries (no neon)
+ *  - NO VISUAL NOISE: aurora canvas / grid-bg hidden for distraction-free reading
+ */
 .rose {
-  --ring-track: rgba(190, 24, 93, 0.22);
-  --ring-outer: #be185d;
-  --bar-track: rgba(190, 24, 93, 0.18);
+  --ring-track: rgba(184, 86, 113, 0.18);
+  --ring-outer: #B85671;
+  --bar-track: rgba(123, 167, 135, 0.22);
   --card-bg: #ffffff;
-  --bg-app: #fce7f3;
+  --bg-app: #FAF6F4;
   --bg-card: #ffffff;
   --bg-card-solid: #ffffff;
   --bg-glass-strong: #ffffff;
-  --text-primary: #831843;
-  --text-secondary: #be185d;
-  --text-muted: #9d174d;
-  --border-color: rgba(190, 24, 93, 0.22);
-  --border-card: rgba(190, 24, 93, 0.28);
-  --shadow-card: 0 2px 12px -2px rgba(190, 24, 93, 0.10);
-  --shadow-strong: 0 8px 32px -4px rgba(190, 24, 93, 0.15);
-  --background: oklch(0.92 0.04 350);
-  --foreground: oklch(0.25 0.10 350);
+  --text-primary: #3F2E2E;
+  --text-secondary: #6B5050;
+  --text-muted: #9C8585;
+  --border-color: rgba(155, 100, 110, 0.18);
+  --border-card: rgba(155, 100, 110, 0.22);
+  --shadow-card: 0 2px 10px -2px rgba(155, 100, 110, 0.08);
+  --shadow-strong: 0 8px 28px -4px rgba(155, 100, 110, 0.12);
+  --background: oklch(0.97 0.012 25);
+  --foreground: oklch(0.28 0.02 25);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.25 0.10 350);
+  --card-foreground: oklch(0.28 0.02 25);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.10 350);
-  --primary: oklch(0.55 0.20 350);
+  --popover-foreground: oklch(0.28 0.02 25);
+  --primary: oklch(0.55 0.12 350);
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.94 0.03 350);
-  --secondary-foreground: oklch(0.30 0.10 350);
-  --muted: oklch(0.94 0.03 350);
-  --muted-foreground: oklch(0.45 0.10 350);
-  --accent: oklch(0.92 0.04 350);
-  --accent-foreground: oklch(0.30 0.10 350);
-  --destructive: oklch(0.55 0.22 25);
-  --border: oklch(0.88 0.04 350);
-  --input: oklch(0.94 0.03 350);
-  --ring: oklch(0.55 0.18 350);
+  --secondary: oklch(0.94 0.015 25);
+  --secondary-foreground: oklch(0.35 0.02 25);
+  --muted: oklch(0.94 0.015 25);
+  --muted-foreground: oklch(0.50 0.02 25);
+  --accent: oklch(0.92 0.025 350);
+  --accent-foreground: oklch(0.35 0.02 25);
+  --destructive: oklch(0.55 0.18 25);
+  --border: oklch(0.88 0.015 25);
+  --input: oklch(0.94 0.015 25);
+  --ring: oklch(0.55 0.10 350);
 }
-/* Body background — soft pink gradient */
+/* Body background — soft flat warm off-white, no busy gradients (easier on eyes for long study) */
 html.rose body {
-  background:
-    radial-gradient(circle at 15% 10%, rgba(244, 114, 182, 0.25) 0%, transparent 45%),
-    radial-gradient(circle at 85% 90%, rgba(236, 72, 153, 0.18) 0%, transparent 50%),
-    linear-gradient(180deg, #fce7f3 0%, #fbcfe8 100%) !important;
+  background: #FAF6F4 !important;
   background-attachment: fixed !important;
 }
-.rose .text-white, .rose text-white { color: #831843 !important; }
-.rose .text-white\/90 { color: rgba(131, 24, 67, 0.95) !important; }
-.rose .text-white\/80 { color: rgba(131, 24, 67, 0.88) !important; }
-.rose .text-white\/70 { color: rgba(157, 23, 77, 0.85) !important; }
-.rose .text-white\/60 { color: rgba(157, 23, 77, 0.78) !important; }
-.rose .text-white\/50 { color: rgba(190, 24, 93, 0.70) !important; }
-.rose .text-white\/40 { color: rgba(190, 24, 93, 0.60) !important; }
-.rose .text-white\/30 { color: rgba(219, 39, 119, 0.55) !important; }
-.rose .bg-white\/5 { background: rgba(190, 24, 93, 0.10) !important; }
-.rose .bg-white\/10 { background: rgba(190, 24, 93, 0.16) !important; }
-.rose .bg-white\/15 { background: rgba(190, 24, 93, 0.22) !important; }
-.rose .bg-white\/20 { background: rgba(190, 24, 93, 0.28) !important; }
-.rose .border-white\/5 { border-color: rgba(190, 24, 93, 0.22) !important; }
-.rose .border-white\/10 { border-color: rgba(190, 24, 93, 0.30) !important; }
-.rose .border-white\/20 { border-color: rgba(190, 24, 93, 0.42) !important; }
-.rose .ring-white\/30 { --tw-ring-color: rgba(190, 24, 93, 0.35) !important; }
+/* Hide ALL visual noise for calm reading environment */
+html.rose .aurora-noise,
+html.rose .aurora-vignette,
+html.rose .grid-bg,
+html.rose canvas.aurora-canvas,
+html.rose .bg-canvas {
+  display: none !important;
+}
+
+/* === Text color overrides — deep warm charcoal (NOT pink) for max readability ===
+ * The original rose theme used faded pink text → failed WCAG contrast on white cards.
+ * New approach: dark warm charcoal for primary, graduating to dusty mauve for muted text.
+ * These MUST use !important to override inline Tailwind text-white/N utilities.
+ */
+.rose .text-white, .rose text-white { color: #3F2E2E !important; }
+.rose .text-white\/95 { color: rgba(63, 46, 46, 0.96) !important; }
+.rose .text-white\/90 { color: rgba(63, 46, 46, 0.92) !important; }
+.rose .text-white\/85 { color: rgba(63, 46, 46, 0.88) !important; }
+.rose .text-white\/80 { color: rgba(63, 46, 46, 0.84) !important; }
+.rose .text-white\/75 { color: rgba(107, 80, 80, 0.80) !important; }
+.rose .text-white\/70 { color: rgba(107, 80, 80, 0.76) !important; }
+.rose .text-white\/65 { color: rgba(107, 80, 80, 0.72) !important; }
+.rose .text-white\/60 { color: rgba(107, 80, 80, 0.68) !important; }
+.rose .text-white\/55 { color: rgba(140, 100, 100, 0.64) !important; }
+.rose .text-white\/50 { color: rgba(140, 100, 100, 0.60) !important; }
+.rose .text-white\/45 { color: rgba(140, 100, 100, 0.56) !important; }
+.rose .text-white\/40 { color: rgba(156, 133, 133, 0.52) !important; }
+.rose .text-white\/35 { color: rgba(156, 133, 133, 0.48) !important; }
+.rose .text-white\/30 { color: rgba(156, 133, 133, 0.42) !important; }
+.rose .text-white\/25 { color: rgba(180, 155, 155, 0.38) !important; }
+.rose .text-white\/20 { color: rgba(180, 155, 155, 0.32) !important; }
+.rose .text-white\/15 { color: rgba(180, 155, 155, 0.26) !important; }
+.rose .text-white\/10 { color: rgba(200, 175, 175, 0.20) !important; }
+.rose .text-white\/5  { color: rgba(200, 175, 175, 0.14) !important; }
+
+/* === Background tint overrides — soft rose-tinted translucent overlays === */
+.rose .bg-white\/5  { background: rgba(184, 86, 113, 0.05) !important; }
+.rose .bg-white\/10 { background: rgba(184, 86, 113, 0.08) !important; }
+.rose .bg-white\/15 { background: rgba(184, 86, 113, 0.11) !important; }
+.rose .bg-white\/20 { background: rgba(184, 86, 113, 0.14) !important; }
+.rose .bg-white\/30 { background: rgba(184, 86, 113, 0.20) !important; }
+
+/* === Border overrides — soft dusty rose borders === */
+.rose .border-white\/5  { border-color: rgba(155, 100, 110, 0.12) !important; }
+.rose .border-white\/10 { border-color: rgba(155, 100, 110, 0.20) !important; }
+.rose .border-white\/20 { border-color: rgba(155, 100, 110, 0.30) !important; }
+.rose .ring-white\/30 { --tw-ring-color: rgba(184, 86, 113, 0.32) !important; }
+
+/* === Glass / cards — pure white with soft dusty rose borders ===
+ * Use !important to beat the html:not(.dark):not(.warm) .glass rule (higher specificity).
+ */
 .rose .glass {
-  background: #ffffff;
-  border: 1px solid rgba(190, 24, 93, 0.20);
-  box-shadow: 0 4px 20px -4px rgba(190, 24, 93, 0.12), inset 0 1px 0 rgba(255,255,255,0.7);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: #ffffff !important;
+  border: 1px solid rgba(155, 100, 110, 0.18) !important;
+  box-shadow: 0 2px 12px -2px rgba(155, 100, 110, 0.08), inset 0 1px 0 rgba(255,255,255,0.7) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 .rose .glass-strong {
-  background: #ffffff;
-  border: 1px solid rgba(190, 24, 93, 0.25);
-  box-shadow: 0 8px 32px -4px rgba(190, 24, 93, 0.18), inset 0 1px 0 rgba(255,255,255,0.8);
+  background: #ffffff !important;
+  border: 1px solid rgba(155, 100, 110, 0.22) !important;
+  box-shadow: 0 8px 32px -4px rgba(155, 100, 110, 0.14), inset 0 1px 0 rgba(255,255,255,0.8) !important;
 }
 .rose .card-solid {
-  background: #ffffff;
-  border: 1px solid rgba(190, 24, 93, 0.20);
-  box-shadow: 0 2px 12px -2px rgba(190, 24, 93, 0.10), inset 0 1px 0 rgba(255,255,255,0.6);
+  background: #ffffff !important;
+  border: 1px solid rgba(155, 100, 110, 0.16) !important;
+  box-shadow: 0 2px 10px -2px rgba(155, 100, 110, 0.06), inset 0 1px 0 rgba(255,255,255,0.6) !important;
 }
 .rose .card-tint {
   mix-blend-mode: normal;
   opacity: 0.5;
 }
 .rose .gradient-text {
-  background: linear-gradient(135deg, #ec4899, #be185d);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background: linear-gradient(135deg, #B85671, #C4956C) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
 }
 .rose .grid-bg {
-  background-image: linear-gradient(rgba(190, 24, 93, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(190, 24, 93, 0.06) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(155, 100, 110, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(155, 100, 110, 0.04) 1px, transparent 1px);
 }
-.rose .bg-black\/60 { background: rgba(252, 231, 243, 0.7) !important; }
-.rose .bg-black\/70 { background: rgba(252, 231, 243, 0.8) !important; }
-/* Inputs in rose theme — dark pink text on white */
+.rose .bg-black\/60 { background: rgba(245, 237, 234, 0.7) !important; }
+.rose .bg-black\/70 { background: rgba(245, 237, 234, 0.8) !important; }
+
+/* === Inputs — dark warm charcoal text on white, soft rose focus ring === */
 .rose input, .rose textarea, .rose select {
-  color: #831843 !important;
+  color: #3F2E2E !important;
   background: #ffffff !important;
+  border-color: rgba(155, 100, 110, 0.22) !important;
 }
 .rose input::placeholder, .rose textarea::placeholder {
-  color: rgba(157, 23, 77, 0.5) !important;
+  color: rgba(140, 100, 100, 0.55) !important;
+}
+.rose input:focus, .rose textarea:focus, .rose select:focus {
+  border-color: rgba(184, 86, 113, 0.45) !important;
+  box-shadow: 0 0 0 3px rgba(184, 86, 113, 0.12) !important;
+  outline: none !important;
+}
+
+/* Range sliders — dusty rose track + thumb */
+.rose input[type="range"] {
+  background: rgba(184, 86, 113, 0.15) !important;
+}
+.rose input[type="range"]::-webkit-slider-thumb {
+  border-color: #B85671 !important;
+  box-shadow: 0 2px 8px rgba(184, 86, 113, 0.25) !important;
+}
+.rose input[type="range"]::-moz-range-thumb {
+  border-color: #B85671 !important;
+}
+
+/* === Minimal-mode overrides for rose — keep cards pure white === */
+.minimal-mode.rose {
+  --bg-app: #FAF6F4;
+  --bg-card: #ffffff;
+  --bg-card-solid: #ffffff;
+  --bg-glass-strong: #ffffff;
 }
 
 /* ===== MIDNIGHT GOLD THEME — Slight black + premium gold ambient, pure black cards ===== */

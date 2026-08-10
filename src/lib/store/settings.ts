@@ -119,7 +119,7 @@ export function applyTheme(theme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest'
   if (typeof document === 'undefined') return;
   const el = document.documentElement;
   // Remove all theme classes
-  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'rose', 'gold', 'light-mode-adapt', 'warm-mode-adapt');
+  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'rose', 'gold', 'light-mode-adapt', 'warm-mode-adapt', 'rose-mode-adapt');
   // Add the selected theme
   if (theme === 'dark') {
     el.classList.add('dark');
@@ -127,8 +127,13 @@ export function applyTheme(theme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest'
     el.classList.add('warm', 'warm-mode-adapt');
   } else if (theme === 'light') {
     el.classList.add('light-mode-adapt');
+  } else if (theme === 'rose') {
+    // Rose is a SOOTHING LIGHT theme — do NOT add .dark class.
+    // Without .dark, the base `html:not(.dark):not(.warm) .glass` rule applies plain white cards,
+    // and rose-specific overrides tint the borders/text for a calming study-friendly palette.
+    el.classList.add('rose', 'rose-mode-adapt');
   } else {
-    // ocean, forest, rose, gold are dark-based themes
+    // ocean, forest, gold are dark-based themes
     // MUST add 'dark' class too so all .dark .glass, .dark .card-solid, etc. apply
     el.classList.add('dark', theme);
   }
