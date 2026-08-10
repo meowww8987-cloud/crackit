@@ -146,11 +146,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.13.0</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.13.1</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.13.1</strong> — Make Rose VISIBLY pink (was too subtle, looked like Light): bg Pink Lace #FFD6E8 (was Misty Rose), cards faint pink #FFFAFC (was pure white), 3D opacity 1.0 (was 0.78) — full-strength pink animation now unmistakably distinct from Light mode.</div>
             <div><strong className="text-white/70">v2.13.0</strong> — Rose Quartz rebuild: Misty Rose bg, Dark Raspberry text (was brown), 5 named pinks (Rose Pink / Mauve / Salmon Pink / Raspberry Rose / Blush), China Rose + Rose Gold accents. Focus Timer + Splash + Sleep Lock now have .force-dark-ui class so they stay pure-black + white-text regardless of theme.</div>
             <div><strong className="text-white/70">v2.12.9</strong> — Per-theme 3D background palettes: dark=pure black + vivid, light=pure white + soft, rose=pink-tinted bg + 5 shades of pink, ocean=blue/cyan, forest=greens, gold=amber. Electrons dark on light themes (were invisible white). Rose now visibly distinct from Light.</div>
             <div><strong className="text-white/70">v2.12.8</strong> — Rebuild Rose as soothing light "Rose Quartz" theme: pure white cards + deep warm charcoal text (was unreadable faded pink on dark), flat soft off-white bg, hidden aurora canvas noise, dusty rose + muted sage accents — calm for long study</div>
@@ -466,7 +467,7 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
     { v: 'warm', label: 'Warm', emoji: '🔥', desc: 'Sepia cream', color: '#faf3e8' },
     { v: 'ocean', label: 'Ocean', emoji: '🌊', desc: 'Deep blue', color: '#0c1929' },
     { v: 'forest', label: 'Forest', emoji: '🌿', desc: 'Deep green', color: '#0a1410' },
-    { v: 'rose', label: 'Rose Quartz', emoji: '🌸', desc: 'Rosy pink', color: '#FFE4E1' },
+    { v: 'rose', label: 'Rose Quartz', emoji: '🌸', desc: 'Rosy pink', color: '#FFD6E8' },
     { v: 'gold', label: 'Gold', emoji: '✨', desc: 'Black + gold', color: '#000000' },
   ] as const;
 

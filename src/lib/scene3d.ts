@@ -199,7 +199,7 @@ const THEME_PALETTES: Record<Theme3DName, Theme3DPalette> = {
     opacityMul: 0.75,
   },
   rose: {
-    background: '#FFE4E1',  // Misty Rose — clearly pink, distinct from Light's pure white
+    background: '#FFD6E8',  // Pink Lace — clearly pink, NOT white-ish
     electronRgb: [90, 26, 46],  // Dark Raspberry — matches primary text
     // 5 shades of pink — cohesive monochrome palette
     subjectColors: {
@@ -209,7 +209,7 @@ const THEME_PALETTES: Record<Theme3DName, Theme3DPalette> = {
       Zoology:   { hex: '#B22E5C', rgb: [178, 46, 92] },     // Raspberry Rose
       General:   { hex: '#D4A5A5', rgb: [212, 165, 165] },   // Blush
     },
-    opacityMul: 0.78,
+    opacityMul: 1.0,  // full strength — pinks visible against pink bg
   },
 };
 

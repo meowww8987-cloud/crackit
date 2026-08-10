@@ -316,21 +316,21 @@
  *                Rose Pink / China Rose / Pink Pearl / Rose Gold / Mauve Taupe
  */
 .rose {
-  --ring-track: rgba(212, 115, 138, 0.18);
+  --ring-track: rgba(212, 115, 138, 0.22);
   --ring-outer: #D4738A;
-  --bar-track: rgba(232, 172, 191, 0.30);
-  --card-bg: #ffffff;
-  --bg-app: #FFE4E1;
-  --bg-card: #ffffff;
-  --bg-card-solid: #ffffff;
-  --bg-glass-strong: #ffffff;
+  --bar-track: rgba(232, 172, 191, 0.35);
+  --card-bg: #FFFAFC;
+  --bg-app: #FFD6E8;
+  --bg-card: #FFFAFC;
+  --bg-card-solid: #FFFAFC;
+  --bg-glass-strong: #FFFAFC;
   --text-primary: #5A1A2E;
   --text-secondary: #7C4848;
   --text-muted: #C08081;
-  --border-color: rgba(168, 81, 110, 0.22);
-  --border-card: rgba(168, 81, 110, 0.26);
-  --shadow-card: 0 2px 10px -2px rgba(168, 81, 110, 0.10);
-  --shadow-strong: 0 8px 28px -4px rgba(168, 81, 110, 0.14);
+  --border-color: rgba(168, 81, 110, 0.26);
+  --border-card: rgba(168, 81, 110, 0.30);
+  --shadow-card: 0 2px 10px -2px rgba(168, 81, 110, 0.14);
+  --shadow-strong: 0 8px 28px -4px rgba(168, 81, 110, 0.18);
   --background: oklch(0.97 0.018 350);
   --foreground: oklch(0.28 0.06 350);
   --card: oklch(1 0 0);
@@ -350,9 +350,9 @@
   --input: oklch(0.94 0.02 350);
   --ring: oklch(0.62 0.12 350);
 }
-/* Body background — Misty Rose (clearly pink, distinct from Light's pure white) */
+/* Body background — Pink Lace (clearly pink, NOT white-ish) */
 html.rose body {
-  background: #FFE4E1 !important;
+  background: #FFD6E8 !important;
   background-attachment: fixed !important;
 }
 /* Hide grid + noise overlays (visual clutter) — but LEAVE the 3D canvas visible
@@ -398,23 +398,23 @@ html.rose .aurora-vignette {
 .rose .border-white\/20 { border-color: rgba(168, 81, 110, 0.32) !important; }
 .rose .ring-white\/30 { --tw-ring-color: rgba(212, 115, 138, 0.32) !important; }
 
-/* === Glass / cards — pure white with Mauve Taupe borders === */
+/* === Glass / cards — faint pink-tinted #FFFAFC with Mauve Taupe borders === */
 .rose .glass {
-  background: #ffffff !important;
-  border: 1px solid rgba(168, 81, 110, 0.20) !important;
-  box-shadow: 0 2px 12px -2px rgba(168, 81, 110, 0.10), inset 0 1px 0 rgba(255,255,255,0.7) !important;
+  background: #FFFAFC !important;
+  border: 1px solid rgba(168, 81, 110, 0.24) !important;
+  box-shadow: 0 2px 12px -2px rgba(168, 81, 110, 0.14), inset 0 1px 0 rgba(255,255,255,0.7) !important;
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 .rose .glass-strong {
-  background: #ffffff !important;
-  border: 1px solid rgba(168, 81, 110, 0.24) !important;
-  box-shadow: 0 8px 32px -4px rgba(168, 81, 110, 0.16), inset 0 1px 0 rgba(255,255,255,0.8) !important;
+  background: #FFFAFC !important;
+  border: 1px solid rgba(168, 81, 110, 0.28) !important;
+  box-shadow: 0 8px 32px -4px rgba(168, 81, 110, 0.20), inset 0 1px 0 rgba(255,255,255,0.8) !important;
 }
 .rose .card-solid {
-  background: #ffffff !important;
-  border: 1px solid rgba(168, 81, 110, 0.18) !important;
-  box-shadow: 0 2px 10px -2px rgba(168, 81, 110, 0.08), inset 0 1px 0 rgba(255,255,255,0.6) !important;
+  background: #FFFAFC !important;
+  border: 1px solid rgba(168, 81, 110, 0.22) !important;
+  box-shadow: 0 2px 10px -2px rgba(168, 81, 110, 0.12), inset 0 1px 0 rgba(255,255,255,0.6) !important;
 }
 .rose .card-tint {
   mix-blend-mode: normal;
@@ -430,14 +430,14 @@ html.rose .aurora-vignette {
 .rose .grid-bg {
   background-image: linear-gradient(rgba(168, 81, 110, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(168, 81, 110, 0.05) 1px, transparent 1px);
 }
-.rose .bg-black\/60 { background: rgba(255, 228, 225, 0.7) !important; }
-.rose .bg-black\/70 { background: rgba(255, 228, 225, 0.8) !important; }
+.rose .bg-black\/60 { background: rgba(255, 214, 232, 0.7) !important; }
+.rose .bg-black\/70 { background: rgba(255, 214, 232, 0.8) !important; }
 
-/* === Inputs — Dark Raspberry text on white, Rose Gold focus ring === */
+/* === Inputs — Dark Raspberry text on pink-tinted white, Rose Gold focus ring === */
 .rose input, .rose textarea, .rose select {
   color: #5A1A2E !important;
-  background: #ffffff !important;
-  border-color: rgba(168, 81, 110, 0.24) !important;
+  background: #FFFAFC !important;
+  border-color: rgba(168, 81, 110, 0.28) !important;
 }
 .rose input::placeholder, .rose textarea::placeholder {
   color: rgba(188, 143, 143, 0.6) !important;
@@ -460,12 +460,12 @@ html.rose .aurora-vignette {
   border-color: #D4738A !important;
 }
 
-/* === Minimal-mode overrides for rose — keep cards pure white === */
+/* === Minimal-mode overrides for rose — keep cards faint pink === */
 .minimal-mode.rose {
-  --bg-app: #FFE4E1;
-  --bg-card: #ffffff;
-  --bg-card-solid: #ffffff;
-  --bg-glass-strong: #ffffff;
+  --bg-app: #FFD6E8;
+  --bg-card: #FFFAFC;
+  --bg-card-solid: #FFFAFC;
+  --bg-glass-strong: #FFFAFC;
 }
 
 /* ===== FORCE DARK UI — Focus Timer / Splash / Sleep Lock Screen =====
