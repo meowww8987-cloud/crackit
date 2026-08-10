@@ -15,6 +15,7 @@ import {
   verticalListSortingStrategy, useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTargets } from '@/lib/store/targets';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
@@ -205,7 +206,12 @@ export function SyllabusTab() {
             <div key={subj.id} className="space-y-2">
               <SubjectHeader name={subj.name} color={color} count={subjChapters.length} onAdd={() => { setAddChapterFor(subj); vibrate(10); }} />
               {reorderMode ? (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(subj.id, e)}>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={(e) => handleDragEnd(subj.id, e)}
+                  modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+                >
                   <SortableContext items={sortChapters(subjChapters).map((c) => c.id)} strategy={verticalListSortingStrategy}>
                     {sortChapters(subjChapters).map((ch) => {
                       const chLectures = lectures.filter((l) => l.chapterId === ch.id);
