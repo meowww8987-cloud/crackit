@@ -463,14 +463,17 @@ export function FocusTimer() {
           backgroundColor: '#000000',
         }}
       >
-      {/* Wasted time flash — shows when returning from background */}
+      {/* Wasted time flash — shows when returning from background.
+          Uses FIXED positioning (not absolute) so it fills the ACTUAL viewport
+          regardless of the content div's rotation. The radial-gradient stays
+          a perfect circle in all orientations. */}
       {wasteFlash !== null && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.3 }}
-          className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none"
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
           style={{
             background: 'radial-gradient(circle, rgba(239,68,68,0.25) 0%, rgba(0,0,0,0.95) 70%)',
           }}
