@@ -9,6 +9,8 @@ import {
   renderFrame,
   detectSceneType,
   getSubjectColor,
+  getSubjectColorThemed,
+  getThemePalette,
   detectDeviceTier,
   objectCountForTier,
   type SceneObject,
@@ -29,29 +31,33 @@ import {
  *  - Respects prefers-reduced-motion (renders single static frame)
  *  - Pauses rAF when tab is hidden
  *  - Returns null when bg3DMode === 'off' (aurora still visible underneath)
+ *  - THEME-AWARE: each theme has its own palette (dark=vivid, light=soft, rose=pink shades, etc.)
  *
  * Implementation note: the canvas mount effect runs ONCE on mount (deps: [mounted]).
- * Scene rebuilds happen via a 500ms interval that checks for subject/mode changes
+ * Scene rebuilds happen via a 500ms interval that checks for subject/mode/theme changes
  * and rebuilds the in-memory object list without tearing down the rAF loop.
  */
 export function Scene3D() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mounted = useMounted();
   const bg3DMode = useSettings((s) => s.bg3DMode);
+  const appTheme = useSettings((s) => s.appTheme);
   const activeSubject = useSession((s) => s.active?.subject ?? null);
   const activeChapter = useSession((s) => s.active?.chapter ?? null);
 
   // Refs to access latest values inside the rAF loop without re-running effect
   const modeRef = useRef(bg3DMode);
+  const themeRef = useRef(appTheme);
   const subjectRef = useRef(activeSubject);
   const chapterRef = useRef(activeChapter);
   useEffect(() => {
     modeRef.current = bg3DMode;
+    themeRef.current = appTheme;
     subjectRef.current = activeSubject;
     chapterRef.current = activeChapter;
   });
 
-  // Hold the current scene + a key so we can rebuild on subject/mode change
+  // Hold the current scene + a key so we can rebuild on subject/mode/theme change
   // without re-running the canvas mount effect.
   const sceneRef = useRef<SceneObject[]>([]);
   const currentSceneKeyRef = useRef<string>('');
@@ -59,11 +65,12 @@ export function Scene3D() {
   // Compute a stable key — when this changes, rebuild the scene.
   const computeSceneKey = (): string => {
     const mode = modeRef.current;
+    const theme = themeRef.current;
     if (mode === 'off') return 'off';
     if (mode === 'auto') {
       const t = detectSceneType(subjectRef.current, chapterRef.current);
-      const c = getSubjectColor(subjectRef.current);
-      return `auto:${t}:${c.hex}`;
+      const c = getSubjectColorThemed(subjectRef.current, theme);
+      return `auto:${t}:${c.hex}:${theme}`;
     }
     const subjForMode =
       mode === 'atoms' ? 'Physics'
@@ -71,8 +78,8 @@ export function Scene3D() {
       : mode === 'cells' ? 'Botany'
       : mode === 'dna' ? 'Zoology'
       : 'General';
-    const c = getSubjectColor(subjForMode);
-    return `${mode}:${c.hex}`;
+    const c = getSubjectColorThemed(subjForMode, theme);
+    return `${mode}:${c.hex}:${theme}`;
   };
 
   useEffect(() => {
@@ -115,15 +122,18 @@ export function Scene3D() {
       currentSceneKeyRef.current = key;
 
       const mode = modeRef.current;
+      const theme = themeRef.current;
       let type: SceneType;
       let subjectColor;
 
       if (mode === 'auto') {
         type = detectSceneType(subjectRef.current, chapterRef.current);
-        subjectColor = getSubjectColor(subjectRef.current);
+        subjectColor = getSubjectColorThemed(subjectRef.current, theme);
       } else if (mode === 'hybrid') {
         type = 'hybrid';
-        subjectColor = getSubjectColor('General');
+        // For hybrid, use theme palette to color each subject type
+        const palette = getThemePalette(theme);
+        subjectColor = palette.subjectColors.General ?? getSubjectColor('General');
       } else {
         type = mode as SceneType;
         const subjForMode =
@@ -132,14 +142,34 @@ export function Scene3D() {
           : mode === 'cells' ? 'Botany'
           : mode === 'dna' ? 'Zoology'
           : 'General';
-        subjectColor = getSubjectColor(subjForMode);
+        subjectColor = getSubjectColorThemed(subjForMode, theme);
       }
 
+      // For hybrid mode, we need to pass theme-aware colors for each subject.
+      // buildScene uses SUBJECT_COLORS internally for hybrid — so we override
+      // the spawn colors by post-processing if theme !== 'dark'.
       sceneRef.current = buildScene({ type, objectCount: objCount, subjectColor });
+
+      // For hybrid + non-dark theme: recolor each object based on its kind → theme palette
+      if (type === 'hybrid' && theme !== 'dark') {
+        const palette = getThemePalette(theme);
+        const kindToSubject: Record<string, string> = {
+          atom: 'Physics',
+          dna: 'Zoology',
+          molecule: 'Chemistry',
+          cell: 'Botany',
+        };
+        for (const obj of sceneRef.current) {
+          const subj = kindToSubject[obj.kind];
+          const c = palette.subjectColors[subj] ?? getSubjectColor(subj);
+          obj.color = c.hex;
+          obj.rgb = c.rgb;
+        }
+      }
     };
     rebuildScene();
 
-    // Check for scene changes every 500ms (cheap, doesn't block rAF)
+    // Check for scene/theme changes every 500ms (cheap, doesn't block rAF)
     const sceneCheckInterval = setInterval(rebuildScene, 500);
 
     // ---- Render loop ----
@@ -155,8 +185,12 @@ export function Scene3D() {
       const dt = Math.min(0.1, (now - lastFrameTime) / 1000); // cap dt at 100ms
       lastFrameTime = now;
 
-      // Subject color for boost
-      const boostColor = subjectRef.current ? getSubjectColor(subjectRef.current) : null;
+      // Subject color for boost (theme-aware so boost matches the recolored scene)
+      const boostColor = subjectRef.current
+        ? getSubjectColorThemed(subjectRef.current, themeRef.current)
+        : null;
+
+      const themePalette = getThemePalette(themeRef.current);
 
       renderFrame({
         ctx,
@@ -166,6 +200,7 @@ export function Scene3D() {
         time,
         dt,
         boostColor,
+        themePalette,
       });
 
       if (!prefersReducedMotion) {

@@ -318,7 +318,7 @@
   --ring-outer: #B85671;
   --bar-track: rgba(123, 167, 135, 0.22);
   --card-bg: #ffffff;
-  --bg-app: #FAF6F4;
+  --bg-app: #FBEFEC;
   --bg-card: #ffffff;
   --bg-card-solid: #ffffff;
   --bg-glass-strong: #ffffff;
@@ -348,17 +348,19 @@
   --input: oklch(0.94 0.015 25);
   --ring: oklch(0.55 0.10 350);
 }
-/* Body background — soft flat warm off-white, no busy gradients (easier on eyes for long study) */
+/* Body background — flat soft pink-tinted off-white. The 3D canvas + aurora
+ * canvas sit ON TOP of this bg, so the bg only shows through where the canvases
+ * are transparent. We keep it pink-tinted to clearly differentiate from the
+ * pure-white Light theme. */
 html.rose body {
-  background: #FAF6F4 !important;
+  background: #FBEFEC !important;
   background-attachment: fixed !important;
 }
-/* Hide ALL visual noise for calm reading environment */
-html.rose .aurora-noise,
-html.rose .aurora-vignette,
+/* Hide grid + noise overlays (visual clutter) — but LEAVE the 3D canvas visible
+ * so the pink-shaded atoms/DNA/molecules animation shows. */
 html.rose .grid-bg,
-html.rose canvas.aurora-canvas,
-html.rose .bg-canvas {
+html.rose .aurora-noise,
+html.rose .aurora-vignette {
   display: none !important;
 }
 
@@ -466,7 +468,7 @@ html.rose .bg-canvas {
 
 /* === Minimal-mode overrides for rose — keep cards pure white === */
 .minimal-mode.rose {
-  --bg-app: #FAF6F4;
+  --bg-app: #FBEFEC;
   --bg-card: #ffffff;
   --bg-card-solid: #ffffff;
   --bg-glass-strong: #ffffff;

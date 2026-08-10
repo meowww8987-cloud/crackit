@@ -108,6 +108,123 @@ const SUBJECT_COLORS: Record<string, { hex: string; rgb: [number, number, number
   General:   { hex: '#64748b', rgb: [100, 116, 139] },  // slate
 };
 
+// ===== Theme-aware 3D palettes =====
+// Each theme defines its own canvas background, electron dot color, and
+// per-subject color overrides so the 3D scene looks native to each theme.
+//
+// Design goals:
+//  - Dark themes (dark/ocean/forest/gold): vivid subject colors on dark bg
+//  - Light theme: softened subject colors on pure white bg + DARK electrons (white dots invisible on white!)
+//  - Warm theme: warm amber/sepia palette on cream bg
+//  - Rose theme: ALL shades of pink palette (distinct from light mode) on pink-tinted bg
+
+export type Theme3DName = 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'rose' | 'gold';
+
+export interface Theme3DPalette {
+  /** Canvas fill (used as the base layer below the 3D objects). */
+  background: string;
+  /** RGB for electron dots / highlight points (white on dark themes, dark on light themes). */
+  electronRgb: [number, number, number];
+  /** Subject color overrides — if a subject isn't here, fall back to SUBJECT_COLORS. */
+  subjectColors: Record<string, { hex: string; rgb: [number, number, number] }>;
+  /** Multiplier applied to all object opacities (lower for light themes). */
+  opacityMul: number;
+}
+
+const THEME_PALETTES: Record<Theme3DName, Theme3DPalette> = {
+  dark: {
+    background: '#0a0b10',
+    electronRgb: [255, 255, 255],
+    subjectColors: SUBJECT_COLORS,
+    opacityMul: 1.0,
+  },
+  ocean: {
+    background: '#0c1929',
+    electronRgb: [186, 230, 253],
+    subjectColors: {
+      Physics:   { hex: '#38bdf8', rgb: [56, 189, 248] },   // sky blue
+      Chemistry: { hex: '#06b6d4', rgb: [6, 182, 212] },    // cyan
+      Botany:    { hex: '#14b8a6', rgb: [20, 184, 166] },   // teal
+      Zoology:   { hex: '#0ea5e9', rgb: [14, 165, 233] },   // ocean blue
+      General:   { hex: '#67e8f9', rgb: [103, 232, 249] },  // light cyan
+    },
+    opacityMul: 1.0,
+  },
+  forest: {
+    background: '#0a1410',
+    electronRgb: [220, 252, 220],
+    subjectColors: {
+      Physics:   { hex: '#84cc16', rgb: [132, 204, 22] },   // lime
+      Chemistry: { hex: '#22c55e', rgb: [34, 197, 94] },    // green
+      Botany:    { hex: '#16a34a', rgb: [22, 163, 74] },    // forest green
+      Zoology:   { hex: '#65a30d', rgb: [101, 163, 13] },   // olive
+      General:   { hex: '#4ade80', rgb: [74, 222, 128] },   // light green
+    },
+    opacityMul: 1.0,
+  },
+  gold: {
+    background: '#0a0805',
+    electronRgb: [253, 224, 71],
+    subjectColors: {
+      Physics:   { hex: '#fbbf24', rgb: [251, 191, 36] },   // amber
+      Chemistry: { hex: '#f59e0b', rgb: [245, 158, 11] },   // dark amber
+      Botany:    { hex: '#facc15', rgb: [250, 204, 21] },   // yellow
+      Zoology:   { hex: '#eab308', rgb: [234, 179, 8] },    // gold
+      General:   { hex: '#fde68a', rgb: [253, 230, 138] },  // light gold
+    },
+    opacityMul: 1.0,
+  },
+  light: {
+    background: '#ffffff',
+    electronRgb: [55, 65, 81],  // dark slate (white dots invisible on white)
+    subjectColors: {
+      Physics:   { hex: '#5b8dbf', rgb: [91, 141, 191] },   // soft blue
+      Chemistry: { hex: '#8b6bb1', rgb: [139, 107, 177] },  // soft purple
+      Botany:    { hex: '#5ba86b', rgb: [91, 168, 107] },   // soft green
+      Zoology:   { hex: '#c26666', rgb: [194, 102, 102] },  // soft red
+      General:   { hex: '#7a8a99', rgb: [122, 138, 153] },  // soft slate
+    },
+    opacityMul: 0.75,  // softer on white
+  },
+  warm: {
+    background: '#faf3e8',
+    electronRgb: [90, 60, 30],
+    subjectColors: {
+      Physics:   { hex: '#6b85a8', rgb: [107, 133, 168] },  // dusty blue
+      Chemistry: { hex: '#9b7ba1', rgb: [155, 123, 161] },  // warm plum
+      Botany:    { hex: '#7ba87b', rgb: [123, 168, 123] },  // sage
+      Zoology:   { hex: '#c26b5f', rgb: [194, 107, 95] },   // terracotta
+      General:   { hex: '#9c8b7a', rgb: [156, 139, 122] },  // warm taupe
+    },
+    opacityMul: 0.75,
+  },
+  rose: {
+    background: '#FBEFEC',  // soft pink-tinted off-white (distinct from pure white light mode)
+    electronRgb: [120, 50, 80],  // deep rose
+    // ALL shades of pink palette — distinct identity from light mode
+    subjectColors: {
+      Physics:   { hex: '#B85671', rgb: [184, 86, 113] },   // dusty rose
+      Chemistry: { hex: '#9F6B8E', rgb: [159, 107, 142] },  // mauve
+      Botany:    { hex: '#E08585', rgb: [224, 133, 133] },  // coral pink
+      Zoology:   { hex: '#D64A6F', rgb: [214, 74, 111] },   // deep rose
+      General:   { hex: '#D4A5A5', rgb: [212, 165, 165] },  // blush
+    },
+    opacityMul: 0.78,
+  },
+};
+
+/** Get the 3D palette for the current app theme. */
+export function getThemePalette(theme: string): Theme3DPalette {
+  return THEME_PALETTES[theme as Theme3DName] ?? THEME_PALETTES.dark;
+}
+
+/** Get the theme-aware subject color (falls back to default SUBJECT_COLORS). */
+export function getSubjectColorThemed(subject: string | null, theme: string) {
+  if (!subject) return getThemePalette(theme).subjectColors.General ?? SUBJECT_COLORS.General;
+  const palette = getThemePalette(theme);
+  return palette.subjectColors[subject] ?? SUBJECT_COLORS[subject] ?? SUBJECT_COLORS.General;
+}
+
 function rand(min: number, max: number): number { return min + Math.random() * (max - min); }
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
@@ -307,6 +424,8 @@ export interface RenderOptions {
   time: number;       // seconds since start
   dt: number;         // seconds since last frame
   boostColor?: { hex: string; rgb: [number, number, number] } | null;
+  /** Theme palette — when provided, electron dots + opacity adapt to theme. */
+  themePalette?: Theme3DPalette | null;
 }
 
 /**
@@ -314,13 +433,18 @@ export interface RenderOptions {
  * Uses painter's algorithm: sort by z, draw back-to-front.
  */
 export function renderFrame(opts: RenderOptions): void {
-  const { ctx, width, height, objects, time, dt, boostColor } = opts;
+  const { ctx, width, height, objects, time, dt, boostColor, themePalette } = opts;
   const cx = width / 2;
   const cy = height / 2;
   const focal = 500;
 
   // Clear with transparent (canvas overlays the aurora below)
   ctx.clearRect(0, 0, width, height);
+
+  // Electron color — white on dark themes, dark on light themes (theme-aware)
+  const electronRgb = themePalette?.electronRgb ?? [255, 255, 255];
+  // Opacity multiplier — softer on light themes
+  const themeOpacityMul = themePalette?.opacityMul ?? 1;
 
   // Update transforms
   for (const obj of objects) {
@@ -349,13 +473,13 @@ export function renderFrame(opts: RenderOptions): void {
   // Draw each object
   for (const { obj } of drawList) {
     const isBoosted = boostColor && boostColor.hex === obj.color;
-    const opacityMul = isBoosted ? 2.0 : 1;
+    const opacityMul = (isBoosted ? 2.0 : 1) * themeOpacityMul;
     const baseOpacity = obj.opacity * opacityMul;
 
-    if (obj.kind === 'atom') drawAtom(ctx, obj, focal, cx, cy, time, baseOpacity);
-    else if (obj.kind === 'dna') drawDna(ctx, obj, focal, cx, cy, time, baseOpacity);
-    else if (obj.kind === 'molecule') drawMolecule(ctx, obj, focal, cx, cy, time, baseOpacity);
-    else if (obj.kind === 'cell') drawCell(ctx, obj, focal, cx, cy, time, baseOpacity);
+    if (obj.kind === 'atom') drawAtom(ctx, obj, focal, cx, cy, time, baseOpacity, electronRgb);
+    else if (obj.kind === 'dna') drawDna(ctx, obj, focal, cx, cy, time, baseOpacity, electronRgb);
+    else if (obj.kind === 'molecule') drawMolecule(ctx, obj, focal, cx, cy, time, baseOpacity, electronRgb);
+    else if (obj.kind === 'cell') drawCell(ctx, obj, focal, cx, cy, time, baseOpacity, electronRgb);
   }
 }
 
@@ -365,9 +489,11 @@ function drawAtom(
   ctx: CanvasRenderingContext2D,
   obj: SceneObject,
   focal: number, cx: number, cy: number, time: number, baseOpacity: number,
+  electronRgb: [number, number, number] = [255, 255, 255],
 ): void {
   const g = obj.geom as AtomGeom;
   const [r, gn, b] = obj.rgb;
+  const [er, eg, eb] = electronRgb;
 
   // Draw orbits first (back layer)
   for (const orbit of g.orbits) {
@@ -406,7 +532,7 @@ function drawAtom(
     const ew = { x: ep.x + obj.position.x, y: ep.y + obj.position.y, z: ep.z + obj.position.z };
     const ep2 = project(ew, focal, cx, cy);
     const eRadius = Math.max(0.5, orbit.electronRadius * ep2.scale);
-    ctx.fillStyle = `rgba(255, 255, 255, ${baseOpacity * 0.9})`;
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, ${baseOpacity * 0.9})`;
     ctx.beginPath();
     ctx.arc(ep2.x, ep2.y, eRadius, 0, Math.PI * 2);
     ctx.fill();
@@ -436,9 +562,11 @@ function drawDna(
   ctx: CanvasRenderingContext2D,
   obj: SceneObject,
   focal: number, cx: number, cy: number, time: number, baseOpacity: number,
+  electronRgb: [number, number, number] = [255, 255, 255],
 ): void {
   const g = obj.geom as DnaGeom;
   const [r, gn, b] = obj.rgb;
+  const [er, eg, eb] = electronRgb;
   const strand2Offset = Math.PI; // second strand is 180° out of phase
 
   // Generate points on both strands
@@ -505,7 +633,7 @@ function drawDna(
     ctx.beginPath();
     ctx.arc(s1.x, s1.y, dotR, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = `rgba(255, 255, 255, ${baseOpacity * 0.8})`;
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, ${baseOpacity * 0.8})`;
     ctx.beginPath();
     ctx.arc(s2.x, s2.y, dotR * 0.8, 0, Math.PI * 2);
     ctx.fill();
@@ -516,6 +644,7 @@ function drawMolecule(
   ctx: CanvasRenderingContext2D,
   obj: SceneObject,
   focal: number, cx: number, cy: number, time: number, baseOpacity: number,
+  electronRgb: [number, number, number] = [255, 255, 255],
 ): void {
   const g = obj.geom as MoleculeGeom;
 
@@ -568,6 +697,7 @@ function drawCell(
   ctx: CanvasRenderingContext2D,
   obj: SceneObject,
   focal: number, cx: number, cy: number, time: number, baseOpacity: number,
+  electronRgb: [number, number, number] = [255, 255, 255],
 ): void {
   const g = obj.geom as CellGeom;
   const [r, gn, b] = obj.rgb;
