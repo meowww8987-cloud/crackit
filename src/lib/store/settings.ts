@@ -88,12 +88,22 @@ export const useSettings = create<SettingsStore>()(
         if (persisted?.state && persisted.state.tutorialMode === undefined) {
           persisted.state.tutorialMode = false;
         }
+        // Migrate any persisted 'lavender' theme to 'dark' (lavender theme removed in v2.12.7)
+        if (persisted?.state && persisted.state.appTheme === 'lavender') {
+          persisted.state.appTheme = 'dark';
+        }
+        if (persisted?.state && persisted.state.focusTheme === 'lavender') {
+          persisted.state.focusTheme = 'dark';
+        }
         return persisted;
       },
       onRehydrateStorage: () => (state) => {
         if (state && typeof window !== 'undefined') {
           applyTextSize(state.textSize);
-          applyTheme(state.appTheme);
+          // Guard against any legacy 'lavender' value slipping through
+          const validThemes = ['dark', 'light', 'warm', 'ocean', 'forest', 'rose', 'gold'];
+          const t = validThemes.includes(state.appTheme as any) ? state.appTheme : 'dark';
+          applyTheme(t as any);
         }
       },
     }
@@ -105,11 +115,11 @@ export function applyTextSize(size: Settings['textSize']) {
   document.documentElement.style.setProperty('--app-font-size', `${TEXT_SIZE_PX[size]}px`);
 }
 
-export function applyTheme(theme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'lavender' | 'rose' | 'gold') {
+export function applyTheme(theme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'rose' | 'gold') {
   if (typeof document === 'undefined') return;
   const el = document.documentElement;
   // Remove all theme classes
-  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'lavender', 'rose', 'gold', 'light-mode-adapt', 'warm-mode-adapt');
+  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'rose', 'gold', 'light-mode-adapt', 'warm-mode-adapt');
   // Add the selected theme
   if (theme === 'dark') {
     el.classList.add('dark');
@@ -118,7 +128,7 @@ export function applyTheme(theme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest'
   } else if (theme === 'light') {
     el.classList.add('light-mode-adapt');
   } else {
-    // ocean, forest, lavender, rose, gold are dark-based themes
+    // ocean, forest, rose, gold are dark-based themes
     // MUST add 'dark' class too so all .dark .glass, .dark .card-solid, etc. apply
     el.classList.add('dark', theme);
   }

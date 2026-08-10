@@ -56,11 +56,12 @@ export default function RootLayout({
                     theme = parsed?.state?.appTheme || 'dark';
                   }
                   var el = document.documentElement;
-                  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'lavender', 'rose', 'gold', 'light-mode-adapt', 'warm-mode-adapt');
+                  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'rose', 'gold', 'light-mode-adapt', 'warm-mode-adapt');
                   if (theme === 'dark') el.classList.add('dark');
                   else if (theme === 'warm') el.classList.add('warm', 'warm-mode-adapt');
                   else if (theme === 'light') el.classList.add('light-mode-adapt');
-                  else el.classList.add('dark', theme); // ocean/forest/lavender/rose/gold = dark + theme accent
+                  else if (theme === 'ocean' || theme === 'forest' || theme === 'rose' || theme === 'gold') el.classList.add('dark', theme);
+                  else el.classList.add('dark'); // fallback for any legacy value (e.g. 'lavender')
                 } catch(e) {
                   document.documentElement.classList.add('dark');
                 }
