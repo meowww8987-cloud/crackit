@@ -194,19 +194,22 @@ export function FocusTimer() {
   }, [computeAngleFromGamma, tempLockAngle, settings.lockedOrientation]);
 
   // Watch for wasted seconds increase (returning from background) — show flash
+  // that auto-dismisses after 2.5s. Only depends on wastedSeconds (not the
+  // full active object, which changes every tick and would re-run this effect
+  // constantly, clearing the timeout before it fires).
+  const wastedSeconds = active?.wastedSeconds ?? 0;
   useEffect(() => {
     if (!active) return;
-    const currentWasted = active.wastedSeconds;
-    if (currentWasted > lastWastedRef.current + 2) {
-      // Wasted time jumped by more than 2 seconds = returned from background
-      const added = currentWasted - lastWastedRef.current;
+    if (wastedSeconds > lastWastedRef.current + 2) {
+      const added = wastedSeconds - lastWastedRef.current;
       setWasteFlash(added);
+      // Auto-hide after 2.5s
       const t = setTimeout(() => setWasteFlash(null), 2500);
-      lastWastedRef.current = currentWasted;
+      lastWastedRef.current = wastedSeconds;
       return () => clearTimeout(t);
     }
-    lastWastedRef.current = currentWasted;
-  }, [active?.wastedSeconds, active]);
+    lastWastedRef.current = wastedSeconds;
+  }, [wastedSeconds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Burn protection check
   useEffect(() => {
@@ -453,6 +456,11 @@ export function FocusTimer() {
           transformOrigin: 'center center',
           // Smooth transition when angle changes
           transition: 'transform 0.3s ease',
+          // Background overlay on the ROTATED content div (not the outer div)
+          // so the radial gradient stays circular in all orientations.
+          // The outer div has solid black; this div has the colored overlay.
+          backgroundImage: dimmed ? 'none' : bgOverlay,
+          backgroundColor: '#000000',
         }}
       >
       {/* Wasted time flash — shows when returning from background */}
