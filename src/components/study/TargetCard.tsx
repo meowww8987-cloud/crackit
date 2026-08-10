@@ -329,6 +329,7 @@ export function TargetCard({
             }}
             onClick={(e) => e.stopPropagation()}
             className="ml-1 w-6 h-6 rounded flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 active:scale-90 transition shrink-0 cursor-grab active:cursor-grabbing"
+            style={{ touchAction: 'none' }}
             aria-label="Drag to reorder"
             title="Drag to reorder"
           >

@@ -1069,6 +1069,11 @@ button {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
+/* Drag handles need touch-action: none to allow framer-motion / @dnd-kit
+   to capture touch events for dragging. This overrides the button rule above. */
+button.touch-none, .touch-none {
+  touch-action: none !important;
+}
 
 /* Active scale for tap targets */
 button:active:not(:disabled) {

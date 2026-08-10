@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GraduationCap, Plus, Search, ChevronDown, Calendar, Clock, Sigma,
@@ -319,6 +319,14 @@ function SortableChapterCard({ chapter, color, lectureCount }: { chapter: Chapte
   const updateLecture = useSyllabus((s) => s.updateLecture);
   const lectures = useMemo(() => allLectures.filter((l) => l.chapterId === chapter.id), [allLectures, chapter.id]);
   const allDone = lectures.length > 0 && lectures.every((l) => l.done);
+
+  // Cancel long-press when drag starts
+  useEffect(() => {
+    if (isDragging && longPressRef.current) {
+      clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+  }, [isDragging]);
 
   const markAllDone = () => {
     vibrate(15);
