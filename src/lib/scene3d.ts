@@ -200,7 +200,7 @@ const THEME_PALETTES: Record<Theme3DName, Theme3DPalette> = {
   },
   rose: {
     background: '#FFD6E8',  // Pink Lace — clearly pink, NOT white-ish
-    electronRgb: [90, 26, 46],  // Dark Raspberry — matches primary text
+    electronRgb: [139, 47, 76],  // Dark Rose — matches primary text (rosy pink, not berry)
     // 5 shades of pink — cohesive monochrome palette
     subjectColors: {
       Physics:   { hex: '#D4738A', rgb: [212, 115, 138] },   // Rose Pink

@@ -308,35 +308,35 @@
 
 /* ===== ROSE QUARTZ THEME — Rosy pink palette for long study sessions =====
  * Design goals:
- *  - UNMISTAKABLY PINK: Misty Rose bg + 5 shades of pink accents
- *  - HIGH READABILITY: pure white cards + Dark Raspberry text (WCAG AAA on white)
+ *  - UNMISTAKABLY PINK: Pink Lace bg + Pale Pink cards + 5 shades of pink accents
+ *  - HIGH READABILITY: Dark Rose text (rosy pink, NOT berry/brown) on Pale Pink cards
  *  - COHESIVE: monochrome pink palette (no clashing amber/sage)
- *  - 3D ANIMATION: pink-shaded atoms/DNA/molecules visible against pink-tinted bg
- * Named palette: Misty Rose / Dark Raspberry / Tuscan Red / Old Rose / Rosy Brown
- *                Rose Pink / China Rose / Pink Pearl / Rose Gold / Mauve Taupe
+ *  - 3D ANIMATION: pink-shaded atoms/DNA/molecules visible against pink bg
+ * Named palette: Pink Lace / Pale Pink / Dark Rose / China Rose / Old Rose
+ *                Rose Pink / Mauve / Salmon Pink / Raspberry Rose / Blush / Rose Gold
  */
 .rose {
   --ring-track: rgba(212, 115, 138, 0.22);
   --ring-outer: #D4738A;
   --bar-track: rgba(232, 172, 191, 0.35);
-  --card-bg: #FFFAFC;
+  --card-bg: #FFF0F5;
   --bg-app: #FFD6E8;
-  --bg-card: #FFFAFC;
-  --bg-card-solid: #FFFAFC;
-  --bg-glass-strong: #FFFAFC;
-  --text-primary: #5A1A2E;
-  --text-secondary: #7C4848;
+  --bg-card: #FFF0F5;
+  --bg-card-solid: #FFF0F5;
+  --bg-glass-strong: #FFF0F5;
+  --text-primary: #8B2F4C;
+  --text-secondary: #A8516E;
   --text-muted: #C08081;
   --border-color: rgba(168, 81, 110, 0.26);
   --border-card: rgba(168, 81, 110, 0.30);
   --shadow-card: 0 2px 10px -2px rgba(168, 81, 110, 0.14);
   --shadow-strong: 0 8px 28px -4px rgba(168, 81, 110, 0.18);
   --background: oklch(0.97 0.018 350);
-  --foreground: oklch(0.28 0.06 350);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.28 0.06 350);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.28 0.06 350);
+  --foreground: oklch(0.40 0.14 350);
+  --card: oklch(0.98 0.012 350);
+  --card-foreground: oklch(0.40 0.14 350);
+  --popover: oklch(0.98 0.012 350);
+  --popover-foreground: oklch(0.40 0.14 350);
   --primary: oklch(0.62 0.15 350);
   --primary-foreground: oklch(0.98 0 0);
   --secondary: oklch(0.94 0.02 350);
@@ -363,18 +363,18 @@ html.rose .aurora-vignette {
   display: none !important;
 }
 
-/* === Text color overrides — Dark Raspberry (NOT brown) for max readability + pink identity ===
- * Graduating opacity ladder: Dark Raspberry → Tuscan Red → Old Rose → Rosy Brown → Light Pink
+/* === Text color overrides — Dark Rose (rosy pink, NOT berry/brown) ===
+ * All-pink opacity ladder: Dark Rose → China Rose → Old Rose → Rosy Brown → Light Pink
  */
-.rose .text-white, .rose text-white { color: #5A1A2E !important; }
-.rose .text-white\/95 { color: rgba(90, 26, 46, 0.95) !important; }
-.rose .text-white\/90 { color: rgba(90, 26, 46, 0.90) !important; }
-.rose .text-white\/85 { color: rgba(90, 26, 46, 0.85) !important; }
-.rose .text-white\/80 { color: rgba(90, 26, 46, 0.80) !important; }
-.rose .text-white\/75 { color: rgba(124, 72, 72, 0.81) !important; }
-.rose .text-white\/70 { color: rgba(124, 72, 72, 0.76) !important; }
-.rose .text-white\/65 { color: rgba(124, 72, 72, 0.71) !important; }
-.rose .text-white\/60 { color: rgba(124, 72, 72, 0.66) !important; }
+.rose .text-white, .rose text-white { color: #8B2F4C !important; }
+.rose .text-white\/95 { color: rgba(139, 47, 76, 0.95) !important; }
+.rose .text-white\/90 { color: rgba(139, 47, 76, 0.90) !important; }
+.rose .text-white\/85 { color: rgba(139, 47, 76, 0.85) !important; }
+.rose .text-white\/80 { color: rgba(139, 47, 76, 0.80) !important; }
+.rose .text-white\/75 { color: rgba(168, 81, 110, 0.81) !important; }
+.rose .text-white\/70 { color: rgba(168, 81, 110, 0.76) !important; }
+.rose .text-white\/65 { color: rgba(168, 81, 110, 0.71) !important; }
+.rose .text-white\/60 { color: rgba(168, 81, 110, 0.66) !important; }
 .rose .text-white\/55 { color: rgba(192, 128, 129, 0.65) !important; }
 .rose .text-white\/50 { color: rgba(192, 128, 129, 0.60) !important; }
 .rose .text-white\/45 { color: rgba(192, 128, 129, 0.55) !important; }
@@ -398,21 +398,21 @@ html.rose .aurora-vignette {
 .rose .border-white\/20 { border-color: rgba(168, 81, 110, 0.32) !important; }
 .rose .ring-white\/30 { --tw-ring-color: rgba(212, 115, 138, 0.32) !important; }
 
-/* === Glass / cards — faint pink-tinted #FFFAFC with Mauve Taupe borders === */
+/* === Glass / cards — Pale Pink #FFF0F5 (very light but noticeable pink) with Mauve Taupe borders === */
 .rose .glass {
-  background: #FFFAFC !important;
+  background: #FFF0F5 !important;
   border: 1px solid rgba(168, 81, 110, 0.24) !important;
   box-shadow: 0 2px 12px -2px rgba(168, 81, 110, 0.14), inset 0 1px 0 rgba(255,255,255,0.7) !important;
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 .rose .glass-strong {
-  background: #FFFAFC !important;
+  background: #FFF0F5 !important;
   border: 1px solid rgba(168, 81, 110, 0.28) !important;
   box-shadow: 0 8px 32px -4px rgba(168, 81, 110, 0.20), inset 0 1px 0 rgba(255,255,255,0.8) !important;
 }
 .rose .card-solid {
-  background: #FFFAFC !important;
+  background: #FFF0F5 !important;
   border: 1px solid rgba(168, 81, 110, 0.22) !important;
   box-shadow: 0 2px 10px -2px rgba(168, 81, 110, 0.12), inset 0 1px 0 rgba(255,255,255,0.6) !important;
 }
@@ -433,10 +433,10 @@ html.rose .aurora-vignette {
 .rose .bg-black\/60 { background: rgba(255, 214, 232, 0.7) !important; }
 .rose .bg-black\/70 { background: rgba(255, 214, 232, 0.8) !important; }
 
-/* === Inputs — Dark Raspberry text on pink-tinted white, Rose Gold focus ring === */
+/* === Inputs — Dark Rose text on Pale Pink, Rose Gold focus ring === */
 .rose input, .rose textarea, .rose select {
-  color: #5A1A2E !important;
-  background: #FFFAFC !important;
+  color: #8B2F4C !important;
+  background: #FFF0F5 !important;
   border-color: rgba(168, 81, 110, 0.28) !important;
 }
 .rose input::placeholder, .rose textarea::placeholder {
@@ -460,12 +460,12 @@ html.rose .aurora-vignette {
   border-color: #D4738A !important;
 }
 
-/* === Minimal-mode overrides for rose — keep cards faint pink === */
+/* === Minimal-mode overrides for rose — keep cards Pale Pink === */
 .minimal-mode.rose {
   --bg-app: #FFD6E8;
-  --bg-card: #FFFAFC;
-  --bg-card-solid: #FFFAFC;
-  --bg-glass-strong: #FFFAFC;
+  --bg-card: #FFF0F5;
+  --bg-card-solid: #FFF0F5;
+  --bg-glass-strong: #FFF0F5;
 }
 
 /* ===== FORCE DARK UI — Focus Timer / Splash / Sleep Lock Screen =====
