@@ -773,25 +773,29 @@ export function AppShell() {
         )}
       </AnimatePresence>
 
-      {/* === Weekly/Monthly Report sheet — triggered from Stats tab long-press === */}
+      {/* === Weekly/Monthly Report sheet — centered, with header icon === */}
       <AnimatePresence>
         {showWeeklyReport && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] flex items-end justify-center"
+            className="fixed inset-0 z-[80] flex items-center justify-center p-4"
             onClick={() => setShowWeeklyReport(false)}
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[88vh] flex flex-col"
+              className="relative w-full max-w-md glass-strong rounded-3xl max-h-[85vh] flex flex-col"
             >
               <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold">Progression Report</h2>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-teal-500/15 flex items-center justify-center">
+                      <TrendingUp size={16} className="text-teal-400" />
+                    </div>
+                    <h2 className="text-lg font-bold">Progression Report</h2>
+                  </div>
                   <button onClick={() => setShowWeeklyReport(false)} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">✕</button>
                 </div>
               </div>
@@ -912,43 +916,77 @@ function TestHistoryInline({ onClose }: { onClose: () => void }) {
 // === Weekly Report Inline — shows weekly + monthly progression with graph ===
 function WeeklyReportInline() {
   const sessions = useHistory((s) => s.sessions);
+  const dailyGoal = useSettings((s) => s.dailyGoalHours);
+
   // Build last 7 days study hours
   const last7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (6 - i));
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const sec = sessions.filter((s) => s.date === key).reduce((a, s) => a + s.studySeconds, 0);
-    return { label: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2), hours: sec / 3600 };
+    const hours = sec / 3600;
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2);
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    return { label: dayName, hours, isWeekend, date: d.getDate() };
   });
-  const maxH = Math.max(...last7.map(d => d.hours), 1);
-  const totalH = last7.reduce((a, d) => a + d.hours, 0);
 
-  // Build last 4 weeks
+  // This week vs last week for trend
+  const thisWeekTotal = last7.reduce((a, d) => a + d.hours, 0);
+  const lastWeekSec = sessions.filter((s) => {
+    const sDate = new Date(s.endedAt);
+    const weekAgo = Date.now() - 7 * 86400000;
+    const twoWeeksAgo = Date.now() - 14 * 86400000;
+    return sDate >= twoWeeksAgo && sDate < weekAgo;
+  }).reduce((a, s) => a + s.studySeconds, 0);
+  const lastWeekTotal = lastWeekSec / 3600;
+  const trendPct = lastWeekTotal > 0 ? Math.round(((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100) : thisWeekTotal > 0 ? 100 : 0;
+  const trendUp = trendPct > 0;
+  const trendSame = trendPct === 0;
+
+  // Best day
+  const bestDay = last7.reduce((best, d) => d.hours > best.hours ? d : best, last7[0]);
+
+  // Max for chart scaling (at least dailyGoal or 1)
+  const maxH = Math.max(...last7.map(d => d.hours), dailyGoal, 1);
+  const goalPct = (dailyGoal / maxH) * 100;
+
+  // Build last 4 weeks with date ranges
   const last4Weeks = Array.from({ length: 4 }, (_, i) => {
     const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - (3 - i) * 7);
-    const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6);
     const sec = sessions.filter((s) => {
       const sDate = new Date(s.endedAt);
-      return sDate >= weekStart && sDate < weekEnd;
+      const ws = new Date(weekStart); ws.setHours(0,0,0,0);
+      const we = new Date(weekEnd); we.setHours(23,59,59,999);
+      return sDate >= ws && sDate <= we;
     }).reduce((a, s) => a + s.studySeconds, 0);
-    return { label: `W${i+1}`, hours: sec / 3600 };
+    const range = `${weekStart.getDate()}/${weekStart.getMonth()+1}-${weekEnd.getDate()}/${weekEnd.getMonth()+1}`;
+    return { label: `W${i+1}`, hours: sec / 3600, range };
   });
-  const maxWeekH = Math.max(...last4Weeks.map(d => d.hours), 1);
+  const maxWeekH = Math.max(...last4Weeks.map(d => d.hours), dailyGoal * 7, 1);
 
-  // Sessions this week count
+  // Sessions this week
   const weekAgo = Date.now() - 7 * 86400000;
   const sessionsThisWeek = sessions.filter((s) => s.endedAt >= weekAgo).length;
 
+  // Bar color by performance
+  const getBarColor = (hours: number) => {
+    if (hours >= dailyGoal) return { from: '#22c55e', to: '#16a34a', text: '#22c55e' };
+    if (hours >= dailyGoal * 0.6) return { from: '#14b8a6', to: '#0d9488', text: '#14b8a6' };
+    if (hours >= dailyGoal * 0.3) return { from: '#f59e0b', to: '#d97706', text: '#f59e0b' };
+    return { from: '#ef4444', to: '#dc2626', text: '#ef4444' };
+  };
+
   return (
     <div className="space-y-5">
-      {/* Summary */}
+      {/* === Summary stats === */}
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="glass rounded-xl p-2.5">
           <div className="text-[9px] uppercase text-white/40 font-semibold">This Week</div>
-          <div className="text-lg font-bold tabular text-teal-400">{totalH.toFixed(1)}h</div>
+          <div className="text-lg font-bold tabular text-teal-400">{thisWeekTotal.toFixed(1)}h</div>
         </div>
         <div className="glass rounded-xl p-2.5">
           <div className="text-[9px] uppercase text-white/40 font-semibold">Daily Avg</div>
-          <div className="text-lg font-bold tabular text-purple-400">{(totalH/7).toFixed(1)}h</div>
+          <div className="text-lg font-bold tabular text-purple-400">{(thisWeekTotal/7).toFixed(1)}h</div>
         </div>
         <div className="glass rounded-xl p-2.5">
           <div className="text-[9px] uppercase text-white/40 font-semibold">Sessions</div>
@@ -956,37 +994,100 @@ function WeeklyReportInline() {
         </div>
       </div>
 
-      {/* Daily bar chart */}
+      {/* === Trend arrow === */}
+      <div className="flex items-center justify-center gap-2 py-1">
+        {trendUp ? (
+          <span className="text-sm font-bold text-green-400 flex items-center gap-1">
+            ↑ {trendPct}% vs last week
+          </span>
+        ) : trendSame ? (
+          <span className="text-sm font-bold text-white/50 flex items-center gap-1">
+            — Same as last week
+          </span>
+        ) : (
+          <span className="text-sm font-bold text-red-400 flex items-center gap-1">
+            ↓ {Math.abs(trendPct)}% vs last week
+          </span>
+        )}
+      </div>
+
+      {/* === Daily bar chart — taller, animated, colored by performance === */}
       <div>
         <div className="text-xs font-bold text-white/70 mb-2">Daily Study (Last 7 Days)</div>
-        <div className="flex items-end justify-between gap-1.5 h-24">
-          {last7.map((d, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div className="text-[8px] text-white/40 tabular">{d.hours > 0 ? d.hours.toFixed(1) : ''}</div>
-              <div className="w-full flex-1 flex items-end">
-                <div className="w-full rounded-t bg-gradient-to-t from-teal-500 to-green-400 transition-all"
-                  style={{ height: `${(d.hours / maxH) * 100}%`, minHeight: d.hours > 0 ? '4px' : '2px', opacity: d.hours > 0 ? 1 : 0.2 }} />
-              </div>
-              <div className="text-[8px] text-white/50 font-semibold">{d.label}</div>
-            </div>
-          ))}
+        <div className="relative h-32">
+          {/* Goal line */}
+          <div
+            className="absolute left-0 right-0 border-t-2 border-dashed border-teal-400/40 z-10"
+            style={{ bottom: `${goalPct}%` }}
+          >
+            <span className="absolute -top-4 right-0 text-[8px] font-bold text-teal-400/60 bg-black/40 px-1 rounded">Goal {dailyGoal}h</span>
+          </div>
+          {/* Bars */}
+          <div className="flex items-end justify-between gap-1.5 h-full">
+            {last7.map((d, i) => {
+              const c = getBarColor(d.hours);
+              const heightPct = (d.hours / maxH) * 100;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                  <span className="text-[10px] font-bold tabular" style={{ color: c.text }}>
+                    {d.hours > 0 ? d.hours.toFixed(1) : ''}
+                  </span>
+                  <div className="w-full flex-1 flex items-end relative">
+                    <motion.div
+                      className="w-full rounded-t"
+                      style={{ background: `linear-gradient(to top, ${c.from}, ${c.to})` }}
+                      initial={{ height: 0 }}
+                      animate={{ height: `${heightPct}%` }}
+                      transition={{ delay: i * 0.05, type: 'spring', stiffness: 100, damping: 15 }}
+                    />
+                    {/* Goal checkmark */}
+                    {d.hours >= dailyGoal && (
+                      <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[10px]">✓</span>
+                    )}
+                  </div>
+                  <span className={`text-[9px] font-bold ${d.isWeekend ? 'text-amber-400' : 'text-white/50'}`}>{d.label}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Weekly bar chart */}
+      {/* === Best day callout === */}
+      {bestDay && bestDay.hours > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+          <span className="text-base">🔥</span>
+          <span className="text-xs text-amber-300 font-semibold">
+            Best day: <span className="text-white">{bestDay.label}</span> — {bestDay.hours.toFixed(1)}h
+          </span>
+        </div>
+      )}
+
+      {/* === Weekly bar chart — with date ranges === */}
       <div>
         <div className="text-xs font-bold text-white/70 mb-2">Weekly Progression (Last 4 Weeks)</div>
-        <div className="flex items-end justify-between gap-2 h-24">
-          {last4Weeks.map((d, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div className="text-[8px] text-white/40 tabular">{d.hours > 0 ? d.hours.toFixed(1) + 'h' : ''}</div>
-              <div className="w-full flex-1 flex items-end">
-                <div className="w-full rounded-t bg-gradient-to-t from-purple-500 to-pink-400 transition-all"
-                  style={{ height: `${(d.hours / maxWeekH) * 100}%`, minHeight: d.hours > 0 ? '4px' : '2px', opacity: d.hours > 0 ? 1 : 0.2 }} />
+        <div className="flex items-end justify-between gap-2 h-32">
+          {last4Weeks.map((d, i) => {
+            const heightPct = (d.hours / maxWeekH) * 100;
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                <span className="text-[9px] font-bold tabular text-purple-400">
+                  {d.hours > 0 ? d.hours.toFixed(0) + 'h' : ''}
+                </span>
+                <div className="w-full flex-1 flex items-end">
+                  <motion.div
+                    className="w-full rounded-t"
+                    style={{ background: 'linear-gradient(to top, #a855f7, #ec4899)' }}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${heightPct}%` }}
+                    transition={{ delay: 0.3 + i * 0.08, type: 'spring', stiffness: 100, damping: 15 }}
+                  />
+                </div>
+                <span className="text-[8px] text-white/50 font-bold">{d.label}</span>
+                <span className="text-[7px] text-white/30 tabular">{d.range}</span>
               </div>
-              <div className="text-[8px] text-white/50 font-semibold">{d.label}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
