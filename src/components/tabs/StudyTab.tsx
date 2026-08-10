@@ -123,16 +123,32 @@ export function StudyTab() {
         </div>
       </div>
 
-      {/* Today's Progress Card */}
+      {/* Today's Progress Card — Samsung One UI 9 inspired */}
       <div className="glass rounded-2xl p-4">
-        <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <TargetIcon size={16} className="text-teal-400" />
             <span className="text-sm font-semibold">Today's Progress</span>
           </div>
-          <span className="text-2xl font-bold tabular bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent" suppressHydrationWarning>
+          {/* Percentage — animates with a count-up feel via spring */}
+          <motion.span
+            key={progressPct}
+            initial={{ scale: 0.9, opacity: 0.5 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+            className="text-2xl font-bold tabular"
+            style={{
+              background: progressPct >= 100
+                ? 'linear-gradient(135deg, #22c55e, #16a34a)'
+                : 'linear-gradient(135deg, #14b8a6, #22c55e)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+            suppressHydrationWarning
+          >
             {progressPct}%
-          </span>
+          </motion.span>
         </div>
         <LiquidProgress
           pct={progressPct}
@@ -140,9 +156,19 @@ export function StudyTab() {
           color2="#22c55e"
           height="h-3"
         />
-        <div className="mt-2 flex items-center justify-between text-xs text-white/50">
-          <span className="tabular" suppressHydrationWarning>{formatHM(studySecToday)} studied</span>
-          <span className="tabular" suppressHydrationWarning>Goal: {dailyGoal}h</span>
+        <div className="mt-2.5 flex items-center justify-between text-xs">
+          <span className="tabular text-t-muted" suppressHydrationWarning>
+            {formatHM(studySecToday)} <span className="text-t-muted/60">/ {dailyGoal}h</span>
+          </span>
+          {progressPct >= 100 ? (
+            <span className="text-green-400 font-semibold flex items-center gap-1">
+              ✓ Goal reached
+            </span>
+          ) : (
+            <span className="tabular text-t-muted/60" suppressHydrationWarning>
+              {formatHM(Math.max(0, goalSec - studySecToday))} left
+            </span>
+          )}
         </div>
       </div>
 
