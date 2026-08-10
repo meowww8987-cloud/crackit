@@ -462,7 +462,7 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
     { v: 'warm', label: 'Warm', emoji: '🔥', desc: 'Sepia cream', color: '#faf3e8' },
     { v: 'ocean', label: 'Ocean', emoji: '🌊', desc: 'Deep blue', color: '#0c1929' },
     { v: 'forest', label: 'Forest', emoji: '🌿', desc: 'Deep green', color: '#0a1410' },
-    { v: 'lavender', label: 'Lavender', emoji: '💜', desc: 'Deep purple', color: '#0f0a14' },
+    { v: 'lavender', label: 'Rose Glow', emoji: '🌸', desc: 'Pink + yellow + cyan', color: '#FFF0F5' },
     { v: 'rose', label: 'Rose', emoji: '🌸', desc: 'Dark pink', color: '#140a0e' },
     { v: 'gold', label: 'Gold', emoji: '✨', desc: 'Black + gold', color: '#000000' },
   ] as const;
