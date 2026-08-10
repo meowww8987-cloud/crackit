@@ -30,8 +30,7 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
   const color = subjectColor(subject.name);
 
   const [topic, setTopic] = useState('');
-  const [batchMode, setBatchMode] = useState(false);
-  const [batchInput, setBatchInput] = useState(''); // e.g. "5-8" or "5,6,7,8"
+  const [selectedLecNums, setSelectedLecNums] = useState<Set<number>>(new Set());
   const [includedResources, setIncludedResources] = useState<Set<LectureResource>>(new Set(['lecture', 'dpp', 'notes', 'revision']));
   const [addToToday, setAddToToday] = useState(true);
 
@@ -41,6 +40,30 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
     const chapterLecs = state.lectures.filter((l) => l.chapterId === chapter.id && !l.isCustom);
     return chapterLecs.length + 1;
   }, [chapter.id]);
+
+  // Generate selectable lecture numbers: next 5 starting from nextLecNo
+  const selectableLecNums = useMemo(() => {
+    return Array.from({ length: 5 }, (_, i) => nextLecNo + i);
+  }, [nextLecNo]);
+
+  const toggleLecNum = (num: number) => {
+    vibrate(6);
+    setSelectedLecNums((prev) => {
+      const next = new Set(prev);
+      if (next.has(num)) next.delete(num);
+      else next.add(num);
+      return next;
+    });
+  };
+
+  const selectAllLecNums = () => {
+    vibrate(8);
+    if (selectedLecNums.size === selectableLecNums.length) {
+      setSelectedLecNums(new Set());
+    } else {
+      setSelectedLecNums(new Set(selectableLecNums));
+    }
+  };
 
   const toggleResource = (res: LectureResource) => {
     vibrate(6);
@@ -54,63 +77,28 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
 
   const handleAdd = () => {
     vibrate(15);
-    if (batchMode) {
-      // Parse batch input: "5-8" → [5,6,7,8], "5,6,7,8" → [5,6,7,8]
-      const nums: number[] = [];
-      const parts = batchInput.trim().split(/[,\s]+/);
-      for (const part of parts) {
-        if (part.includes('-')) {
-          const [start, end] = part.split('-').map(Number);
-          if (!isNaN(start) && !isNaN(end)) {
-            for (let i = start; i <= end; i++) nums.push(i);
-          }
-        } else {
-          const n = Number(part);
-          if (!isNaN(n)) nums.push(n);
-        }
-      }
-      if (nums.length === 0) return;
-      let added = 0;
-      for (const lecNo of nums) {
-        const topicName = `Lecture ${lecNo}`;
-        const lecId = addLecture(chapter.id, topicName);
-        if (addToToday) {
-          addTarget({
-            date: todayKey(), subject: subject.name, activity: 'Lecture',
-            chapter: chapter.name, lecture: `L${lecNo}`, topic: topicName,
-            expectedMinutes: 60, lectureId: lecId, chapterId: chapter.id,
-          });
-        }
-        added++;
-      }
-      if (showToast) {
-        showToast(`✅ ${added} lectures added`, `${chapter.name} · L${nums[0]}-L${nums[nums.length - 1]}`);
-      }
-      onClose();
-      return;
+    const nums = Array.from(selectedLecNums).sort((a, b) => a - b);
+    if (nums.length === 0) {
+      // If nothing selected, add just the next one
+      nums.push(nextLecNo);
     }
-    // Single mode
-    const finalTopic = topic.trim() || `Lecture ${nextLecNo}`;
-    const lecId = addLecture(chapter.id, finalTopic);
-
-    if (addToToday) {
-      addTarget({
-        date: todayKey(),
-        subject: subject.name,
-        activity: 'Lecture',
-        chapter: chapter.name,
-        lecture: `L${nextLecNo}`,
-        topic: finalTopic,
-        expectedMinutes: 60,
-        lectureId: lecId,
-        chapterId: chapter.id,
-      });
+    let added = 0;
+    for (const lecNo of nums) {
+      const topicName = topic.trim() || `Lecture ${lecNo}`;
+      const lecId = addLecture(chapter.id, topicName);
+      if (addToToday) {
+        addTarget({
+          date: todayKey(), subject: subject.name, activity: 'Lecture',
+          chapter: chapter.name, lecture: `L${lecNo}`, topic: topicName,
+          expectedMinutes: 60, lectureId: lecId, chapterId: chapter.id,
+        });
+      }
+      added++;
     }
-
     if (showToast) {
       showToast(
-        addToToday ? '✅ Lecture added + to today' : '✅ Lecture added',
-        `${chapter.name} · L${nextLecNo}`
+        addToToday ? `✅ ${added} lecture${added > 1 ? 's' : ''} added + to today` : `✅ ${added} lecture${added > 1 ? 's' : ''} added`,
+        `${chapter.name} · L${nums[0]}${nums.length > 1 ? `-L${nums[nums.length - 1]}` : ''}`
       );
     }
     onClose();
@@ -151,60 +139,53 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
           </button>
         </div>
 
-        {/* Mode toggle: Single vs Batch */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => { setBatchMode(false); vibrate(6); }}
-            className={cn('flex-1 py-2 rounded-xl text-xs font-semibold transition', !batchMode ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/50')}
-          >
-            Single
-          </button>
-          <button
-            onClick={() => { setBatchMode(true); vibrate(6); }}
-            className={cn('flex-1 py-2 rounded-xl text-xs font-semibold transition', batchMode ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/50')}
-          >
-            Batch (L5-L8)
-          </button>
+        {/* Lecture number selection — checkboxes for L4, L5, L6, L7, L8 */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-semibold text-white/60">SELECT LECTURES</label>
+            <button onClick={selectAllLecNums} className="text-[10px] text-teal-400">
+              {selectedLecNums.size === selectableLecNums.length ? 'Deselect All' : 'Select All'}
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {selectableLecNums.map((num) => {
+              const sel = selectedLecNums.has(num);
+              return (
+                <button
+                  key={num}
+                  onClick={() => toggleLecNum(num)}
+                  className={cn(
+                    'px-3 py-2 rounded-xl text-xs font-bold transition border',
+                    sel ? 'text-black border-0' : 'border border-white/10 bg-white/[0.03] text-white/60'
+                  )}
+                  style={sel ? { background: color.hex } : undefined}
+                >
+                  L{num}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-white/30 mt-1.5">
+            {selectedLecNums.size > 0
+              ? `${selectedLecNums.size} selected · will create L${Array.from(selectedLecNums).sort((a,b)=>a-b).map(n => `L${n}`).join(', ')}`
+              : `Tap to select. If none selected, L${nextLecNo} will be created.`
+            }
+          </p>
         </div>
 
-        {/* Batch input OR single topic input */}
-        {batchMode ? (
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-white/60 mb-2 block">
-              LECTURE NUMBERS (batch)
-            </label>
-            <input
-              value={batchInput}
-              onChange={(e) => setBatchInput(e.target.value)}
-              placeholder="5-8  or  5,6,7,8"
-              autoFocus
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-teal-400/50"
-              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            />
-            <p className="text-[10px] text-white/30 mt-1">
-              Creates multiple lectures at once. Use ranges (5-8) or comma-separated (5,6,7,8).
-            </p>
-          </div>
-        ) : (
-          /* Topic input (single mode) */
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-white/60 mb-2 block">
-              LECTURE NAME (optional)
-            </label>
-            <input
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder={`Leave empty for auto L${nextLecNo}`}
-              autoFocus
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-teal-400/50"
-              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            />
-            <p className="text-[10px] text-white/30 mt-1">
-              Will be: <span className="font-bold tabular" style={{ color: color.hex }}>L{nextLecNo}</span>
-              {topic.trim() && ` - ${topic.trim()}`}
-            </p>
-          </div>
-        )}
+        {/* Topic input (optional, applies to all selected) */}
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-white/60 mb-2 block">
+            TOPIC NAME (optional)
+          </label>
+          <input
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder={`Leave empty for auto "Lecture N"`}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-teal-400/50"
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          />
+        </div>
 
         {/* Resource inclusions */}
         <div className="mb-4">
@@ -266,7 +247,7 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
           className="w-full py-3.5 rounded-xl font-bold text-sm text-black active:scale-[0.98] flex items-center justify-center gap-2"
           style={{ background: color.hex }}
         >
-          <Plus size={16} /> {batchMode ? 'Add Batch Lectures' : 'Add Lecture'}
+          <Plus size={16} /> Add {selectedLecNums.size > 0 ? `${selectedLecNums.size} ` : ''}Lecture{selectedLecNums.size > 1 ? 's' : ''}
         </button>
       </motion.div>
     </motion.div>
