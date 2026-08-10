@@ -24,6 +24,7 @@ import { WeeklyGoalCard } from '@/components/home/WeeklyGoalCard';
 import { useDragState } from '@/lib/store/dragState';
 import { useTargets } from '@/lib/store/targets';
 import { useSyllabus as useSyllabusStore } from '@/lib/store/syllabus';
+import { useHistory } from '@/lib/store/history';
 import { PWARegister } from '@/components/pwa/PWARegister';
 import { ToastContainer, pushToast } from '@/components/shared/Toast';
 import { ProgressTimeline } from '@/components/timeline/ProgressTimeline';
@@ -531,7 +532,7 @@ export function AppShell() {
                       onContextMenu={(e) => e.preventDefault()}
                       onPointerDown={longPressHandler}
                       onPointerUp={(e) => {
-                        clearLongPress();
+                        clearLongPress?.();
                         // Handle drag-drop on Study tab
                         if (draggedLectureId && tab.key === 'study') {
                           handleDropOnStudyTab();
