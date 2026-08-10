@@ -23,7 +23,6 @@ const DEFAULTS: Settings = {
   distractionTauntInterval: 2,
   autoDetectWasted: true,
   appTheme: 'dark',
-  focusTheme: 'dark',
   textSize: 'M',
   prefer2D: true,
   haptics: true,
@@ -92,9 +91,8 @@ export const useSettings = create<SettingsStore>()(
         if (persisted?.state && persisted.state.appTheme === 'lavender') {
           persisted.state.appTheme = 'dark';
         }
-        if (persisted?.state && persisted.state.focusTheme === 'lavender') {
-          persisted.state.focusTheme = 'dark';
-        }
+        // (focusTheme setting was removed in v2.13.3 — no migration needed since the
+        // field is just dropped; the Focus Timer always uses pure black now.)
         return persisted;
       },
       onRehydrateStorage: () => (state) => {

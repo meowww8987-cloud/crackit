@@ -315,7 +315,6 @@ export interface Settings {
   distractionTauntInterval: number; // minutes 0-15, 0 = off
   autoDetectWasted: boolean;
   appTheme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'rose' | 'gold';
-  focusTheme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'rose' | 'gold';
   textSize: 'S' | 'M' | 'L' | 'XL';
   prefer2D: boolean;
   haptics: boolean;
