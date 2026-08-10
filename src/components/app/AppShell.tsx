@@ -878,7 +878,12 @@ export function AppShell() {
 
 // === Test History Inline — shows all past tests with scores + analysis ===
 function TestHistoryInline({ onClose }: { onClose: () => void }) {
-  const tests = useTestsHook();
+  const [tests, setTests] = useState<any[]>([]);
+  useEffect(() => {
+    import('@/lib/store/tests').then(({ useTests }) => {
+      setTests(useTests.getState().tests);
+    });
+  }, []);
   if (tests.length === 0) {
     return (
       <div className="text-center py-10">
@@ -905,12 +910,12 @@ function TestHistoryInline({ onClose }: { onClose: () => void }) {
 
 // === Weekly Report Inline — shows weekly + monthly progression with graph ===
 function WeeklyReportInline() {
-  const sessions = useHistory((s: any) => s.sessions);
+  const sessions = useHistory((s) => s.sessions);
   // Build last 7 days study hours
   const last7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (6 - i));
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const sec = sessions.filter((s: any) => s.date === key).reduce((a: number, s: any) => a + s.studySeconds, 0);
+    const sec = sessions.filter((s) => s.date === key).reduce((a, s) => a + s.studySeconds, 0);
     return { label: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2), hours: sec / 3600 };
   });
   const maxH = Math.max(...last7.map(d => d.hours), 1);
@@ -920,13 +925,17 @@ function WeeklyReportInline() {
   const last4Weeks = Array.from({ length: 4 }, (_, i) => {
     const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - (3 - i) * 7);
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
-    const sec = sessions.filter((s: any) => {
+    const sec = sessions.filter((s) => {
       const sDate = new Date(s.endedAt);
       return sDate >= weekStart && sDate < weekEnd;
-    }).reduce((a: number, s: any) => a + s.studySeconds, 0);
+    }).reduce((a, s) => a + s.studySeconds, 0);
     return { label: `W${i+1}`, hours: sec / 3600 };
   });
   const maxWeekH = Math.max(...last4Weeks.map(d => d.hours), 1);
+
+  // Sessions this week count
+  const weekAgo = Date.now() - 7 * 86400000;
+  const sessionsThisWeek = sessions.filter((s) => s.endedAt >= weekAgo).length;
 
   return (
     <div className="space-y-5">
@@ -942,7 +951,7 @@ function WeeklyReportInline() {
         </div>
         <div className="glass rounded-xl p-2.5">
           <div className="text-[9px] uppercase text-white/40 font-semibold">Sessions</div>
-          <div className="text-lg font-bold tabular text-amber-400">{sessions.filter((s:any) => { const d = new Date(); d.setDate(d.getDate()-7); return s.endedAt >= d.getTime(); }).length}</div>
+          <div className="text-lg font-bold tabular text-amber-400">{sessionsThisWeek}</div>
         </div>
       </div>
 
@@ -981,15 +990,4 @@ function WeeklyReportInline() {
       </div>
     </div>
   );
-}
-
-// Hook to get tests for TestHistoryInline
-function useTestsHook() {
-  const [tests, setTests] = useState<any[]>([]);
-  useEffect(() => {
-    import('@/lib/store/tests').then(({ useTests }) => {
-      setTests(useTests.getState().tests);
-    });
-  }, []);
-  return tests;
 }
