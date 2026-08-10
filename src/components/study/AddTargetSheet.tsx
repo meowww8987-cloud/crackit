@@ -200,22 +200,21 @@ export function AddTargetSheet({ editing, onClose }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] flex items-end justify-center"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 400, damping: 35 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md glass rounded-t-3xl max-h-[88vh] flex flex-col"
+        className="relative w-full max-w-md glass rounded-3xl max-h-[85vh] flex flex-col"
         style={{ borderTop: `3px solid ${color.hex}` }}
       >
         {/* === Header with step indicator === */}
         <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {step > 1 && !editing && (
@@ -272,7 +271,9 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                           setSubject(s);
                           setSelectedChapterId('');
                           setSelectedLectureIds(new Set());
-                          vibrate(8);
+                          vibrate(10);
+                          // Auto-advance to Step 2 on subject select
+                          if (!editing) setStep(2);
                         }}
                         className={cn(
                           'py-4 rounded-2xl text-sm font-bold transition border relative flex flex-col items-center gap-1.5',
@@ -508,13 +509,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
         {/* === Footer with Next / Create button === */}
         <div className="sticky bottom-0 z-10 px-5 py-3 glass rounded-b-3xl" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           {step === 1 && (
-            <button
-              onClick={() => { setStep(2); vibrate(10); }}
-              className="w-full py-3.5 rounded-xl font-bold text-sm text-black transition active:scale-[0.98] flex items-center justify-center gap-2"
-              style={{ background: color.hex }}
-            >
-              Next <ChevronRight size={16} />
-            </button>
+            <p className="text-[10px] text-white/30 text-center py-3">Tap a subject to continue</p>
           )}
           {step === 2 && (
             <button

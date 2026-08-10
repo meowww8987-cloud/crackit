@@ -30,6 +30,8 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
   const color = subjectColor(subject.name);
 
   const [topic, setTopic] = useState('');
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchInput, setBatchInput] = useState(''); // e.g. "5-8" or "5,6,7,8"
   const [includedResources, setIncludedResources] = useState<Set<LectureResource>>(new Set(['lecture', 'dpp', 'notes', 'revision']));
   const [addToToday, setAddToToday] = useState(true);
 
@@ -52,6 +54,42 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
 
   const handleAdd = () => {
     vibrate(15);
+    if (batchMode) {
+      // Parse batch input: "5-8" → [5,6,7,8], "5,6,7,8" → [5,6,7,8]
+      const nums: number[] = [];
+      const parts = batchInput.trim().split(/[,\s]+/);
+      for (const part of parts) {
+        if (part.includes('-')) {
+          const [start, end] = part.split('-').map(Number);
+          if (!isNaN(start) && !isNaN(end)) {
+            for (let i = start; i <= end; i++) nums.push(i);
+          }
+        } else {
+          const n = Number(part);
+          if (!isNaN(n)) nums.push(n);
+        }
+      }
+      if (nums.length === 0) return;
+      let added = 0;
+      for (const lecNo of nums) {
+        const topicName = `Lecture ${lecNo}`;
+        const lecId = addLecture(chapter.id, topicName);
+        if (addToToday) {
+          addTarget({
+            date: todayKey(), subject: subject.name, activity: 'Lecture',
+            chapter: chapter.name, lecture: `L${lecNo}`, topic: topicName,
+            expectedMinutes: 60, lectureId: lecId, chapterId: chapter.id,
+          });
+        }
+        added++;
+      }
+      if (showToast) {
+        showToast(`✅ ${added} lectures added`, `${chapter.name} · L${nums[0]}-L${nums[nums.length - 1]}`);
+      }
+      onClose();
+      return;
+    }
+    // Single mode
     const finalTopic = topic.trim() || `Lecture ${nextLecNo}`;
     const lecId = addLecture(chapter.id, finalTopic);
 
@@ -83,17 +121,17 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] flex items-end justify-center"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 400, damping: 35 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md glass rounded-t-3xl p-5 pb-8"
+        className="relative w-full max-w-md glass rounded-3xl p-5 pb-8 max-h-[85vh] overflow-y-auto scroll-area"
         style={{ borderTop: `3px solid ${color.hex}` }}
       >
         <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
@@ -113,24 +151,60 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
           </button>
         </div>
 
-        {/* Topic input */}
-        <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block">
-            LECTURE NAME (optional)
-          </label>
-          <input
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder={`Leave empty for auto L${nextLecNo}`}
-            autoFocus
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-teal-400/50"
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-          />
-          <p className="text-[10px] text-white/30 mt-1">
-            Will be: <span className="font-bold tabular" style={{ color: color.hex }}>L{nextLecNo}</span>
-            {topic.trim() && ` - ${topic.trim()}`}
-          </p>
+        {/* Mode toggle: Single vs Batch */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => { setBatchMode(false); vibrate(6); }}
+            className={cn('flex-1 py-2 rounded-xl text-xs font-semibold transition', !batchMode ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/50')}
+          >
+            Single
+          </button>
+          <button
+            onClick={() => { setBatchMode(true); vibrate(6); }}
+            className={cn('flex-1 py-2 rounded-xl text-xs font-semibold transition', batchMode ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/50')}
+          >
+            Batch (L5-L8)
+          </button>
         </div>
+
+        {/* Batch input OR single topic input */}
+        {batchMode ? (
+          <div className="mb-4">
+            <label className="text-xs font-semibold text-white/60 mb-2 block">
+              LECTURE NUMBERS (batch)
+            </label>
+            <input
+              value={batchInput}
+              onChange={(e) => setBatchInput(e.target.value)}
+              placeholder="5-8  or  5,6,7,8"
+              autoFocus
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-teal-400/50"
+              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            />
+            <p className="text-[10px] text-white/30 mt-1">
+              Creates multiple lectures at once. Use ranges (5-8) or comma-separated (5,6,7,8).
+            </p>
+          </div>
+        ) : (
+          /* Topic input (single mode) */
+          <div className="mb-4">
+            <label className="text-xs font-semibold text-white/60 mb-2 block">
+              LECTURE NAME (optional)
+            </label>
+            <input
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder={`Leave empty for auto L${nextLecNo}`}
+              autoFocus
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-teal-400/50"
+              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            />
+            <p className="text-[10px] text-white/30 mt-1">
+              Will be: <span className="font-bold tabular" style={{ color: color.hex }}>L{nextLecNo}</span>
+              {topic.trim() && ` - ${topic.trim()}`}
+            </p>
+          </div>
+        )}
 
         {/* Resource inclusions */}
         <div className="mb-4">
@@ -192,7 +266,7 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
           className="w-full py-3.5 rounded-xl font-bold text-sm text-black active:scale-[0.98] flex items-center justify-center gap-2"
           style={{ background: color.hex }}
         >
-          <Plus size={16} /> Add Lecture
+          <Plus size={16} /> {batchMode ? 'Add Batch Lectures' : 'Add Lecture'}
         </button>
       </motion.div>
     </motion.div>

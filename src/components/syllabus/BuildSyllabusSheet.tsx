@@ -190,17 +190,17 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] flex items-end justify-center"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 400, damping: 35 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md glass rounded-t-3xl p-5 pb-8 max-h-[88vh] overflow-y-auto scroll-area"
+        className="relative w-full max-w-md glass rounded-3xl p-5 pb-8 max-h-[85vh] overflow-y-auto scroll-area"
         style={selectedSubject ? { borderTop: `3px solid ${subjectColor(selectedSubject).hex}` } : undefined}
       >
         <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
