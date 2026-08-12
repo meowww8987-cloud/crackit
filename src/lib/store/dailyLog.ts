@@ -14,6 +14,8 @@ export interface DailyLog {
 interface DailyLogStore {
   logs: Record<string, DailyLog>;
   logToday: (sleepHours: number, energyLevel: number) => void;
+  /** Update only the energy level for today (creates a partial log if needed). */
+  setEnergy: (energyLevel: number) => void;
   getToday: () => DailyLog | null;
   getWeek: () => DailyLog[];
 }
@@ -29,6 +31,22 @@ export const useDailyLog = create<DailyLogStore>()(
           logs: {
             ...s.logs,
             [today]: { date: today, sleepHours, energyLevel, loggedAt: Date.now() },
+          },
+        }));
+      },
+
+      setEnergy: (energyLevel) => {
+        const today = todayKey();
+        const existing = get().logs[today];
+        set((s) => ({
+          logs: {
+            ...s.logs,
+            [today]: {
+              date: today,
+              sleepHours: existing?.sleepHours ?? 0,
+              energyLevel,
+              loggedAt: Date.now(),
+            },
           },
         }));
       },

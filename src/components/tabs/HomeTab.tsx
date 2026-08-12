@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, TrendingUp, Calendar, FileText, Clock } from 'lucide-react';
+import { Target, TrendingUp, Calendar, FileText, Clock, Moon } from 'lucide-react';
 import { useHistory } from '@/lib/store/history';
 import { useSettings } from '@/lib/store/settings';
 import { useSyllabus } from '@/lib/store/syllabus';
@@ -22,6 +22,8 @@ import { NumberMorph } from '@/components/shared/NumberMorph';
 import { StreakFlame } from '@/components/shared/StreakFlame';
 import { useDailyLog } from '@/lib/store/dailyLog';
 import { SleepLogSheet } from '@/components/dailylog/SleepLogSheet';
+import { SleepReportSheet } from '@/components/dailylog/SleepReportSheet';
+import { SleepPlanSheet } from '@/components/dailylog/SleepPlanSheet';
 import { useSleep } from '@/lib/store/sleep';
 import { useDoubts } from '@/lib/store/doubts';
 import { getSubjectHealthScores } from '@/lib/healthScore';
@@ -367,52 +369,144 @@ function RingComparison({
 function SleepAndDoubtCard() {
   const todayLog = useDailyLog((s) => s.getToday());
   const [showSleep, setShowSleep] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [showPlan, setShowPlan] = useState(false);
   const pendingDoubts = useDoubts((s) => s.getPendingCount());
   const resolvedDoubts = useDoubts((s) => s.doubts.filter(d => d.status === 'resolved').length);
   // Real sleep data from the new sleep store
   const todaySleepSec = useSleep((s) => s.getDurationForDate(todayKey()));
   const avgSleepHours = useSleep((s) => s.getAverageHours(7));
+  const sleepHistory = useSleep((s) => s.history);
+  const activeSleep = useSleep((s) => s.activeSleep);
+  const setEnergy = useDailyLog((s) => s.setEnergy);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const todaySleepHours = todaySleepSec / 3600;
   const hasTodaySleep = todaySleepSec > 0;
+  const hasAnySleepHistory = sleepHistory.length > 0;
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => setShowSleep(true)} className="glass rounded-2xl p-3 text-left hover:bg-white/[0.07] transition">
-          <div className="flex items-center gap-1.5 mb-1.5">
+      <div className="glass rounded-2xl p-3">
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
             <span className="text-sm">😴</span>
-            <span className="text-[10px] font-bold text-white/50">Sleep</span>
+            <span className="text-[10px] font-bold text-white/50 uppercase tracking-wide">Sleep & Energy</span>
           </div>
-          {hasTodaySleep ? (
-            <>
-              <div className="text-lg font-bold tabular text-indigo-400">{todaySleepHours.toFixed(1)}h</div>
-              <div className="text-[9px] text-white/40">7-day avg: {avgSleepHours.toFixed(1)}h</div>
-            </>
+          <button
+            onClick={() => setShowPlan(true)}
+            className="text-[9px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-semibold active:scale-95 transition"
+          >
+            Sleep Plan →
+          </button>
+        </div>
+
+        {/* === Sleep block — tap to start sleep OR view report if has history === */}
+        <button
+          onClick={() => {
+            // If active sleep → no-op (lock screen handles it)
+            if (activeSleep) return;
+            // If has sleep history → open report; else open manual log
+            if (hasAnySleepHistory) setShowReport(true);
+            else setShowSleep(true);
+          }}
+          onTouchStart={() => {
+            longPressTimer.current = setTimeout(() => setShowReport(true), 500);
+          }}
+          onTouchEnd={() => {
+            if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+          }}
+          onTouchCancel={() => {
+            if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+          }}
+          className="w-full text-left rounded-xl p-2.5 bg-white/[0.03] hover:bg-white/[0.06] transition mb-2 active:scale-[0.99]"
+        >
+          {activeSleep ? (
+            <div className="flex items-center gap-2">
+              <div className="text-xl">🌙</div>
+              <div className="flex-1">
+                <div className="text-xs font-semibold text-indigo-300">Sleeping now…</div>
+                <div className="text-[9px] text-white/40">Tap NEET logo to wake · Long-press for report</div>
+              </div>
+            </div>
+          ) : hasTodaySleep ? (
+            <div className="flex items-center gap-2">
+              <div className="text-xl">😴</div>
+              <div className="flex-1">
+                <div className="text-sm font-bold tabular text-indigo-300">{todaySleepHours.toFixed(1)}h today</div>
+                <div className="text-[9px] text-white/40">7-day avg: {avgSleepHours.toFixed(1)}h · Long-press for report</div>
+              </div>
+              <Moon size={14} className="text-indigo-400/60" />
+            </div>
           ) : todayLog ? (
-            <>
-              <div className="text-lg font-bold tabular text-indigo-400">{todayLog.sleepHours}h</div>
-              <div className="text-[9px] text-white/40">{'⚡'.repeat(todayLog.energyLevel)} · manual</div>
-            </>
+            <div className="flex items-center gap-2">
+              <div className="text-xl">😴</div>
+              <div className="flex-1">
+                <div className="text-sm font-bold tabular text-indigo-300">{todayLog.sleepHours}h (manual)</div>
+                <div className="text-[9px] text-white/40">Long-press for report</div>
+              </div>
+            </div>
           ) : (
-            <>
-              <div className="text-sm font-semibold text-white/50">Log sleep</div>
-              <div className="text-[9px] text-white/30">Tap banner to start</div>
-            </>
+            <div className="flex items-center gap-2">
+              <div className="text-xl">😴</div>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-white/60">Tap NEET logo to sleep</div>
+                <div className="text-[9px] text-white/40">Long-press here for sleep report</div>
+              </div>
+              <Moon size={14} className="text-indigo-400/60" />
+            </div>
           )}
         </button>
-        <div className="glass rounded-2xl p-3">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <span className="text-sm">❓</span>
-            <span className="text-[10px] font-bold text-white/50">Doubts</span>
-          </div>
-          <div className="text-lg font-bold tabular text-amber-400">{pendingDoubts}</div>
-          <div className="text-[9px] text-white/40">pending · {resolvedDoubts} resolved</div>
+
+        {/* === Energy block — quick 1-5 energy level picker === */}
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[9px] font-bold text-white/50 uppercase tracking-wide">Energy</span>
+          <div className="flex-1 h-px bg-white/5" />
+          <span className="text-[9px] text-white/30">{todayLog ? `last: ${todayLog.energyLevel}/5` : 'tap to rate'}</span>
         </div>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((lvl) => {
+            const current = todayLog?.energyLevel ?? 0;
+            const isFilled = lvl <= current;
+            return (
+              <button
+                key={lvl}
+                onClick={() => setEnergy(lvl)}
+                className="flex-1 py-1.5 rounded-lg text-sm transition active:scale-95"
+                style={{
+                  background: isFilled
+                    ? `rgba(${lvl <= 2 ? '239,68,68' : lvl === 3 ? '245,158,11' : '34,197,94'},0.18)`
+                    : 'rgba(255,255,255,0.03)',
+                  color: isFilled
+                    ? (lvl <= 2 ? '#f87171' : lvl === 3 ? '#fbbf24' : '#4ade80')
+                    : 'rgba(255,255,255,0.3)',
+                }}
+              >
+                {lvl <= 1 ? '😫' : lvl === 2 ? '😦' : lvl === 3 ? '😐' : lvl === 4 ? '🙂' : '😄'}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Doubts mini-row */}
+        <button
+          onClick={() => {
+            // navigate to doubts (handled by AppShell via custom event)
+            window.dispatchEvent(new CustomEvent('navigate-doubts'));
+          }}
+          className="w-full mt-2 flex items-center gap-2 rounded-lg p-2 bg-white/[0.02] hover:bg-white/[0.05] transition"
+        >
+          <span className="text-sm">❓</span>
+          <span className="text-[10px] font-bold text-white/50 flex-1 text-left">Doubts</span>
+          <span className="text-xs font-bold tabular text-amber-400">{pendingDoubts}</span>
+          <span className="text-[9px] text-white/30">· {resolvedDoubts} resolved</span>
+        </button>
       </div>
-      <AnimatePresence>
-        {showSleep && <SleepLogSheet key="sleep" onClose={() => setShowSleep(false)} />}
-      </AnimatePresence>
+
+      {showSleep && <SleepLogSheet key="sleep" onClose={() => setShowSleep(false)} />}
+      {showReport && <SleepReportSheet open={showReport} onClose={() => setShowReport(false)} />}
+      {showPlan && <SleepPlanSheet open={showPlan} onClose={() => setShowPlan(false)} />}
     </>
   );
 }
