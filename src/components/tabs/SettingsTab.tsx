@@ -145,11 +145,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.16.0</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.17.0</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.17.0</strong> — SleepLockScreen rebuild: (1) Time-of-day aware scenery — 6 scenes (night/dawn/morning/noon/dusk/evening) with matching gradients + celestial body + ambient elements. Background adapts as hours pass during sleep. (2) Quality picker now appears AFTER waking from the lock screen (was only on banner slider). Flow: double-tap → math → sunrise/brighten transition → 5 emoji quality picker (😣😕😐😊😍) → wakeUp(quality). Each emoji staggered in with spring animation.</div>
             <div><strong className="text-white/70">v2.16.0</strong> — Rebuild Home Sleep card as proper Sleep & Energy hub: shows live sleep status, 1-5 energy emoji picker (red→green), Sleep Plan button (full daily schedule + 4 rules + science), long-press for sleep report. SleepPlanSheet: 5:30 AM wake, 10:30 PM bedtime, 20-min nap window, no screens 30 min before bed, caffeine cutoff 2 PM, why 7-7.5h is the sweet spot.</div>
             <div><strong className="text-white/70">v2.15.0</strong> — Sleep Health: app now classifies each sleep as night/late-night/noon-nap/evening-nap/power-nap, computes a 0-100 health score (duration 40% + bedtime consistency 25% + bedtime timing 20% + quality rating 15%). Wake flow already asks 1-5 quality rating. New SleepReportSheet (long-press Sleep Health card in Stats, or any sleep entry in History) shows: score, last 7 nights breakdown, avg bedtime, consistency %, avg quality, personalized recommendations.</div>
             <div><strong className="text-white/70">v2.14.2</strong> — Fix: tapping Pause button on studying notification was starting sleep mode (action handling bug). Removed Pause action entirely — notification now has only ONE action button per state (Sleep when awake, Wake Up when sleeping). Also redesigned notification: shorter single-line body, no redundant info, no cluttered multi-line text. Studying: "32m done · 28m left". Idle: "4h 12m / 6h today · Last studied 2h ago".</div>

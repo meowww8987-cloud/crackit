@@ -9,30 +9,101 @@ import { cn, formatHM, vibrate } from '@/lib/utils';
 /**
  * SleepLockScreen — full-screen immersive sleep mode.
  *
- * Two phases:
- *   1. SLEEPING — full-screen bluish gradient + animated night scenery
- *      (moon, twinkling stars, floating clouds, shooting stars, gentle hills).
+ * Phases:
+ *   1. SLEEPING — time-of-day aware scenery (night/dawn/morning/noon/dusk/evening).
+ *      The gradient + celestial body + ambient elements adapt to the current hour.
  *      Live sleep timer at top. Hint: "Double-tap to wake up".
  *
- *   2. CHALLENGE — shown after double-tap. A medium-difficulty math problem.
- *      If solved → app unlocks (wakeUp called) with a SUNRISE TRANSITION:
- *      the night gradient morphs to a warm sunrise (dark blue → purple →
- *      orange → warm yellow) over 2 seconds before the lock screen fades away.
- *      If wrong → stays locked, returns to SLEEPING after 2s.
+ *   2. CHALLENGE — math problem to prove the user is awake.
+ *
+ *   3. WAKING — transition animation. For night sleep → sunrise (dark→warm).
+ *      For day naps → gentle brighten. Lasts ~2s.
+ *
+ *   4. QUALITY — asks "How was your sleep?" with 5 emoji options
+ *      (😣 terrible / 😕 poor / 😐 okay / 😊 good / 😍 great).
+ *      On selection → wakeUp(quality). Skip button → wakeUp() without quality.
  */
+
+type Phase = 'sleeping' | 'challenge' | 'waking' | 'quality';
+type TimeOfDay = 'night' | 'dawn' | 'morning' | 'noon' | 'dusk' | 'evening';
+
+function getTimeOfDay(hour: number): TimeOfDay {
+  if (hour >= 22 || hour < 5) return 'night';
+  if (hour < 7) return 'dawn';
+  if (hour < 11) return 'morning';
+  if (hour < 16) return 'noon';
+  if (hour < 19) return 'dusk';
+  return 'evening';
+}
+
+const SCENES: Record<TimeOfDay, {
+  gradient: string;
+  wakingGradient: string;
+  emoji: string;
+  label: string;
+  textGlow: string;
+}> = {
+  night: {
+    gradient: 'linear-gradient(180deg, #0a0e27 0%, #1a1f4e 35%, #2d3582 70%, #4a5db0 100%)',
+    wakingGradient: 'linear-gradient(180deg, #1a0a27 0%, #4a1a3e 20%, #8a3a2e 45%, #d4691a 70%, #f5b04a 100%)',
+    emoji: '🌙',
+    label: 'Night Sleep',
+    textGlow: 'rgba(165,180,252,0.4)',
+  },
+  dawn: {
+    gradient: 'linear-gradient(180deg, #2d1b4e 0%, #6b2d5c 30%, #c44569 60%, #f8b195 100%)',
+    wakingGradient: 'linear-gradient(180deg, #4a1a3e 0%, #8a3a2e 30%, #d4691a 60%, #f5b04a 100%)',
+    emoji: '🌅',
+    label: 'Dawn Sleep',
+    textGlow: 'rgba(244,162,97,0.4)',
+  },
+  morning: {
+    gradient: 'linear-gradient(180deg, #4a90d9 0%, #74b9ff 40%, #a8d8ea 70%, #d6eaf8 100%)',
+    wakingGradient: 'linear-gradient(180deg, #74b9ff 0%, #a8d8ea 40%, #d6eaf8 70%, #fffacd 100%)',
+    emoji: '☀️',
+    label: 'Morning Sleep',
+    textGlow: 'rgba(255,223,87,0.5)',
+  },
+  noon: {
+    gradient: 'linear-gradient(180deg, #2980b9 0%, #5dade2 40%, #aed6f1 70%, #d4e6f1 100%)',
+    wakingGradient: 'linear-gradient(180deg, #5dade2 0%, #aed6f1 40%, #d4e6f1 70%, #fffacd 100%)',
+    emoji: '🌞',
+    label: 'Midday Nap',
+    textGlow: 'rgba(255,235,59,0.5)',
+  },
+  dusk: {
+    gradient: 'linear-gradient(180deg, #4a235a 0%, #8e44ad 25%, #e67e22 55%, #f39c12 80%, #f1c40f 100%)',
+    wakingGradient: 'linear-gradient(180deg, #6b2d5c 0%, #c44569 30%, #e67e22 60%, #f1c40f 100%)',
+    emoji: '🌇',
+    label: 'Evening Nap',
+    textGlow: 'rgba(243,156,18,0.5)',
+  },
+  evening: {
+    gradient: 'linear-gradient(180deg, #1a1a2e 0%, #2d2d5c 35%, #4a3a6b 65%, #6b5b8a 100%)',
+    wakingGradient: 'linear-gradient(180deg, #2d1b4e 0%, #6b2d5c 30%, #c44569 60%, #f8b195 100%)',
+    emoji: '🌆',
+    label: 'Early Night',
+    textGlow: 'rgba(165,180,252,0.4)',
+  },
+};
+
 export function SleepLockScreen() {
   const activeSleep = useSleep((s) => s.activeSleep);
   const wakeUp = useSleep((s) => s.wakeUp);
   const cancelSleep = useSleep((s) => s.cancelSleep);
   const haptics = useSettings((s) => s.haptics);
 
-  const [phase, setPhase] = useState<'sleeping' | 'challenge' | 'sunrise'>('sleeping');
+  const [phase, setPhase] = useState<Phase>('sleeping');
   const [, setTick] = useState(0);
+  const [tod, setTod] = useState<TimeOfDay>(() => getTimeOfDay(new Date().getHours()));
 
-  // Live timer
+  // Live timer + time-of-day updater
   useEffect(() => {
     if (!activeSleep) return;
-    const i = setInterval(() => setTick((t) => t + 1), 1000);
+    const i = setInterval(() => {
+      setTick((t) => t + 1);
+      setTod(getTimeOfDay(new Date().getHours()));
+    }, 1000);
     return () => clearInterval(i);
   }, [activeSleep]);
 
@@ -46,11 +117,12 @@ export function SleepLockScreen() {
   const elapsedSec = Math.floor((Date.now() - activeSleep.bedTime) / 1000);
   const bedTime = new Date(activeSleep.bedTime);
   const bedTimeStr = bedTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const scene = SCENES[tod];
 
-  // Background gradient changes based on phase
-  const bgGradient = phase === 'sunrise'
-    ? 'linear-gradient(180deg, #1a0a27 0%, #4a1a3e 20%, #8a3a2e 45%, #d4691a 70%, #f5b04a 100%)'
-    : 'linear-gradient(180deg, #0a0e27 0%, #1a1f4e 35%, #2d3582 70%, #4a5db0 100%)';
+  // During waking phase, transition to the waking gradient
+  const bgGradient = phase === 'waking' || phase === 'quality'
+    ? scene.wakingGradient
+    : scene.gradient;
 
   return (
     <AnimatePresence>
@@ -65,10 +137,9 @@ export function SleepLockScreen() {
           transition: 'background 2s ease-in-out',
         }}
       >
-        {/* === Animated night scenery === */}
-        {phase !== 'sunrise' && <NightScenery />}
-        {/* Sunrise scenery during sunrise transition */}
-        {phase === 'sunrise' && <SunriseScenery />}
+        {/* === Time-of-day aware scenery === */}
+        {phase !== 'waking' && phase !== 'quality' && <TimeScenery tod={tod} />}
+        {(phase === 'waking' || phase === 'quality') && <WakingScenery tod={tod} />}
 
         {/* === Top: sleep timer === */}
         <div className="absolute top-0 left-0 right-0 pt-[env(safe-area-inset-top,0px)] pt-6 z-10">
@@ -78,14 +149,14 @@ export function SleepLockScreen() {
             transition={{ delay: 0.5 }}
             className="text-center"
           >
-            <div className="text-[10px] uppercase tracking-[0.3em] text-indigo-200/60 font-semibold mb-1">
-              Sleeping since {bedTimeStr}
+            <div className="text-[10px] uppercase tracking-[0.3em] text-white/60 font-semibold mb-1">
+              {scene.label} · since {bedTimeStr}
             </div>
             <motion.div
               animate={{ opacity: [0.85, 1, 0.85] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
               className="text-5xl font-bold tabular text-white"
-              style={{ textShadow: '0 0 30px rgba(165,180,252,0.4)' }}
+              style={{ textShadow: `0 0 30px ${scene.textGlow}` }}
             >
               {formatHM(elapsedSec)}
             </motion.div>
@@ -98,6 +169,8 @@ export function SleepLockScreen() {
             {phase === 'sleeping' && (
               <SleepingPhase
                 key="sleeping"
+                sceneEmoji={scene.emoji}
+                sceneLabel={scene.label}
                 onDoubleTap={() => {
                   if (haptics) vibrate([10, 30, 10]);
                   setPhase('challenge');
@@ -113,9 +186,9 @@ export function SleepLockScreen() {
                 key="challenge"
                 onSolve={() => {
                   if (haptics) vibrate([10, 30, 10, 30, 50]);
-                  // Start sunrise transition, THEN wake up after it completes
-                  setPhase('sunrise');
-                  setTimeout(() => wakeUp(), 2500);
+                  // Start waking transition, THEN show quality picker
+                  setPhase('waking');
+                  setTimeout(() => setPhase('quality'), 2200);
                 }}
                 onFail={() => {
                   if (haptics) vibrate(8);
@@ -124,20 +197,20 @@ export function SleepLockScreen() {
                 onBack={() => setPhase('sleeping')}
               />
             )}
-            {phase === 'sunrise' && (
+            {phase === 'waking' && (
               <motion.div
-                key="sunrise"
+                key="waking"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="text-center"
               >
                 <motion.div
-                  animate={{ scale: [1, 1.2, 1], y: [0, -20, 0] }}
+                  animate={{ scale: [1, 1.3, 1], y: [0, -30, 0] }}
                   transition={{ duration: 2, ease: 'easeOut' }}
                   className="text-7xl mb-4"
                   style={{ filter: 'drop-shadow(0 0 40px rgba(255,200,100,0.8))' }}
                 >
-                  ☀️
+                  {tod === 'night' || tod === 'evening' ? '☀️' : scene.emoji}
                 </motion.div>
                 <motion.p
                   initial={{ opacity: 0 }}
@@ -145,9 +218,23 @@ export function SleepLockScreen() {
                   transition={{ delay: 0.5 }}
                   className="text-lg font-light text-amber-50"
                 >
-                  Good morning!
+                  {tod === 'night' || tod === 'evening' ? 'Good morning!' : 'Time to wake up!'}
                 </motion.p>
               </motion.div>
+            )}
+            {phase === 'quality' && (
+              <QualityPhase
+                key="quality"
+                elapsedSec={elapsedSec}
+                onSelect={(q) => {
+                  if (haptics) vibrate([10, 30, 10, 30, 50]);
+                  wakeUp(q);
+                }}
+                onSkip={() => {
+                  if (haptics) vibrate(10);
+                  wakeUp();
+                }}
+              />
             )}
           </AnimatePresence>
         </div>
@@ -156,8 +243,18 @@ export function SleepLockScreen() {
   );
 }
 
-// ===== Sleeping Phase — scenery + double-tap hint =====
-function SleepingPhase({ onDoubleTap, onCancel }: { onDoubleTap: () => void; onCancel: () => void }) {
+// ===== Sleeping Phase — celestial body + double-tap hint =====
+function SleepingPhase({
+  sceneEmoji,
+  sceneLabel,
+  onDoubleTap,
+  onCancel,
+}: {
+  sceneEmoji: string;
+  sceneLabel: string;
+  onDoubleTap: () => void;
+  onCancel: () => void;
+}) {
   const lastTapRef = useRef(0);
 
   const handleTap = () => {
@@ -177,7 +274,7 @@ function SleepingPhase({ onDoubleTap, onCancel }: { onDoubleTap: () => void; onC
       className="flex flex-col items-center"
       onClick={handleTap}
     >
-      {/* Breathing moon logo — 4-second breathing cycle */}
+      {/* Breathing celestial body — 4-second breathing cycle */}
       <motion.div
         animate={{
           scale: [1, 1.08, 1],
@@ -187,28 +284,28 @@ function SleepingPhase({ onDoubleTap, onCancel }: { onDoubleTap: () => void; onC
         className="text-8xl mb-6"
         style={{ filter: 'drop-shadow(0 0 40px rgba(165,180,252,0.6))' }}
       >
-        🌙
+        {sceneEmoji}
       </motion.div>
 
       <motion.div
         animate={{ opacity: [0.5, 0.9, 0.5] }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-        className="text-2xl font-light text-indigo-100 mb-2 tracking-wide"
+        className="text-2xl font-light text-white/90 mb-2 tracking-wide"
       >
-        Sleeping
+        {sceneLabel}
       </motion.div>
 
       <motion.div
         animate={{ opacity: [0.3, 0.7, 0.3] }}
         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-        className="text-sm text-indigo-200/60 font-medium"
+        className="text-sm text-white/60 font-medium"
       >
         Double-tap anywhere to wake up
       </motion.div>
 
       <button
         onClick={(e) => { e.stopPropagation(); onCancel(); }}
-        className="absolute bottom-[env(safe-area-inset-bottom,0px)] bottom-8 text-[11px] text-indigo-300/40 hover:text-indigo-200/70 transition underline"
+        className="absolute bottom-[env(safe-area-inset-bottom,0px)] bottom-8 text-[11px] text-white/40 hover:text-white/70 transition underline"
       >
         Cancel sleep
       </button>
@@ -273,7 +370,7 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
         ☀️
       </motion.div>
       <h2 className="text-xl font-bold text-white mb-1">Good morning!</h2>
-      <p className="text-sm text-indigo-200/70 mb-6 text-center">Solve this to prove you're awake</p>
+      <p className="text-sm text-white/70 mb-6 text-center">Solve this to prove you're awake</p>
 
       <div className="w-full rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-5 mb-4 text-center">
         <div className="text-3xl font-bold tabular text-white mb-3">{problem.question} = ?</div>
@@ -303,19 +400,101 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
       </div>
 
       <button onClick={handleSubmit} className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold text-sm active:scale-[0.98] transition mb-2">Unlock</button>
-      <button onClick={onBack} className="text-xs text-indigo-200/50 hover:text-indigo-200/80 transition underline">Back to sleep</button>
+      <button onClick={onBack} className="text-xs text-white/50 hover:text-white/80 transition underline">Back to sleep</button>
     </motion.div>
   );
 }
 
-// ===== Night Scenery — stars, breathing moon, floating clouds, shooting stars, hills =====
-function NightScenery() {
+// ===== Quality Phase — "How was your sleep?" 5 emoji picker =====
+function QualityPhase({
+  elapsedSec,
+  onSelect,
+  onSkip,
+}: {
+  elapsedSec: number;
+  onSelect: (quality: number) => void;
+  onSkip: () => void;
+}) {
+  const options = [
+    { q: 1, emoji: '😣', label: 'Terrible', color: '#ef4444' },
+    { q: 2, emoji: '😕', label: 'Poor', color: '#f97316' },
+    { q: 3, emoji: '😐', label: 'Okay', color: '#eab308' },
+    { q: 4, emoji: '😊', label: 'Good', color: '#84cc16' },
+    { q: 5, emoji: '😍', label: 'Great', color: '#22c55e' },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      className="w-full max-w-sm px-6"
+    >
+      <div className="text-center mb-5">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.2 }}
+          className="text-5xl mb-3"
+          style={{ filter: 'drop-shadow(0 0 30px rgba(255,200,100,0.6))' }}
+        >
+          ☀️
+        </motion.div>
+        <h2 className="text-xl font-bold text-white mb-1">You slept {formatHM(elapsedSec)}</h2>
+        <p className="text-sm text-white/70">How was your sleep quality?</p>
+      </div>
+
+      {/* 5 emoji buttons — horizontal row */}
+      <div className="flex gap-1.5 mb-4">
+        {options.map((opt, i) => (
+          <motion.button
+            key={opt.q}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 + i * 0.08, type: 'spring', stiffness: 400, damping: 20 }}
+            onClick={() => onSelect(opt.q)}
+            className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 hover:bg-white/20 active:scale-95 transition"
+            style={{ borderBottom: `3px solid ${opt.color}` }}
+          >
+            <span className="text-2xl">{opt.emoji}</span>
+            <span className="text-[8px] text-white/60 font-medium">{opt.label}</span>
+          </motion.button>
+        ))}
+      </div>
+
+      <button
+        onClick={onSkip}
+        className="w-full py-2.5 rounded-xl bg-white/5 text-white/50 text-xs font-medium hover:bg-white/10 transition"
+      >
+        Skip
+      </button>
+    </motion.div>
+  );
+}
+
+// ===== Time-of-day aware scenery =====
+function TimeScenery({ tod }: { tod: TimeOfDay }) {
+  if (tod === 'night' || tod === 'evening') {
+    return <NightEveningScenery showMoon={tod === 'night'} />;
+  }
+  if (tod === 'dawn') {
+    return <DawnScenery />;
+  }
+  if (tod === 'morning' || tod === 'noon') {
+    return <DayScenery bright={tod === 'noon'} />;
+  }
+  // dusk
+  return <DuskScenery />;
+}
+
+// ===== Night / Evening scenery — stars, moon, clouds, shooting stars, hills =====
+function NightEveningScenery({ showMoon }: { showMoon: boolean }) {
   const stars = useMemo(() => Array.from({ length: 40 }, (_, i) => ({
     id: i, x: Math.random() * 100, y: Math.random() * 60,
     size: 1 + Math.random() * 2, delay: Math.random() * 4, duration: 2 + Math.random() * 3,
   })), []);
 
-  // Floating clouds — 3 clouds drifting slowly across the sky
   const clouds = useMemo(() => [
     { id: 1, top: '15%', duration: 60, delay: 0, scale: 1 },
     { id: 2, top: '25%', duration: 80, delay: 20, scale: 0.7 },
@@ -333,7 +512,7 @@ function NightScenery() {
         />
       ))}
 
-      {/* === Floating clouds — slow drift across the sky === */}
+      {/* Floating clouds */}
       {clouds.map((c) => (
         <motion.div
           key={`cloud-${c.id}`}
@@ -347,19 +526,21 @@ function NightScenery() {
         </motion.div>
       ))}
 
-      {/* === Shooting stars — streak across every 30-60s === */}
+      {/* Shooting stars */}
       <ShootingStars />
 
-      {/* === Breathing moon glow — 4-second breathing cycle === */}
-      <motion.div
-        className="absolute rounded-full"
-        style={{ right: '15%', top: '12%', width: 80, height: 80,
-          background: 'radial-gradient(circle, rgba(255,255,230,0.9) 0%, rgba(255,255,200,0.3) 40%, transparent 70%)',
-          filter: 'blur(8px)',
-        }}
-        animate={{ opacity: [0.5, 0.95, 0.5], scale: [0.95, 1.1, 0.95] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-      />
+      {/* Breathing moon glow (night only) */}
+      {showMoon && (
+        <motion.div
+          className="absolute rounded-full"
+          style={{ right: '15%', top: '12%', width: 80, height: 80,
+            background: 'radial-gradient(circle, rgba(255,255,230,0.9) 0%, rgba(255,255,200,0.3) 40%, transparent 70%)',
+            filter: 'blur(8px)',
+          }}
+          animate={{ opacity: [0.5, 0.95, 0.5], scale: [0.95, 1.1, 0.95] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      )}
 
       {/* Aurora-like breathing light (bottom) */}
       <motion.div
@@ -378,13 +559,171 @@ function NightScenery() {
   );
 }
 
+// ===== Dawn scenery — fading stars + warm horizon glow =====
+function DawnScenery() {
+  const stars = useMemo(() => Array.from({ length: 15 }, (_, i) => ({
+    id: i, x: Math.random() * 100, y: Math.random() * 40,
+    size: 1 + Math.random() * 1.5, delay: Math.random() * 3, duration: 2 + Math.random() * 2,
+  })), []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {/* Fading stars */}
+      {stars.map((s) => (
+        <motion.div key={s.id} className="absolute rounded-full bg-white"
+          style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size }}
+          animate={{ opacity: [0.1, 0.6, 0.1] }}
+          transition={{ duration: s.duration, repeat: Infinity, delay: s.delay, ease: 'easeInOut' }}
+        />
+      ))}
+
+      {/* Rising sun glow at bottom horizon */}
+      <motion.div
+        className="absolute rounded-full"
+        style={{ left: '50%', bottom: '15%', width: 140, height: 140, marginLeft: -70,
+          background: 'radial-gradient(circle, rgba(255,180,120,0.7) 0%, rgba(255,140,80,0.3) 40%, transparent 70%)',
+          filter: 'blur(6px)',
+        }}
+        animate={{ opacity: [0.6, 1, 0.6], scale: [0.95, 1.05, 0.95] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      {/* Warm horizon glow */}
+      <motion.div
+        className="absolute bottom-0 left-0 right-0"
+        style={{ height: '45%', background: 'radial-gradient(ellipse at 50% 100%, rgba(244,162,97,0.3) 0%, rgba(196,69,105,0.12) 40%, transparent 70%)' }}
+        animate={{ opacity: [0.5, 0.8, 0.5] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      {/* Hills silhouette */}
+      <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 400 120" preserveAspectRatio="none" style={{ height: '22%' }}>
+        <path d="M0,80 Q50,60 100,75 T200,70 T300,80 T400,65 L400,120 L0,120 Z" fill="rgba(45,27,78,0.5)" />
+        <path d="M0,95 Q60,80 120,90 T240,85 T360,95 T400,90 L400,120 L0,120 Z" fill="rgba(45,27,78,0.7)" />
+      </svg>
+    </div>
+  );
+}
+
+// ===== Day scenery (morning / noon) — sun + clouds + bright sky =====
+function DayScenery({ bright }: { bright: boolean }) {
+  const clouds = useMemo(() => [
+    { id: 1, top: '12%', duration: 50, delay: 0, scale: 1 },
+    { id: 2, top: '22%', duration: 70, delay: 15, scale: 0.7 },
+    { id: 3, top: '6%', duration: 60, delay: 30, scale: 0.85 },
+  ], []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {/* Bright sun glow */}
+      <motion.div
+        className="absolute rounded-full"
+        style={{ right: '15%', top: bright ? '8%' : '12%', width: 100, height: 100,
+          background: 'radial-gradient(circle, rgba(255,235,100,0.9) 0%, rgba(255,200,50,0.4) 40%, transparent 70%)',
+          filter: 'blur(4px)',
+        }}
+        animate={{ opacity: [0.7, 1, 0.7], scale: [0.95, 1.05, 0.95] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      {/* Floating clouds (lighter, more visible than night) */}
+      {clouds.map((c) => (
+        <motion.div
+          key={`cloud-${c.id}`}
+          className="absolute"
+          style={{ top: c.top, scale: c.scale }}
+          initial={{ x: '-150px' }}
+          animate={{ x: 'calc(100vw + 150px)' }}
+          transition={{ duration: c.duration, repeat: Infinity, delay: c.delay, ease: 'linear' }}
+        >
+          <Cloud bright />
+        </motion.div>
+      ))}
+
+      {/* Soft bottom glow */}
+      <motion.div
+        className="absolute bottom-0 left-0 right-0"
+        style={{ height: '40%', background: 'radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.15) 0%, transparent 60%)' }}
+        animate={{ opacity: [0.5, 0.8, 0.5] }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      {/* Light hills */}
+      <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 400 120" preserveAspectRatio="none" style={{ height: '20%' }}>
+        <path d="M0,80 Q50,60 100,75 T200,70 T300,80 T400,65 L400,120 L0,120 Z" fill="rgba(74,144,217,0.3)" />
+        <path d="M0,95 Q60,80 120,90 T240,85 T360,95 T400,90 L400,120 L0,120 Z" fill="rgba(74,144,217,0.5)" />
+      </svg>
+    </div>
+  );
+}
+
+// ===== Dusk scenery — sunset + warm horizon =====
+function DuskScenery() {
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {/* Setting sun glow */}
+      <motion.div
+        className="absolute rounded-full"
+        style={{ left: '50%', bottom: '18%', width: 130, height: 130, marginLeft: -65,
+          background: 'radial-gradient(circle, rgba(255,160,60,0.8) 0%, rgba(255,100,40,0.3) 40%, transparent 70%)',
+          filter: 'blur(6px)',
+        }}
+        animate={{ opacity: [0.6, 0.95, 0.6], scale: [0.95, 1.05, 0.95] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      {/* Warm horizon */}
+      <motion.div
+        className="absolute bottom-0 left-0 right-0"
+        style={{ height: '50%', background: 'radial-gradient(ellipse at 50% 100%, rgba(230,126,34,0.3) 0%, rgba(142,68,173,0.12) 40%, transparent 70%)' }}
+        animate={{ opacity: [0.5, 0.8, 0.5] }}
+        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      {/* Hills silhouette */}
+      <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 400 120" preserveAspectRatio="none" style={{ height: '22%' }}>
+        <path d="M0,80 Q50,60 100,75 T200,70 T300,80 T400,65 L400,120 L0,120 Z" fill="rgba(74,35,90,0.5)" />
+        <path d="M0,95 Q60,80 120,90 T240,85 T360,95 T400,90 L400,120 L0,120 Z" fill="rgba(74,35,90,0.7)" />
+      </svg>
+    </div>
+  );
+}
+
+// ===== Waking scenery — sunrise / brighten transition =====
+function WakingScenery({ tod }: { tod: TimeOfDay }) {
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {/* Rising sun glow */}
+      <motion.div
+        className="absolute rounded-full"
+        style={{ left: '50%', bottom: '20%', width: 140, height: 140, marginLeft: -70,
+          background: 'radial-gradient(circle, rgba(255,220,150,1) 0%, rgba(255,180,80,0.5) 40%, transparent 70%)',
+          filter: 'blur(4px)',
+        }}
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 2, ease: 'easeOut' }}
+      />
+      {/* Warm horizon glow */}
+      <motion.div
+        className="absolute bottom-0 left-0 right-0"
+        style={{ height: '40%', background: 'radial-gradient(ellipse at 50% 100%, rgba(255,160,60,0.4) 0%, rgba(255,100,40,0.15) 40%, transparent 70%)' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 2 }}
+      />
+    </div>
+  );
+}
+
 // ===== Cloud SVG shape =====
-function Cloud() {
+function Cloud({ bright = false }: { bright?: boolean }) {
+  const opacity = bright ? 0.25 : 0.08;
   return (
     <svg width="120" height="50" viewBox="0 0 120 50" fill="none">
-      <ellipse cx="30" cy="35" rx="25" ry="15" fill="rgba(255,255,255,0.08)" />
-      <ellipse cx="60" cy="28" rx="30" ry="18" fill="rgba(255,255,255,0.06)" />
-      <ellipse cx="90" cy="35" rx="22" ry="14" fill="rgba(255,255,255,0.08)" />
+      <ellipse cx="30" cy="35" rx="25" ry="15" fill={`rgba(255,255,255,${opacity})`} />
+      <ellipse cx="60" cy="28" rx="30" ry="18" fill={`rgba(255,255,255,${opacity * 0.8})`} />
+      <ellipse cx="90" cy="35" rx="22" ry="14" fill={`rgba(255,255,255,${opacity})`} />
     </svg>
   );
 }
@@ -399,9 +738,7 @@ function ShootingStars() {
       const startX = Math.random() * 60;
       const startY = Math.random() * 30;
       setStars((prev) => [...prev, { id: id++, startX, startY }]);
-      // Remove after animation (1.5s)
       setTimeout(() => setStars((prev) => prev.filter((s) => s.id !== id - 1)), 1500);
-      // Schedule next shooting star (30-60s)
       setTimeout(spawn, 30000 + Math.random() * 30000);
     };
     const initialTimer = setTimeout(spawn, 5000 + Math.random() * 10000);
@@ -419,7 +756,6 @@ function ShootingStars() {
           animate={{ opacity: [0, 1, 0], x: 200, y: 150 }}
           transition={{ duration: 1.2, ease: 'easeOut' }}
         >
-          {/* Shooting star = bright dot + trailing line */}
           <div className="relative">
             <div className="w-2 h-2 rounded-full bg-white" style={{ boxShadow: '0 0 10px 2px rgba(255,255,255,0.8)' }} />
             <div className="absolute top-1/2 right-full w-16 h-px bg-gradient-to-l from-white to-transparent" style={{ transform: 'translateY(-50%) rotate(37deg)', transformOrigin: 'right center' }} />
@@ -427,32 +763,5 @@ function ShootingStars() {
         </motion.div>
       ))}
     </>
-  );
-}
-
-// ===== Sunrise Scenery — warm gradient + rising sun =====
-function SunriseScenery() {
-  return (
-    <div className="absolute inset-0 pointer-events-none">
-      {/* Rising sun glow */}
-      <motion.div
-        className="absolute rounded-full"
-        style={{ left: '50%', bottom: '20%', width: 120, height: 120, marginLeft: -60,
-          background: 'radial-gradient(circle, rgba(255,220,150,1) 0%, rgba(255,180,80,0.5) 40%, transparent 70%)',
-          filter: 'blur(4px)',
-        }}
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 2, ease: 'easeOut' }}
-      />
-      {/* Warm horizon glow */}
-      <motion.div
-        className="absolute bottom-0 left-0 right-0"
-        style={{ height: '40%', background: 'radial-gradient(ellipse at 50% 100%, rgba(255,160,60,0.4) 0%, rgba(255,100,40,0.15) 40%, transparent 70%)' }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 2 }}
-      />
-    </div>
   );
 }
