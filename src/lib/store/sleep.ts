@@ -70,28 +70,9 @@ export const useSleep = create<SleepStore>()(
           quality: null,
         };
         set({ activeSleep: entry });
-
-        // Fire a persistent browser notification so it shows in the phone's
-        // notification panel while sleeping.
-        if (typeof window !== 'undefined' && 'Notification' in window) {
-          if (Notification.permission === 'granted') {
-            try {
-              const n = new Notification('😴 Sleep mode on', {
-                body: `Went to bed at ${new Date(now).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}. Tap when you wake up.`,
-                tag: 'neet-sleep-active',
-                // @ts-ignore — requireInteraction is valid but not in all TS lib defs
-                requireInteraction: true,
-                silent: false,
-              });
-              n.onclick = () => {
-                window.focus();
-                n.close();
-              };
-            } catch (e) {
-              console.warn('[sleep] notification failed:', e);
-            }
-          }
-        }
+        // The PersistentNotificationManager component will detect this state
+        // change and update the persistent notification to the sleep scene
+        // (time-of-day themed icon + "Tap to wake" body + Wake Up button).
       },
 
       wakeUp: (quality) => {
@@ -112,31 +93,13 @@ export const useSleep = create<SleepStore>()(
           activeSleep: null,
           history: [completed, ...s.history].slice(0, 100), // keep last 100
         }));
-        // Close the persistent notification
-        if (typeof window !== 'undefined' && 'Notification' in window) {
-          // Re-registration closes the previous 'neet-sleep-active' tag
-          try {
-            const n = new Notification('☀️ Good morning!', {
-              body: `Slept ${Math.floor(durationSec / 3600)}h ${Math.floor((durationSec % 3600) / 60)}m. Sleep well?`,
-              tag: 'neet-sleep-active', // same tag → replaces the sleep notification
-              silent: true,
-            });
-            setTimeout(() => n.close(), 5000);
-          } catch (e) {
-            console.warn('[sleep] wake notification failed:', e);
-          }
-        }
+        // The PersistentNotificationManager will detect activeSleep = null
+        // and revert the notification to the awake (idle) state.
       },
 
       cancelSleep: () => {
         set({ activeSleep: null });
-        // Close the persistent notification by sending a replacement
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          try {
-            const n = new Notification('Sleep cancelled', { tag: 'neet-sleep-active', silent: true });
-            setTimeout(() => n.close(), 500);
-          } catch { /* noop */ }
-        }
+        // The PersistentNotificationManager will revert to awake state.
       },
 
       getForDate: (date) => {

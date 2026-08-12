@@ -30,6 +30,7 @@ const DEFAULTS: Settings = {
   soundEnabled: true,
   soundVolume: 50,
   notificationsEnabled: false,
+  persistentNotification: false,
   notificationHistory: [],
   // 3D background — 'auto' picks scene based on active session subject + chapter
   bg3DMode: 'auto',

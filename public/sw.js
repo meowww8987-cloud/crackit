@@ -1,7 +1,7 @@
 // NEET 2027 Study Tracker — Service Worker
-// Caches app shell for offline use
+// Caches app shell for offline use + powers the persistent study notification.
 
-const CACHE_NAME = 'neet-2027-v3';
+const CACHE_NAME = 'neet-2027-v4';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
@@ -9,6 +9,13 @@ const APP_SHELL = [
   '/icon-512.png',
   '/icon-180.png',
   '/favicon-32.png',
+  '/notif/night.png',
+  '/notif/dawn.png',
+  '/notif/morning.png',
+  '/notif/noon.png',
+  '/notif/dusk.png',
+  '/notif/evening.png',
+  '/notif/sleep-scene.png',
 ];
 
 // Install: cache app shell
@@ -53,7 +60,6 @@ self.addEventListener('fetch', (event) => {
   // Skip Next.js HMR and dev resources — NEVER cache these
   if (url.pathname.startsWith('/_next/webpack-hmr')) return;
   if (url.pathname.includes('hot-update')) return;
-  // CRITICAL: Skip ALL _next/ dev chunks — caching these causes stale module errors
   if (url.pathname.startsWith('/_next/dev/')) return;
   if (url.pathname.startsWith('/_next/static/chunks/')) return;
 
@@ -95,14 +101,100 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           return new Response('', { status: 504, statusText: 'Offline' });
-        });
+        })
     })
   );
 });
 
-// Handle messages from the app
+// === Persistent Notification System ===
+//
+// The web app posts messages here to show / update / close the persistent
+// notification. We use self.registration.showNotification() (the only way
+// to attach action buttons + persist via requireInteraction).
+//
+// Notification tag: 'neet-persistent' — same tag updates in place rather
+// than creating a stack of notifications.
+
+const NOTIF_TAG = 'neet-persistent';
+
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  const data = event.data || {};
+
+  if (data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
   }
+
+  if (data.type === 'SHOW_NOTIFICATION') {
+    const payload = data.payload || {};
+    const options = {
+      body: payload.body || '',
+      icon: payload.icon || '/icon-192.png',
+      tag: NOTIF_TAG,
+      // @ts-ignore — requireInteraction is valid in browsers
+      requireInteraction: true,
+      silent: true,             // never buzz — this is a calm companion
+      renotify: false,          // don't buzz on update
+      data: { actions: payload.actions || [], url: payload.url || '/' },
+    };
+    if (payload.image) options.image = payload.image;
+    if (payload.badge) options.badge = payload.badge;
+    if (payload.progress != null) {
+      options.progress = payload.progress;
+      // @ts-ignore — supported on Chrome Android
+      options.silent = true;
+    }
+    if (payload.actions && payload.actions.length > 0) {
+      // Notifications API supports up to 2 actions on Android Chrome
+      options.actions = payload.actions.slice(0, 2).map(a => ({
+        action: a.action,
+        title: a.title,
+      }));
+    }
+    self.registration.showNotification(payload.title || 'NEET 2027', options);
+    return;
+  }
+
+  if (data.type === 'CLOSE_NOTIFICATION') {
+    self.registration.getNotifications({ tag: NOTIF_TAG }).then((notifs) => {
+      notifs.forEach((n) => n.close());
+    });
+    return;
+  }
+});
+
+// Handle notification clicks:
+//  - Action button click → send corresponding command to the active client
+//  - Body click → focus the app (which will show SleepLockScreen if sleeping,
+//    ready for the double-tap → math wake flow)
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const action = event.action;
+  const data = event.notification.data || {};
+
+  event.waitUntil(
+    (async () => {
+      const allClients = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
+
+      // Focus the first available client, or open a new one
+      let client = allClients[0];
+      if (client) {
+        try { await client.focus(); } catch {}
+      } else {
+        client = await self.clients.openWindow(data.url || '/');
+      }
+
+      // Send the action command to the client for handling
+      if (client && action) {
+        client.postMessage({
+          type: 'NOTIF_ACTION',
+          action,
+          timestamp: Date.now(),
+        });
+      }
+    })()
+  );
 });

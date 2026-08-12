@@ -26,6 +26,7 @@ import { useTargets } from '@/lib/store/targets';
 import { useSyllabus as useSyllabusStore } from '@/lib/store/syllabus';
 import { useHistory } from '@/lib/store/history';
 import { PWARegister } from '@/components/pwa/PWARegister';
+import { PersistentNotificationManager } from '@/components/shared/PersistentNotificationManager';
 import { ToastContainer, pushToast } from '@/components/shared/Toast';
 import { ProgressTimeline } from '@/components/timeline/ProgressTimeline';
 import { ConfettiCanvas, triggerConfetti } from '@/components/shared/Effects';
@@ -842,6 +843,9 @@ export function AppShell() {
 
       {/* PWA registration + install prompt + offline indicator */}
       <PWARegister />
+
+      {/* Persistent study notification (lives in notification shade) */}
+      <PersistentNotificationManager />
 
       {/* Toast notifications */}
       <ToastContainer />

@@ -145,11 +145,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.13.3</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.14.0</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.14.0</strong> — Persistent Study Notification: lives in notification shade showing today's stats + NEET countdown + target progress + Sleep button. When sleeping → time-of-day themed scene (night/dawn/morning/noon/dusk/evening) with shooting stars + "Wake Up" button. Tap notification → opens app → existing double-tap + math wake flow. Fixes default Chrome "tap to copy URL" notification by replacing it with our custom one.</div>
             <div><strong className="text-white/70">v2.13.3</strong> — Remove "Focus Session Theme" setting entirely (was unused — Focus Timer already always pure black via .force-dark-ui). Removed from Settings type, store, and SettingsTab UI.</div>
             <div><strong className="text-white/70">v2.13.2</strong> — Rose cards now Pale Pink #FFF0F5 (very light but noticeable, was too subtle #FFFAFC), primary text now Dark Rose #8B2F4C (rosy pink, was Dark Raspberry which looked berry/wine). Full pink opacity ladder: Dark Rose → China Rose → Old Rose → Rosy Brown → Light Pink.</div>
             <div><strong className="text-white/70">v2.13.1</strong> — Make Rose VISIBLY pink (was too subtle, looked like Light): bg Pink Lace #FFD6E8 (was Misty Rose), cards faint pink #FFFAFC (was pure white), 3D opacity 1.0 (was 0.78) — full-strength pink animation now unmistakably distinct from Light mode.</div>
@@ -692,6 +693,40 @@ function NotificationsSection({ s, update }: { s: Settings; update: <K extends k
                 }
               } else {
                 update('notificationsEnabled', v);
+              }
+            }}
+          />
+        </div>
+      </Row>
+      <Row label="Persistent Study Notification">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-sm text-white/85 font-medium">Study companion in notification shade</div>
+            <div className="text-[10px] text-white/50 mt-0.5">
+              Live stats · NEET countdown · Tap Sleep → night sky scene · Tap Wake Up → double-tap + math
+            </div>
+          </div>
+          <Toggle
+            value={s.persistentNotification}
+            onChange={async (v) => {
+              if (v && 'Notification' in window) {
+                try {
+                  const perm = Notification.permission !== 'default' ? Notification.permission : await Notification.requestPermission();
+                  update('persistentNotification', perm === 'granted');
+                  if (perm !== 'granted') {
+                    // Permission denied — show a hint
+                    try {
+                      const n = new Notification('Permission needed', {
+                        body: 'Enable notifications in your browser settings to use the persistent study companion.',
+                      });
+                      setTimeout(() => n.close(), 4000);
+                    } catch {}
+                  }
+                } catch {
+                  update('persistentNotification', false);
+                }
+              } else {
+                update('persistentNotification', v);
               }
             }}
           />

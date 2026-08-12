@@ -322,6 +322,11 @@ export interface Settings {
   soundEnabled: boolean;
   soundVolume: number; // 0-100
   notificationsEnabled: boolean;
+  /** Persistent study notification — lives in the notification shade all day
+   *  showing today's stats, NEET countdown, current session, and a Sleep
+   *  action button. Transforms into a time-of-day themed sleep scene when
+   *  sleep mode is active. */
+  persistentNotification: boolean;
   notificationHistory: { title: string; body: string; timestamp: number }[];
   /**
    * 3D background mode.
