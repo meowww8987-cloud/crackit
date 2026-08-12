@@ -145,11 +145,12 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.14.2</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.15.0</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.15.0</strong> — Sleep Health: app now classifies each sleep as night/late-night/noon-nap/evening-nap/power-nap, computes a 0-100 health score (duration 40% + bedtime consistency 25% + bedtime timing 20% + quality rating 15%). Wake flow already asks 1-5 quality rating. New SleepReportSheet (long-press Sleep Health card in Stats, or any sleep entry in History) shows: score, last 7 nights breakdown, avg bedtime, consistency %, avg quality, personalized recommendations.</div>
             <div><strong className="text-white/70">v2.14.2</strong> — Fix: tapping Pause button on studying notification was starting sleep mode (action handling bug). Removed Pause action entirely — notification now has only ONE action button per state (Sleep when awake, Wake Up when sleeping). Also redesigned notification: shorter single-line body, no redundant info, no cluttered multi-line text. Studying: "32m done · 28m left". Idle: "4h 12m / 6h today · Last studied 2h ago".</div>
             <div><strong className="text-white/70">v2.14.1</strong> — Fix client-side crash — PersistentNotificationManager was using useSession((s) =&gt; ({"{pause, stop}"})) which returns a new object every render → Zustand infinite re-render loop → &quot;Application error&quot; on page load. Split into individual scalar selectors.</div>
             <div><strong className="text-white/70">v2.14.0</strong> — Persistent Study Notification: lives in notification shade showing today's stats + NEET countdown + target progress + Sleep button. When sleeping → time-of-day themed scene (night/dawn/morning/noon/dusk/evening) with shooting stars + "Wake Up" button. Tap notification → opens app → existing double-tap + math wake flow. Fixes default Chrome "tap to copy URL" notification by replacing it with our custom one.</div>
