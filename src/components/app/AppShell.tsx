@@ -657,7 +657,10 @@ export function AppShell() {
                 icon: Sigma, label: 'Formula Vault', description: 'Store + review important formulas',
                 color: '#a855f7', onClick: () => { setLongPressTab(null); setShowFormulaVault(true); },
               } : longPressTab === 'tests' ? {
-                icon: Moon, label: 'Sleep History', description: 'View all sleep entries + health analysis',
+                icon: FileText, label: 'Practice Mode', description: 'Practice questions without exam pressure',
+                color: '#3b82f6', onClick: () => { setLongPressTab(null); setShowPaperTestPicker(true); },
+              } : longPressTab === 'history' ? {
+                icon: Moon, label: 'Sleep History', description: 'All sleep entries + health analysis',
                 color: '#6366f1', onClick: () => { setLongPressTab(null); setShowSleepHistory(true); },
               } : longPressTab === 'stats' ? {
                 icon: BarChart3, label: 'Monthly Report', description: 'Your full month progression + graphs',
@@ -665,10 +668,7 @@ export function AppShell() {
               } : null
             }
             thirdAction={
-              longPressTab === 'tests' ? {
-                icon: FileText, label: 'Practice Mode', description: 'Practice questions without exam pressure',
-                color: '#3b82f6', onClick: () => { setLongPressTab(null); setShowPaperTestPicker(true); },
-              } : longPressTab === 'stats' ? {
+              longPressTab === 'stats' ? {
                 icon: Moon, label: 'Sleep Report', description: 'Weekly + monthly sleep health analysis',
                 color: '#6366f1', onClick: () => { setLongPressTab(null); setSleepAnalysisTab('weekly'); setShowSleepAnalysis(true); },
               } : null
