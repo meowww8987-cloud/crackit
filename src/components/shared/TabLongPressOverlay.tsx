@@ -20,6 +20,8 @@ interface Props {
   topAction: ActionOption | null;
   /** Bottom-half action (secondary). Null = no bottom action. */
   bottomAction: ActionOption | null;
+  /** Optional 3rd action (middle). When present, layout becomes thirds. */
+  thirdAction?: ActionOption | null;
   /** Called when the user taps the tutorial (?) button. */
   onTutorial: () => void;
   onClose: () => void;
@@ -29,20 +31,18 @@ interface Props {
  * TabLongPressOverlay — full-screen overlay shown when long-pressing a tab.
  *
  * Layout:
- *   - TOP 50%: primary action (e.g. Free Study) — big tappable area
- *   - BOTTOM 50%: secondary action (e.g. Active Recall) — big tappable area
+ *   - 1 action: full screen
+ *   - 2 actions: top 50% / bottom 50%
+ *   - 3 actions: top 33% / middle 33% / bottom 33%
  *   - Bottom-right corner: tutorial (?) button — shows tab info + hidden features
  *
- * If a tab has only one action (e.g. Tests → Paper Test), the single action
- * takes the full screen. If a tab has no actions (e.g. History, Stats), only
- * the tutorial button shows.
- *
- * The large 50%-area buttons are easy to tap with a thumb while holding the
+ * The large area buttons are easy to tap with a thumb while holding the
  * phone one-handed. Tap anywhere outside the buttons to dismiss.
  */
-export function TabLongPressOverlay({ tab, topAction, bottomAction, onTutorial, onClose }: Props) {
+export function TabLongPressOverlay({ tab, topAction, bottomAction, thirdAction, onTutorial, onClose }: Props) {
   // If only one action, it takes full screen (minus the tutorial corner).
-  const singleAction = topAction && !bottomAction ? topAction : null;
+  const singleAction = topAction && !bottomAction && !thirdAction ? topAction : null;
+  const hasThree = !!(topAction && bottomAction && thirdAction);
 
   return (
     <motion.div
@@ -113,7 +113,35 @@ export function TabLongPressOverlay({ tab, topAction, bottomAction, onTutorial, 
             </button>
           )}
 
-          {/* === BOTTOM 50% — secondary action === */}
+          {/* === MIDDLE 33% — third action (only when 3 actions) === */}
+          {hasThree && thirdAction && (
+            <button
+              onClick={(e) => { e.stopPropagation(); vibrate(10); thirdAction.onClick(); }}
+              className="relative flex-1 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="w-20 h-20 rounded-2xl flex items-center justify-center"
+                style={{ background: `${thirdAction.color}22`, color: thirdAction.color }}
+              >
+                <thirdAction.icon size={36} />
+              </motion.div>
+              <motion.div
+                initial={{ y: 10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.15 }}
+                className="text-center px-6"
+              >
+                <div className="text-xl font-bold" style={{ color: thirdAction.color }}>{thirdAction.label}</div>
+                <div className="text-xs text-white/55 mt-1 max-w-[260px]">{thirdAction.description}</div>
+              </motion.div>
+            </button>
+          )}
+
+          {/* === BOTTOM 50% (or 33%) — secondary action === */}
           {bottomAction && (
             <button
               onClick={(e) => { e.stopPropagation(); vibrate(10); bottomAction.onClick(); }}
@@ -141,7 +169,7 @@ export function TabLongPressOverlay({ tab, topAction, bottomAction, onTutorial, 
           )}
 
           {/* If no actions at all (History/Stats), show a hint */}
-          {!topAction && !bottomAction && (
+          {!topAction && !bottomAction && !thirdAction && (
             <div className="relative flex-1 flex flex-col items-center justify-center gap-3 px-6">
               <div className="text-4xl mb-2">👈</div>
               <div className="text-lg font-bold text-white/80">Long-press detected</div>

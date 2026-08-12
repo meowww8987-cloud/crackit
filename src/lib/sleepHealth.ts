@@ -285,3 +285,151 @@ export function formatHour(hour: number): string {
 export function formatSleepDuration(sec: number): string {
   return formatHM(sec);
 }
+
+// ===== Extended report with advantages / disadvantages / improvements =====
+
+export interface SleepInsightReport extends WeeklySleepReport {
+  /** What's going well (advantages). */
+  advantages: string[];
+  /** What needs work (disadvantages / risks). */
+  disadvantages: string[];
+  /** Concrete actionable improvements. */
+  improvements: string[];
+  /** Period label: "Last 7 days" or "Last 30 days". */
+  periodLabel: string;
+  /** Number of nights analyzed. */
+  nightsAnalyzed: number;
+  /** Number of naps analyzed. */
+  napsAnalyzed: number;
+  /** Total sleep hours in period. */
+  totalHours: number;
+  /** Best night (highest score). */
+  bestNight: SleepNightEntry | null;
+  /** Worst night (lowest score). */
+  worstNight: SleepNightEntry | null;
+}
+
+/** Build an extended insight report for a given period (7 or 30 days). */
+export function buildSleepInsightReport(
+  history: SleepEntry[],
+  days: number = 7
+): SleepInsightReport {
+  const cutoff = Date.now() - days * 24 * 3600 * 1000;
+  const periodEntries = history.filter((e) => e.bedTime >= cutoff);
+  const nights = periodEntries.filter((e) => (e.durationSec || 0) >= 4 * 3600);
+  const naps = periodEntries.filter((e) => (e.durationSec || 0) < 4 * 3600);
+
+  const base = buildWeeklySleepReport(nights);
+
+  // Total hours
+  const totalSec = periodEntries.reduce((a, e) => a + (e.durationSec || 0), 0);
+  const totalHours = totalSec / 3600;
+
+  // Best + worst night
+  const nightEntries: SleepNightEntry[] = nights.map((e) => {
+    const analysis = classifySleep(e.bedTime, e.durationSec || 0);
+    return {
+      date: e.date,
+      bedTime: e.bedTime,
+      wakeTime: e.wakeTime,
+      durationSec: e.durationSec || 0,
+      type: analysis.type,
+      label: analysis.label,
+      emoji: analysis.emoji,
+      quality: e.quality,
+      score: analysis.score,
+    };
+  });
+  const sortedByScore = [...nightEntries].sort((a, b) => b.score - a.score);
+  const bestNight = sortedByScore[0] || null;
+  const worstNight = sortedByScore[sortedByScore.length - 1] || null;
+
+  // === Advantages (what's going well) ===
+  const advantages: string[] = [];
+  if (base.avgNightHours >= 7 && base.avgNightHours < 9) {
+    advantages.push(`Sleep duration is on target (${base.avgNightHours.toFixed(1)}h average — ideal 7-9h window).`);
+  }
+  if (base.bedtimeConsistency >= 75) {
+    advantages.push(`Very consistent bedtime (${base.bedtimeConsistency}% regularity — your body clock is well-trained).`);
+  }
+  if (base.avgBedtime >= 22 && base.avgBedtime < 23.5) {
+    advantages.push(`Healthy bedtime window (${formatHour(base.avgBedtime)} — matches the 10-11:30 PM ideal).`);
+  }
+  if (base.avgQuality >= 4) {
+    advantages.push(`High sleep quality (${base.avgQuality.toFixed(1)}/5 — you wake up feeling rested).`);
+  }
+  if (nights.length >= days * 0.85) {
+    advantages.push(`Consistent tracking (${nights.length} nights logged in the last ${days} days).`);
+  }
+  if (naps.length > 0 && naps.length <= days * 0.3) {
+    advantages.push(`Healthy nap pattern (${naps.length} naps — supplemental without disrupting night sleep).`);
+  }
+  if (advantages.length === 0) {
+    advantages.push('You\'re tracking your sleep — that\'s the first step to improving it! 📊');
+  }
+
+  // === Disadvantages (what needs work) ===
+  const disadvantages: string[] = [];
+  if (base.avgNightHours < 6) {
+    disadvantages.push(`Sleeping too little (${base.avgNightHours.toFixed(1)}h — below the 6h minimum for memory consolidation).`);
+  } else if (base.avgNightHours >= 9.5) {
+    disadvantages.push(`Oversleeping (${base.avgNightHours.toFixed(1)}h — may indicate sleep debt or low-quality sleep).`);
+  }
+  if (base.bedtimeConsistency < 50) {
+    disadvantages.push(`Irregular bedtime (${base.bedtimeConsistency}% consistency — body clock confused, hard to fall asleep).`);
+  }
+  if (base.avgBedtime >= 0 && base.avgBedtime < 3) {
+    disadvantages.push(`Very late bedtime (${formatHour(base.avgBedtime)} — after 1 AM reduces deep sleep by 30%).`);
+  } else if (base.avgBedtime >= 23.5 && base.avgBedtime < 24) {
+    disadvantages.push(`Slightly late bedtime (${formatHour(base.avgBedtime)} — pushing past the 11:30 PM sweet spot).`);
+  }
+  if (base.avgQuality > 0 && base.avgQuality < 3.5) {
+    disadvantages.push(`Low sleep quality (${base.avgQuality.toFixed(1)}/5 — sleep isn't restorative even when long enough).`);
+  }
+  if (naps.length > days * 0.5) {
+    disadvantages.push(`Too many naps (${naps.length} in ${days} days — may be fragmenting your night sleep).`);
+  }
+  if (nights.length < days * 0.5) {
+    disadvantages.push(`Inconsistent tracking (${nights.length}/${days} nights logged — can't analyze what isn't measured).`);
+  }
+  if (disadvantages.length === 0) {
+    disadvantages.push('No major red flags — small tweaks will optimize further.');
+  }
+
+  // === Improvements (actionable) ===
+  const improvements: string[] = [];
+  if (base.avgNightHours < 7) {
+    improvements.push(`Aim to sleep 30 min earlier — you need ${Math.max(0, 7 - base.avgNightHours).toFixed(1)}h more to hit the 7h minimum.`);
+  }
+  if (base.bedtimeConsistency < 70) {
+    improvements.push('Fix your wake time first (even on weekends) — this anchors your body clock more than bedtime.');
+  }
+  if (base.avgBedtime >= 0 && base.avgBedtime < 3) {
+    improvements.push('Shift bedtime 30 min earlier every 3 days until you hit 11 PM — gradual shift sticks better than sudden.');
+  }
+  if (base.avgQuality > 0 && base.avgQuality < 4) {
+    improvements.push('No screens 30 min before bed + keep room cool (18-20°C) + dark — these 3 changes boost quality most.');
+  }
+  if (naps.length > days * 0.4) {
+    improvements.push('Limit naps to 1 per day, before 3 PM, max 20 min — longer/later naps steal from night sleep.');
+  }
+  if (nights.length < days * 0.7) {
+    improvements.push(`Log more nights — you've only tracked ${nights.length}/${days}. Use the NEET logo tap to sleep so it's automatic.`);
+  }
+  if (improvements.length === 0) {
+    improvements.push('You\'re in great shape! Focus on maintaining this rhythm through exam stress. 🎯');
+  }
+
+  return {
+    ...base,
+    advantages: advantages.slice(0, 4),
+    disadvantages: disadvantages.slice(0, 4),
+    improvements: improvements.slice(0, 4),
+    periodLabel: `Last ${days} days`,
+    nightsAnalyzed: nights.length,
+    napsAnalyzed: naps.length,
+    totalHours,
+    bestNight,
+    worstNight,
+  };
+}

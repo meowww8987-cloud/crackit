@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { History as HistoryIcon, Trophy, ChevronDown, Calendar, Moon } from 'lucide-react';
+import { History as HistoryIcon, Trophy, ChevronDown, Calendar } from 'lucide-react';
 import { useHistory } from '@/lib/store/history';
 import { useTests } from '@/lib/store/tests';
 import { useTargets } from '@/lib/store/targets';
-import { useSleep } from '@/lib/store/sleep';
 import { SmartEmptyState } from '@/components/shared/SmartEmptyState';
-import { SleepReportSheet } from '@/components/dailylog/SleepReportSheet';
 import { subjectColor } from '@/lib/colors';
 import type { Test } from '@/lib/types';
 import { formatHM, moodEmoji, todayKey, addDays, dateKey } from '@/lib/utils';
@@ -24,22 +22,7 @@ interface TimelineEntry {
 export function HistoryTab() {
   const sessions = useHistory((s) => s.sessions);
   const tests = useTests((s) => s.tests);
-  const sleepHistory = useSleep((s) => s.history);
   const [expandedDay, setExpandedDay] = useState<string | null>(todayKey());
-  const [showSleepReport, setShowSleepReport] = useState(false);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleLongPressStart = () => {
-    longPressTimer.current = setTimeout(() => {
-      setShowSleepReport(true);
-    }, 500);
-  };
-  const handleLongPressEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
 
   // Build merged timeline
   const timeline = useMemo(() => {
@@ -117,59 +100,6 @@ export function HistoryTab() {
           </div>
         </div>
       )}
-
-      {/* === Sleep section — long-press any entry for the full report === */}
-      {sleepHistory.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-white/40 px-1 flex items-center gap-1">
-            <Moon size={12} /> Sleep History
-            <span className="ml-auto text-[9px] text-white/30 normal-case font-normal">long-press for report</span>
-          </h3>
-          <div className="space-y-1.5">
-            {sleepHistory.slice(0, 6).map((entry) => {
-              const bedDate = new Date(entry.bedTime);
-              const durationSec = entry.durationSec || 0;
-              const isNight = durationSec >= 4 * 3600;
-              return (
-                <div
-                  key={entry.id}
-                  className="glass rounded-xl p-2.5 flex items-center gap-3 select-none"
-                  onTouchStart={handleLongPressStart}
-                  onTouchEnd={handleLongPressEnd}
-                  onTouchCancel={handleLongPressEnd}
-                >
-                  <div className="text-center min-w-[42px]">
-                    <div className="text-[10px] text-white/40 uppercase">
-                      {bedDate.toLocaleDateString('en-US', { weekday: 'short' })}
-                    </div>
-                    <div className="text-base font-bold tabular">{bedDate.getDate()}</div>
-                  </div>
-                  <div className="text-xl">{isNight ? '🌙' : '💤'}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold">
-                      {isNight ? 'Night Sleep' : 'Nap'}
-                    </div>
-                    <div className="text-[10px] text-white/50">
-                      {bedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                      {entry.wakeTime && (
-                        <> → {new Date(entry.wakeTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-semibold text-indigo-300 tabular">{formatHM(durationSec)}</div>
-                    {entry.quality != null && (
-                      <div className="text-[9px] text-white/40">{'★'.repeat(entry.quality)}</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <SleepReportSheet open={showSleepReport} onClose={() => setShowSleepReport(false)} />
 
       {/* Timeline */}
       <div className="space-y-3">

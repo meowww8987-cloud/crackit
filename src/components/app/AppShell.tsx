@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff, PlayCircle, Brain, ChevronRight, Plus, Sigma, HelpCircle, Target, Trophy, ClipboardList, TrendingUp } from 'lucide-react';
+import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff, PlayCircle, Brain, ChevronRight, Plus, Sigma, HelpCircle, Target, Trophy, ClipboardList, TrendingUp, Moon } from 'lucide-react';
 import { useNav, type TabKey, TAB_ORDER } from '@/lib/store/nav';
 import { useSession } from '@/lib/store/session';
 import { cn, vibrate, todayKey } from '@/lib/utils';
@@ -43,6 +43,8 @@ import { useSettings } from '@/lib/store/settings';
 import { subjectColor } from '@/lib/colors';
 import { usePartnerSync } from '@/hooks/usePartnerSync';
 import { SleepLockScreen } from '@/components/dailylog/SleepLockScreen';
+import { SleepHistorySheet } from '@/components/dailylog/SleepHistorySheet';
+import { SleepAnalysisSheet } from '@/components/dailylog/SleepAnalysisSheet';
 import { TabLongPressOverlay } from '@/components/shared/TabLongPressOverlay';
 import { TabInfoSheet, type TabKey as InfoTabKey } from '@/components/shared/TabInfoSheet';
 import { TutorialOnboarding } from '@/components/shared/TutorialOnboarding';
@@ -91,6 +93,9 @@ export function AppShell() {
   const [showTestHistory, setShowTestHistory] = useState(false);
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
   const [showPaperTestPicker, setShowPaperTestPicker] = useState(false);
+  const [showSleepHistory, setShowSleepHistory] = useState(false);
+  const [showSleepAnalysis, setShowSleepAnalysis] = useState(false);
+  const [sleepAnalysisTab, setSleepAnalysisTab] = useState<'weekly' | 'monthly'>('weekly');
   const [activePaperTestId, setActivePaperTestId] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -652,11 +657,20 @@ export function AppShell() {
                 icon: Sigma, label: 'Formula Vault', description: 'Store + review important formulas',
                 color: '#a855f7', onClick: () => { setLongPressTab(null); setShowFormulaVault(true); },
               } : longPressTab === 'tests' ? {
-                icon: FileText, label: 'Practice Mode', description: 'Practice questions without exam pressure',
-                color: '#3b82f6', onClick: () => { setLongPressTab(null); setShowPaperTestPicker(true); },
+                icon: Moon, label: 'Sleep History', description: 'View all sleep entries + health analysis',
+                color: '#6366f1', onClick: () => { setLongPressTab(null); setShowSleepHistory(true); },
               } : longPressTab === 'stats' ? {
                 icon: BarChart3, label: 'Monthly Report', description: 'Your full month progression + graphs',
                 color: '#a855f7', onClick: () => { setLongPressTab(null); setShowWeeklyReport(true); },
+              } : null
+            }
+            thirdAction={
+              longPressTab === 'tests' ? {
+                icon: FileText, label: 'Practice Mode', description: 'Practice questions without exam pressure',
+                color: '#3b82f6', onClick: () => { setLongPressTab(null); setShowPaperTestPicker(true); },
+              } : longPressTab === 'stats' ? {
+                icon: Moon, label: 'Sleep Report', description: 'Weekly + monthly sleep health analysis',
+                color: '#6366f1', onClick: () => { setLongPressTab(null); setSleepAnalysisTab('weekly'); setShowSleepAnalysis(true); },
               } : null
             }
             onTutorial={() => { setInfoTab(longPressTab); setLongPressTab(null); }}
@@ -826,6 +840,16 @@ export function AppShell() {
           />
         )}
       </AnimatePresence>
+
+      {/* Sleep History sheet — activated by long-press Tests → Sleep History */}
+      <SleepHistorySheet open={showSleepHistory} onClose={() => setShowSleepHistory(false)} />
+
+      {/* Sleep Analysis sheet — activated by long-press Stats → Sleep Report */}
+      <SleepAnalysisSheet
+        open={showSleepAnalysis}
+        onClose={() => setShowSleepAnalysis(false)}
+        initialTab={sleepAnalysisTab}
+      />
 
       {/* Paper Test Companion — full-screen test timer + answer logger */}
       {activePaperTestId && (
