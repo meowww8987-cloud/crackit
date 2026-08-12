@@ -26,8 +26,6 @@ import {
  *      'sleep'  → startSleep()
  *      'wake'   → no-op (just focus; SleepLockScreen is already shown and
  *                 the user double-taps to trigger the math wake flow)
- *      'pause'  → session.pause()
- *      'stop'   → session.stop()
  *  - Closes the notification when the toggle is turned off
  *
  * Per user request, time-of-day mood changes (icons + scene) appear ONLY
@@ -51,15 +49,9 @@ export function PersistentNotificationManager() {
   // NOTE: must use individual scalar selectors, NOT a single selector returning
   // an object literal — that would create a new object every render and trigger
   // an infinite re-render loop with Zustand's default referential equality.
-  const pauseSession = useSession((s) => s.pause);
-  const stopSession = useSession((s) => s.stop);
   const startSleep = useSleep((s) => s.startSleep);
-  const pauseRef = useRef(pauseSession);
-  const stopRef = useRef(stopSession);
   const startSleepRef = useRef(startSleep);
   useEffect(() => {
-    pauseRef.current = pauseSession;
-    stopRef.current = stopSession;
     startSleepRef.current = startSleep;
   });
 
@@ -83,21 +75,17 @@ export function PersistentNotificationManager() {
     // Tick every 60s for live timer
     const interval = setInterval(update, UPDATE_INTERVAL_MS);
 
-    // Listen for NOTIF_ACTION messages from the SW
+    // Listen for NOTIF_ACTION messages from the SW.
+    // Only 2 actions exist now: 'sleep' (start sleep) and 'wake' (no-op —
+    // just focus; user double-taps SleepLockScreen to trigger math wake).
     const onMessage = (event: MessageEvent) => {
       const data = event.data;
       if (!data || data.type !== 'NOTIF_ACTION') return;
       const action = data.action;
       if (action === 'sleep') {
         startSleepRef.current();
-      } else if (action === 'pause') {
-        pauseRef.current();
-      } else if (action === 'stop') {
-        stopRef.current();
       }
-      // 'wake' = no-op: the SleepLockScreen is already shown when activeSleep
-      // is set, so just focusing the app (which the SW already did) is enough.
-      // The user then double-taps → math challenge → wakeUp().
+      // 'wake' = no-op: SleepLockScreen is already shown when activeSleep is set.
       update();
     };
     navigator.serviceWorker.addEventListener('message', onMessage);

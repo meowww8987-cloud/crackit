@@ -123,22 +123,18 @@ export function buildNotificationPayload(): NotifPayload | null {
   // === SLEEPING state — highest priority ===
   if (sleep.activeSleep) {
     const elapsedSec = Math.floor((Date.now() - sleep.activeSleep.bedTime) / 1000);
-    const bedTimeStr = new Date(sleep.activeSleep.bedTime).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-    });
     const scene = getSleepScene(new Date().getHours());
     // Sleep target progress (default 8h = 28800s)
     const sleepTargetSec = 8 * 3600;
     const progress = Math.min(100, Math.round((elapsedSec / sleepTargetSec) * 100));
 
     return {
-      title: `😴 Sleeping · ${fmtClock(elapsedSec)}`,
-      body: `Asleep since ${bedTimeStr}\n${scene.body}`,
+      title: `Sleeping · ${fmtClock(elapsedSec)}`,
+      body: scene.body,
       icon: scene.icon,
       image: scene.image,
       progress,
-      actions: [{ action: 'wake', title: '☀️ Wake Up' }],
+      actions: [{ action: 'wake', title: 'Wake Up' }],
       url: '/',
     };
   }
@@ -151,25 +147,17 @@ export function buildNotificationPayload(): NotifPayload | null {
     const plannedSec = (session.active.expectedMinutes || 25) * 60;
     const elapsedSec = Math.floor((Date.now() - startTs) / 1000);
     const progress = Math.min(100, Math.round((elapsedSec / Math.max(60, plannedSec)) * 100));
+    const remainingMin = Math.max(0, Math.ceil((plannedSec - elapsedSec) / 60));
 
-    // Today total
-    const today = todayKey();
-    const todaySec = history.sessions
-      .filter((s) => s.date === today)
-      .reduce((a, s) => a + s.studySeconds, 0);
-
-    const title = `${subj}${chapter ? ' · ' + chapter : ''}`;
-    const body = `${fmtClock(elapsedSec)} studied · ${progress}% of ${session.active.expectedMinutes || 25}min\nToday: ${fmtClock(todaySec)}`;
+    const title = chapter ? `${subj} · ${chapter}` : subj;
+    const body = `${fmtClock(elapsedSec)} done · ${remainingMin}m left`;
 
     return {
       title,
       body,
       icon: '/icon-192.png',
       progress,
-      actions: [
-        { action: 'pause', title: '⏸ Pause' },
-        { action: 'sleep', title: '🌙 Sleep' },
-      ],
+      actions: [{ action: 'sleep', title: 'Sleep' }],
       url: '/',
     };
   }
@@ -178,7 +166,6 @@ export function buildNotificationPayload(): NotifPayload | null {
   const today = todayKey();
   const todaySessions = history.sessions.filter((s) => s.date === today);
   const todaySec = todaySessions.reduce((a, s) => a + s.studySeconds, 0);
-  const wastedSec = todaySessions.reduce((a, s) => a + (s.wastedSeconds || 0), 0);
   const goalSec = settings.dailyGoalHours * 3600;
   const goalProgress = Math.min(100, Math.round((todaySec / Math.max(60, goalSec)) * 100));
 
@@ -196,10 +183,12 @@ export function buildNotificationPayload(): NotifPayload | null {
   const neetDays = daysToNeet();
   const nextTest = getNextTest();
 
-  const title = `NEET 2027 · ${neetDays} days to go`;
-  let body = `${fmtClock(todaySec)} studied · ${fmtClock(wastedSec)} wasted\n${lastLine}`;
-  if (nextTest) {
-    body += `\n📝 ${nextTest.name}: ${nextTest.days === 0 ? 'today' : nextTest.days === 1 ? 'tomorrow' : `in ${nextTest.days} days`}`;
+  const title = `NEET 2027 · ${neetDays}d to go`;
+  let body = `${fmtClock(todaySec)} / ${settings.dailyGoalHours}h today`;
+  if (nextTest && nextTest.days <= 7) {
+    body += ` · ${nextTest.name} ${nextTest.days === 0 ? 'today' : nextTest.days === 1 ? 'tmrw' : `${nextTest.days}d`}`;
+  } else {
+    body += ` · ${lastLine}`;
   }
 
   return {
@@ -207,7 +196,7 @@ export function buildNotificationPayload(): NotifPayload | null {
     body,
     icon: '/icon-192.png',
     progress: goalProgress,
-    actions: [{ action: 'sleep', title: '🌙 Sleep' }],
+    actions: [{ action: 'sleep', title: 'Sleep' }],
     url: '/',
   };
 }

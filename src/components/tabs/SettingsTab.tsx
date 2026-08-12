@@ -145,11 +145,13 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.14.0</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.14.2</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
+            <div><strong className="text-white/70">v2.14.2</strong> — Fix: tapping Pause button on studying notification was starting sleep mode (action handling bug). Removed Pause action entirely — notification now has only ONE action button per state (Sleep when awake, Wake Up when sleeping). Also redesigned notification: shorter single-line body, no redundant info, no cluttered multi-line text. Studying: "32m done · 28m left". Idle: "4h 12m / 6h today · Last studied 2h ago".</div>
+            <div><strong className="text-white/70">v2.14.1</strong> — Fix client-side crash — PersistentNotificationManager was using useSession((s) =&gt; ({"{pause, stop}"})) which returns a new object every render → Zustand infinite re-render loop → &quot;Application error&quot; on page load. Split into individual scalar selectors.</div>
             <div><strong className="text-white/70">v2.14.0</strong> — Persistent Study Notification: lives in notification shade showing today's stats + NEET countdown + target progress + Sleep button. When sleeping → time-of-day themed scene (night/dawn/morning/noon/dusk/evening) with shooting stars + "Wake Up" button. Tap notification → opens app → existing double-tap + math wake flow. Fixes default Chrome "tap to copy URL" notification by replacing it with our custom one.</div>
             <div><strong className="text-white/70">v2.13.3</strong> — Remove "Focus Session Theme" setting entirely (was unused — Focus Timer already always pure black via .force-dark-ui). Removed from Settings type, store, and SettingsTab UI.</div>
             <div><strong className="text-white/70">v2.13.2</strong> — Rose cards now Pale Pink #FFF0F5 (very light but noticeable, was too subtle #FFFAFC), primary text now Dark Rose #8B2F4C (rosy pink, was Dark Raspberry which looked berry/wine). Full pink opacity ladder: Dark Rose → China Rose → Old Rose → Rosy Brown → Light Pink.</div>
