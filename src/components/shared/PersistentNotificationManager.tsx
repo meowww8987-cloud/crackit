@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react';
 import { useSettings } from '@/lib/store/settings';
 import { useSession } from '@/lib/store/session';
 import { useSleep } from '@/lib/store/sleep';
-import { useHistory } from '@/lib/store/history';
 import { useTests } from '@/lib/store/tests';
 import {
   buildNotificationPayload,
@@ -45,17 +44,22 @@ export function PersistentNotificationManager() {
   const enabled = useSettings((s) => s.persistentNotification);
   const sessionActive = useSession((s) => s.active);
   const sleepActive = useSleep((s) => s.activeSleep);
-  const sessions = useHistory((s) => s.sessions);
   const tests = useTests((s) => s.tests);
   const dailyGoalHours = useSettings((s) => s.dailyGoalHours);
 
-  // Action callbacks — keep refs so we don't re-run the effect on every tick
-  const sessionApi = useSession((s) => ({ pause: s.pause, stop: s.stop }));
+  // Action callbacks — keep refs so we don't re-run the effect on every tick.
+  // NOTE: must use individual scalar selectors, NOT a single selector returning
+  // an object literal — that would create a new object every render and trigger
+  // an infinite re-render loop with Zustand's default referential equality.
+  const pauseSession = useSession((s) => s.pause);
+  const stopSession = useSession((s) => s.stop);
   const startSleep = useSleep((s) => s.startSleep);
-  const sessionApiRef = useRef(sessionApi);
+  const pauseRef = useRef(pauseSession);
+  const stopRef = useRef(stopSession);
   const startSleepRef = useRef(startSleep);
   useEffect(() => {
-    sessionApiRef.current = sessionApi;
+    pauseRef.current = pauseSession;
+    stopRef.current = stopSession;
     startSleepRef.current = startSleep;
   });
 
@@ -87,9 +91,9 @@ export function PersistentNotificationManager() {
       if (action === 'sleep') {
         startSleepRef.current();
       } else if (action === 'pause') {
-        sessionApiRef.current.pause();
+        pauseRef.current();
       } else if (action === 'stop') {
-        sessionApiRef.current.stop();
+        stopRef.current();
       }
       // 'wake' = no-op: the SleepLockScreen is already shown when activeSleep
       // is set, so just focusing the app (which the SW already did) is enough.
@@ -105,7 +109,10 @@ export function PersistentNotificationManager() {
     };
   }, [enabled]);
 
-  // === Re-update immediately on any state change ===
+  // === Re-update immediately on session/sleep/tests/goal state change ===
+  // (NOT on every session tick — the 60s interval handles live timer updates.
+  // We only need an immediate refresh when the STATE MODE changes: idle ↔
+  // studying ↔ sleeping, or tests/goal changes affect the displayed info.)
   useEffect(() => {
     if (!enabled) return;
     if (typeof window === 'undefined' || !('Notification' in window)) return;
@@ -113,7 +120,7 @@ export function PersistentNotificationManager() {
     const payload = buildNotificationPayload();
     if (payload) postNotificationUpdate(payload);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, sessionActive, sleepActive, sessions, tests, dailyGoalHours]);
+  }, [enabled, sessionActive !== null, sleepActive !== null, tests, dailyGoalHours]);
 
   return null;
 }
