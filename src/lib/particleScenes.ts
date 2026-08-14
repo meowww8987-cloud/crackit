@@ -36,7 +36,7 @@ export function isParticleScene(type: string): boolean {
 
 // Only types that have been fully implemented (build + render + interaction).
 // Others fall back to their 3D equivalent in Scene3D.tsx.
-const IMPLEMENTED: ParticleSceneType[] = ['shooting-stars'];
+const IMPLEMENTED: ParticleSceneType[] = ['shooting-stars', 'molecular-bonds'];
 
 export function isParticleSceneImplemented(type: string): boolean {
   return IMPLEMENTED.includes(type as ParticleSceneType);
@@ -62,6 +62,9 @@ interface Star {
 interface ShootingStar {
   x: number; y: number; vx: number; vy: number; life: number; maxLife: number;
 }
+interface MoleculeAtom {
+  x: number; y: number; vx: number; vy: number; radius: number;
+}
 
 export interface ParticleState {
   type: ParticleSceneType;
@@ -72,6 +75,9 @@ export interface ParticleState {
   shootingStars?: ShootingStar[];
   nextSpawnAt?: number;
   lastTapTime?: number;
+  // Molecular Bonds
+  moleculeAtoms?: MoleculeAtom[];
+  moleculeFlash?: number;
   // Pointer state (for magnetic field etc.)
   pointerX?: number;
   pointerY?: number;
@@ -89,8 +95,9 @@ export function buildParticleScene(
 
   if (type === 'shooting-stars') {
     initShootingStars(state);
+  } else if (type === 'molecular-bonds') {
+    initMolecularBonds(state);
   }
-  // Other types will be added as we implement them
 
   return state;
 }
@@ -122,8 +129,9 @@ export function renderParticleFrame(
 
   if (state.type === 'shooting-stars') {
     renderShootingStars(ctx, state, time, dt, electronRgb);
+  } else if (state.type === 'molecular-bonds') {
+    renderMolecularBonds(ctx, state, time, dt, electronRgb);
   }
-  // Other types will be added as we implement them
 }
 
 // ===== Shooting Stars renderer =====
@@ -200,6 +208,99 @@ function spawnShootingStar(state: ParticleState, x: number, y: number, angle?: n
   });
 }
 
+// ===== Molecular Bonds renderer =====
+
+function initMolecularBonds(state: ParticleState) {
+  const count = 15 + Math.floor(Math.random() * 5);
+  state.moleculeAtoms = Array.from({ length: count }, () => ({
+    x: Math.random() * state.width,
+    y: Math.random() * state.height,
+    vx: (Math.random() - 0.5) * 30,
+    vy: (Math.random() - 0.5) * 30,
+    radius: 4 + Math.random() * 4,
+  }));
+  state.moleculeFlash = 0;
+}
+
+function renderMolecularBonds(
+  ctx: CanvasRenderingContext2D,
+  state: ParticleState,
+  time: number,
+  dt: number,
+  electronRgb: [number, number, number],
+) {
+  const [er, eg, eb] = electronRgb;
+  const { width, height } = state;
+  const atoms = state.moleculeAtoms!;
+  const BOND_DIST = 90;
+
+  // Update atom positions
+  for (const a of atoms) {
+    a.x += a.vx * dt;
+    a.y += a.vy * dt;
+    // Bounce off edges
+    if (a.x < 0) { a.x = 0; a.vx = Math.abs(a.vx); }
+    if (a.x > width) { a.x = width; a.vx = -Math.abs(a.vx); }
+    if (a.y < 0) { a.y = 0; a.vy = Math.abs(a.vy); }
+    if (a.y > height) { a.y = height; a.vy = -Math.abs(a.vy); }
+    // Slight drag
+    a.vx *= 0.998;
+    a.vy *= 0.998;
+  }
+
+  // Draw bonds + apply gentle attraction (check all pairs)
+  for (let i = 0; i < atoms.length; i++) {
+    for (let j = i + 1; j < atoms.length; j++) {
+      const dx = atoms[j].x - atoms[i].x;
+      const dy = atoms[j].y - atoms[i].y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < BOND_DIST && dist > 0) {
+        const bondStrength = 1 - dist / BOND_DIST;
+        const opacity = bondStrength * 0.4;
+        ctx.strokeStyle = `rgba(${er}, ${eg}, ${eb}, ${opacity})`;
+        ctx.lineWidth = 1 + bondStrength;
+        ctx.beginPath();
+        ctx.moveTo(atoms[i].x, atoms[i].y);
+        ctx.lineTo(atoms[j].x, atoms[j].y);
+        ctx.stroke();
+
+        // Gentle attraction when bonded (stronger when closer)
+        const force = 3 * bondStrength * dt;
+        atoms[i].vx += (dx / dist) * force;
+        atoms[i].vy += (dy / dist) * force;
+        atoms[j].vx -= (dx / dist) * force;
+        atoms[j].vy -= (dy / dist) * force;
+      }
+    }
+  }
+
+  // Draw atoms (glow + solid)
+  for (const a of atoms) {
+    // Glow
+    const grad = ctx.createRadialGradient(a.x, a.y, 0, a.x, a.y, a.radius * 3);
+    grad.addColorStop(0, `rgba(${er}, ${eg}, ${eb}, 0.35)`);
+    grad.addColorStop(1, `rgba(${er}, ${eg}, ${eb}, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, a.radius * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Solid atom
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, 0.7)`;
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Flash effect (from double-tap "reaction")
+  if (state.moleculeFlash && state.moleculeFlash > 0) {
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, ${state.moleculeFlash * 0.12})`;
+    ctx.fillRect(0, 0, width, height);
+    state.moleculeFlash -= dt * 2;
+    if (state.moleculeFlash < 0) state.moleculeFlash = 0;
+  }
+}
+
 // ===== Pointer interaction =====
 
 export function handleParticlePointer(
@@ -220,8 +321,30 @@ export function handleParticlePointer(
       // Single shooting star, random direction
       spawnShootingStar(state, x, y);
     }
+  } else if (state.type === 'molecular-bonds') {
+    if (isDoubleTap) {
+      // Reaction: explode all atoms + flash
+      for (const a of state.moleculeAtoms!) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 100 + Math.random() * 150;
+        a.vx = Math.cos(angle) * speed;
+        a.vy = Math.sin(angle) * speed;
+      }
+      state.moleculeFlash = 1.0;
+    } else {
+      // Spawn new atom at tap location
+      state.moleculeAtoms!.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 60,
+        vy: (Math.random() - 0.5) * 60,
+        radius: 4 + Math.random() * 4,
+      });
+      // Cap at 30 atoms (remove oldest)
+      if (state.moleculeAtoms!.length > 30) {
+        state.moleculeAtoms!.shift();
+      }
+    }
   }
-  // Other types will be added as we implement them
 }
 
 // ===== Resize handler =====
