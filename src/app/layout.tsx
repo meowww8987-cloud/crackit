@@ -67,32 +67,14 @@ export default function RootLayout({
                   document.documentElement.classList.add('dark');
                 }
 
-                // === Fullscreen (v2.7.2 style — aggressive, works on launch) ===
-                // Request fullscreen immediately (browsers may block without gesture,
-                // but we also retry on first interaction + visibilitychange + touchend).
-                // The "press Esc" banner is a minor annoyance but FULLSCREEN WORKS.
-                function requestFsNow() {
-                  try {
-                    var el = document.documentElement;
-                    var p = el.requestFullscreen ? el.requestFullscreen() : null;
-                    if (p && p.catch) p.catch(function(){});
-                  } catch(e) {}
-                }
-                // Try immediately (may fail without gesture, that's OK)
-                requestFsNow();
-                // Retry on first interaction
-                function onFirstGesture() {
-                  requestFsNow();
-                  document.removeEventListener('pointerdown', onFirstGesture);
-                  document.removeEventListener('touchstart', onFirstGesture);
-                }
-                document.addEventListener('pointerdown', onFirstGesture, { passive: true });
-                document.addEventListener('touchstart', onFirstGesture, { passive: true });
-                // Re-enter on visibilitychange (returning from notification panel)
-                document.addEventListener('visibilitychange', function() {
-                  if (!document.hidden) requestFsNow();
-                });
-                // Hide address bar on load
+                // === Fullscreen via manifest ===
+                // REMOVED: requestFullscreen() calls (v2.19.0) — was causing the
+                // "To exit full screen, press Esc" toast on every launch + visibility
+                // return + focus session start. Now relies on manifest display:fullscreen
+                // which works on installed Android PWAs (no JS, no toast, status bar hidden).
+                // Browser tabs + iOS Safari will show the address bar/status bar — acceptable
+                // tradeoff for no toast.
+                // Hide address bar on load (still works for non-installed contexts)
                 window.addEventListener('load', function() {
                   setTimeout(function() { window.scrollTo(0, 1); }, 0);
                   setTimeout(function() { window.scrollTo(0, 1); }, 100);

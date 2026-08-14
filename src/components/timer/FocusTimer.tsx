@@ -229,18 +229,15 @@ export function FocusTimer() {
   // the display when the phone turns. If we ALSO rotate our content (via
   // deviceorientation), we get a DOUBLE rotation — content appears upside down
   // or sideways. By locking the screen to 'portrait' (supported in fullscreen on
-  // Chrome for Android), the OS stops auto-rotating and WE handle all rotation
-  // ourselves via the gravity sensor. On iOS Safari, screen.orientation.lock()
-  // isn't supported, but Safari doesn't auto-rotate web content anyway, so no
-  // Fullscreen on mount + lock screen orientation + request iOS motion permission.
-  // Fullscreen is REQUIRED for screen.orientation.lock on Android.
+  // Fullscreen REMOVED (v2.19.0) — was triggering "press Esc to exit fullscreen"
+  // toast on every focus session start + app return. The FocusTimer is already
+  // CSS position:fixed inset-0 z-[9999] so it visually covers the viewport.
+  // On installed Android PWA, manifest display:fullscreen handles OS-level
+  // fullscreen. screen.orientation.lock still works on Android (no toast).
   useEffect(() => {
     const enterFullscreenAndLock = async () => {
-      try {
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen().catch(() => {});
-        }
-      } catch {}
+      // Orientation lock — needed so Android stops auto-rotating and we can
+      // handle rotation via gravity sensor. Does NOT trigger a toast.
       try {
         if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).lock === 'function') {
           await (screen.orientation as any).lock('portrait').catch(() => {});
@@ -294,16 +291,16 @@ export function FocusTimer() {
     };
   }, [active]);
 
-  // Re-enter fullscreen on visibility return (user came back from
-  // notification panel or app switcher)
+  // Re-enter fullscreen on visibility return — REMOVED (v2.19.0)
+  // Was triggering the "press Esc to exit fullscreen" toast every time the
+  // user returned to the app during a focus session. The FocusTimer is
+  // already CSS position:fixed inset-0 z-[9999] so it visually covers the
+  // viewport without needing OS-level fullscreen.
   useEffect(() => {
     const onVis = () => {
       if (!document.hidden && active) {
-        try {
-          if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen().catch(() => {});
-          }
-        } catch {}
+        // Re-acquire wake lock only (no fullscreen)
+        // Wake lock handling is done in the other effect above.
       }
     };
     document.addEventListener('visibilitychange', onVis);

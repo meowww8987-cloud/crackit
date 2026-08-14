@@ -168,46 +168,13 @@ export function AppShell() {
     });
   }, []);
 
-  // === True fullscreen (v2.7.2 style — aggressive, works reliably) ===
-  // Hides the status bar (mobile tower, date, battery) + browser chrome.
-  // Re-enters fullscreen automatically when the user returns from the
-  // notification panel (which exits fullscreen).
+  // === Fullscreen via manifest (v2.19.0) ===
+  // REMOVED: requestFullscreen() useEffect — was causing "To exit full screen,
+  // press Esc" toast on every launch + visibility return. Now relies on
+  // manifest display:fullscreen which works on installed Android PWAs.
+  // The scrollTo(0,1) below helps hide the address bar in browser-tab contexts.
   useEffect(() => {
-    const enterFullscreen = async () => {
-      try {
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen().catch(() => {});
-        }
-      } catch {}
-      try { window.scrollTo(0, 1); } catch {}
-    };
-
-    enterFullscreen();
-
-    const onVisibilityChange = () => {
-      if (!document.hidden && !document.fullscreenElement) enterFullscreen();
-    };
-    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-    const onResize = () => {
-      if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        if (!document.fullscreenElement) enterFullscreen();
-      }, 300);
-    };
-    const onTouchEnd = () => {
-      if (!document.fullscreenElement) enterFullscreen();
-    };
-
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    window.addEventListener('resize', onResize);
-    document.addEventListener('touchend', onTouchEnd, { passive: true });
-
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-      window.removeEventListener('resize', onResize);
-      document.removeEventListener('touchend', onTouchEnd);
-      if (resizeTimer) clearTimeout(resizeTimer);
-    };
+    try { window.scrollTo(0, 1); } catch {}
   }, []);
 
   // Apply OLED Black when setting changes
@@ -286,14 +253,10 @@ export function AppShell() {
     };
     const handleReturn = () => {
       useSession.getState().handleReturn();
-      // Re-enter fullscreen if focus timer was open
-      if (useSession.getState().active && useSession.getState().focusOpen) {
-        try {
-          if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen().catch(() => {});
-          }
-        } catch {}
-      }
+      // NOTE: removed requestFullscreen() here (v2.19.0) — was triggering the
+      // "press Esc to exit fullscreen" toast on every app return. The Focus
+      // Timer is already CSS position:fixed inset-0 z-[9999] so it visually
+      // covers the full viewport without needing OS-level fullscreen.
     };
 
     // visibilitychange — fires when tab is hidden/shown (desktop + mobile)
