@@ -17,6 +17,16 @@ import {
   type SceneType,
   type DeviceTier,
 } from '@/lib/scene3d';
+import {
+  isParticleScene,
+  isParticleSceneImplemented,
+  particleFallback3D,
+  buildParticleScene,
+  renderParticleFrame,
+  handleParticlePointer,
+  resizeParticleScene,
+  type ParticleState,
+} from '@/lib/particleScenes';
 
 /**
  * 3D animated background — pure Canvas 2D + manual 3D projection.
@@ -61,6 +71,7 @@ export function Scene3D() {
   // without re-running the canvas mount effect.
   const sceneRef = useRef<SceneObject[]>([]);
   const currentSceneKeyRef = useRef<string>('');
+  const particleSceneRef = useRef<ParticleState | null>(null);
 
   // Compute a stable key — when this changes, rebuild the scene.
   const computeSceneKey = (): string => {
@@ -111,6 +122,10 @@ export function Scene3D() {
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // Resize particle scene if active
+      if (particleSceneRef.current) {
+        resizeParticleScene(particleSceneRef.current, w, h);
+      }
     };
     resize();
     window.addEventListener('resize', resize);
@@ -118,7 +133,7 @@ export function Scene3D() {
     // ---- Scene rebuild helper ----
     const rebuildScene = () => {
       const key = computeSceneKey();
-      if (key === currentSceneKeyRef.current && sceneRef.current.length > 0) return;
+      if (key === currentSceneKeyRef.current && (sceneRef.current.length > 0 || particleSceneRef.current)) return;
       currentSceneKeyRef.current = key;
 
       const mode = modeRef.current;
@@ -131,7 +146,6 @@ export function Scene3D() {
         subjectColor = getSubjectColorThemed(subjectRef.current, theme);
       } else if (mode === 'hybrid') {
         type = 'hybrid';
-        // For hybrid, use theme palette to color each subject type
         const palette = getThemePalette(theme);
         subjectColor = palette.subjectColors.General ?? getSubjectColor('General');
       } else {
@@ -145,9 +159,21 @@ export function Scene3D() {
         subjectColor = getSubjectColorThemed(subjForMode, theme);
       }
 
-      // For hybrid mode, we need to pass theme-aware colors for each subject.
-      // buildScene uses SUBJECT_COLORS internally for hybrid — so we override
-      // the spawn colors by post-processing if theme !== 'dark'.
+      // === Particle scene (new 2D animations) ===
+      // Only build if the type is a particle scene AND it's been implemented.
+      // Unimplemented particle types fall back to their 3D equivalent.
+      if (isParticleScene(type) && isParticleSceneImplemented(type)) {
+        sceneRef.current = [];
+        particleSceneRef.current = buildParticleScene(type, w, h);
+        return;
+      }
+      if (isParticleScene(type) && !isParticleSceneImplemented(type)) {
+        // Fallback to 3D equivalent
+        type = particleFallback3D(type) as SceneType;
+      }
+      // === 3D scene (original atoms/DNA/molecules/cells/hybrid) ===
+      particleSceneRef.current = null;
+
       sceneRef.current = buildScene({ type, objectCount: objCount, subjectColor });
 
       // For hybrid + non-dark theme: recolor each object based on its kind → theme palette
@@ -185,23 +211,28 @@ export function Scene3D() {
       const dt = Math.min(0.1, (now - lastFrameTime) / 1000); // cap dt at 100ms
       lastFrameTime = now;
 
-      // Subject color for boost (theme-aware so boost matches the recolored scene)
-      const boostColor = subjectRef.current
-        ? getSubjectColorThemed(subjectRef.current, themeRef.current)
-        : null;
-
       const themePalette = getThemePalette(themeRef.current);
 
-      renderFrame({
-        ctx,
-        width: w,
-        height: h,
-        objects: sceneRef.current,
-        time,
-        dt,
-        boostColor,
-        themePalette,
-      });
+      // === Particle scene rendering (new 2D animations) ===
+      if (particleSceneRef.current) {
+        renderParticleFrame(ctx, particleSceneRef.current, time, dt, themePalette.electronRgb);
+      } else {
+        // === 3D scene rendering (original atoms/DNA/molecules/cells) ===
+        const boostColor = subjectRef.current
+          ? getSubjectColorThemed(subjectRef.current, themeRef.current)
+          : null;
+
+        renderFrame({
+          ctx,
+          width: w,
+          height: h,
+          objects: sceneRef.current,
+          time,
+          dt,
+          boostColor,
+          themePalette,
+        });
+      }
 
       if (!prefersReducedMotion) {
         frame = requestAnimationFrame(render);
@@ -222,10 +253,52 @@ export function Scene3D() {
     };
     document.addEventListener('visibilitychange', onVisibility);
 
+    // ---- Pointer interaction (tap / double-tap for particle scenes) ----
+    // Listens on document. If the tap target is NOT inside a card/button/nav
+    // (i.e. it hit the background), forwards the tap to the particle scene.
+    let lastTapTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
+    const DOUBLE_TAP_MS = 350;
+    const DOUBLE_TAP_DIST = 50;
+
+    const onPointerDown = (e: PointerEvent) => {
+      // Only handle if there's an active particle scene
+      if (!particleSceneRef.current) return;
+
+      // Check if the tap hit a background area (not a card/button/nav/etc.)
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      // If the target is inside an interactive element, don't intercept
+      if (target.closest('button, a, input, textarea, select, nav, [role="button"], .glass, .glass-strong, .card-solid, [data-interactive]')) {
+        return;
+      }
+
+      // It's a background tap — detect single vs double
+      const now = Date.now();
+      const dist = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY);
+      const isDoubleTap = (now - lastTapTime < DOUBLE_TAP_MS) && (dist < DOUBLE_TAP_DIST);
+
+      // Forward to particle scene
+      handleParticlePointer(
+        particleSceneRef.current,
+        e.clientX,
+        e.clientY,
+        isDoubleTap,
+        (Date.now() - baseTime) / 1000,
+      );
+
+      lastTapTime = now;
+      lastTapX = e.clientX;
+      lastTapY = e.clientY;
+    };
+    document.addEventListener('pointerdown', onPointerDown, { passive: true });
+
     return () => {
       running = false;
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener('pointerdown', onPointerDown);
       clearInterval(sceneCheckInterval);
       if (frame) cancelAnimationFrame(frame);
     };

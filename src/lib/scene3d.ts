@@ -54,7 +54,9 @@ function project(p: Vec3, focal: number, cx: number, cy: number): { x: number; y
 
 // ===== Scene types =====
 
-export type SceneType = 'atoms' | 'dna' | 'molecules' | 'cells' | 'hybrid';
+export type SceneType = 'atoms' | 'dna' | 'molecules' | 'cells' | 'hybrid'
+  | 'shooting-stars' | 'molecular-bonds' | 'boiling-bubbles' | 'electron-cloud' | 'crystal-lattice'
+  | 'falling-petals' | 'dna-drift' | 'magnetic-field';
 
 export interface SceneObject {
   /** Center position in world space. */
@@ -769,29 +771,14 @@ function drawCell(
  * Used when the user has selected "auto" mode in settings.
  */
 export function detectSceneType(subject: string | null, chapter: string | null): SceneType {
-  if (!subject || subject === 'General') return 'hybrid';
+  if (!subject || subject === 'General') return 'magnetic-field';
 
-  if (subject === 'Physics') return 'atoms';
+  if (subject === 'Physics') return 'shooting-stars';
+  if (subject === 'Botany') return 'falling-petals';
+  if (subject === 'Zoology') return 'dna-drift';
+  if (subject === 'Chemistry') return 'molecular-bonds';
 
-  if (subject === 'Botany') return 'cells';
-
-  if (subject === 'Zoology') return 'dna';
-
-  if (subject === 'Chemistry') {
-    const ch = (chapter || '').toLowerCase();
-    // Organic chemistry keywords
-    if (/organic|hydrocarbon|halo|alcohol|phenol|ether|aldehyde|ketone|carboxylic|amine|biomolecule/.test(ch)) {
-      return 'molecules';
-    }
-    // Physical chemistry keywords → atoms/atomic structure
-    if (/atom|structure|bonding|mole|concept|thermo|equilibrium|kinetics|electrochem|solution|redox|gas|state/.test(ch)) {
-      return 'atoms';
-    }
-    // Inorganic → molecules (coordination, p-block, d-block etc.)
-    return 'molecules';
-  }
-
-  return 'hybrid';
+  return 'magnetic-field';
 }
 
 /** Get the NEET subject color for a subject name. */
