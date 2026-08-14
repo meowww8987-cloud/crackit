@@ -10,6 +10,7 @@ import { getChaptersForSubject, getNEETSubjects } from '@/lib/neetSyllabus';
 import { pushToast } from '@/components/shared/Toast';
 import type { TestType, CoachingSource, Subject } from '@/lib/types';
 import { cn, todayKey, vibrate } from '@/lib/utils';
+import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 
 interface Props {
   onClose: () => void;
@@ -286,15 +287,17 @@ export function AddTestSheet({ onClose }: Props) {
                 <Clock size={11} /> DURATION (MINUTES)
               </label>
               <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min={15}
-                  max={240}
-                  step={5}
-                  value={duration}
-                  onChange={(e) => setDuration(Number(e.target.value))}
-                  className="flex-1"
-                />
+                <ScrollAwareSlider>
+                  <input
+                    type="range"
+                    min={15}
+                    max={240}
+                    step={5}
+                    value={duration}
+                    onChange={(e) => setDuration(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                </ScrollAwareSlider>
                 <span className="text-sm font-bold tabular text-teal-400 w-16 text-right">
                   {Math.floor(duration / 60) > 0
                     ? `${Math.floor(duration / 60)}h ${duration % 60}m`

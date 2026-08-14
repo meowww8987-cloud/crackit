@@ -22,6 +22,7 @@ import { useSettings, applyTextSize, applyTheme } from '@/lib/store/settings';
 import { cn, vibrate } from '@/lib/utils';
 import type { Settings } from '@/lib/types';
 import { ConcentricRings } from '@/components/ui/concentric-rings';
+import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 import { triggerTutorialOnboarding } from '@/components/app/AppShell';
 
 type SectionKey = 'goals' | 'focus' | 'appearance' | 'notifications' | 'data';
@@ -145,12 +146,13 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.19.0</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.19.1</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
-            <div><strong className="text-white/70">v2.19.0</strong> — Remove ALL requestFullscreen() calls (8 total across layout.tsx, AppShell.tsx, FocusTimer.tsx). Was triggering the &quot;To exit full screen, press Esc&quot; toast on every launch + visibility return + focus session start. Now relies on manifest display:fullscreen which works on installed Android PWAs (no JS, no toast, status bar hidden). Browser tabs + iOS Safari will show address bar (acceptable tradeoff). Bumped SW cache v4→v5. FocusTimer still works — it's CSS position:fixed inset-0 z-[9999] so covers viewport without OS fullscreen.</div>
+            <div><strong className="text-white/70">v2.19.1</strong> — Fix accidental slider changes during scroll. New ScrollAwareSlider wrapper detects swipe angle: vertical (&gt;60°) → page scrolls (slider untouched), horizontal (&lt;30°) → slider drags. Applied to all 11 range sliders: Weekly Goals (3), Add Target expected time, Settings (5: dim delay, dim opacity, animation intensity, sound volume, + SliderRow reusable), Lecture Resource expected time, Add Test duration, Paper Test Setup (2: question count + duration), Timetable Editor (2: start + end hour).</div>
+            <div><strong className="text-white/70">v2.19.0</strong> — Remove ALL requestFullscreen() calls (8 total). Was triggering the &quot;To exit full screen, press Esc&quot; toast. Now relies on manifest display:fullscreen (works on installed Android PWA, no JS, no toast, status bar hidden). Bumped SW cache v4→v5.</div>
             <div><strong className="text-white/70">v2.18.1</strong> — Fix: Sleep History moved from Tests long-press → History tab long-press (alongside Test History, 2 options). Tests long-press reverted to CBT Mode + Practice Mode (2 options). Stats long-press order fixed: Weekly Report (top) → Monthly Report (middle) → Sleep Report (bottom). Sleep History + Sleep Analysis sheets redesigned with distinct dark indigo night-sky theme.</div>
             <div><strong className="text-white/70">v2.18.0</strong> — Sleep History → long-press menu. Sleep Reports (Weekly + Monthly) → Stats long-press. TabLongPressOverlay supports 3 actions. SleepAnalysisSheet with Weekly/Monthly tabs: score + stats + best/worst night + advantages/disadvantages/improvements. SleepHistorySheet with all sleep entries grouped by date.</div>
             <div><strong className="text-white/70">v2.17.0</strong> — SleepLockScreen rebuild: time-of-day aware scenery (6 scenes: night/dawn/morning/noon/dusk/evening) with matching gradients + celestial body. Quality picker now appears AFTER waking from the lock screen. Flow: double-tap → math → sunrise/brighten → 5 emoji quality picker → wakeUp(quality).</div>
@@ -226,15 +228,17 @@ function Slider({ value, min, max, step = 1, onChange, format }: {
   return (
     <div>
       {format && <div className="text-sm font-bold text-teal-400 mb-1 tabular">{format(value)}</div>}
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full"
-      />
+      <ScrollAwareSlider>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full"
+        />
+      </ScrollAwareSlider>
     </div>
   );
 }
@@ -419,12 +423,14 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
                 <span className="text-[10px] text-white/65">Idle delay</span>
                 <span className="text-xs tabular font-bold text-amber-400">{s.dimDelay}s</span>
               </div>
-              <input
-                type="range" min={3} max={30} step={1} value={s.dimDelay}
-                onChange={(e) => update('dimDelay', Number(e.target.value))}
-                className="w-full"
-                style={{ accentColor: '#f59e0b' }}
-              />
+              <ScrollAwareSlider>
+                <input
+                  type="range" min={3} max={30} step={1} value={s.dimDelay}
+                  onChange={(e) => update('dimDelay', Number(e.target.value))}
+                  className="w-full"
+                  style={{ accentColor: '#f59e0b' }}
+                />
+              </ScrollAwareSlider>
               <div className="flex justify-between text-[8px] text-white/35 mt-0.5">
                 <span>3s</span><span>30s</span>
               </div>
@@ -437,12 +443,14 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
                 <span className="text-[10px] text-white/65">When dimmed</span>
                 <span className="text-xs tabular font-bold text-teal-400">{s.screenDimOpacity}%</span>
               </div>
-              <input
-                type="range" min={5} max={100} step={5} value={s.screenDimOpacity}
-                onChange={(e) => update('screenDimOpacity', Number(e.target.value))}
-                className="w-full"
-                style={{ accentColor: '#14b8a6' }}
-              />
+              <ScrollAwareSlider>
+                <input
+                  type="range" min={5} max={100} step={5} value={s.screenDimOpacity}
+                  onChange={(e) => update('screenDimOpacity', Number(e.target.value))}
+                  className="w-full"
+                  style={{ accentColor: '#14b8a6' }}
+                />
+              </ScrollAwareSlider>
               <div className="flex justify-between text-[8px] text-white/35 mt-0.5">
                 <span>5%</span><span>100%</span>
               </div>
@@ -569,14 +577,16 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
                 <span className="text-xs text-white/80 font-semibold">Animation intensity</span>
                 <span className="text-xs tabular text-teal-400 font-bold">{s.animationIntensity}</span>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={s.animationIntensity}
-                onChange={(e) => update('animationIntensity', Number(e.target.value))}
-                className="w-full"
-              />
+              <ScrollAwareSlider>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={s.animationIntensity}
+                  onChange={(e) => update('animationIntensity', Number(e.target.value))}
+                  className="w-full"
+                />
+              </ScrollAwareSlider>
               <div className="flex justify-between text-[9px] text-white/30 mt-0.5">
                 <span>Subtle</span>
                 <span>Normal</span>
@@ -667,16 +677,18 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
             <span className="text-[11px] text-white/70 font-medium">Volume</span>
             <span className="text-sm font-bold tabular text-teal-400">{s.soundVolume}%</span>
           </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={5}
-            value={s.soundVolume}
-            onChange={(e) => update('soundVolume', Number(e.target.value))}
-            className="w-full"
-            style={{ accentColor: '#14b8a6' }}
-          />
+          <ScrollAwareSlider>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={s.soundVolume}
+              onChange={(e) => update('soundVolume', Number(e.target.value))}
+              className="w-full"
+              style={{ accentColor: '#14b8a6' }}
+            />
+          </ScrollAwareSlider>
         </Row>
       )}
     </>

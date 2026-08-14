@@ -1046,6 +1046,15 @@ html:not(.dark):not(.warm) .card-tint,
  * override below so the track + thumb border are visible on white cards.
  * accent-color (set inline via style={{accentColor}}) drives the fill color.
  */
+/* === ScrollAwareSlider wrapper — transparent, doesn't affect layout === */
+.scroll-aware-slider {
+  display: block;
+  width: 100%;
+}
+.scroll-aware-slider > input[type="range"] {
+  width: 100%;
+}
+
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;

@@ -6,6 +6,7 @@ import { X, Check, BookOpen, ChevronRight, ChevronLeft, BookOpen as LecIcon, Fil
 import { useTargets } from '@/lib/store/targets';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useSession } from '@/lib/store/session';
+import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
 import type { Subject, ActivityType, Target } from '@/lib/types';
 import { cn, todayKey, vibrate } from '@/lib/utils';
@@ -459,18 +460,20 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                     <span className="text-lg font-bold tabular" style={{ color: actConfig.color }}>{expectedMinutes} min</span>
                   </div>
                   {/* Slider */}
-                  <input
-                    type="range"
-                    min={30}
-                    max={180}
-                    step={5}
-                    value={expectedMinutes}
-                    onChange={(e) => setExpectedMinutes(Number(e.target.value))}
-                    onMouseUp={(e) => setExpectedMinutes(snapToPreset(Number((e.target as HTMLInputElement).value)))}
-                    onTouchEnd={(e) => setExpectedMinutes(snapToPreset(Number((e.target as HTMLInputElement).value)))}
-                    className="w-full"
-                    style={{ accentColor: actConfig.color }}
-                  />
+                  <ScrollAwareSlider>
+                    <input
+                      type="range"
+                      min={30}
+                      max={180}
+                      step={5}
+                      value={expectedMinutes}
+                      onChange={(e) => setExpectedMinutes(Number(e.target.value))}
+                      onMouseUp={(e) => setExpectedMinutes(snapToPreset(Number((e.target as HTMLInputElement).value)))}
+                      onTouchEnd={(e) => setExpectedMinutes(snapToPreset(Number((e.target as HTMLInputElement).value)))}
+                      className="w-full"
+                      style={{ accentColor: actConfig.color }}
+                    />
+                  </ScrollAwareSlider>
                   {/* Preset snap buttons */}
                   <div className="flex justify-between mt-2">
                     {TIME_PRESETS.map((p) => (

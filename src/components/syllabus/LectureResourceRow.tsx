@@ -8,6 +8,7 @@ import { useTargets } from '@/lib/store/targets';
 import { subjectColor } from '@/lib/colors';
 import type { Lecture, Chapter, SubjectEntity, LectureResource, ActivityType } from '@/lib/types';
 import { cn, todayKey, vibrate, formatHM } from '@/lib/utils';
+import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 
 interface Props {
   lecture: Lecture;
@@ -167,7 +168,9 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1"><label className="text-[9px] font-bold text-t-muted uppercase tracking-wide">Expected Time</label><span className="text-[11px] font-bold tabular text-teal-500 dark:text-teal-400">{expectedMinutes} min</span></div>
-                <input type="range" min={15} max={180} step={5} value={expectedMinutes} onChange={(e) => setExpectedMinutes(Number(e.target.value))} onClick={(e) => e.stopPropagation()} className="w-full" />
+                <ScrollAwareSlider>
+                  <input type="range" min={15} max={180} step={5} value={expectedMinutes} onChange={(e) => setExpectedMinutes(Number(e.target.value))} onClick={(e) => e.stopPropagation()} className="w-full" />
+                </ScrollAwareSlider>
               </div>
               <button onClick={handleConfirmAddToday} className="w-full py-2.5 rounded-lg text-[11px] font-bold text-black transition active:scale-95 flex items-center justify-center gap-1.5" style={{ background: color.hex }}><Check size={11} /> Add to Today ({expectedMinutes}m)</button>
             </div>

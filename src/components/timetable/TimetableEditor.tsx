@@ -7,6 +7,7 @@ import { useTimetable } from '@/lib/store/timetable';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
 import type { Subject } from '@/lib/types';
 import { cn, vibrate } from '@/lib/utils';
+import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 
 const DAYS = [
   { num: 0, name: 'Sun', full: 'Sunday' },
@@ -153,27 +154,31 @@ export function TimetableEditor() {
           {/* Start hour */}
           <div>
             <label className="text-[10px] text-white/40 mb-1 block">START HOUR: {newStart}:00</label>
-            <input
-              type="range"
-              min={0}
-              max={23}
-              value={newStart}
-              onChange={(e) => setNewStart(Number(e.target.value))}
-              className="w-full"
-            />
+            <ScrollAwareSlider>
+              <input
+                type="range"
+                min={0}
+                max={23}
+                value={newStart}
+                onChange={(e) => setNewStart(Number(e.target.value))}
+                className="w-full"
+              />
+            </ScrollAwareSlider>
           </div>
 
           {/* End hour */}
           <div>
             <label className="text-[10px] text-white/40 mb-1 block">END HOUR: {newEnd}:00</label>
-            <input
-              type="range"
-              min={1}
-              max={24}
-              value={newEnd}
-              onChange={(e) => setNewEnd(Number(e.target.value))}
-              className="w-full"
-            />
+            <ScrollAwareSlider>
+              <input
+                type="range"
+                min={1}
+                max={24}
+                value={newEnd}
+                onChange={(e) => setNewEnd(Number(e.target.value))}
+                className="w-full"
+              />
+            </ScrollAwareSlider>
           </div>
 
           <button

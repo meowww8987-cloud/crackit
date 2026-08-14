@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Clock, ListOrdered, Layers } from 'lucide-react';
 import { cn, vibrate } from '@/lib/utils';
+import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 import type { PaperTestConfig } from '@/lib/types';
 
 interface Props {
@@ -129,15 +130,17 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
             <ListOrdered size={11} /> QUESTION COUNT
           </label>
           <div className="flex items-center gap-3">
-            <input
-              type="range"
-              min={4}
-              max={200}
-              step={4}
-              value={questionCount}
-              onChange={(e) => { setQuestionCount(Number(e.target.value)); setActivePreset(null); setUseCustomPerQ(false); }}
-              className="flex-1"
-            />
+            <ScrollAwareSlider>
+              <input
+                type="range"
+                min={4}
+                max={200}
+                step={4}
+                value={questionCount}
+                onChange={(e) => { setQuestionCount(Number(e.target.value)); setActivePreset(null); setUseCustomPerQ(false); }}
+                className="flex-1"
+              />
+            </ScrollAwareSlider>
             <span className="text-sm font-bold tabular text-teal-400 w-12 text-right">{questionCount}</span>
           </div>
           <p className="text-[10px] text-white/40 mt-1">
@@ -151,15 +154,17 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
             <Clock size={11} /> DURATION (MINUTES)
           </label>
           <div className="flex items-center gap-3">
-            <input
-              type="range"
-              min={10}
-              max={300}
-              step={5}
-              value={durationMin}
-              onChange={(e) => { setDurationMin(Number(e.target.value)); setActivePreset(null); setUseCustomPerQ(false); }}
-              className="flex-1"
-            />
+            <ScrollAwareSlider>
+              <input
+                type="range"
+                min={10}
+                max={300}
+                step={5}
+                value={durationMin}
+                onChange={(e) => { setDurationMin(Number(e.target.value)); setActivePreset(null); setUseCustomPerQ(false); }}
+                className="flex-1"
+              />
+            </ScrollAwareSlider>
             <span className="text-sm font-bold tabular text-teal-400 w-16 text-right">
               {Math.floor(durationMin / 60) > 0
                 ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`

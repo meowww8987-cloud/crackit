@@ -7,6 +7,7 @@ import { useWeeklyGoals } from '@/lib/store/weeklyGoals';
 import { useHistory } from '@/lib/store/history';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { dateKey, addDays } from '@/lib/utils';
+import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 
 export function WeeklyGoalCard() {
   const { currentGoals, setWeeklyGoals, checkWeekRollover, goalWeekStart } = useWeeklyGoals();
@@ -144,7 +145,9 @@ function GoalSetter({ onClose, studyHours, setStudyHours, lectures, setLectures,
               <label className="text-xs font-semibold text-white/60">Study Hours</label>
               <span className="text-sm font-bold tabular text-teal-400">{studyHours}h</span>
             </div>
-            <input type="range" min={10} max={100} step={5} value={studyHours} onChange={(e) => setStudyHours(Number(e.target.value))} className="w-full" />
+            <ScrollAwareSlider>
+              <input type="range" min={10} max={100} step={5} value={studyHours} onChange={(e) => setStudyHours(Number(e.target.value))} className="w-full" />
+            </ScrollAwareSlider>
           </div>
 
           <div>
@@ -152,7 +155,9 @@ function GoalSetter({ onClose, studyHours, setStudyHours, lectures, setLectures,
               <label className="text-xs font-semibold text-white/60">Lectures to Complete</label>
               <span className="text-sm font-bold tabular text-green-400">{lectures}</span>
             </div>
-            <input type="range" min={1} max={50} step={1} value={lectures} onChange={(e) => setLectures(Number(e.target.value))} className="w-full" />
+            <ScrollAwareSlider>
+              <input type="range" min={1} max={50} step={1} value={lectures} onChange={(e) => setLectures(Number(e.target.value))} className="w-full" />
+            </ScrollAwareSlider>
           </div>
 
           <div>
@@ -160,7 +165,9 @@ function GoalSetter({ onClose, studyHours, setStudyHours, lectures, setLectures,
               <label className="text-xs font-semibold text-white/60">DPPs to Solve</label>
               <span className="text-sm font-bold tabular text-blue-400">{dpps}</span>
             </div>
-            <input type="range" min={1} max={50} step={1} value={dpps} onChange={(e) => setDpps(Number(e.target.value))} className="w-full" />
+            <ScrollAwareSlider>
+              <input type="range" min={1} max={50} step={1} value={dpps} onChange={(e) => setDpps(Number(e.target.value))} className="w-full" />
+            </ScrollAwareSlider>
           </div>
         </div>
 
