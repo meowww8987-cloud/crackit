@@ -776,7 +776,7 @@ export function detectSceneType(subject: string | null, chapter: string | null):
   if (subject === 'Physics') return 'shooting-stars';
   if (subject === 'Botany') return 'falling-petals';
   if (subject === 'Zoology') return 'dna-drift';
-  if (subject === 'Chemistry') return 'boiling-bubbles';
+  if (subject === 'Chemistry') return 'electron-cloud';
 
   return 'magnetic-field';
 }

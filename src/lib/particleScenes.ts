@@ -36,7 +36,7 @@ export function isParticleScene(type: string): boolean {
 
 // Only types that have been fully implemented (build + render + interaction).
 // Others fall back to their 3D equivalent in Scene3D.tsx.
-const IMPLEMENTED: ParticleSceneType[] = ['shooting-stars', 'molecular-bonds', 'boiling-bubbles'];
+const IMPLEMENTED: ParticleSceneType[] = ['shooting-stars', 'molecular-bonds', 'boiling-bubbles', 'electron-cloud', 'crystal-lattice'];
 
 export function isParticleSceneImplemented(type: string): boolean {
   return IMPLEMENTED.includes(type as ParticleSceneType);
@@ -71,6 +71,14 @@ interface Bubble {
 interface Pop {
   x: number; y: number; radius: number; maxRadius: number; life: number; maxLife: number;
 }
+interface ElectronAtom {
+  x: number; y: number;
+  electrons: { angle: number; radius: number; speed: number; size: number; phase: number }[];
+  excited: number; // 0 = normal, 1 = fully excited
+}
+interface CrystalNode {
+  x: number; y: number; targetX: number; targetY: number; settled: boolean;
+}
 
 export interface ParticleState {
   type: ParticleSceneType;
@@ -87,6 +95,12 @@ export interface ParticleState {
   // Boiling Bubbles
   bubbles?: Bubble[];
   pops?: Pop[];
+  // Electron Cloud
+  electronAtoms?: ElectronAtom[];
+  electronFlash?: number;
+  // Crystal Lattice
+  crystalNodes?: CrystalNode[];
+  crystalFlash?: number;
   // Pointer state (for magnetic field etc.)
   pointerX?: number;
   pointerY?: number;
@@ -108,6 +122,10 @@ export function buildParticleScene(
     initMolecularBonds(state);
   } else if (type === 'boiling-bubbles') {
     initBoilingBubbles(state);
+  } else if (type === 'electron-cloud') {
+    initElectronCloud(state);
+  } else if (type === 'crystal-lattice') {
+    initCrystalLattice(state);
   }
 
   return state;
@@ -144,6 +162,10 @@ export function renderParticleFrame(
     renderMolecularBonds(ctx, state, time, dt, electronRgb);
   } else if (state.type === 'boiling-bubbles') {
     renderBoilingBubbles(ctx, state, time, dt, electronRgb);
+  } else if (state.type === 'electron-cloud') {
+    renderElectronCloud(ctx, state, time, dt, electronRgb);
+  } else if (state.type === 'crystal-lattice') {
+    renderCrystalLattice(ctx, state, time, dt, electronRgb);
   }
 }
 
@@ -405,6 +427,179 @@ function renderBoilingBubbles(
   state.pops = alivePops;
 }
 
+// ===== Electron Cloud renderer =====
+
+function initElectronCloud(state: ParticleState) {
+  const count = 3 + Math.floor(Math.random() * 2);
+  state.electronAtoms = Array.from({ length: count }, () => createElectronAtom(state.width, state.height));
+  state.electronFlash = 0;
+}
+
+function createElectronAtom(width: number, height: number, x?: number, y?: number): ElectronAtom {
+  const electronCount = 10 + Math.floor(Math.random() * 6);
+  return {
+    x: x ?? (width * 0.2 + Math.random() * width * 0.6),
+    y: y ?? (height * 0.2 + Math.random() * height * 0.6),
+    electrons: Array.from({ length: electronCount }, () => ({
+      angle: Math.random() * Math.PI * 2,
+      radius: 20 + Math.random() * 40,
+      speed: (0.5 + Math.random() * 1.5) * (Math.random() < 0.5 ? 1 : -1),
+      size: 1 + Math.random() * 2,
+      phase: Math.random() * Math.PI * 2,
+    })),
+    excited: 0,
+  };
+}
+
+function renderElectronCloud(
+  ctx: CanvasRenderingContext2D,
+  state: ParticleState,
+  time: number,
+  dt: number,
+  electronRgb: [number, number, number],
+) {
+  const [er, eg, eb] = electronRgb;
+  const { width, height } = state;
+  const atoms = state.electronAtoms!;
+
+  for (const atom of atoms) {
+    // Decay excitement
+    if (atom.excited > 0) {
+      atom.excited -= dt * 0.5;
+      if (atom.excited < 0) atom.excited = 0;
+    }
+
+    // Draw nucleus (glow + solid)
+    const nucGlow = ctx.createRadialGradient(atom.x, atom.y, 0, atom.x, atom.y, 25);
+    nucGlow.addColorStop(0, `rgba(${er}, ${eg}, ${eb}, 0.3)`);
+    nucGlow.addColorStop(1, `rgba(${er}, ${eg}, ${eb}, 0)`);
+    ctx.fillStyle = nucGlow;
+    ctx.beginPath();
+    ctx.arc(atom.x, atom.y, 25, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, 0.6)`;
+    ctx.beginPath();
+    ctx.arc(atom.x, atom.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw electrons (orbiting dots with pulsing opacity)
+    for (const e of atom.electrons) {
+      e.angle += e.speed * dt;
+      const exciteBoost = atom.excited * 30; // electrons fly outward when excited
+      const r = e.radius + exciteBoost;
+      const ex = atom.x + Math.cos(e.angle) * r;
+      const ey = atom.y + Math.sin(e.angle) * r;
+      const pulse = 0.3 + 0.4 * (0.5 + 0.5 * Math.sin(time * 2 + e.phase));
+      ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, ${pulse})`;
+      ctx.beginPath();
+      ctx.arc(ex, ey, e.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Flash from double-tap excitation
+  if (state.electronFlash && state.electronFlash > 0) {
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, ${state.electronFlash * 0.1})`;
+    ctx.fillRect(0, 0, width, height);
+    state.electronFlash -= dt * 2;
+    if (state.electronFlash < 0) state.electronFlash = 0;
+  }
+}
+
+// ===== Crystal Lattice renderer =====
+
+function initCrystalLattice(state: ParticleState) {
+  const count = 20 + Math.floor(Math.random() * 8);
+  state.crystalNodes = Array.from({ length: count }, () => createCrystalNode(state.width, state.height));
+  state.crystalFlash = 0;
+}
+
+function createCrystalNode(width: number, height: number, x?: number, y?: number): CrystalNode {
+  // Target = nearest grid point (60px grid)
+  const sx = x ?? Math.random() * width;
+  const sy = y ?? Math.random() * height;
+  const gridX = Math.round(sx / 60) * 60 + 30;
+  const gridY = Math.round(sy / 60) * 60 + 30;
+  return {
+    x: sx, y: sy,
+    targetX: gridX, targetY: gridY,
+    settled: false,
+  };
+}
+
+function renderCrystalLattice(
+  ctx: CanvasRenderingContext2D,
+  state: ParticleState,
+  time: number,
+  dt: number,
+  electronRgb: [number, number, number],
+) {
+  const [er, eg, eb] = electronRgb;
+  const { width, height } = state;
+  const nodes = state.crystalNodes!;
+  const BOND_DIST = 75;
+
+  // Move nodes toward target positions
+  for (const n of nodes) {
+    const dx = n.targetX - n.x;
+    const dy = n.targetY - n.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1) {
+      n.settled = true;
+    } else {
+      n.x += dx * 2 * dt;
+      n.y += dy * 2 * dt;
+    }
+  }
+
+  // Draw bonds between nearby settled nodes
+  for (let i = 0; i < nodes.length; i++) {
+    if (!nodes[i].settled) continue;
+    for (let j = i + 1; j < nodes.length; j++) {
+      if (!nodes[j].settled) continue;
+      const dx = nodes[j].x - nodes[i].x;
+      const dy = nodes[j].y - nodes[i].y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < BOND_DIST && dist > 0) {
+        const opacity = (1 - dist / BOND_DIST) * 0.3;
+        ctx.strokeStyle = `rgba(${er}, ${eg}, ${eb}, ${opacity})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(nodes[i].x, nodes[i].y);
+        ctx.lineTo(nodes[j].x, nodes[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Draw nodes
+  for (const n of nodes) {
+    const pulse = n.settled ? 0.5 + 0.2 * Math.sin(time * 1.5 + n.targetX) : 0.3;
+    // Glow
+    const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, 12);
+    grad.addColorStop(0, `rgba(${er}, ${eg}, ${eb}, ${pulse * 0.3})`);
+    grad.addColorStop(1, `rgba(${er}, ${eg}, ${eb}, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, 12, 0, Math.PI * 2);
+    ctx.fill();
+    // Solid
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, ${pulse * 0.7})`;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Flash from double-tap melt
+  if (state.crystalFlash && state.crystalFlash > 0) {
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, ${state.crystalFlash * 0.1})`;
+    ctx.fillRect(0, 0, width, height);
+    state.crystalFlash -= dt * 2;
+    if (state.crystalFlash < 0) state.crystalFlash = 0;
+  }
+}
+
 // ===== Pointer interaction =====
 
 export function handleParticlePointer(
@@ -467,6 +662,32 @@ export function handleParticlePointer(
       state.pops!.push({
         x, y, radius: 8, maxRadius: 30, life: 0, maxLife: 0.4,
       });
+    }
+  } else if (state.type === 'electron-cloud') {
+    if (isDoubleTap) {
+      // Excite: all electrons fly outward
+      for (const a of state.electronAtoms!) {
+        a.excited = 1.0;
+      }
+      state.electronFlash = 1.0;
+    } else {
+      // Spawn new atom at tap
+      state.electronAtoms!.push(createElectronAtom(state.width, state.height, x, y));
+      if (state.electronAtoms!.length > 8) state.electronAtoms!.shift();
+    }
+  } else if (state.type === 'crystal-lattice') {
+    if (isDoubleTap) {
+      // Melt: scatter all nodes to random positions, then re-settle
+      for (const n of state.crystalNodes!) {
+        n.x = Math.random() * state.width;
+        n.y = Math.random() * state.height;
+        n.settled = false;
+      }
+      state.crystalFlash = 1.0;
+    } else {
+      // Add new node at tap (finds nearest grid point)
+      state.crystalNodes!.push(createCrystalNode(state.width, state.height, x, y));
+      if (state.crystalNodes!.length > 40) state.crystalNodes!.shift();
     }
   }
 }
