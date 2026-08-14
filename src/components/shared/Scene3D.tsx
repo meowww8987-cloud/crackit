@@ -25,6 +25,7 @@ import {
   renderParticleFrame,
   handleParticlePointer,
   resizeParticleScene,
+  updateParticlePointer,
   type ParticleState,
 } from '@/lib/particleScenes';
 
@@ -253,7 +254,7 @@ export function Scene3D() {
     };
     document.addEventListener('visibilitychange', onVisibility);
 
-    // ---- Pointer interaction (tap / double-tap for particle scenes) ----
+    // ---- Pointer interaction (tap / double-tap / hold for particle scenes) ----
     // Listens on document. If the tap target is NOT inside a card/button/nav
     // (i.e. it hit the background), forwards the tap to the particle scene.
     let lastTapTime = 0;
@@ -262,28 +263,27 @@ export function Scene3D() {
     const DOUBLE_TAP_MS = 350;
     const DOUBLE_TAP_DIST = 50;
 
+    // Check if a pointer event hit the background (not a card/button/etc.)
+    const isBackgroundTap = (target: HTMLElement | null): boolean => {
+      if (!target) return false;
+      return !target.closest('button, a, input, textarea, select, nav, [role="button"], .glass, .glass-strong, .card-solid, [data-interactive]');
+    };
+
     const onPointerDown = (e: PointerEvent) => {
-      // Only handle if there's an active particle scene
       if (!particleSceneRef.current) return;
+      if (!isBackgroundTap(e.target as HTMLElement | null)) return;
 
-      // Check if the tap hit a background area (not a card/button/nav/etc.)
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      // If the target is inside an interactive element, don't intercept
-      if (target.closest('button, a, input, textarea, select, nav, [role="button"], .glass, .glass-strong, .card-solid, [data-interactive]')) {
-        return;
-      }
+      // Set pointer active for magnetic field (continuous touch)
+      updateParticlePointer(particleSceneRef.current, e.clientX, e.clientY, true);
 
-      // It's a background tap — detect single vs double
+      // Detect single vs double tap
       const now = Date.now();
       const dist = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY);
       const isDoubleTap = (now - lastTapTime < DOUBLE_TAP_MS) && (dist < DOUBLE_TAP_DIST);
 
-      // Forward to particle scene
       handleParticlePointer(
         particleSceneRef.current,
-        e.clientX,
-        e.clientY,
+        e.clientX, e.clientY,
         isDoubleTap,
         (Date.now() - baseTime) / 1000,
       );
@@ -292,13 +292,33 @@ export function Scene3D() {
       lastTapX = e.clientX;
       lastTapY = e.clientY;
     };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!particleSceneRef.current) return;
+      // Only update if pointer was previously active (from pointerdown on background)
+      if (particleSceneRef.current.pointerActive) {
+        updateParticlePointer(particleSceneRef.current, e.clientX, e.clientY, true);
+      }
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (!particleSceneRef.current) return;
+      updateParticlePointer(particleSceneRef.current, 0, 0, false);
+    };
+
     document.addEventListener('pointerdown', onPointerDown, { passive: true });
+    document.addEventListener('pointermove', onPointerMove, { passive: true });
+    document.addEventListener('pointerup', onPointerUp, { passive: true });
+    document.addEventListener('pointercancel', onPointerUp, { passive: true });
 
     return () => {
       running = false;
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibility);
       document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+      document.removeEventListener('pointercancel', onPointerUp);
       clearInterval(sceneCheckInterval);
       if (frame) cancelAnimationFrame(frame);
     };

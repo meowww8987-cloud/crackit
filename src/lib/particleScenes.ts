@@ -36,7 +36,10 @@ export function isParticleScene(type: string): boolean {
 
 // Only types that have been fully implemented (build + render + interaction).
 // Others fall back to their 3D equivalent in Scene3D.tsx.
-const IMPLEMENTED: ParticleSceneType[] = ['shooting-stars', 'molecular-bonds', 'boiling-bubbles', 'electron-cloud', 'crystal-lattice'];
+const IMPLEMENTED: ParticleSceneType[] = [
+  'shooting-stars', 'molecular-bonds', 'boiling-bubbles', 'electron-cloud',
+  'crystal-lattice', 'falling-petals', 'dna-drift', 'magnetic-field',
+];
 
 export function isParticleSceneImplemented(type: string): boolean {
   return IMPLEMENTED.includes(type as ParticleSceneType);
@@ -79,6 +82,17 @@ interface ElectronAtom {
 interface CrystalNode {
   x: number; y: number; targetX: number; targetY: number; settled: boolean;
 }
+interface Petal {
+  x: number; y: number; vx: number; vy: number;
+  rotation: number; rotSpeed: number;
+  swayPhase: number; swaySpeed: number; size: number;
+}
+interface DNAHelix {
+  x: number; y: number; driftSpeed: number; brightness: number; phase: number;
+}
+interface MagneticParticle {
+  x: number; y: number; vx: number; vy: number; size: number;
+}
 
 export interface ParticleState {
   type: ParticleSceneType;
@@ -101,6 +115,13 @@ export interface ParticleState {
   // Crystal Lattice
   crystalNodes?: CrystalNode[];
   crystalFlash?: number;
+  // Falling Petals
+  petals?: Petal[];
+  windForce?: { x: number; y: number; life: number };
+  // DNA Helix Drift
+  helices?: DNAHelix[];
+  // Magnetic Field
+  magneticParticles?: MagneticParticle[];
   // Pointer state (for magnetic field etc.)
   pointerX?: number;
   pointerY?: number;
@@ -126,6 +147,12 @@ export function buildParticleScene(
     initElectronCloud(state);
   } else if (type === 'crystal-lattice') {
     initCrystalLattice(state);
+  } else if (type === 'falling-petals') {
+    initFallingPetals(state);
+  } else if (type === 'dna-drift') {
+    initDNADrift(state);
+  } else if (type === 'magnetic-field') {
+    initMagneticField(state);
   }
 
   return state;
@@ -166,6 +193,12 @@ export function renderParticleFrame(
     renderElectronCloud(ctx, state, time, dt, electronRgb);
   } else if (state.type === 'crystal-lattice') {
     renderCrystalLattice(ctx, state, time, dt, electronRgb);
+  } else if (state.type === 'falling-petals') {
+    renderFallingPetals(ctx, state, time, dt, electronRgb);
+  } else if (state.type === 'dna-drift') {
+    renderDNADrift(ctx, state, time, dt, electronRgb);
+  } else if (state.type === 'magnetic-field') {
+    renderMagneticField(ctx, state, time, dt, electronRgb);
   }
 }
 
@@ -600,6 +633,241 @@ function renderCrystalLattice(
   }
 }
 
+// ===== Falling Petals renderer =====
+
+function initFallingPetals(state: ParticleState) {
+  const count = 18 + Math.floor(Math.random() * 8);
+  state.petals = Array.from({ length: count }, () => createPetal(state.width, state.height));
+  state.windForce = { x: 0, y: 0, life: 0 };
+}
+
+function createPetal(width: number, height: number, startX?: number, startY?: number): Petal {
+  return {
+    x: startX ?? Math.random() * width,
+    y: startY ?? -20 - Math.random() * height * 0.5,
+    vx: (Math.random() - 0.5) * 8,
+    vy: 15 + Math.random() * 25,
+    rotation: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 1.5,
+    swayPhase: Math.random() * Math.PI * 2,
+    swaySpeed: 0.5 + Math.random() * 1,
+    size: 4 + Math.random() * 5,
+  };
+}
+
+function renderFallingPetals(
+  ctx: CanvasRenderingContext2D,
+  state: ParticleState,
+  time: number,
+  dt: number,
+  electronRgb: [number, number, number],
+) {
+  const [er, eg, eb] = electronRgb;
+  const { width, height } = state;
+  const petals = state.petals!;
+  const wind = state.windForce!;
+
+  // Decay wind force
+  if (wind.life > 0) {
+    wind.life -= dt;
+    if (wind.life < 0) { wind.life = 0; wind.x = 0; wind.y = 0; }
+  }
+
+  for (const p of petals) {
+    // Apply wind
+    if (wind.life > 0) {
+      p.vx += wind.x * dt * 60;
+      p.vy += wind.y * dt * 30;
+    }
+    // Sway + fall
+    p.x += p.vx * dt + Math.sin(time * p.swaySpeed + p.swayPhase) * 0.8;
+    p.y += p.vy * dt;
+    p.rotation += p.rotSpeed * dt;
+
+    // Respawn at top if fallen off
+    if (p.y > height + 20) {
+      Object.assign(p, createPetal(width, height));
+    }
+    // Wrap horizontally
+    if (p.x < -20) p.x = width + 20;
+    if (p.x > width + 20) p.x = -20;
+
+    // Draw petal (rotated ellipse)
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rotation);
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, 0.35)`;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, p.size, p.size * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ===== DNA Helix Drift renderer =====
+
+function initDNADrift(state: ParticleState) {
+  const count = 3 + Math.floor(Math.random() * 2);
+  state.helices = Array.from({ length: count }, (_, i) => ({
+    x: state.width * (0.2 + i * 0.25 + Math.random() * 0.1),
+    y: Math.random() * state.height,
+    driftSpeed: 4 + Math.random() * 8,
+    brightness: 0.2,
+    phase: Math.random() * Math.PI * 2,
+  }));
+}
+
+function renderDNADrift(
+  ctx: CanvasRenderingContext2D,
+  state: ParticleState,
+  time: number,
+  dt: number,
+  electronRgb: [number, number, number],
+) {
+  const [er, eg, eb] = electronRgb;
+  const { width, height } = state;
+  const helices = state.helices!;
+  const HELIX_HEIGHT = 350;
+  const HELIX_WIDTH = 25;
+  const STEPS = 24;
+
+  for (const h of helices) {
+    // Drift upward
+    h.y -= h.driftSpeed * dt;
+    if (h.y < -HELIX_HEIGHT) h.y = height + 50;
+
+    // Decay brightness boost
+    if (h.brightness > 0.2) {
+      h.brightness -= dt * 0.15;
+      if (h.brightness < 0.2) h.brightness = 0.2;
+    }
+
+    // Generate strand points
+    const s1: { x: number; y: number }[] = [];
+    const s2: { x: number; y: number }[] = [];
+    for (let i = 0; i <= STEPS; i++) {
+      const t = i / STEPS;
+      const y = h.y + t * HELIX_HEIGHT;
+      const angle = t * Math.PI * 4 + time * 0.3 + h.phase;
+      s1.push({ x: h.x + Math.cos(angle) * HELIX_WIDTH, y });
+      s2.push({ x: h.x + Math.cos(angle + Math.PI) * HELIX_WIDTH, y });
+    }
+
+    // Draw rungs (connecting lines every 2 steps)
+    for (let i = 0; i < STEPS; i += 2) {
+      const dist = Math.abs(s1[i].x - s2[i].x);
+      const opacity = h.brightness * (1 - dist / (HELIX_WIDTH * 2)) * 0.4;
+      ctx.strokeStyle = `rgba(${er}, ${eg}, ${eb}, ${opacity})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(s1[i].x, s1[i].y);
+      ctx.lineTo(s2[i].x, s2[i].y);
+      ctx.stroke();
+    }
+
+    // Draw strand 1
+    ctx.strokeStyle = `rgba(${er}, ${eg}, ${eb}, ${h.brightness})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < s1.length; i++) {
+      if (i === 0) ctx.moveTo(s1[i].x, s1[i].y);
+      else ctx.lineTo(s1[i].x, s1[i].y);
+    }
+    ctx.stroke();
+
+    // Draw strand 2
+    ctx.beginPath();
+    for (let i = 0; i < s2.length; i++) {
+      if (i === 0) ctx.moveTo(s2[i].x, s2[i].y);
+      else ctx.lineTo(s2[i].x, s2[i].y);
+    }
+    ctx.stroke();
+  }
+}
+
+// ===== Magnetic Field renderer =====
+
+function initMagneticField(state: ParticleState) {
+  const count = 40 + Math.floor(Math.random() * 10);
+  state.magneticParticles = Array.from({ length: count }, () => ({
+    x: Math.random() * state.width,
+    y: Math.random() * state.height,
+    vx: (Math.random() - 0.5) * 20,
+    vy: (Math.random() - 0.5) * 20,
+    size: 1 + Math.random() * 2,
+  }));
+}
+
+function renderMagneticField(
+  ctx: CanvasRenderingContext2D,
+  state: ParticleState,
+  time: number,
+  dt: number,
+  electronRgb: [number, number, number],
+) {
+  const [er, eg, eb] = electronRgb;
+  const { width, height } = state;
+  const particles = state.magneticParticles!;
+  const ATTRACT_DIST = 200;
+  const ORBIT_RADIUS = 50;
+
+  for (const p of particles) {
+    // Magnetic attraction when pointer is active
+    if (state.pointerActive && state.pointerX != null && state.pointerY != null) {
+      const dx = state.pointerX - p.x;
+      const dy = state.pointerY - p.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist < ATTRACT_DIST && dist > 0) {
+        if (dist > ORBIT_RADIUS) {
+          // Attract toward finger
+          const force = 80 * dt;
+          p.vx += (dx / dist) * force;
+          p.vy += (dy / dist) * force;
+        } else {
+          // Orbit: tangential force (perpendicular to radial)
+          const force = 60 * dt;
+          p.vx += (-dy / dist) * force;
+          p.vy += (dx / dist) * force;
+          // Slight inward pull to maintain orbit
+          p.vx += (dx / dist) * 15 * dt;
+          p.vy += (dy / dist) * 15 * dt;
+        }
+      }
+    }
+
+    // Apply velocity
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+
+    // Damping
+    p.vx *= 0.97;
+    p.vy *= 0.97;
+
+    // Bounce off edges
+    if (p.x < 0) { p.x = 0; p.vx *= -0.5; }
+    if (p.x > width) { p.x = width; p.vx *= -0.5; }
+    if (p.y < 0) { p.y = 0; p.vy *= -0.5; }
+    if (p.y > height) { p.y = height; p.vy *= -0.5; }
+
+    // Draw particle
+    const opacity = state.pointerActive ? 0.7 : 0.4;
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, ${opacity})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw subtle attraction radius when pointer active
+  if (state.pointerActive && state.pointerX != null && state.pointerY != null) {
+    ctx.strokeStyle = `rgba(${er}, ${eg}, ${eb}, 0.08)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(state.pointerX, state.pointerY, ATTRACT_DIST, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
 // ===== Pointer interaction =====
 
 export function handleParticlePointer(
@@ -689,7 +957,68 @@ export function handleParticlePointer(
       state.crystalNodes!.push(createCrystalNode(state.width, state.height, x, y));
       if (state.crystalNodes!.length > 40) state.crystalNodes!.shift();
     }
+  } else if (state.type === 'falling-petals') {
+    if (isDoubleTap) {
+      // Strong wind gust in random direction
+      const angle = Math.random() * Math.PI * 2;
+      state.windForce = {
+        x: Math.cos(angle) * 2,
+        y: Math.sin(angle) * 0.5,
+        life: 2.0,
+      };
+    } else {
+      // Small wind gust at tap location (pushes petals away)
+      state.windForce = { x: 0, y: -0.5, life: 0.5 };
+    }
+  } else if (state.type === 'dna-drift') {
+    if (isDoubleTap) {
+      // All helices brighten
+      for (const h of state.helices!) h.brightness = 0.5;
+    } else {
+      // Nearest helix brightens
+      let nearest = state.helices![0];
+      let minDist = Infinity;
+      for (const h of state.helices!) {
+        const d = Math.abs(h.x - x);
+        if (d < minDist) { minDist = d; nearest = h; }
+      }
+      if (nearest) nearest.brightness = 0.5;
+    }
+  } else if (state.type === 'magnetic-field') {
+    if (isDoubleTap) {
+      // Spawn 15 particles at tap
+      for (let i = 0; i < 15; i++) {
+        state.magneticParticles!.push({
+          x: x + (Math.random() - 0.5) * 30,
+          y: y + (Math.random() - 0.5) * 30,
+          vx: (Math.random() - 0.5) * 50,
+          vy: (Math.random() - 0.5) * 50,
+          size: 1 + Math.random() * 2,
+        });
+      }
+      if (state.magneticParticles!.length > 80) {
+        state.magneticParticles!.splice(0, state.magneticParticles!.length - 80);
+      }
+    } else {
+      // Spawn 5 particles at tap
+      for (let i = 0; i < 5; i++) {
+        state.magneticParticles!.push({
+          x: x + (Math.random() - 0.5) * 20,
+          y: y + (Math.random() - 0.5) * 20,
+          vx: (Math.random() - 0.5) * 30,
+          vy: (Math.random() - 0.5) * 30,
+          size: 1 + Math.random() * 2,
+        });
+      }
+    }
   }
+}
+
+/** Update pointer position for continuous-touch scenes (magnetic field). */
+export function updateParticlePointer(state: ParticleState, x: number, y: number, active: boolean) {
+  state.pointerX = x;
+  state.pointerY = y;
+  state.pointerActive = active;
 }
 
 // ===== Resize handler =====
