@@ -548,6 +548,211 @@ html:not(.dark):not(.warm) .force-dark-ui input,
 html:not(.dark):not(.warm) .force-dark-ui textarea,
 html:not(.dark):not(.warm) .force-dark-ui select { color: #ffffff !important; background: rgba(255,255,255,0.08) !important; }
 
+/* ===== SAGE MIST THEME — Eye-comfort palette for long study sessions =====
+ * Design goals:
+ *  - LOW LUMINANCE CONTRAST: ~7:1 (WCAG AAA) — not pure black on pure white
+ *  - WARM COLOR TEMPERATURE: zero pure blue/white, all colors shifted warm
+ *  - DESATURATED PALETTE: ~40% less saturated than dark theme
+ *  - NO VISUAL NOISE: grid + vignette + noise overlay hidden
+ *  - SOFT FLOATING PARTICLES instead of sharp atoms/DNA
+ *  - SOLID CARD BACKGROUNDS — no glassmorphism transparency
+ *  - EARTH TONES replace neon — sage/terracotta/gold instead of electric blue/red/green
+ * Named palette: Warm Mist / Cream Linen / Deep Forest / Sage Gray / Misty Olive
+ *                Muted Sage / Warm Terracotta / Dusty Gold / Soft Stone
+ */
+.sage {
+  --ring-track: rgba(122, 155, 118, 0.18);
+  --ring-outer: #7A9B76;
+  --bar-track: rgba(201, 169, 97, 0.20);
+  --card-bg: #F2F0E8;
+  --bg-app: #E8EBE4;
+  --bg-card: #F2F0E8;
+  --bg-card-solid: #F2F0E8;
+  --bg-glass-strong: #F2F0E8;
+  --text-primary: #2D3A2E;
+  --text-secondary: rgb(92, 107, 90);
+  --text-muted: rgb(138, 149, 131);
+  --border-color: rgba(120, 130, 110, 0.18);
+  --border-card: rgba(120, 130, 110, 0.22);
+  --shadow-card: 0 2px 8px -2px rgba(120, 130, 110, 0.08);
+  --shadow-strong: 0 8px 28px -4px rgba(120, 130, 110, 0.12);
+  --background: oklch(0.94 0.008 120);
+  --foreground: oklch(0.30 0.02 120);
+  --card: oklch(0.96 0.006 120);
+  --card-foreground: oklch(0.30 0.02 120);
+  --popover: oklch(0.96 0.006 120);
+  --popover-foreground: oklch(0.30 0.02 120);
+  --primary: oklch(0.62 0.06 130);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.92 0.01 120);
+  --secondary-foreground: oklch(0.35 0.02 120);
+  --muted: oklch(0.92 0.01 120);
+  --muted-foreground: oklch(0.50 0.02 120);
+  --accent: oklch(0.88 0.04 75);
+  --accent-foreground: oklch(0.35 0.04 75);
+  --destructive: oklch(0.55 0.14 35);
+  --border: oklch(0.86 0.01 120);
+  --input: oklch(0.92 0.01 120);
+  --ring: oklch(0.62 0.06 130);
+}
+/* Body background — flat Warm Mist (no busy gradients for eye comfort) */
+html.sage body {
+  background: #E8EBE4 !important;
+  background-attachment: fixed !important;
+}
+/* Hide ALL visual noise for calm reading environment */
+html.sage .grid-bg,
+html.sage .aurora-noise,
+html.sage .aurora-vignette {
+  display: none !important;
+}
+
+/* === Text color overrides — Deep Forest (warm dark green-charcoal) ===
+ * All-earthy opacity ladder: Deep Forest → Sage Gray → Misty Olive → Light Sage
+ */
+.sage .text-white, .sage text-white { color: #2D3A2E !important; }
+.sage .text-white\/95 { color: rgba(45, 58, 46, 0.95) !important; }
+.sage .text-white\/90 { color: rgba(45, 58, 46, 0.90) !important; }
+.sage .text-white\/85 { color: rgba(45, 58, 46, 0.85) !important; }
+.sage .text-white\/80 { color: rgba(45, 58, 46, 0.80) !important; }
+.sage .text-white\/75 { color: rgba(92, 107, 90, 0.81) !important; }
+.sage .text-white\/70 { color: rgba(92, 107, 90, 0.76) !important; }
+.sage .text-white\/65 { color: rgba(92, 107, 90, 0.71) !important; }
+.sage .text-white\/60 { color: rgba(92, 107, 90, 0.66) !important; }
+.sage .text-white\/55 { color: rgba(138, 149, 131, 0.65) !important; }
+.sage .text-white\/50 { color: rgba(138, 149, 131, 0.60) !important; }
+.sage .text-white\/45 { color: rgba(138, 149, 131, 0.55) !important; }
+.sage .text-white\/40 { color: rgba(138, 149, 131, 0.48) !important; }
+.sage .text-white\/35 { color: rgba(138, 149, 131, 0.43) !important; }
+.sage .text-white\/30 { color: rgba(138, 149, 131, 0.38) !important; }
+.sage .text-white\/25 { color: rgba(138, 149, 131, 0.33) !important; }
+.sage .text-white\/20  { color: rgba(180, 190, 175, 0.30) !important; }
+.sage .text-white\/15  { color: rgba(180, 190, 175, 0.25) !important; }
+.sage .text-white\/10  { color: rgba(180, 190, 175, 0.20) !important; }
+.sage .text-white\/5  { color: rgba(180, 190, 175, 0.15) !important; }
+
+.sage .bg-white\/5 { background: rgba(122, 155, 118, 0.05) !important; }
+.sage .bg-white\/10 { background: rgba(122, 155, 118, 0.07) !important; }
+.sage .bg-white\/15 { background: rgba(122, 155, 118, 0.1) !important; }
+.sage .bg-white\/20 { background: rgba(122, 155, 118, 0.13) !important; }
+.sage .bg-white\/30 { background: rgba(122, 155, 118, 0.18) !important; }
+
+.sage .border-white\/5 { border-color: rgba(120, 130, 110, 0.12) !important; }
+.sage .border-white\/10 { border-color: rgba(120, 130, 110, 0.18) !important; }
+.sage .border-white\/20 { border-color: rgba(120, 130, 110, 0.28) !important; }
+.sage .ring-white\/30 { --tw-ring-color: rgba(122, 155, 118, 0.30) !important; }
+
+/* === Glass / cards — Cream Linen with Soft Stone borders === */
+.sage .glass {
+  background: #F2F0E8 !important;
+  border: 1px solid rgba(120, 130, 110, 0.20) !important;
+  box-shadow: 0 2px 12px -2px rgba(120, 130, 110, 0.08), inset 0 1px 0 rgba(255,255,255,0.5) !important;
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+}
+.sage .glass-strong {
+  background: #F2F0E8 !important;
+  border: 1px solid rgba(120, 130, 110, 0.24) !important;
+  box-shadow: 0 8px 32px -4px rgba(120, 130, 110, 0.12), inset 0 1px 0 rgba(255,255,255,0.6) !important;
+}
+.sage .card-solid {
+  background: #F2F0E8 !important;
+  border: 1px solid rgba(120, 130, 110, 0.18) !important;
+  box-shadow: 0 2px 10px -2px rgba(120, 130, 110, 0.06), inset 0 1px 0 rgba(255,255,255,0.5) !important;
+}
+.sage .card-tint {
+  mix-blend-mode: normal;
+  opacity: 0.4;
+}
+/* Gradient text — Muted Sage → Dusty Gold (warm, not neon) */
+.sage .gradient-text {
+  background: linear-gradient(135deg, #7A9B76, #C9A961) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+.sage .grid-bg {
+  background-image: linear-gradient(rgba(120, 130, 110, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(120, 130, 110, 0.04) 1px, transparent 1px);
+}
+.sage .bg-black\/60 { background: rgba(232, 235, 228, 0.7) !important; }
+.sage .bg-black\/70 { background: rgba(232, 235, 228, 0.8) !important; }
+
+/* === Inputs — Deep Forest text on Cream Linen, Dusty Gold focus ring === */
+.sage input, .sage textarea, .sage select {
+  color: #2D3A2E !important;
+  background: #F2F0E8 !important;
+  border-color: rgba(120, 130, 110, 0.24) !important;
+}
+.sage input::placeholder, .sage textarea::placeholder {
+  color: rgba(138, 149, 131, 0.6) !important;
+}
+.sage input:focus, .sage textarea:focus, .sage select:focus {
+  border-color: #C9A961 !important;
+  box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.15) !important;
+  outline: none !important;
+}
+
+/* Range sliders — Muted Sage track + thumb */
+.sage input[type="range"] {
+  background: rgba(122, 155, 118, 0.15) !important;
+}
+.sage input[type="range"]::-webkit-slider-thumb {
+  border-color: #7A9B76 !important;
+  box-shadow: 0 2px 8px rgba(122, 155, 118, 0.20) !important;
+}
+.sage input[type="range"]::-moz-range-thumb {
+  border-color: #7A9B76 !important;
+}
+
+/* === Minimal-mode overrides for sage — keep cards Cream Linen === */
+.minimal-mode.sage {
+  --bg-app: #E8EBE4;
+  --bg-card: #F2F0E8;
+  --bg-card-solid: #F2F0E8;
+  --bg-glass-strong: #F2F0E8;
+}
+
+/* === FORCE DARK UI reset for Sage theme ===
+ * (Same rules as Rose — copied here so FocusTimer/Splash/SleepLockScreen
+ *  stay pure-black + white-text even when Sage light theme is active.)
+ */
+html.sage .force-dark-ui .text-white { color: #ffffff !important; }
+html.sage .force-dark-ui .text-white\/95 { color: rgba(255, 255, 255, 0.95) !important; }
+html.sage .force-dark-ui .text-white\/90 { color: rgba(255, 255, 255, 0.90) !important; }
+html.sage .force-dark-ui .text-white\/85 { color: rgba(255, 255, 255, 0.85) !important; }
+html.sage .force-dark-ui .text-white\/80 { color: rgba(255, 255, 255, 0.80) !important; }
+html.sage .force-dark-ui .text-white\/75 { color: rgba(255, 255, 255, 0.75) !important; }
+html.sage .force-dark-ui .text-white\/70 { color: rgba(255, 255, 255, 0.70) !important; }
+html.sage .force-dark-ui .text-white\/65 { color: rgba(255, 255, 255, 0.65) !important; }
+html.sage .force-dark-ui .text-white\/60 { color: rgba(255, 255, 255, 0.60) !important; }
+html.sage .force-dark-ui .text-white\/55 { color: rgba(255, 255, 255, 0.55) !important; }
+html.sage .force-dark-ui .text-white\/50 { color: rgba(255, 255, 255, 0.50) !important; }
+html.sage .force-dark-ui .text-white\/45 { color: rgba(255, 255, 255, 0.45) !important; }
+html.sage .force-dark-ui .text-white\/40 { color: rgba(255, 255, 255, 0.40) !important; }
+html.sage .force-dark-ui .text-white\/35 { color: rgba(255, 255, 255, 0.35) !important; }
+html.sage .force-dark-ui .text-white\/30 { color: rgba(255, 255, 255, 0.30) !important; }
+html.sage .force-dark-ui .text-white\/25 { color: rgba(255, 255, 255, 0.25) !important; }
+html.sage .force-dark-ui .text-white\/20 { color: rgba(255, 255, 255, 0.20) !important; }
+html.sage .force-dark-ui .text-white\/15 { color: rgba(255, 255, 255, 0.15) !important; }
+html.sage .force-dark-ui .text-white\/10 { color: rgba(255, 255, 255, 0.10) !important; }
+html.sage .force-dark-ui .text-white\/5 { color: rgba(255, 255, 255, 0.05) !important; }
+html.sage .force-dark-ui .bg-white\/5 { background: rgba(255, 255, 255, 0.05) !important; }
+html.sage .force-dark-ui .bg-white\/10 { background: rgba(255, 255, 255, 0.10) !important; }
+html.sage .force-dark-ui .bg-white\/15 { background: rgba(255, 255, 255, 0.15) !important; }
+html.sage .force-dark-ui .bg-white\/20 { background: rgba(255, 255, 255, 0.20) !important; }
+html.sage .force-dark-ui .bg-white\/30 { background: rgba(255, 255, 255, 0.30) !important; }
+html.sage .force-dark-ui .border-white\/5 { border-color: rgba(255, 255, 255, 0.05) !important; }
+html.sage .force-dark-ui .border-white\/10 { border-color: rgba(255, 255, 255, 0.10) !important; }
+html.sage .force-dark-ui .border-white\/15 { border-color: rgba(255, 255, 255, 0.15) !important; }
+html.sage .force-dark-ui .border-white\/20 { border-color: rgba(255, 255, 255, 0.20) !important; }
+html.sage .force-dark-ui .ring-white\/30 { --tw-ring-color: rgba(255, 255, 255, 0.30) !important; }
+html.sage .force-dark-ui .bg-black\/60 { background: rgba(0, 0, 0, 0.60) !important; }
+html.sage .force-dark-ui .bg-black\/70 { background: rgba(0, 0, 0, 0.70) !important; }
+html.sage .force-dark-ui .bg-black\/80 { background: rgba(0, 0, 0, 0.80) !important; }
+html.sage .force-dark-ui input,
+html.sage .force-dark-ui textarea,
+html.sage .force-dark-ui select { color: #ffffff !important; background: rgba(255,255,255,0.08) !important; }
+
 /* ===== MIDNIGHT GOLD THEME — Slight black + premium gold ambient, pure black cards ===== */
 .gold {
   --ring-track: rgba(251, 191, 36, 0.22);

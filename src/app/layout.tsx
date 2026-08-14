@@ -56,11 +56,12 @@ export default function RootLayout({
                     theme = parsed?.state?.appTheme || 'dark';
                   }
                   var el = document.documentElement;
-                  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'rose', 'gold', 'light-mode-adapt', 'warm-mode-adapt', 'rose-mode-adapt');
+                  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'rose', 'gold', 'sage', 'light-mode-adapt', 'warm-mode-adapt', 'rose-mode-adapt', 'sage-mode-adapt');
                   if (theme === 'dark') el.classList.add('dark');
                   else if (theme === 'warm') el.classList.add('warm', 'warm-mode-adapt');
                   else if (theme === 'light') el.classList.add('light-mode-adapt');
-                  else if (theme === 'rose') el.classList.add('rose', 'rose-mode-adapt'); // rose = soothing LIGHT theme, no .dark
+                  else if (theme === 'rose') el.classList.add('rose', 'rose-mode-adapt');
+                  else if (theme === 'sage') el.classList.add('sage', 'sage-mode-adapt');
                   else if (theme === 'ocean' || theme === 'forest' || theme === 'gold') el.classList.add('dark', theme);
                   else el.classList.add('dark'); // fallback for any legacy value (e.g. 'lavender')
                 } catch(e) {

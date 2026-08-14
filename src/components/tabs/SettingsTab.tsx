@@ -146,12 +146,14 @@ export function SettingsTab() {
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer text-xs">
             <span className="text-white/40">
-              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.19.1</span>
+              NEET 2027 Study Tracker · <span className="font-mono text-teal-400">v2.20.0</span>
             </span>
             <ChevronDown size={12} className="text-white/40 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="mt-2 space-y-1.5 text-[10px] text-white/50 border-t border-white/5 pt-2">
-            <div><strong className="text-white/70">v2.19.1</strong> — Fix accidental slider changes during scroll. New ScrollAwareSlider wrapper detects swipe angle: vertical (&gt;60°) → page scrolls (slider untouched), horizontal (&lt;30°) → slider drags. Applied to all 11 range sliders: Weekly Goals (3), Add Target expected time, Settings (5: dim delay, dim opacity, animation intensity, sound volume, + SliderRow reusable), Lecture Resource expected time, Add Test duration, Paper Test Setup (2: question count + duration), Timetable Editor (2: start + end hour).</div>
+            <div><strong className="text-white/70">v2.20.0</strong> — New "Sage Mist" 🌿 eye-comfort theme. Built on vision science: low luminance contrast (7:1 WCAG AAA, not pure black/white), warm color temperature (zero pure blue/white), desaturated earth tones (~40% less saturated). Palette: Warm Mist bg #E8EBE4, Cream Linen cards #F2F0E8, Deep Forest text #2D3A2E, Muted Sage accent #7A9B76, Dusty Gold #C9A961, Warm Terracotta #C2856B. Hidden all visual noise (grid+vignette+aurora). Subject colors desaturated: Soft Slate/Dusty Lilac/Sage Green/Warm Clay/Stone Gray. Solid cards (no glassmorphism). For long study sessions with zero eye strain.</div>
+            <div><strong className="text-white/70">v2.19.2</strong> — ScrollAwareSlider Option C: when slider is being dragged (horizontal), lock page scroll (touch-action: none) so vertical movement doesn&apos;t leak through. Prevents &apos;slider jumps + page also scrolls&apos; double-action.</div>
+            <div><strong className="text-white/70">v2.19.1</strong> — Fix accidental slider changes during scroll. New ScrollAwareSlider wrapper detects swipe angle (vertical &gt; 60° = scroll, horizontal &lt; 30° = drag). Applied to all 11 range sliders.</div>
             <div><strong className="text-white/70">v2.19.0</strong> — Remove ALL requestFullscreen() calls (8 total). Was triggering the &quot;To exit full screen, press Esc&quot; toast. Now relies on manifest display:fullscreen (works on installed Android PWA, no JS, no toast, status bar hidden). Bumped SW cache v4→v5.</div>
             <div><strong className="text-white/70">v2.18.1</strong> — Fix: Sleep History moved from Tests long-press → History tab long-press (alongside Test History, 2 options). Tests long-press reverted to CBT Mode + Practice Mode (2 options). Stats long-press order fixed: Weekly Report (top) → Monthly Report (middle) → Sleep Report (bottom). Sleep History + Sleep Analysis sheets redesigned with distinct dark indigo night-sky theme.</div>
             <div><strong className="text-white/70">v2.18.0</strong> — Sleep History → long-press menu. Sleep Reports (Weekly + Monthly) → Stats long-press. TabLongPressOverlay supports 3 actions. SleepAnalysisSheet with Weekly/Monthly tabs: score + stats + best/worst night + advantages/disadvantages/improvements. SleepHistorySheet with all sleep entries grouped by date.</div>
@@ -486,6 +488,7 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
     { v: 'ocean', label: 'Ocean', emoji: '🌊', desc: 'Deep blue', color: '#0c1929' },
     { v: 'forest', label: 'Forest', emoji: '🌿', desc: 'Deep green', color: '#0a1410' },
     { v: 'rose', label: 'Rose Quartz', emoji: '🌸', desc: 'Rosy pink', color: '#FFD6E8' },
+    { v: 'sage', label: 'Sage Mist', emoji: '🌿', desc: 'Eye comfort', color: '#E8EBE4' },
     { v: 'gold', label: 'Gold', emoji: '✨', desc: 'Black + gold', color: '#000000' },
   ] as const;
 

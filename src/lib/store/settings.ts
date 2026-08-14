@@ -100,7 +100,7 @@ export const useSettings = create<SettingsStore>()(
         if (state && typeof window !== 'undefined') {
           applyTextSize(state.textSize);
           // Guard against any legacy 'lavender' value slipping through
-          const validThemes = ['dark', 'light', 'warm', 'ocean', 'forest', 'rose', 'gold'];
+          const validThemes = ['dark', 'light', 'warm', 'ocean', 'forest', 'rose', 'gold', 'sage'];
           const t = validThemes.includes(state.appTheme as any) ? state.appTheme : 'dark';
           applyTheme(t as any);
         }
@@ -114,11 +114,11 @@ export function applyTextSize(size: Settings['textSize']) {
   document.documentElement.style.setProperty('--app-font-size', `${TEXT_SIZE_PX[size]}px`);
 }
 
-export function applyTheme(theme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'rose' | 'gold') {
+export function applyTheme(theme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'rose' | 'gold' | 'sage') {
   if (typeof document === 'undefined') return;
   const el = document.documentElement;
   // Remove all theme classes
-  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'rose', 'gold', 'light-mode-adapt', 'warm-mode-adapt', 'rose-mode-adapt');
+  el.classList.remove('dark', 'warm', 'ocean', 'forest', 'rose', 'gold', 'sage', 'light-mode-adapt', 'warm-mode-adapt', 'rose-mode-adapt', 'sage-mode-adapt');
   // Add the selected theme
   if (theme === 'dark') {
     el.classList.add('dark');
@@ -128,9 +128,11 @@ export function applyTheme(theme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest'
     el.classList.add('light-mode-adapt');
   } else if (theme === 'rose') {
     // Rose is a SOOTHING LIGHT theme — do NOT add .dark class.
-    // Without .dark, the base `html:not(.dark):not(.warm) .glass` rule applies plain white cards,
-    // and rose-specific overrides tint the borders/text for a calming study-friendly palette.
     el.classList.add('rose', 'rose-mode-adapt');
+  } else if (theme === 'sage') {
+    // Sage is a SOOTHING LIGHT theme — do NOT add .dark class.
+    // Uses the same light-mode-adapt pattern as Rose.
+    el.classList.add('sage', 'sage-mode-adapt');
   } else {
     // ocean, forest, gold are dark-based themes
     // MUST add 'dark' class too so all .dark .glass, .dark .card-solid, etc. apply

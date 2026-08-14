@@ -314,7 +314,7 @@ export interface Settings {
   dimDelay: number; // seconds 3-30
   distractionTauntInterval: number; // minutes 0-15, 0 = off
   autoDetectWasted: boolean;
-  appTheme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'rose' | 'gold';
+  appTheme: 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'rose' | 'gold' | 'sage';
   textSize: 'S' | 'M' | 'L' | 'XL';
   prefer2D: boolean;
   haptics: boolean;

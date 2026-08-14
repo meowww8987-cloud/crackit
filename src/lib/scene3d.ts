@@ -118,7 +118,7 @@ const SUBJECT_COLORS: Record<string, { hex: string; rgb: [number, number, number
 //  - Warm theme: warm amber/sepia palette on cream bg
 //  - Rose theme: ALL shades of pink palette (distinct from light mode) on pink-tinted bg
 
-export type Theme3DName = 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'rose' | 'gold';
+export type Theme3DName = 'dark' | 'light' | 'warm' | 'ocean' | 'forest' | 'rose' | 'gold' | 'sage';
 
 export interface Theme3DPalette {
   /** Canvas fill (used as the base layer below the 3D objects). */
@@ -210,6 +210,19 @@ const THEME_PALETTES: Record<Theme3DName, Theme3DPalette> = {
       General:   { hex: '#D4A5A5', rgb: [212, 165, 165] },   // Blush
     },
     opacityMul: 1.0,  // full strength — pinks visible against pink bg
+  },
+  sage: {
+    background: '#E8EBE4',  // Warm Mist — soft warm off-white with green undertone
+    electronRgb: [45, 58, 46],  // Deep Forest — matches primary text
+    // Muted, desaturated earth tones — eye-comfort palette
+    subjectColors: {
+      Physics:   { hex: '#6B8CAE', rgb: [107, 140, 174] },   // Soft Slate
+      Chemistry: { hex: '#9B8BA8', rgb: [155, 139, 168] },   // Dusty Lilac
+      Botany:    { hex: '#7A9B76', rgb: [122, 155, 118] },   // Sage Green
+      Zoology:   { hex: '#C2856B', rgb: [194, 133, 107] },   // Warm Clay
+      General:   { hex: '#8A9583', rgb: [138, 149, 131] },   // Stone Gray
+    },
+    opacityMul: 0.85,  // slightly softer for eye comfort
   },
 };
 
