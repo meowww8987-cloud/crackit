@@ -36,7 +36,7 @@ export function isParticleScene(type: string): boolean {
 
 // Only types that have been fully implemented (build + render + interaction).
 // Others fall back to their 3D equivalent in Scene3D.tsx.
-const IMPLEMENTED: ParticleSceneType[] = ['shooting-stars', 'molecular-bonds'];
+const IMPLEMENTED: ParticleSceneType[] = ['shooting-stars', 'molecular-bonds', 'boiling-bubbles'];
 
 export function isParticleSceneImplemented(type: string): boolean {
   return IMPLEMENTED.includes(type as ParticleSceneType);
@@ -65,6 +65,12 @@ interface ShootingStar {
 interface MoleculeAtom {
   x: number; y: number; vx: number; vy: number; radius: number;
 }
+interface Bubble {
+  x: number; y: number; vx: number; vy: number; radius: number; wobblePhase: number; wobbleSpeed: number;
+}
+interface Pop {
+  x: number; y: number; radius: number; maxRadius: number; life: number; maxLife: number;
+}
 
 export interface ParticleState {
   type: ParticleSceneType;
@@ -78,6 +84,9 @@ export interface ParticleState {
   // Molecular Bonds
   moleculeAtoms?: MoleculeAtom[];
   moleculeFlash?: number;
+  // Boiling Bubbles
+  bubbles?: Bubble[];
+  pops?: Pop[];
   // Pointer state (for magnetic field etc.)
   pointerX?: number;
   pointerY?: number;
@@ -97,6 +106,8 @@ export function buildParticleScene(
     initShootingStars(state);
   } else if (type === 'molecular-bonds') {
     initMolecularBonds(state);
+  } else if (type === 'boiling-bubbles') {
+    initBoilingBubbles(state);
   }
 
   return state;
@@ -131,6 +142,8 @@ export function renderParticleFrame(
     renderShootingStars(ctx, state, time, dt, electronRgb);
   } else if (state.type === 'molecular-bonds') {
     renderMolecularBonds(ctx, state, time, dt, electronRgb);
+  } else if (state.type === 'boiling-bubbles') {
+    renderBoilingBubbles(ctx, state, time, dt, electronRgb);
   }
 }
 
@@ -301,6 +314,97 @@ function renderMolecularBonds(
   }
 }
 
+// ===== Boiling Bubbles renderer =====
+
+function initBoilingBubbles(state: ParticleState) {
+  const count = 18;
+  state.bubbles = Array.from({ length: count }, () => spawnBubble(state.width, state.height));
+  state.pops = [];
+}
+
+function spawnBubble(width: number, height: number, startX?: number, startY?: number): Bubble {
+  return {
+    x: startX ?? Math.random() * width,
+    y: startY ?? height + 20,
+    vx: (Math.random() - 0.5) * 10,
+    vy: -(20 + Math.random() * 40), // upward
+    radius: 4 + Math.random() * 12,
+    wobblePhase: Math.random() * Math.PI * 2,
+    wobbleSpeed: 1 + Math.random() * 2,
+  };
+}
+
+function renderBoilingBubbles(
+  ctx: CanvasRenderingContext2D,
+  state: ParticleState,
+  time: number,
+  dt: number,
+  electronRgb: [number, number, number],
+) {
+  const [er, eg, eb] = electronRgb;
+  const { width, height } = state;
+  const bubbles = state.bubbles!;
+  const pops = state.pops!;
+
+  // Update + draw bubbles
+  const alive: Bubble[] = [];
+  for (const b of bubbles) {
+    b.x += b.vx * dt + Math.sin(time * b.wobbleSpeed + b.wobblePhase) * 0.5;
+    b.y += b.vy * dt;
+
+    // If bubble reaches top → pop + respawn at bottom
+    if (b.y < -b.radius * 2) {
+      pops.push({
+        x: b.x, y: 0,
+        radius: b.radius,
+        maxRadius: b.radius * 2.5,
+        life: 0, maxLife: 0.4,
+      });
+      // Respawn at bottom
+      alive.push(spawnBubble(width, height));
+      continue;
+    }
+    alive.push(b);
+
+    // Draw bubble (transparent fill + thin border + highlight)
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, 0.06)`;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = `rgba(${er}, ${eg}, ${eb}, 0.3)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Small highlight (top-left of bubble)
+    ctx.fillStyle = `rgba(${er}, ${eg}, ${eb}, 0.15)`;
+    ctx.beginPath();
+    ctx.arc(b.x - b.radius * 0.3, b.y - b.radius * 0.3, b.radius * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  state.bubbles = alive;
+
+  // Update + draw pops (expanding circles)
+  const alivePops: Pop[] = [];
+  for (const p of pops) {
+    p.life += dt;
+    if (p.life >= p.maxLife) continue;
+    alivePops.push(p);
+
+    const lifeFrac = p.life / p.maxLife;
+    const r = p.radius + (p.maxRadius - p.radius) * lifeFrac;
+    const opacity = (1 - lifeFrac) * 0.4;
+    ctx.strokeStyle = `rgba(${er}, ${eg}, ${eb}, ${opacity})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  state.pops = alivePops;
+}
+
 // ===== Pointer interaction =====
 
 export function handleParticlePointer(
@@ -343,6 +447,26 @@ export function handleParticlePointer(
       if (state.moleculeAtoms!.length > 30) {
         state.moleculeAtoms!.shift();
       }
+    }
+  } else if (state.type === 'boiling-bubbles') {
+    if (isDoubleTap) {
+      // Boil over: spawn 15 bubbles rapidly from bottom
+      for (let i = 0; i < 15; i++) {
+        state.bubbles!.push(spawnBubble(state.width, state.height));
+      }
+    } else {
+      // Spawn cluster of 4 bubbles at tap location
+      for (let i = 0; i < 4; i++) {
+        state.bubbles!.push(spawnBubble(
+          state.width, state.height,
+          x + (Math.random() - 0.5) * 30,
+          y + (Math.random() - 0.5) * 20,
+        ));
+      }
+      // Pop at tap location
+      state.pops!.push({
+        x, y, radius: 8, maxRadius: 30, life: 0, maxLife: 0.4,
+      });
     }
   }
 }
