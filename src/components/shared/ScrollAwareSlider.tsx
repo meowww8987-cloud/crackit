@@ -12,25 +12,26 @@ import { useRef, useEffect, type ReactNode } from 'react';
  *   the browser interprets it as a slider drag and instantly changes the value.
  *   One accidental swipe can change "Daily Goal" from 6h to 2h.
  *
- * SOLUTION:
+ * SOLUTION (combines Option A + Option C):
  *   Wrap the slider in this component. On pointerdown we capture the start
  *   position but DON'T commit to dragging yet. On pointermove we measure the
- *   movement angle. If it's mostly vertical (>60° from horizontal) we cancel
- *   the drag and let the page scroll. If mostly horizontal (<30°) we let the
- *   native slider drag proceed. Between 30-60° we keep tracking.
+ *   movement angle:
+ *     - angle > 60° (mostly vertical) → user is scrolling. Cancel the slider
+ *       drag, blur the slider, let the page scroll freely.
+ *     - angle < 30° (mostly horizontal) → user is dragging the slider. Lock
+ *       the page scroll (touch-action: none) so the slider gets ALL pointer
+ *       events — no vertical movement leaks through.
+ *     - 30-60° = ambiguous, keep tracking.
+ *
+ * Option C addition: once the slider is being dragged, we set touch-action
+ * to 'none' on the wrapper so the page CANNOT scroll vertically even if the
+ * finger moves diagonally during the drag. This prevents the "slider jumps
+ * around while page also scrolls" double-action bug.
  *
  * USAGE:
  *   <ScrollAwareSlider>
  *     <input type="range" min={1} max={12} ... />
  *   </ScrollAwareSlider>
- *
- * The wrapper is `touch-action: none` ONLY on horizontal swipes — vertical
- * swipes pass through to the page. This is done via setPointerCapture + a
- * movement threshold, not via CSS (which would block all scrolling).
- *
- * NOTE: This component is transparent — no visual change. It only intercepts
- * pointer events to decide whether to let the slider drag or pass the gesture
- * to the page as a scroll.
  */
 export function ScrollAwareSlider({ children }: { children: ReactNode }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -49,6 +50,8 @@ export function ScrollAwareSlider({ children }: { children: ReactNode }) {
       // Record start position. Don't decide yet — wait for movement.
       startRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
       decidedRef.current = 'none';
+      // Reset wrapper touch-action to default (let gesture decide)
+      el.style.touchAction = 'pan-y';
     };
 
     const onPointerMove = (e: PointerEvent) => {
@@ -67,31 +70,34 @@ export function ScrollAwareSlider({ children }: { children: ReactNode }) {
       if (angle > 60) {
         // Mostly vertical → user is scrolling. Cancel the slider drag.
         decidedRef.current = 'scroll';
-        // Release pointer capture so the page can scroll
         const slider = findSlider();
         if (slider) {
           try {
-            // Blur the slider so it stops tracking pointer
             slider.blur();
-            // Re-enable touch-action so the page scrolls
             slider.style.touchAction = 'pan-y';
           } catch {}
         }
-        // Also try to release pointer capture on the wrapper
+        // Wrapper allows vertical scroll
+        el.style.touchAction = 'pan-y';
         try { el.releasePointerCapture(e.pointerId); } catch {}
       } else if (angle < 30) {
-        // Mostly horizontal → user is dragging the slider. Let it proceed.
+        // Mostly horizontal → user is dragging the slider.
+        // OPTION C: Lock ALL scrolling (touch-action: none) so vertical
+        // movement doesn't leak through and cause double-action.
         decidedRef.current = 'slider';
         const slider = findSlider();
         if (slider) {
-          // Disable touch-action so the slider gets the pointer events
           slider.style.touchAction = 'none';
         }
+        // Also lock the wrapper — prevents page scroll during slider drag
+        el.style.touchAction = 'none';
+        // Capture pointer so we get all subsequent move events
+        try { el.setPointerCapture(e.pointerId); } catch {}
       }
       // 30-60° = ambiguous, keep tracking until clearer movement
     };
 
-    const onPointerUp = () => {
+    const onPointerUp = (e: PointerEvent) => {
       startRef.current = null;
       decidedRef.current = 'none';
       // Reset touch-action to default (let next gesture decide fresh)
@@ -99,6 +105,8 @@ export function ScrollAwareSlider({ children }: { children: ReactNode }) {
       if (slider) {
         slider.style.touchAction = '';
       }
+      el.style.touchAction = 'pan-y';
+      try { el.releasePointerCapture(e.pointerId); } catch {}
     };
 
     el.addEventListener('pointerdown', onPointerDown, { passive: true });
