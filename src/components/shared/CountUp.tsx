@@ -34,14 +34,20 @@ export function CountUp({
 }: Props) {
   const [display, setDisplay] = useState(0);
   const lastTickRef = useRef(0);
+  const hasAnimatedRef = useRef(false);
 
   useEffect(() => {
-    const startVal = animateOnChange ? display : 0;
+    // Fix #3: Only animate from 0 on first mount (when animateOnChange is false).
+    // On subsequent re-renders with the same value, skip the animation entirely.
+    if (!animateOnChange && hasAnimatedRef.current && display === value) return;
+
+    const startVal = animateOnChange ? display : (hasAnimatedRef.current ? display : 0);
     if (value === startVal) return;
     const start = performance.now();
     const delta = value - startVal;
 
     if (delta === 0) return;
+    hasAnimatedRef.current = true;
 
     // Lazy-load sound only if requested (avoids importing on every CountUp)
     let playTick: (() => void) | null = null;

@@ -53,19 +53,26 @@ export function StreakFlame({ streak, className }: Props) {
         background: c.glow,
         borderColor: level === 'golden' ? 'rgba(251,191,36,0.5)' : level === 'epic' ? 'rgba(239,68,68,0.4)' : 'rgba(251,146,60,0.3)',
       }}
+      // Fix #8: Entrance animation — scale in from 0.5 + opacity fade
+      initial={{ scale: 0.5, opacity: 0 }}
       animate={
         atRisk
           ? {
               scale: [1, 1.08, 1],
+              opacity: 1,
               boxShadow: [
                 '0 0 0px rgba(239,68,68,0)',
                 '0 0 16px rgba(239,68,68,0.6)',
                 '0 0 0px rgba(239,68,68,0)',
               ],
             }
-          : {}
+          : { scale: 1, opacity: 1 }
       }
-      transition={{ duration: 0.8, repeat: atRisk ? Infinity : 0 }}
+      transition={
+        atRisk
+          ? { duration: 0.8, repeat: Infinity }
+          : { type: 'spring', stiffness: 400, damping: 20 }
+      }
     >
       <motion.span
         animate={

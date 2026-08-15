@@ -3,6 +3,17 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Target, TrendingUp, Calendar, FileText, Clock, Moon } from 'lucide-react';
+
+// === Shared animation variants for Home tab cards ===
+// Fix #1 + #7: Staggered entrance + scroll-triggered (whileInView)
+const cardEntrance = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  transition: { type: 'spring' as const, stiffness: 300, damping: 25 },
+  viewport: { once: true, margin: '-30px' as const },
+};
+// Fix #6: whileTap for all cards
+const cardTap = { scale: 0.98 };
 import { useHistory } from '@/lib/store/history';
 import { useSettings } from '@/lib/store/settings';
 import { useSyllabus } from '@/lib/store/syllabus';
@@ -110,6 +121,15 @@ export function HomeTab() {
       .sort((a, b) => a.startHour - b.startHour);
   }, [timetableSlots]);
 
+  // Fix #10: Date updates at midnight (poll every 60s)
+  const [dateText, setDateText] = useState('');
+  useEffect(() => {
+    const update = () => setDateText(longDate());
+    update();
+    const interval = setInterval(update, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   const todayPct = Math.min(100, Math.round((todaySec / (dailyGoal * 3600)) * 100));
   const yestPct = Math.min(100, Math.round((yestSec / (dailyGoal * 3600)) * 100));
 
@@ -164,9 +184,9 @@ export function HomeTab() {
             src="/logo.svg"
             alt=""
             className="w-7 h-7"
-            animate={haptics ? { rotate: [0, -8, 8, 0] } : {}}
-            transition={{ duration: 0.4 }}
+            whileTap={haptics ? { scale: 0.92, rotate: -3 } : {}}
             whileHover={{ scale: 1.1 }}
+            transition={{ duration: 0.25 }}
           />
           <h1 className="text-xl font-bold">NEET 2027</h1>
         </button>
@@ -176,13 +196,12 @@ export function HomeTab() {
             guard causes a hydration mismatch. */}
         {mounted && <StreakFlame streak={streak} />}
       </motion.div>
-      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-sm text-white/50 -mt-2" suppressHydrationWarning>{longDate()}</motion.p>
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-sm text-white/50 -mt-2" suppressHydrationWarning>{dateText}</motion.p>
 
       {/* Countdown Card */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15, type: 'spring', stiffness: 300, damping: 25 }}
+        {...cardEntrance}
+        whileTap={cardTap}
         className="glass rounded-2xl p-4 bg-gradient-to-br from-teal-500/10 to-green-500/5"
       >
         <div className="flex items-center justify-between mb-3">
@@ -192,7 +211,7 @@ export function HomeTab() {
             </div>
             <CountUp
               value={daysToExam}
-              duration={1000}
+              duration={1200}
               className="text-4xl font-bold tabular bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent"
             />
             <div className="text-xs text-white/50">days left</div>
@@ -215,9 +234,8 @@ export function HomeTab() {
           </div>
           <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
             <motion.div
-              initial={{ width: 0 }}
               animate={{ width: `${prepPct}%` }}
-              transition={{ duration: 0.8 }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
               className="h-full bg-gradient-to-r from-teal-500 to-green-500"
             />
           </div>
@@ -236,9 +254,9 @@ export function HomeTab() {
       {/* Test Day Mode — only renders when today is a test day. Replaces
           the regular "Next Test" card (which returns null in this case) with
           a focused, calming test-day layout. */}
-      <TestDayMode />
+      <motion.div {...cardEntrance} whileTap={cardTap}><TestDayMode /></motion.div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <motion.div {...cardEntrance} className="grid grid-cols-2 gap-3">
         <RingComparison
           title="Today vs Yesterday"
           innerSec={todaySec}
@@ -259,22 +277,22 @@ export function HomeTab() {
           label="WEEK"
           sublabel={`Last: ${formatHM(lastWeek)}`}
         />
-      </div>
+      </motion.div>
 
       {/* Next Test — collapsible readiness card.
           On test day, NextTestCard returns null and TestDayMode renders instead
           (TestDayMode is placed above the Rings so it's the first thing seen). */}
-      <NextTestCard />
+      <motion.div {...cardEntrance} whileTap={cardTap}><NextTestCard /></motion.div>
 
       {/* === Study with Friend — compare with a friend === */}
-      <PartnerCard />
+      <motion.div {...cardEntrance} whileTap={cardTap}><PartnerCard /></motion.div>
 
       {/* === AI Study Coach === */}
-      <CoachCard />
+      <motion.div {...cardEntrance} whileTap={cardTap}><CoachCard /></motion.div>
 
       {/* Today's Schedule */}
       {todaySlots.length > 0 && (
-        <div className="glass rounded-2xl p-3 minimal-hide">
+        <motion.div {...cardEntrance} whileTap={cardTap} className="glass rounded-2xl p-3 minimal-hide">
           <div className="flex items-center gap-2 mb-2">
             <Calendar size={14} className="text-amber-400" />
             <span className="text-xs font-bold uppercase tracking-wide text-white/60">Today's Schedule</span>
@@ -288,38 +306,39 @@ export function HomeTab() {
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Subject Health Scores */}
-      <div className="minimal-hide"><SubjectHealthCard /></div>
+      <motion.div {...cardEntrance} whileTap={cardTap} className="minimal-hide"><SubjectHealthCard /></motion.div>
 
       {/* Sleep & Energy + Doubts */}
-      <div className="minimal-hide"><SleepAndDoubtCard /></div>
+      <motion.div {...cardEntrance} whileTap={cardTap} className="minimal-hide"><SleepAndDoubtCard /></motion.div>
 
       {/* Weekly Goals — moved to Home tab long-press overlay */}
 
       {/* Predicted Score */}
-      <ScorePredictionCard />
+      <motion.div {...cardEntrance} whileTap={cardTap}><ScorePredictionCard /></motion.div>
 
       {/* Achievement Badges */}
-      <div className="minimal-hide"><AchievementBadges /></div>
+      <motion.div {...cardEntrance} className="minimal-hide"><AchievementBadges /></motion.div>
 
       {/* Mini Heatmap */}
-      <div className="minimal-hide"><MiniHeatmap /></div>
+      <motion.div {...cardEntrance} className="minimal-hide"><MiniHeatmap /></motion.div>
 
       {/* Sessions count */}
-      <div className="glass rounded-2xl p-4 flex items-center justify-between minimal-hide">
+      <motion.div {...cardEntrance} whileTap={cardTap} className="glass rounded-2xl p-4 flex items-center justify-between minimal-hide">
         <div>
           <div className="text-xs text-white/50 mb-1">Total Sessions</div>
           <NumberMorph
+            key={sessions.length}
             value={sessions.length}
-            duration={700}
+            duration={400}
             className="text-2xl font-bold"
           />
         </div>
         <TrendingUp size={24} className="text-teal-400/60" />
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -341,16 +360,14 @@ function RingComparison({
           <circle cx="48" cy="48" r="42" fill="none" stroke="var(--ring-track)" strokeWidth="4" />
           <motion.circle
             cx="48" cy="48" r="42" fill="none" stroke="var(--ring-outer)" strokeWidth="4" strokeLinecap="round"
-            initial={{ strokeDasharray: '0 263.89' }}
             animate={{ strokeDasharray: `${(outerPct / 100) * 263.89} 263.89` }}
-            transition={{ duration: 1.2, ease: 'easeOut' }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
           />
           <circle cx="48" cy="48" r="32" fill="none" stroke="var(--ring-track)" strokeWidth="4" />
           <motion.circle
             cx="48" cy="48" r="32" fill="none" stroke={innerColor} strokeWidth="4" strokeLinecap="round"
-            initial={{ strokeDasharray: '0 201.06' }}
             animate={{ strokeDasharray: `${(innerPct / 100) * 201.06} 201.06` }}
-            transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
