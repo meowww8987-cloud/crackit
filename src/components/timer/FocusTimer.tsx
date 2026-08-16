@@ -25,19 +25,33 @@ export function FocusTimer() {
   const [timerPos, setTimerPos] = useState({ x: 0, y: 0 });
   const [wasteFlash, setWasteFlash] = useState<number | null>(null); // seconds wasted on return
   const [showPulse, setShowPulse] = useState(false);
-  // === Orientation detection — all 4 directions, gravity-based + deadzone.
+  // === Modern Orientation Detection (v2.21.0) ===
   //
-  // How it works:
-  //  1. Try DeviceOrientationEvent (accelerometer/gravity). This is the MOST
-  //     reliable way to detect physical device orientation on mobile — it
-  //     fires continuously as the phone tilts, not just on 90° snaps.
-  //  2. Fall back to screen.orientation.angle / window.orientation on mount
-  //     + 'orientationchange' events (for desktop / unsupported devices).
+  // PROBLEMS with the old approach (single 45° threshold + raw sensor):
+  //  - Jitter at the portrait↔landscape boundary → rapid flip-flopping
+  //  - Unreliable when phone is lying flat (gravity vector is ambiguous)
+  //  - Sensor noise (±3-5°) triggers spurious state changes
   //
-  // Deadzone: the angle only changes when the device is tilted past ±25°
-  // from the current orientation's "up" axis. This prevents jitter when the
-  // phone is held at a slight angle (e.g. 10° tilt in bed). The four target
-  // angles are 0°, 90°, 180°, 270°.
+  // MODERN SOLUTION — 3 layers of stability:
+  //
+  // 1. HYSTERESIS (the main fix):
+  //    Two thresholds with a 20° gap instead of one hard line at 45°.
+  //    - To ENTER landscape: |gamma| > 55° (was 45)
+  //    - To EXIT back to portrait: |gamma| < 35° (was 45)
+  //    Once in landscape, you must tilt 20° back before it flips.
+  //    Industry-standard for any binary threshold (thermostats, etc.).
+  //
+  // 2. FLAT-IGNORE:
+  //    When the phone is lying nearly flat (|beta| < 25 AND |gamma| < 25),
+  //    the gravity vector is ambiguous — the sensor can't reliably tell
+  //    portrait from landscape. We HOLD the current orientation instead
+  //    of guessing. Prevents flips when phone is on a table/bed.
+  //
+  // 3. LOW-PASS SMOOTHING:
+  //    Raw gamma/beta jitter by ±3-5° even when held still. We apply
+  //    exponential smoothing: smoothed = 0.85 * old + 0.15 * new.
+  //    This gives a ~300ms response time — fast enough to feel responsive,
+  //    slow enough to ignore micro-jitter.
   //
   // orientationAngle meaning (what the user sees as "up"):
   //   0°   = portrait upright
@@ -45,11 +59,14 @@ export function FocusTimer() {
   //   180° = portrait upside-down
   //   270° = landscape (rotated 90° CCW — home button on right)
   const [orientationAngle, setOrientationAngle] = useState(0);
-  const orientationAngleRef = useRef(0); // ref mirror for use in event handler
+  const orientationAngleRef = useRef(0);
+  // Smoothed sensor values (low-pass filter state)
+  const smoothedGammaRef = useRef(0);
+  const smoothedBetaRef = useRef(0);
+  const sensorInitializedRef = useRef(false);
   // Temporary lock (double-tap rotate button) — only for current session.
-  // Persistent lock (long-press) is stored in settings.lockedOrientation.
   const [tempLockAngle, setTempLockAngle] = useState<number | null>(null);
-  // Lock button state: long-press timer + double-tap detection + toast
+  // Lock button state
   const rotateLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRotateTapRef = useRef(0);
   const [lockToast, setLockToast] = useState<string | null>(null);
@@ -62,66 +79,70 @@ export function FocusTimer() {
     return () => clearInterval(i);
   }, []);
 
-  // === Compute the nearest 4-way angle from a gamma/beta reading.
-  // gamma = left-right tilt (-90 to 90). beta = front-back tilt (-180 to 180).
-  //
-  // CRITICAL: The rotation we apply to CONTENT must be the OPPOSITE of the
-  // device's physical rotation, so the content appears upright to the user.
-  //
-  // When the user tilts the phone to the RIGHT (clockwise, home button moves
-  // to the LEFT), gamma is POSITIVE. The screen's "up" is now pointing RIGHT,
-  // so content must rotate 270° (counter-clockwise) to appear upright.
-  //
-  // When the user tilts the phone to the LEFT (counter-clockwise, home button
-  // moves to the RIGHT), gamma is NEGATIVE. The screen's "up" is now pointing
-  // LEFT, so content must rotate 90° (clockwise) to appear upright.
-  //
-  // (Previous code had this backwards — gamma>45→90 and gamma<-45→270 — which
-  //  made 90° and 270° feel swapped.)
-  const computeAngleFromGamma = useCallback((gamma: number, beta: number): number => {
-    // Tilt right (gamma > 45) → content rotates 270° to stay upright
-    if (gamma > 45) return 270;
-    // Tilt left (gamma < -45) → content rotates 90° to stay upright
-    if (gamma < -45) return 90;
-    // gamma near 0 → portrait. Use beta to decide 0 vs 180.
-    // beta > 0 (phone upright, tilted back slightly) → 0° (normal portrait)
-    // beta < -45 or > 135 (phone upside-down) → 180°
-    if (beta < -45 || beta > 135) return 180;
-    return 0;
+  // === Hysteresis-based angle computation ===
+  // Uses the CURRENT orientation state to decide which threshold to apply.
+  // This is what makes the state "sticky" — you need to cross a wider gap
+  // to change state than to maintain it.
+  const computeAngleHysteresis = useCallback((gamma: number, beta: number, currentAngle: number): number => {
+    // === Layer 2: FLAT-IGNORE ===
+    // When phone is lying nearly flat, gravity is ambiguous — hold current state.
+    // |beta| < 25 AND |gamma| < 25 means the phone is mostly face-up/face-down.
+    if (Math.abs(beta) < 25 && Math.abs(gamma) < 25) {
+      return currentAngle;
+    }
+
+    // === Layer 1: HYSTERESIS ===
+    // Thresholds depend on current state:
+    //   If currently in PORTRAIT (0° or 180°): need |gamma| > 55 to enter landscape
+    //   If currently in LANDSCAPE (90° or 270°): need |gamma| < 35 to exit to portrait
+    const isCurrentlyPortrait = currentAngle === 0 || currentAngle === 180;
+    const LANDSCAPE_ENTER = 55;  // tilt past this to enter landscape
+    const LANDSCAPE_EXIT = 35;   // tilt back past this to return to portrait
+
+    if (isCurrentlyPortrait) {
+      // Currently portrait — need larger tilt to switch to landscape
+      if (gamma > LANDSCAPE_ENTER) return 270;  // tilt right → 270
+      if (gamma < -LANDSCAPE_ENTER) return 90;   // tilt left → 90
+      // Still portrait — use beta for 0 vs 180
+      if (beta < -45 || beta > 135) return 180;
+      return 0;
+    } else {
+      // Currently landscape — need to return closer to center to switch back
+      if (Math.abs(gamma) < LANDSCAPE_EXIT) {
+        // Returned to near-vertical → portrait
+        if (beta < -45 || beta > 135) return 180;
+        return 0;
+      }
+      // Still in landscape — determine which side
+      if (gamma > 0) return 270;
+      return 90;
+    }
   }, []);
 
-  // The EFFECTIVE angle: if locked (persistent or temp), use the lock value.
-  // Otherwise use the auto-detected orientationAngle.
+  // The EFFECTIVE angle: if locked, use the lock value. Otherwise use auto-detected.
   const effectiveAngle = tempLockAngle ?? settings.lockedOrientation ?? orientationAngle;
 
   // === Orientation detection effect ===
-  // When locked (persistent or temp), skip sensor listening entirely.
   useEffect(() => {
-    // If locked, just set the angle to the lock value and don't listen to sensors.
     const lockAngle = tempLockAngle ?? settings.lockedOrientation;
     if (lockAngle !== null && lockAngle !== undefined) {
       const normalized = ((lockAngle % 360) + 360) % 360;
       orientationAngleRef.current = normalized;
       setOrientationAngle(normalized);
-      return; // no sensors while locked
+      return;
     }
 
-    // --- Helper: read current angle from the best available API ---
+    // --- Helper: read current angle from Screen Orientation API (fallback) ---
     const readScreenAngle = (): number => {
-      // Preferred: Screen Orientation API
       if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.angle === 'number') {
         return screen.orientation.angle;
       }
-      // Deprecated fallback
       if (typeof window !== 'undefined' && typeof (window as any).orientation === 'number') {
         return (window as any).orientation;
       }
-      // Aspect ratio fallback (desktop)
       return window.innerWidth > window.innerHeight ? 90 : 0;
     };
 
-    // --- Helper: update angle with deadzone (only change if the target
-    //     angle differs from current). This prevents jitter. ---
     const applyAngle = (newAngle: number) => {
       const normalized = ((newAngle % 360) + 360) % 360;
       if (normalized !== orientationAngleRef.current) {
@@ -130,24 +151,36 @@ export function FocusTimer() {
       }
     };
 
-    // Initial read from screen API
     applyAngle(readScreenAngle());
 
-    // --- 1. Try DeviceOrientationEvent (gravity/accelerometer) ---
-    // This is the most reliable on mobile — fires continuously as the phone
-    // tilts, so we can apply a deadzone and snap to the nearest 4-way angle.
+    // --- 1. DeviceOrientationEvent with smoothing + hysteresis ---
     let deviceOrientationActive = false;
     const handleDeviceOrientation = (e: DeviceOrientationEvent) => {
-      // gamma = left-right tilt in degrees (-90 to 90)
-      // beta = front-back tilt in degrees (-180 to 180)
       if (e.gamma == null || e.beta == null) return;
       deviceOrientationActive = true;
-      const angle = computeAngleFromGamma(e.gamma, e.beta);
+
+      // === Layer 3: LOW-PASS SMOOTHING ===
+      // Exponential smoothing: removes ±3-5° sensor jitter.
+      // alpha = 0.15 means 15% of the new reading + 85% of the old.
+      // Result: ~300ms response time, jitter-free.
+      if (!sensorInitializedRef.current) {
+        // First reading — initialize without smoothing
+        smoothedGammaRef.current = e.gamma;
+        smoothedBetaRef.current = e.beta;
+        sensorInitializedRef.current = true;
+      } else {
+        smoothedGammaRef.current = 0.85 * smoothedGammaRef.current + 0.15 * e.gamma;
+        smoothedBetaRef.current = 0.85 * smoothedBetaRef.current + 0.15 * e.beta;
+      }
+
+      const angle = computeAngleHysteresis(
+        smoothedGammaRef.current,
+        smoothedBetaRef.current,
+        orientationAngleRef.current,  // pass current state for hysteresis
+      );
       applyAngle(angle);
     };
 
-    // iOS 13+ requires permission for DeviceOrientationEvent. We attempt to
-    // add the listener; if it fails or never fires, the fallbacks below handle it.
     try {
       window.addEventListener('deviceorientation', handleDeviceOrientation, true);
     } catch {
@@ -156,9 +189,6 @@ export function FocusTimer() {
 
     // --- 2. Fallback: screen.orientation 'change' event ---
     const handleScreenOrientationChange = () => {
-      // Only use this fallback if deviceorientation isn't firing (desktop or
-      // unsupported). If deviceorientation IS active, it takes priority
-      // because it's more granular.
       if (deviceOrientationActive) return;
       applyAngle(readScreenAngle());
     };
@@ -168,9 +198,7 @@ export function FocusTimer() {
       screen.orientation.addEventListener('change', handleScreenOrientationChange);
     }
 
-    // --- 3. Periodic check: if deviceorientation never fired (e.g. desktop
-    //     or permission denied), fall back to screen API every 1s for the
-    //     first 5 seconds, then stop. ---
+    // --- 3. Periodic fallback for first 5s ---
     let fallbackChecks = 0;
     const fallbackInterval = setInterval(() => {
       if (deviceOrientationActive) {
@@ -191,7 +219,7 @@ export function FocusTimer() {
       }
       clearInterval(fallbackInterval);
     };
-  }, [computeAngleFromGamma, tempLockAngle, settings.lockedOrientation]);
+  }, [computeAngleHysteresis, tempLockAngle, settings.lockedOrientation]);
 
   // Watch for wasted seconds increase (returning from background) — show flash
   // that auto-dismisses after 2.5s. Only depends on wastedSeconds (not the
