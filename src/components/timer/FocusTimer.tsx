@@ -81,39 +81,34 @@ export function FocusTimer() {
 
   // === Hysteresis-based angle computation ===
   // Uses the CURRENT orientation state to decide which threshold to apply.
-  // This is what makes the state "sticky" — you need to cross a wider gap
-  // to change state than to maintain it.
+  //
+  // AGGRESSIVE HYSTERESIS (user-requested v2.21.1):
+  //   - To ENTER landscape: tilt past 75° (nearly horizontal)
+  //   - To EXIT back to portrait: tilt back past 15° (nearly vertical)
+  //   - Gap = 60° — once in landscape, it's effectively LOCKED until the user
+  //     deliberately rotates the phone almost fully back to vertical.
+  //   - This eliminates ALL accidental flips from wrist movement, bed reading,
+  //     or slight tilts. The user must make a deliberate 75° rotation to change.
   const computeAngleHysteresis = useCallback((gamma: number, beta: number, currentAngle: number): number => {
-    // === Layer 2: FLAT-IGNORE ===
-    // When phone is lying nearly flat, gravity is ambiguous — hold current state.
-    // |beta| < 25 AND |gamma| < 25 means the phone is mostly face-up/face-down.
-    if (Math.abs(beta) < 25 && Math.abs(gamma) < 25) {
-      return currentAngle;
-    }
-
-    // === Layer 1: HYSTERESIS ===
-    // Thresholds depend on current state:
-    //   If currently in PORTRAIT (0° or 180°): need |gamma| > 55 to enter landscape
-    //   If currently in LANDSCAPE (90° or 270°): need |gamma| < 35 to exit to portrait
     const isCurrentlyPortrait = currentAngle === 0 || currentAngle === 180;
-    const LANDSCAPE_ENTER = 55;  // tilt past this to enter landscape
-    const LANDSCAPE_EXIT = 35;   // tilt back past this to return to portrait
+    const LANDSCAPE_ENTER = 75;   // must tilt past 75° to enter landscape (nearly horizontal)
+    const LANDSCAPE_EXIT = 15;    // must tilt back below 15° to return to portrait (nearly vertical)
 
     if (isCurrentlyPortrait) {
-      // Currently portrait — need larger tilt to switch to landscape
+      // Currently portrait — need MAJOR tilt (75°+) to switch to landscape
       if (gamma > LANDSCAPE_ENTER) return 270;  // tilt right → 270
       if (gamma < -LANDSCAPE_ENTER) return 90;   // tilt left → 90
       // Still portrait — use beta for 0 vs 180
       if (beta < -45 || beta > 135) return 180;
       return 0;
     } else {
-      // Currently landscape — need to return closer to center to switch back
+      // Currently landscape — LOCKED until user tilts almost fully back to vertical (< 15°)
       if (Math.abs(gamma) < LANDSCAPE_EXIT) {
         // Returned to near-vertical → portrait
         if (beta < -45 || beta > 135) return 180;
         return 0;
       }
-      // Still in landscape — determine which side
+      // Still in landscape — stay locked in current landscape orientation
       if (gamma > 0) return 270;
       return 90;
     }
