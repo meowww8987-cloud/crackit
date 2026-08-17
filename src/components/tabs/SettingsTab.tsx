@@ -785,17 +785,23 @@ function DataSection({ s }: { s: Settings }) {
   const [hasUndoData, setHasUndoData] = useState(typeof window !== 'undefined' && !!localStorage.getItem('neet-pre-import-backup'));
 
   const exportData = () => {
-    const data = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      settings: s,
-      targets: JSON.parse(localStorage.getItem('neet-targets') || '{}'),
-      history: JSON.parse(localStorage.getItem('neet-history') || '{}'),
-      syllabus: JSON.parse(localStorage.getItem('neet-syllabus') || '{}'),
-      tests: JSON.parse(localStorage.getItem('neet-tests') || '{}'),
-      recall: JSON.parse(localStorage.getItem('neet-recall') || '{}'),
-      timetable: JSON.parse(localStorage.getItem('neet-timetable') || '{}'),
+    // Export ALL localStorage keys starting with 'neet-' (16 stores total)
+    const allKeys = Object.keys(localStorage).filter((k) => k.startsWith('neet-'));
+    const data: Record<string, any> = {
+      _meta: {
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        appVersion: 'NEET 2027 Study Tracker',
+        storeCount: allKeys.length,
+      },
     };
+    for (const key of allKeys) {
+      try {
+        data[key] = JSON.parse(localStorage.getItem(key) || 'null');
+      } catch {
+        data[key] = localStorage.getItem(key);
+      }
+    }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -813,12 +819,14 @@ function DataSection({ s }: { s: Settings }) {
       try {
         const data = JSON.parse(ev.target?.result as string);
         const counts: Record<string, number> = {
-          targets: data.targets?.byDate ? Object.values(data.targets.byDate).flat().length : 0,
-          sessions: data.history?.sessions?.length || 0,
-          subjects: data.syllabus?.subjects?.length || 0,
-          chapters: data.syllabus?.chapters?.length || 0,
-          lectures: data.syllabus?.lectures?.length || 0,
-          tests: data.tests?.tests?.length || 0,
+          targets: data['neet-targets']?.state?.byDate ? Object.values(data['neet-targets'].state.byDate).flat().length : 0,
+          sessions: data['neet-history']?.state?.sessions?.length || 0,
+          subjects: data['neet-syllabus']?.state?.subjects?.length || 0,
+          chapters: data['neet-syllabus']?.state?.chapters?.length || 0,
+          lectures: data['neet-syllabus']?.state?.lectures?.length || 0,
+          tests: data['neet-tests']?.state?.tests?.length || 0,
+          sleep: data['neet-sleep']?.state?.history?.length || 0,
+          storeCount: Object.keys(data).filter((k) => k.startsWith('neet-')).length,
         };
         setImportPreview({ data, counts });
       } catch {
@@ -830,23 +838,21 @@ function DataSection({ s }: { s: Settings }) {
 
   const confirmImport = () => {
     if (!importPreview) return;
-    // Save current data for undo
+    // Save current data for undo (ALL neet-* keys)
     const backup: Record<string, string> = {};
-    ['neet-settings', 'neet-targets', 'neet-history', 'neet-syllabus', 'neet-tests', 'neet-recall', 'neet-timetable'].forEach((key) => {
+    Object.keys(localStorage).filter((k) => k.startsWith('neet-')).forEach((key) => {
       const val = localStorage.getItem(key);
       if (val) backup[key] = val;
     });
     localStorage.setItem('neet-pre-import-backup', JSON.stringify(backup));
 
-    // Write imported data
+    // Write imported data — restore ALL neet-* keys from backup file
     const { data } = importPreview;
-    if (data.settings) localStorage.setItem('neet-settings', JSON.stringify(data.settings));
-    if (data.targets) localStorage.setItem('neet-targets', JSON.stringify(data.targets));
-    if (data.history) localStorage.setItem('neet-history', JSON.stringify(data.history));
-    if (data.syllabus) localStorage.setItem('neet-syllabus', JSON.stringify(data.syllabus));
-    if (data.tests) localStorage.setItem('neet-tests', JSON.stringify(data.tests));
-    if (data.recall) localStorage.setItem('neet-recall', JSON.stringify(data.recall));
-    if (data.timetable) localStorage.setItem('neet-timetable', JSON.stringify(data.timetable));
+    Object.keys(data).filter((k) => k.startsWith('neet-')).forEach((key) => {
+      if (data[key] !== null && data[key] !== undefined) {
+        localStorage.setItem(key, JSON.stringify(data[key]));
+      }
+    });
 
     setHasUndoData(true);
     setImportPreview(null);
@@ -858,9 +864,11 @@ function DataSection({ s }: { s: Settings }) {
     const backupStr = localStorage.getItem('neet-pre-import-backup');
     if (!backupStr) return;
     const backup = JSON.parse(backupStr);
-    // Clear current and restore backup
-    ['neet-settings', 'neet-targets', 'neet-history', 'neet-syllabus', 'neet-tests', 'neet-recall', 'neet-timetable'].forEach((key) => {
+    // Clear current neet-* and restore backup
+    Object.keys(localStorage).filter((k) => k.startsWith('neet-') && k !== 'neet-pre-import-backup').forEach((key) => {
       localStorage.removeItem(key);
+    });
+    Object.keys(backup).forEach((key) => {
       if (backup[key]) localStorage.setItem(key, backup[key]);
     });
     localStorage.removeItem('neet-pre-import-backup');

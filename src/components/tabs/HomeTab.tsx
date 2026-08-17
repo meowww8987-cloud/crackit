@@ -111,6 +111,35 @@ export function HomeTab() {
     return Math.round((syllabusLectures.filter((l) => l.done).length / total) * 100);
   }, [syllabusLectures]);
 
+  // Weighted completion % (by chapter NEET weightage)
+  const syllabusChapters = useSyllabus((s) => s.chapters);
+  const syllabusWeightedPct = useMemo(() => {
+    if (syllabusLectures.length === 0 || syllabusChapters.length === 0) return syllabusPct;
+    // Build chapter weightage map (default 1 if no weightage set)
+    const chapterWeight = new Map<string, number>();
+    for (const ch of syllabusChapters) {
+      chapterWeight.set(ch.id, ch.weightage ?? 1);
+    }
+    // Group lectures by chapter, count done per chapter
+    const chapterLectures = new Map<string, { total: number; done: number }>();
+    for (const lec of syllabusLectures) {
+      const entry = chapterLectures.get(lec.chapterId) || { total: 0, done: 0 };
+      entry.total++;
+      if (lec.done) entry.done++;
+      chapterLectures.set(lec.chapterId, entry);
+    }
+    // Calculate weighted completion
+    let totalWeight = 0;
+    let doneWeight = 0;
+    for (const [chId, stats] of chapterLectures) {
+      const weight = chapterWeight.get(chId) ?? 1;
+      totalWeight += weight * stats.total;
+      doneWeight += weight * stats.done;
+    }
+    if (totalWeight === 0) return syllabusPct;
+    return Math.round((doneWeight / totalWeight) * 100);
+  }, [syllabusLectures, syllabusChapters, syllabusPct]);
+
   // nextTest computation moved into the NextTestCard component (which also
   // handles Test Day Mode detection). HomeTab no longer needs direct access.
 
@@ -243,11 +272,23 @@ export function HomeTab() {
         <div>
           <div className="flex justify-between text-[10px] text-white/40 mb-1">
             <span>Syllabus</span>
-            <span className="tabular">{syllabusPct}% done</span>
+            <span className="tabular">
+              {syllabusPct}% done
+              {syllabusWeightedPct !== syllabusPct && (
+                <span className="text-amber-400/70 ml-1">· {syllabusWeightedPct}% weighted</span>
+              )}
+            </span>
           </div>
           <div className="h-1 rounded-full bg-white/5 overflow-hidden">
             <div className="h-full bg-green-500" style={{ width: `${syllabusPct}%` }} />
           </div>
+          {syllabusWeightedPct !== syllabusPct && (
+            <div className="text-[8px] text-amber-400/50 mt-0.5">
+              {syllabusWeightedPct < syllabusPct
+                ? `Focus on high-weightage chapters — you're ${syllabusPct - syllabusWeightedPct}% ahead on easy ones`
+                : `Great — high-weightage chapters are ahead (${syllabusWeightedPct - syllabusPct}% ahead)`}
+            </div>
+          )}
         </div>
       </motion.div>
 

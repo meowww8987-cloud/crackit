@@ -4,8 +4,10 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Moon, TrendingUp, Sparkles, CheckCircle2, AlertTriangle, Target, Trophy, Frown, Star, Clock, Bed } from 'lucide-react';
 import { useSleep } from '@/lib/store/sleep';
+import { useHistory } from '@/lib/store/history';
 import {
   buildSleepInsightReport,
+  buildStudySleepCorrelation,
   verdictLabel,
   verdictColor,
   formatHour,
@@ -38,6 +40,11 @@ export function SleepAnalysisSheet({ open, onClose, initialTab = 'weekly' }: Sle
   const weeklyReport = useMemo(() => buildSleepInsightReport(history, 7), [history]);
   const monthlyReport = useMemo(() => buildSleepInsightReport(history, 30), [history]);
   const report = tab === 'weekly' ? weeklyReport : monthlyReport;
+  const studySessions = useHistory((s) => s.sessions);
+  const correlation = useMemo(() => {
+    const days = tab === 'weekly' ? 7 : 30;
+    return buildStudySleepCorrelation(history, studySessions, days);
+  }, [history, studySessions, tab]);
 
   return (
     <AnimatePresence>
@@ -197,6 +204,49 @@ export function SleepAnalysisSheet({ open, onClose, initialTab = 'weekly' }: Sle
 
               {/* === Improvements === */}
               <SleepSection icon={<Target size={12} />} title="What to Improve" color="#818cf8" items={report.improvements} />
+
+              {/* === Study Impact (Study-Sleep Correlation) === */}
+              {correlation && correlation.insights.length > 0 && (
+                <div className="mb-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wide mb-1.5 flex items-center gap-1" style={{ color: '#C9A961' }}>
+                    📊 Study Impact on Sleep
+                  </h3>
+                  <div className="space-y-1.5">
+                    {correlation.insights.map((item, i) => (
+                      <div
+                        key={i}
+                        className="rounded-xl p-2.5 text-xs flex items-start gap-2"
+                        style={{
+                          background: 'rgba(201, 169, 97, 0.08)',
+                          borderLeft: '2px solid rgba(201, 169, 97, 0.4)',
+                        }}
+                      >
+                        <span style={{ color: '#C9A961' }} className="mt-0.5">•</span>
+                        <span className="flex-1 text-indigo-100/80">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Mini comparison stats */}
+                  {correlation.lateStudyNights > 0 && correlation.earlyNights > 0 && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(239, 68, 68, 0.08)' }}>
+                        <div className="text-[9px] text-red-300/60 uppercase">Late Study Nights</div>
+                        <div className="text-sm font-bold text-red-300 tabular">{correlation.lateStudyNights}</div>
+                        <div className="text-[9px] text-white/40">
+                          {correlation.lateStudyQuality > 0 ? `Q: ${correlation.lateStudyQuality.toFixed(1)}/5` : 'No ratings'} · {correlation.lateStudyDuration.toFixed(1)}h
+                        </div>
+                      </div>
+                      <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(34, 197, 94, 0.08)' }}>
+                        <div className="text-[9px] text-green-300/60 uppercase">Early Nights</div>
+                        <div className="text-sm font-bold text-green-300 tabular">{correlation.earlyNights}</div>
+                        <div className="text-[9px] text-white/40">
+                          {correlation.earlyQuality > 0 ? `Q: ${correlation.earlyQuality.toFixed(1)}/5` : 'No ratings'} · {correlation.earlyDuration.toFixed(1)}h
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <p className="text-[9px] text-indigo-200/30 text-center pt-2">
                 🌙 Sleep Analysis · Tap outside to close

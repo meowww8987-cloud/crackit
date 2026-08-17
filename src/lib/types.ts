@@ -108,6 +108,9 @@ export interface Chapter {
   pyqCount: number;
   createdAt: number;
   order?: number; // for drag-to-reorder
+  /** NEET exam weightage (0-100, percentage of subject's NEET questions from this chapter).
+   *  If undefined, chapter is weighted equally with all others. */
+  weightage?: number;
 }
 
 export interface SubjectEntity {

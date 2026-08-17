@@ -286,6 +286,89 @@ export function formatSleepDuration(sec: number): string {
   return formatHM(sec);
 }
 
+// ===== Study-Sleep Correlation =====
+
+export interface StudySleepCorrelation {
+  lateStudyNights: number;
+  lateStudyQuality: number;
+  lateStudyDuration: number;
+  earlyNights: number;
+  earlyQuality: number;
+  earlyDuration: number;
+  insights: string[];
+}
+
+export function buildStudySleepCorrelation(
+  sleepHistory: SleepEntry[],
+  studySessions: { date: string; startedAt: number; endedAt: number; subject?: string }[],
+  days: number = 7,
+): StudySleepCorrelation | null {
+  const cutoff = Date.now() - days * 24 * 3600 * 1000;
+  const periodSleep = sleepHistory.filter((e) => e.bedTime >= cutoff && e.durationSec && e.durationSec >= 4 * 3600);
+  const periodStudy = studySessions.filter((s) => s.endedAt >= cutoff);
+
+  // Find which dates had late study (session ended past 11 PM = hour >= 23)
+  const lateStudyDates = new Set<string>();
+  for (const s of periodStudy) {
+    const endHour = new Date(s.endedAt).getHours();
+    if (endHour >= 23 || endHour < 1) {
+      // Session ended past 11 PM — the SLEEP that follows is on this night
+      // The sleep entry's date is the WAKE date, so we need to check if bedTime was on this night
+      lateStudyDates.add(s.date);
+    }
+  }
+
+  const lateNights: SleepEntry[] = [];
+  const earlyNightsList: SleepEntry[] = [];
+
+  for (const entry of periodSleep) {
+    // Check if any study session on the same date ended late
+    const bedDate = new Date(entry.bedTime);
+    const bedDateKey = `${bedDate.getFullYear()}-${String(bedDate.getMonth() + 1).padStart(2, '0')}-${String(bedDate.getDate()).padStart(2, '0')}`;
+    if (lateStudyDates.has(bedDateKey)) {
+      lateNights.push(entry);
+    } else {
+      earlyNightsList.push(entry);
+    }
+  }
+
+  const lateQualities = lateNights.filter((e) => e.quality != null).map((e) => e.quality as number);
+  const earlyQualities = earlyNightsList.filter((e) => e.quality != null).map((e) => e.quality as number);
+
+  const lateQuality = lateQualities.length > 0 ? lateQualities.reduce((a, b) => a + b, 0) / lateQualities.length : 0;
+  const earlyQuality = earlyQualities.length > 0 ? earlyQualities.reduce((a, b) => a + b, 0) / earlyQualities.length : 0;
+  const lateDuration = lateNights.length > 0 ? lateNights.reduce((a, e) => a + (e.durationSec || 0), 0) / lateNights.length / 3600 : 0;
+  const earlyDuration = earlyNightsList.length > 0 ? earlyNightsList.reduce((a, e) => a + (e.durationSec || 0), 0) / earlyNightsList.length / 3600 : 0;
+
+  const insights: string[] = [];
+  if (lateNights.length > 0 && earlyNightsList.length > 0) {
+    if (lateQuality < earlyQuality - 0.5) {
+      insights.push(`You studied past 11 PM on ${lateNights.length} night(s) — those nights averaged ${lateQuality.toFixed(1)}/5 sleep quality vs ${earlyQuality.toFixed(1)}/5 on early nights.`);
+    }
+    if (lateDuration < earlyDuration - 0.5) {
+      insights.push(`Late-study nights averaged ${lateDuration.toFixed(1)}h sleep vs ${earlyDuration.toFixed(1)}h on early nights — you're losing ${(earlyDuration - lateDuration).toFixed(1)}h of sleep.`);
+    }
+    if (lateQuality >= earlyQuality) {
+      insights.push(`Late studying doesn't seem to hurt your sleep quality (late: ${lateQuality.toFixed(1)}/5, early: ${earlyQuality.toFixed(1)}/5) — but try not to push it.`);
+    }
+  } else if (lateNights.length > 0 && earlyNightsList.length === 0) {
+    insights.push(`You studied late every night this period — no comparison available, but consider one early night to see if it helps.`);
+  } else if (lateNights.length === 0) {
+    insights.push(`No late-night study sessions this period — great sleep hygiene! 🌙`);
+  }
+
+  return {
+    lateStudyNights: lateNights.length,
+    lateStudyQuality: lateQuality,
+    lateStudyDuration: lateDuration,
+    earlyNights: earlyNightsList.length,
+    earlyQuality: earlyQuality,
+    earlyDuration: earlyDuration,
+    insights,
+  };
+}
+
+
 // ===== Extended report with advantages / disadvantages / improvements =====
 
 export interface SleepInsightReport extends WeeklySleepReport {
