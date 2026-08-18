@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, Infinity as InfinityIcon, Clock } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePractice } from '@/lib/store/practice';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useSettings } from '@/lib/store/settings';
@@ -29,6 +29,8 @@ export function PracticeSetupSheet({ open, onClose }: Props) {
   const [questionCount, setQuestionCount] = useState(0);
   const [timeLimit, setTimeLimit] = useState(0);
   const [practiceName, setPracticeName] = useState('');
+  const [qInput, setQInput] = useState('');
+  const [tInput, setTInput] = useState('');
 
   const availableChapters = selectedSubject === 'Mixed'
     ? []
@@ -39,6 +41,8 @@ export function PracticeSetupSheet({ open, onClose }: Props) {
 
   const handleStart = () => {
     if (haptics) vibrate(15);
+    const qCount = qInput ? parseInt(qInput) || 0 : questionCount;
+    const tLimit = tInput ? parseInt(tInput) || 0 : timeLimit;
     const chapterName = selectedChapterId === 'All'
       ? 'All'
       : availableChapters.find((ch) => ch.id === selectedChapterId)?.name || 'All';
@@ -46,54 +50,78 @@ export function PracticeSetupSheet({ open, onClose }: Props) {
       name: practiceName || undefined,
       subject: selectedSubject,
       chapter: chapterName,
-      questionCount,
-      timeLimitMin: timeLimit,
+      questionCount: qCount,
+      timeLimitMin: tLimit,
     });
     onClose();
     setStep(0); setSelectedSubject('Mixed'); setSelectedChapterId('All');
     setQuestionCount(0); setTimeLimit(0); setPracticeName('');
+    setQInput(''); setTInput('');
   };
+
+  const canGoBack = step > 0;
+  const handleBack = () => { if (haptics) vibrate(8); setStep(Math.max(0, step - 1)); };
 
   return (
     <AnimatePresence>
       {open && (
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-end justify-center"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           onClick={onClose}
         >
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
           <motion.div
-            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md max-h-[85vh] overflow-y-auto glass-strong rounded-t-3xl p-5 pb-8 force-dark-ui"
+            className="relative w-full max-w-md max-h-[85vh] overflow-y-auto glass-strong rounded-3xl p-5 pb-8 force-dark-ui"
           >
-            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-            <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition"><X size={16} /></button>
+            {/* Top bar: Back + Close */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                {canGoBack ? (
+                  <button onClick={handleBack} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition">
+                    <ChevronLeft size={18} />
+                  </button>
+                ) : (
+                  <div className="w-8 h-8" />
+                )}
+                <span className="text-sm font-bold text-white/80">Practice Setup</span>
+              </div>
+              <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition">
+                <X size={18} />
+              </button>
+            </div>
 
+            {/* Step indicator */}
             <div className="flex items-center gap-1.5 mb-4">
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} className={cn('flex-1 h-1 rounded-full transition', i <= step ? 'bg-teal-500' : 'bg-white/10')} />
               ))}
             </div>
 
+            {/* === Step 0: Subject === */}
             {step === 0 && (
               <div>
-                <h2 className="text-lg font-bold mb-1">Practice Setup</h2>
-                <p className="text-xs text-white/50 mb-4">Select subject (or Mixed for all)</p>
+                <h2 className="text-lg font-bold mb-1">Select Subject</h2>
+                <p className="text-xs text-white/50 mb-4">Or Mixed for all subjects</p>
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   {SUBJECTS.map((subj) => (
-                    <button key={subj} onClick={() => { if (haptics) vibrate(10); setSelectedSubject(subj); setSelectedChapterId('All'); if (subj === 'Mixed') setStep(2); else setStep(1); }}
+                    <button key={subj} onClick={() => { if (haptics) vibrate(10); setSelectedSubject(subj); setSelectedChapterId('All'); }}
                       className={cn('py-3 rounded-xl text-sm font-semibold transition border-2', selectedSubject === subj ? 'border-teal-500 bg-teal-500/10' : 'border-transparent bg-white/5')}>{subj}</button>
                   ))}
                 </div>
-                {selectedSubject !== 'Mixed' && (
-                  <button onClick={() => setStep(1)} className="w-full py-3 rounded-xl bg-teal-500 text-black font-bold text-sm active:scale-95 transition">Next: Select Chapter →</button>
-                )}
+                <button onClick={() => { if (haptics) vibrate(10); if (selectedSubject === 'Mixed') setStep(2); else setStep(1); }}
+                  className="w-full py-3 rounded-xl bg-teal-500 text-black font-bold text-sm active:scale-95 transition flex items-center justify-center gap-2">
+                  Next <ChevronRight size={16} />
+                </button>
               </div>
             )}
 
+            {/* === Step 1: Chapter === */}
             {step === 1 && (
               <div>
                 <h2 className="text-lg font-bold mb-1">Select Chapter</h2>
@@ -104,41 +132,78 @@ export function PracticeSetupSheet({ open, onClose }: Props) {
                     <button key={ch.id} onClick={() => { if (haptics) vibrate(10); setSelectedChapterId(ch.id); }} className={cn('w-full p-3 rounded-xl text-left text-sm transition border-2', selectedChapterId === ch.id ? 'border-teal-500 bg-teal-500/10' : 'border-transparent bg-white/5')}>{ch.name}</button>
                   ))}
                 </div>
-                <button onClick={() => setStep(2)} className="w-full py-3 rounded-xl bg-teal-500 text-black font-bold text-sm active:scale-95 transition">Next: Questions →</button>
+                <button onClick={() => { if (haptics) vibrate(10); setStep(2); }} className="w-full py-3 rounded-xl bg-teal-500 text-black font-bold text-sm active:scale-95 transition flex items-center justify-center gap-2">Next <ChevronRight size={16} /></button>
               </div>
             )}
 
+            {/* === Step 2: Questions & Time === */}
             {step === 2 && (
               <div>
                 <h2 className="text-lg font-bold mb-1">Questions & Time</h2>
-                <p className="text-xs text-white/50 mb-4">Set limits or leave at 0 for unlimited</p>
-                <div className="mb-4">
-                  <div className="flex justify-between mb-2"><label className="text-xs font-semibold text-white/60">Number of Questions</label><span className="text-sm font-bold text-teal-400">{questionCount === 0 ? '∞ Unlimited' : questionCount}</span></div>
-                  <ScrollAwareSlider><input type="range" min={0} max={100} step={5} value={questionCount} onChange={(e) => setQuestionCount(Number(e.target.value))} className="w-full" /></ScrollAwareSlider>
+                <p className="text-xs text-white/50 mb-4">Type exact numbers or use slider. 0 = unlimited.</p>
+
+                {/* Question count — text input + slider */}
+                <div className="mb-5">
+                  <div className="flex justify-between mb-2">
+                    <label className="text-xs font-semibold text-white/60">Number of Questions</label>
+                    <span className="text-sm font-bold text-teal-400">{qInput ? (parseInt(qInput) || 0) : questionCount === 0 ? '∞ Unlimited' : questionCount}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="number" inputMode="numeric" value={qInput} onChange={(e) => setQInput(e.target.value)} placeholder="Type exact number (0=∞)" min={0} max={500}
+                      className="flex-1 p-2.5 rounded-lg bg-white/5 border border-white/10 text-sm focus:border-teal-500 outline-none"
+                    />
+                  </div>
+                  <ScrollAwareSlider>
+                    <input type="range" min={0} max={100} step={1} value={qInput ? Math.min(100, parseInt(qInput) || 0) : questionCount}
+                      onChange={(e) => { setQuestionCount(Number(e.target.value)); setQInput(''); }} className="w-full" />
+                  </ScrollAwareSlider>
                   <div className="flex justify-between text-[9px] text-white/30 mt-0.5"><span>0 = unlimited</span><span>100</span></div>
                 </div>
-                <div className="mb-4">
-                  <div className="flex justify-between mb-2"><label className="text-xs font-semibold text-white/60">Time Limit (minutes)</label><span className="text-sm font-bold text-amber-400">{timeLimit === 0 ? '∞ Unlimited' : `${timeLimit}m`}</span></div>
-                  <ScrollAwareSlider><input type="range" min={0} max={180} step={5} value={timeLimit} onChange={(e) => setTimeLimit(Number(e.target.value))} className="w-full" style={{ accentColor: '#f59e0b' }} /></ScrollAwareSlider>
+
+                {/* Time limit — text input + slider */}
+                <div className="mb-5">
+                  <div className="flex justify-between mb-2">
+                    <label className="text-xs font-semibold text-white/60">Time Limit (minutes)</label>
+                    <span className="text-sm font-bold text-amber-400">{tInput ? (parseInt(tInput) || 0) === 0 ? '∞ Unlimited' : `${tInput}m` : timeLimit === 0 ? '∞ Unlimited' : `${timeLimit}m`}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="number" inputMode="numeric" value={tInput} onChange={(e) => setTInput(e.target.value)} placeholder="Type exact minutes (0=∞)" min={0} max={300}
+                      className="flex-1 p-2.5 rounded-lg bg-white/5 border border-white/10 text-sm focus:border-amber-500 outline-none"
+                    />
+                  </div>
+                  <ScrollAwareSlider>
+                    <input type="range" min={0} max={180} step={1} value={tInput ? Math.min(180, parseInt(tInput) || 0) : timeLimit}
+                      onChange={(e) => { setTimeLimit(Number(e.target.value)); setTInput(''); }} className="w-full" style={{ accentColor: '#f59e0b' }} />
+                  </ScrollAwareSlider>
                   <div className="flex justify-between text-[9px] text-white/30 mt-0.5"><span>0 = unlimited</span><span>180m</span></div>
                 </div>
-                <button onClick={() => setStep(3)} className="w-full py-3 rounded-xl bg-teal-500 text-black font-bold text-sm active:scale-95 transition">Next: Name →</button>
+
+                <button onClick={() => { if (haptics) vibrate(10); setStep(3); }} className="w-full py-3 rounded-xl bg-teal-500 text-black font-bold text-sm active:scale-95 transition flex items-center justify-center gap-2">Next <ChevronRight size={16} /></button>
               </div>
             )}
 
+            {/* === Step 3: Name + Start === */}
             {step === 3 && (
               <div>
                 <h2 className="text-lg font-bold mb-1">Practice Name</h2>
                 <p className="text-xs text-white/50 mb-4">Optional — auto-generated if left blank</p>
-                <input type="text" value={practiceName} onChange={(e) => setPracticeName(e.target.value)} placeholder={`${selectedSubject}${selectedChapterId !== 'All' ? ' · ' + (availableChapters.find((ch) => ch.id === selectedChapterId)?.name || '') : ''} · ${questionCount || '∞'}Q`} className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-sm mb-4 focus:border-teal-500 outline-none" />
+                <input type="text" value={practiceName} onChange={(e) => setPracticeName(e.target.value)}
+                  placeholder={`${selectedSubject}${selectedChapterId !== 'All' ? ' · ' + (availableChapters.find((ch) => ch.id === selectedChapterId)?.name || '') : ''} · ${qInput || questionCount || '∞'}Q`}
+                  className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-sm mb-4 focus:border-teal-500 outline-none" />
+
                 <div className="glass rounded-xl p-3 mb-4 space-y-1">
                   <div className="text-xs text-white/50">Summary:</div>
                   <div className="text-sm">📚 Subject: <strong>{selectedSubject}</strong></div>
                   <div className="text-sm">📖 Chapter: <strong>{selectedChapterId === 'All' ? 'All' : availableChapters.find((ch) => ch.id === selectedChapterId)?.name}</strong></div>
-                  <div className="text-sm">📝 Questions: <strong>{questionCount || '∞'}</strong></div>
-                  <div className="text-sm">⏱ Time: <strong>{timeLimit ? `${timeLimit}m` : '∞'}</strong></div>
+                  <div className="text-sm">📝 Questions: <strong>{qInput ? (parseInt(qInput) || 0) === 0 ? '∞' : qInput : questionCount === 0 ? '∞' : questionCount}</strong></div>
+                  <div className="text-sm">⏱ Time: <strong>{tInput ? (parseInt(tInput) || 0) === 0 ? '∞' : `${tInput}m` : timeLimit === 0 ? '∞' : `${timeLimit}m`}</strong></div>
                 </div>
-                <button onClick={handleStart} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-green-500 text-black font-bold text-base active:scale-95 transition">Start Practice →</button>
+
+                <button onClick={handleStart} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-green-500 text-black font-bold text-base active:scale-95 transition flex items-center justify-center gap-2">
+                  Start Practice →
+                </button>
               </div>
             )}
           </motion.div>

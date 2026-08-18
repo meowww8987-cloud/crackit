@@ -17,12 +17,19 @@ export function PracticeRunner() {
   const saveNotes = usePractice((s) => s.saveNotes);
   const history = usePractice((s) => s.history);
   const haptics = useSettings((s) => s.haptics);
+  const dimDelay = useSettings((s) => s.dimDelay);
+  const screenDimOpacity = useSettings((s) => s.screenDimOpacity);
+  const burnProtection = useSettings((s) => s.burnProtection);
 
   const [, setTick] = useState(0);
   const questionStartRef = useRef(Date.now());
   const [phase, setPhase] = useState<'practicing' | 'reviewing'>('practicing');
   const [reviewSessionId, setReviewSessionId] = useState<string | null>(null);
   const [expandedQ, setExpandedQ] = useState<number | null>(null);
+  const [dimmed, setDimmed] = useState(false);
+  const lastInteractionRef = useRef(Date.now());
+  const [orientationAngle, setOrientationAngle] = useState(0);
+  const wakeLockRef = useRef<any>(null);
 
   // Get the session being reviewed
   const reviewSession = reviewSessionId ? history.find((s) => s.id === reviewSessionId) : null;
@@ -30,6 +37,56 @@ export function PracticeRunner() {
   useEffect(() => {
     questionStartRef.current = Date.now();
   }, [currentIdx]);
+
+  // === Wake lock (prevent screen sleep during practice) ===
+  useEffect(() => {
+    if (!activePractice) return;
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+        }
+      } catch {}
+    };
+    requestWakeLock();
+    const onVis = () => {
+      if (!document.hidden && activePractice) requestWakeLock();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      if (wakeLockRef.current) { try { wakeLockRef.current.release(); } catch {} wakeLockRef.current = null; }
+    };
+  }, [activePractice]);
+
+  // === Orientation (basic — screen.orientation API) ===
+  useEffect(() => {
+    if (!activePractice) return;
+    const update = () => {
+      if (typeof screen !== 'undefined' && screen.orientation) {
+        setOrientationAngle(screen.orientation.angle || 0);
+      }
+    };
+    update();
+    if (typeof screen !== 'undefined' && screen.orientation) {
+      screen.orientation.addEventListener('change', update);
+      return () => screen.orientation?.removeEventListener('change', update);
+    }
+  }, [activePractice]);
+
+  // === Burn protection (dim after inactivity) ===
+  useEffect(() => {
+    if (!activePractice || !burnProtection || phase !== 'practicing') return;
+    const checkDim = () => {
+      const idle = Date.now() - lastInteractionRef.current;
+      setDimmed(idle > dimDelay * 1000);
+    };
+    const i = setInterval(checkDim, 1000);
+    return () => clearInterval(i);
+  }, [activePractice, burnProtection, dimDelay, phase]);
+
+  // Reset dim on any interaction
+  const bumpInteraction = () => { lastInteractionRef.current = Date.now(); setDimmed(false); };
 
   useEffect(() => {
     if (!activePractice) return;
@@ -123,8 +180,15 @@ export function PracticeRunner() {
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={bumpInteraction}
+      onTouchStart={bumpInteraction}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui flex flex-col items-center justify-center p-6"
-      style={{ background: '#000000' }}
+      style={{
+        background: '#000000',
+        opacity: dimmed ? (screenDimOpacity / 100) : 1,
+        transition: 'opacity 0.8s ease-in-out',
+        transform: `rotate(${orientationAngle}deg)`,
+      }}
     >
       {/* Question nav dots */}
       <div className="absolute top-[env(safe-area-inset-top,0px)] top-6 left-0 right-0 px-4 z-10">
