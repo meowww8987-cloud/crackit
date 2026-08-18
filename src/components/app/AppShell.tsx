@@ -45,6 +45,8 @@ import { usePartnerSync } from '@/hooks/usePartnerSync';
 import { SleepLockScreen } from '@/components/dailylog/SleepLockScreen';
 import { SleepHistorySheet } from '@/components/dailylog/SleepHistorySheet';
 import { SleepAnalysisSheet } from '@/components/dailylog/SleepAnalysisSheet';
+import { PracticeSetupSheet } from '@/components/practice/PracticeSetupSheet';
+import { PracticeRunner } from '@/components/practice/PracticeRunner';
 import { TabLongPressOverlay } from '@/components/shared/TabLongPressOverlay';
 import { TabInfoSheet, type TabKey as InfoTabKey } from '@/components/shared/TabInfoSheet';
 import { TutorialOnboarding } from '@/components/shared/TutorialOnboarding';
@@ -96,6 +98,7 @@ export function AppShell() {
   const [showSleepHistory, setShowSleepHistory] = useState(false);
   const [showSleepAnalysis, setShowSleepAnalysis] = useState(false);
   const [sleepAnalysisTab, setSleepAnalysisTab] = useState<'weekly' | 'monthly'>('weekly');
+  const [showPracticeSetup, setShowPracticeSetup] = useState(false);
   const [activePaperTestId, setActivePaperTestId] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -620,8 +623,8 @@ export function AppShell() {
                 icon: Sigma, label: 'Formula Vault', description: 'Store + review important formulas',
                 color: '#a855f7', onClick: () => { setLongPressTab(null); setShowFormulaVault(true); },
               } : longPressTab === 'tests' ? {
-                icon: FileText, label: 'Practice Mode', description: 'Practice questions without exam pressure',
-                color: '#3b82f6', onClick: () => { setLongPressTab(null); setShowPaperTestPicker(true); },
+                icon: FileText, label: 'Practice Mode', description: 'Solve questions with per-question timer + review',
+                color: '#3b82f6', onClick: () => { setLongPressTab(null); setShowPracticeSetup(true); },
               } : longPressTab === 'history' ? {
                 icon: Moon, label: 'Sleep History', description: 'All sleep entries + health analysis',
                 color: '#6366f1', onClick: () => { setLongPressTab(null); setShowSleepHistory(true); },
@@ -803,6 +806,12 @@ export function AppShell() {
           />
         )}
       </AnimatePresence>
+
+      {/* Practice Setup Sheet — activated by long-press Tests → Practice Mode */}
+      <PracticeSetupSheet open={showPracticeSetup} onClose={() => setShowPracticeSetup(false)} />
+
+      {/* Practice Runner — full-screen practice mode (auto-renders when activePractice is set) */}
+      <PracticeRunner />
 
       {/* Sleep History sheet — activated by long-press Tests → Sleep History */}
       <SleepHistorySheet open={showSleepHistory} onClose={() => setShowSleepHistory(false)} />
