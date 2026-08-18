@@ -10,6 +10,8 @@ export interface PracticeQuestion {
   timeSpentSec: number;
   status: 'unanswered' | 'answered' | 'skipped' | 'review-later';
   result: 'correct' | 'wrong' | 'unmarked';
+  userAnswer: string | null;      // 'A' | 'B' | 'C' | 'D' | null — what user selected during practice
+  correctAnswer: string | null;   // 'A' | 'B' | 'C' | 'D' | null — correct answer (set during review)
   conceptNotes: string;
   formulaNotes: string;
 }
@@ -50,6 +52,7 @@ interface PracticeStore {
   cancelPractice: () => void;
 
   markQuestion: (sessionId: string, questionIndex: number, result: 'correct' | 'wrong' | 'unmarked') => void;
+  markCorrectAnswer: (sessionId: string, questionIndex: number, correctAnswer: string | null) => void;
   saveNotes: (sessionId: string, questionIndex: number, conceptNotes: string, formulaNotes: string) => void;
 
   getRecent: (n: number) => PracticeSession[];
@@ -73,6 +76,8 @@ export const usePractice = create<PracticeStore>()(
               timeSpentSec: 0,
               status: 'unanswered' as const,
               result: 'unmarked' as const,
+              userAnswer: null,
+              correctAnswer: null,
               conceptNotes: '',
               formulaNotes: '',
             }))
@@ -179,24 +184,39 @@ export const usePractice = create<PracticeStore>()(
             if (session.id !== sessionId) return session;
             const questions = [...session.questions];
             if (questionIndex >= 0 && questionIndex < questions.length) {
-              questions[questionIndex] = {
-                ...questions[questionIndex],
-                result,
-              };
+              questions[questionIndex] = { ...questions[questionIndex], result };
             }
             const correct = questions.filter(q => q.result === 'correct').length;
             const wrong = questions.filter(q => q.result === 'wrong').length;
             const unmarked = questions.filter(q => q.result === 'unmarked').length;
             const totalMarked = correct + wrong;
             const accuracy = totalMarked > 0 ? Math.round((correct / totalMarked) * 100) : 0;
-            return {
-              ...session,
-              questions,
-              correctCount: correct,
-              wrongCount: wrong,
-              unmarkedCount: unmarked,
-              accuracy,
-            };
+            return { ...session, questions, correctCount: correct, wrongCount: wrong, unmarkedCount: unmarked, accuracy };
+          }),
+        }));
+      },
+
+      markCorrectAnswer: (sessionId, questionIndex, correctAnswer) => {
+        set((s) => ({
+          history: s.history.map((session) => {
+            if (session.id !== sessionId) return session;
+            const questions = [...session.questions];
+            if (questionIndex >= 0 && questionIndex < questions.length) {
+              const q = questions[questionIndex];
+              // Auto-determine result: if userAnswer matches correctAnswer → correct, else wrong
+              const result = correctAnswer && q.userAnswer && correctAnswer === q.userAnswer
+                ? 'correct' as const
+                : correctAnswer && q.userAnswer && correctAnswer !== q.userAnswer
+                  ? 'wrong' as const
+                  : 'unmarked' as const;
+              questions[questionIndex] = { ...q, correctAnswer, result };
+            }
+            const correct = questions.filter(q => q.result === 'correct').length;
+            const wrong = questions.filter(q => q.result === 'wrong').length;
+            const unmarked = questions.filter(q => q.result === 'unmarked').length;
+            const totalMarked = correct + wrong;
+            const accuracy = totalMarked > 0 ? Math.round((correct / totalMarked) * 100) : 0;
+            return { ...session, questions, correctCount: correct, wrongCount: wrong, unmarkedCount: unmarked, accuracy };
           }),
         }));
       },
