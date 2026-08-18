@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Check, X, ChevronRight, Flag, Save } from 'lucide-react';
 import { usePractice, type PracticeSession } from '@/lib/store/practice';
@@ -17,28 +17,59 @@ export function PracticeRunner() {
   const saveNotes = usePractice((s) => s.saveNotes);
   const history = usePractice((s) => s.history);
   const haptics = useSettings((s) => s.haptics);
-  const dimDelay = useSettings((s) => s.dimDelay);
-  const screenDimOpacity = useSettings((s) => s.screenDimOpacity);
-  const burnProtection = useSettings((s) => s.burnProtection);
 
   const [, setTick] = useState(0);
   const questionStartRef = useRef(Date.now());
   const [phase, setPhase] = useState<'practicing' | 'reviewing'>('practicing');
   const [reviewSessionId, setReviewSessionId] = useState<string | null>(null);
   const [expandedQ, setExpandedQ] = useState<number | null>(null);
-  const [dimmed, setDimmed] = useState(false);
-  const lastInteractionRef = useRef(Date.now());
   const [orientationAngle, setOrientationAngle] = useState(0);
   const wakeLockRef = useRef<any>(null);
 
-  // Get the session being reviewed
   const reviewSession = reviewSessionId ? history.find((s) => s.id === reviewSessionId) : null;
+
+  // === handleEnd — defined BEFORE early returns to avoid ReferenceError ===
+  const handleEnd = useCallback(() => {
+    const session = usePractice.getState().activePractice;
+    const idx = usePractice.getState().currentQuestionIndex;
+    if (session) {
+      const questions = [...session.questions];
+      while (questions.length <= idx) {
+        questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', conceptNotes: '', formulaNotes: '' });
+      }
+      const qElapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
+      questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
+      usePractice.setState({ activePractice: { ...session, questions } });
+    }
+    endPractice();
+    const justEnded = usePractice.getState().history[0];
+    if (justEnded) {
+      setReviewSessionId(justEnded.id);
+      setPhase('reviewing');
+    }
+  }, [endPractice]);
+
+  const handleAction = useCallback((status: 'answered' | 'skipped' | 'review-later') => {
+    if (haptics) vibrate(10);
+    const session = usePractice.getState().activePractice;
+    const idx = usePractice.getState().currentQuestionIndex;
+    if (session) {
+      const questions = [...session.questions];
+      while (questions.length <= idx) {
+        questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', conceptNotes: '', formulaNotes: '' });
+      }
+      const qElapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
+      questions[idx] = { ...questions[idx], timeSpentSec: qElapsed, status };
+      usePractice.setState({ activePractice: { ...session, questions } });
+    }
+    answerQuestion(status);
+  }, [haptics, answerQuestion]);
 
   useEffect(() => {
     questionStartRef.current = Date.now();
   }, [currentIdx]);
 
-  // === Wake lock (prevent screen sleep during practice) ===
+  // === Wake lock ===
   useEffect(() => {
     if (!activePractice) return;
     const requestWakeLock = async () => {
@@ -49,9 +80,7 @@ export function PracticeRunner() {
       } catch {}
     };
     requestWakeLock();
-    const onVis = () => {
-      if (!document.hidden && activePractice) requestWakeLock();
-    };
+    const onVis = () => { if (!document.hidden && usePractice.getState().activePractice) requestWakeLock(); };
     document.addEventListener('visibilitychange', onVis);
     return () => {
       document.removeEventListener('visibilitychange', onVis);
@@ -59,7 +88,7 @@ export function PracticeRunner() {
     };
   }, [activePractice]);
 
-  // === Orientation (basic — screen.orientation API) ===
+  // === Orientation ===
   useEffect(() => {
     if (!activePractice) return;
     const update = () => {
@@ -74,32 +103,19 @@ export function PracticeRunner() {
     }
   }, [activePractice]);
 
-  // === Burn protection (dim after inactivity) ===
-  useEffect(() => {
-    if (!activePractice || !burnProtection || phase !== 'practicing') return;
-    const checkDim = () => {
-      const idle = Date.now() - lastInteractionRef.current;
-      setDimmed(idle > dimDelay * 1000);
-    };
-    const i = setInterval(checkDim, 1000);
-    return () => clearInterval(i);
-  }, [activePractice, burnProtection, dimDelay, phase]);
-
-  // Reset dim on any interaction
-  const bumpInteraction = () => { lastInteractionRef.current = Date.now(); setDimmed(false); };
-
   useEffect(() => {
     if (!activePractice) return;
     const i = setInterval(() => setTick((t) => t + 1), 500);
     return () => clearInterval(i);
   }, [activePractice]);
 
+  // === Auto-end when all questions done ===
   useEffect(() => {
     if (!activePractice) return;
     if (activePractice.questionCount > 0 && currentIdx >= activePractice.questionCount) {
       handleEnd();
     }
-  }, [currentIdx, activePractice]);
+  }, [currentIdx, activePractice, handleEnd]);
 
   if (!activePractice && phase === 'practicing' && !reviewSession) return null;
 
@@ -128,46 +144,10 @@ export function PracticeRunner() {
   const timeLimitSec = activePractice.timeLimitMin * 60;
   const timeUp = timeLimitSec > 0 && totalElapsed >= timeLimitSec;
 
+  // Check time limit
   useEffect(() => {
     if (timeUp) handleEnd();
-  }, [timeUp]);
-
-  const handleEnd = () => {
-    // Accumulate time on current question before ending
-    const session = usePractice.getState().activePractice;
-    if (session) {
-      const questions = [...session.questions];
-      while (questions.length <= currentIdx) {
-        questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', conceptNotes: '', formulaNotes: '' });
-      }
-      questions[currentIdx] = {
-        ...questions[currentIdx],
-        timeSpentSec: questionElapsed,
-      };
-      usePractice.setState({ activePractice: { ...session, questions } });
-    }
-    endPractice();
-    // Get the just-ended session from history (it's history[0] after endPractice)
-    const justEnded = usePractice.getState().history[0];
-    if (justEnded) {
-      setReviewSessionId(justEnded.id);
-      setPhase('reviewing');
-    }
-  };
-
-  const handleAction = (status: 'answered' | 'skipped' | 'review-later') => {
-    if (haptics) vibrate(10);
-    const session = usePractice.getState().activePractice;
-    if (session) {
-      const questions = [...session.questions];
-      while (questions.length <= currentIdx) {
-        questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', conceptNotes: '', formulaNotes: '' });
-      }
-      questions[currentIdx] = { ...questions[currentIdx], timeSpentSec: questionElapsed, status };
-      usePractice.setState({ activePractice: { ...session, questions } });
-    }
-    answerQuestion(status);
-  };
+  }, [timeUp, handleEnd]);
 
   const visibleQuestions = activePractice.questions.slice(0, Math.max(30, currentIdx + 5));
   const qStatusColor = (q: typeof visibleQuestions[0]) => {
@@ -180,15 +160,8 @@ export function PracticeRunner() {
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      onClick={bumpInteraction}
-      onTouchStart={bumpInteraction}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui flex flex-col items-center justify-center p-6"
-      style={{
-        background: '#000000',
-        opacity: dimmed ? (screenDimOpacity / 100) : 1,
-        transition: 'opacity 0.8s ease-in-out',
-        transform: `rotate(${orientationAngle}deg)`,
-      }}
+      style={{ background: '#000000', transform: `rotate(${orientationAngle}deg)` }}
     >
       {/* Question nav dots */}
       <div className="absolute top-[env(safe-area-inset-top,0px)] top-6 left-0 right-0 px-4 z-10">
@@ -208,7 +181,7 @@ export function PracticeRunner() {
         <div className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-1">Question {currentIdx + 1}{activePractice.questionCount > 0 ? ` of ${activePractice.questionCount}` : ''}</div>
         <div className="text-5xl font-bold tabular text-white mb-2">{formatHM(questionElapsed)}</div>
         <div className="text-sm text-white/50">Total: <span className="tabular text-amber-400">{formatHM(totalElapsed)}</span>
-          {timeLimitSec > 0 && <span className="ml-2">· Limit: <span className={cn('tabular', timeLimitSec - totalElapsed < 60 ? 'text-red-400' : 'text-white/40')}>{formatHM(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}
+          {timeLimitSec > 0 && <span className="ml-2">· Left: <span className={cn('tabular', timeLimitSec - totalElapsed < 60 ? 'text-red-400' : 'text-white/40')}>{formatHM(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}
         </div>
         <div className="flex items-center justify-center gap-3 mt-3 text-xs">
           <span className="text-green-400">✓ {answeredCount}</span>
@@ -256,15 +229,12 @@ function ReviewPhase({ session, markQuestion, saveNotes, expandedQ, setExpandedQ
   const totalMarked = correct + wrong;
   const accuracy = totalMarked > 0 ? Math.round((correct / totalMarked) * 100) : 0;
 
-  // Sort questions: wrong first, then unmarked, then correct
   const sortedQuestions = [...session.questions].sort((a, b) => {
     const order = { wrong: 0, unmarked: 1, correct: 2 };
     return (order[a.result] ?? 1) - (order[b.result] ?? 1);
   });
 
-  // Find fastest + slowest
   const times = session.questions.map(q => q.timeSpentSec).filter(t => t > 0);
-  const avgTime = times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0;
   const fastest = times.length > 0 ? Math.min(...times) : 0;
   const slowest = times.length > 0 ? Math.max(...times) : 0;
 
@@ -275,14 +245,12 @@ function ReviewPhase({ session, markQuestion, saveNotes, expandedQ, setExpandedQ
       style={{ background: '#000000' }}
     >
       <div className="p-5 pt-[env(safe-area-inset-top,0px)] pt-8 max-w-md mx-auto">
-        {/* Header */}
         <div className="text-center mb-5">
           <div className="text-4xl mb-2">📊</div>
           <h2 className="text-lg font-bold text-white">Practice Summary</h2>
           <p className="text-xs text-white/40 mt-0.5">{session.name}</p>
         </div>
 
-        {/* Stats */}
         <div className="glass rounded-2xl p-4 mb-4">
           <div className="grid grid-cols-3 gap-2 text-center mb-3">
             <div><div className="text-2xl font-bold text-green-400 tabular">{correct}</div><div className="text-[9px] text-white/40">Correct</div></div>
@@ -302,10 +270,8 @@ function ReviewPhase({ session, markQuestion, saveNotes, expandedQ, setExpandedQ
           )}
         </div>
 
-        {/* Instructions */}
         <p className="text-xs text-white/50 mb-3 text-center">Mark each question ✓ Correct or ✗ Wrong. Tap a question to expand + write concept notes.</p>
 
-        {/* Question list */}
         <div className="space-y-1.5 mb-6">
           {sortedQuestions.map((q) => {
             const originalIdx = session.questions.indexOf(q);
@@ -354,4 +320,3 @@ function ReviewPhase({ session, markQuestion, saveNotes, expandedQ, setExpandedQ
     </motion.div>
   );
 }
-
