@@ -188,8 +188,21 @@ export function HomeTab() {
   const prepTotal = prepStart ? diffDays(prepStart, examDate) : 326;
   const prepPct = prepTotal > 0 ? Math.min(100, Math.round((prepDay / prepTotal) * 100)) : 0;
 
+  // === Lifted sheet state (rendered OUTSIDE motion.div wrappers to avoid
+  //     the CSS transform → position:fixed containing block issue) ===
+  const [showSleepLog, setShowSleepLog] = useState(false);
+  const [showSleepReport, setShowSleepReport] = useState(false);
+  const [showSleepPlan, setShowSleepPlan] = useState(false);
+
   return (
     <div className="pt-2 pb-4 space-y-4">
+      {/* === Sheets rendered at TOP LEVEL (outside motion.div wrappers) ===
+          This prevents the CSS transform → position:fixed containing block
+          issue that caused glitchy sheet positioning. */}
+      {showSleepLog && <SleepLogSheet key="sleeplog" onClose={() => setShowSleepLog(false)} />}
+      <SleepReportSheet open={showSleepReport} onClose={() => setShowSleepReport(false)} />
+      <SleepPlanSheet open={showSleepPlan} onClose={() => setShowSleepPlan(false)} />
+
       {/* Mission Control Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex items-center justify-between">
         {/* NEET logo + title — TAPPING THE LOGO starts sleep mode.
@@ -295,7 +308,7 @@ export function HomeTab() {
       {/* Test Day Mode — only renders when today is a test day. Replaces
           the regular "Next Test" card (which returns null in this case) with
           a focused, calming test-day layout. */}
-      <motion.div {...cardEntrance} whileTap={cardTap}><TestDayMode /></motion.div>
+      <motion.div {...cardEntrance}><TestDayMode /></motion.div>
 
       <motion.div {...cardEntrance} className="grid grid-cols-2 gap-3">
         <RingComparison
@@ -323,17 +336,17 @@ export function HomeTab() {
       {/* Next Test — collapsible readiness card.
           On test day, NextTestCard returns null and TestDayMode renders instead
           (TestDayMode is placed above the Rings so it's the first thing seen). */}
-      <motion.div {...cardEntrance} whileTap={cardTap}><NextTestCard /></motion.div>
+      <motion.div {...cardEntrance}><NextTestCard /></motion.div>
 
       {/* === Study with Friend — compare with a friend === */}
-      <motion.div {...cardEntrance} whileTap={cardTap}><PartnerCard /></motion.div>
+      <motion.div {...cardEntrance}><PartnerCard /></motion.div>
 
       {/* === AI Study Coach === */}
-      <motion.div {...cardEntrance} whileTap={cardTap}><CoachCard /></motion.div>
+      <motion.div {...cardEntrance}><CoachCard /></motion.div>
 
       {/* Today's Schedule */}
       {todaySlots.length > 0 && (
-        <motion.div {...cardEntrance} whileTap={cardTap} className="glass rounded-2xl p-3 minimal-hide">
+        <motion.div {...cardEntrance} className="glass rounded-2xl p-3 minimal-hide">
           <div className="flex items-center gap-2 mb-2">
             <Calendar size={14} className="text-amber-400" />
             <span className="text-xs font-bold uppercase tracking-wide text-white/60">Today's Schedule</span>
@@ -351,15 +364,21 @@ export function HomeTab() {
       )}
 
       {/* Subject Health Scores */}
-      <motion.div {...cardEntrance} whileTap={cardTap} className="minimal-hide"><SubjectHealthCard /></motion.div>
+      <motion.div {...cardEntrance} className="minimal-hide"><SubjectHealthCard /></motion.div>
 
-      {/* Sleep & Energy + Doubts */}
-      <motion.div {...cardEntrance} whileTap={cardTap} className="minimal-hide"><SleepAndDoubtCard /></motion.div>
+      {/* Sleep & Energy + Doubts — sheets are rendered at top level to avoid transform positioning issues */}
+      <motion.div {...cardEntrance} className="minimal-hide">
+        <SleepAndDoubtCard
+          onOpenSleepLog={() => setShowSleepLog(true)}
+          onOpenReport={() => setShowSleepReport(true)}
+          onOpenPlan={() => setShowSleepPlan(true)}
+        />
+      </motion.div>
 
       {/* Weekly Goals — moved to Home tab long-press overlay */}
 
       {/* Predicted Score */}
-      <motion.div {...cardEntrance} whileTap={cardTap}><ScorePredictionCard /></motion.div>
+      <motion.div {...cardEntrance}><ScorePredictionCard /></motion.div>
 
       {/* Achievement Badges */}
       <motion.div {...cardEntrance} className="minimal-hide"><AchievementBadges /></motion.div>
@@ -368,7 +387,7 @@ export function HomeTab() {
       <motion.div {...cardEntrance} className="minimal-hide"><MiniHeatmap /></motion.div>
 
       {/* Sessions count */}
-      <motion.div {...cardEntrance} whileTap={cardTap} className="glass rounded-2xl p-4 flex items-center justify-between minimal-hide">
+      <motion.div {...cardEntrance} className="glass rounded-2xl p-4 flex items-center justify-between minimal-hide">
         <div>
           <div className="text-xs text-white/50 mb-1">Total Sessions</div>
           <NumberMorph
@@ -424,11 +443,12 @@ function RingComparison({
   );
 }
 
-function SleepAndDoubtCard() {
+function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
+  onOpenSleepLog: () => void;
+  onOpenReport: () => void;
+  onOpenPlan: () => void;
+}) {
   const todayLog = useDailyLog((s) => s.getToday());
-  const [showSleep, setShowSleep] = useState(false);
-  const [showReport, setShowReport] = useState(false);
-  const [showPlan, setShowPlan] = useState(false);
   const pendingDoubts = useDoubts((s) => s.getPendingCount());
   const resolvedDoubts = useDoubts((s) => s.doubts.filter(d => d.status === 'resolved').length);
   // Real sleep data from the new sleep store
@@ -453,7 +473,7 @@ function SleepAndDoubtCard() {
             <span className="text-[10px] font-bold text-white/50 uppercase tracking-wide">Sleep & Energy</span>
           </div>
           <button
-            onClick={() => setShowPlan(true)}
+            onClick={() => onOpenPlan()}
             className="text-[9px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-semibold active:scale-95 transition"
           >
             Sleep Plan →
@@ -466,11 +486,11 @@ function SleepAndDoubtCard() {
             // If active sleep → no-op (lock screen handles it)
             if (activeSleep) return;
             // If has sleep history → open report; else open manual log
-            if (hasAnySleepHistory) setShowReport(true);
-            else setShowSleep(true);
+            if (hasAnySleepHistory) onOpenReport();
+            else onOpenSleepLog();
           }}
           onTouchStart={() => {
-            longPressTimer.current = setTimeout(() => setShowReport(true), 500);
+            longPressTimer.current = setTimeout(() => onOpenReport(), 500);
           }}
           onTouchEnd={() => {
             if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
@@ -561,10 +581,6 @@ function SleepAndDoubtCard() {
           <span className="text-[9px] text-white/30">· {resolvedDoubts} resolved</span>
         </button>
       </div>
-
-      {showSleep && <SleepLogSheet key="sleep" onClose={() => setShowSleep(false)} />}
-      {showReport && <SleepReportSheet open={showReport} onClose={() => setShowReport(false)} />}
-      {showPlan && <SleepPlanSheet open={showPlan} onClose={() => setShowPlan(false)} />}
     </>
   );
 }
