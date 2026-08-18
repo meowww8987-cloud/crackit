@@ -47,6 +47,7 @@ import { SleepHistorySheet } from '@/components/dailylog/SleepHistorySheet';
 import { SleepAnalysisSheet } from '@/components/dailylog/SleepAnalysisSheet';
 import { PracticeSetupSheet } from '@/components/practice/PracticeSetupSheet';
 import { PracticeRunner } from '@/components/practice/PracticeRunner';
+import { PracticeHistorySheet } from '@/components/practice/PracticeHistorySheet';
 import { TabLongPressOverlay } from '@/components/shared/TabLongPressOverlay';
 import { TabInfoSheet, type TabKey as InfoTabKey } from '@/components/shared/TabInfoSheet';
 import { TutorialOnboarding } from '@/components/shared/TutorialOnboarding';
@@ -99,6 +100,7 @@ export function AppShell() {
   const [showSleepAnalysis, setShowSleepAnalysis] = useState(false);
   const [sleepAnalysisTab, setSleepAnalysisTab] = useState<'weekly' | 'monthly'>('weekly');
   const [showPracticeSetup, setShowPracticeSetup] = useState(false);
+  const [showPracticeHistory, setShowPracticeHistory] = useState(false);
   const [activePaperTestId, setActivePaperTestId] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -634,7 +636,10 @@ export function AppShell() {
               } : null
             }
             thirdAction={
-              longPressTab === 'stats' ? {
+              longPressTab === 'history' ? {
+                icon: BookOpen, label: 'Practice History', description: 'Per-question timing, wrong-question revision + concept notes',
+                color: '#3b82f6', onClick: () => { setLongPressTab(null); setShowPracticeHistory(true); },
+              } : longPressTab === 'stats' ? {
                 icon: Moon, label: 'Sleep Report', description: 'Weekly + monthly sleep health analysis',
                 color: '#6366f1', onClick: () => { setLongPressTab(null); setSleepAnalysisTab('weekly'); setShowSleepAnalysis(true); },
               } : null
@@ -812,6 +817,9 @@ export function AppShell() {
 
       {/* Practice Runner — full-screen practice mode (auto-renders when activePractice is set) */}
       <PracticeRunner />
+
+      {/* Practice History — activated by long-press History → Practice History */}
+      <PracticeHistorySheet open={showPracticeHistory} onClose={() => setShowPracticeHistory(false)} />
 
       {/* Sleep History sheet — activated by long-press Tests → Sleep History */}
       <SleepHistorySheet open={showSleepHistory} onClose={() => setShowSleepHistory(false)} />
