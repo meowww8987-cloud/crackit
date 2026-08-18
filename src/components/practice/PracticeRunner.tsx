@@ -105,9 +105,19 @@ export function PracticeRunner() {
 
   useEffect(() => {
     if (!activePractice) return;
-    const i = setInterval(() => setTick((t) => t + 1), 500);
+    const i = setInterval(() => {
+      setTick((t) => t + 1);
+      // Check time limit inside the tick (avoids conditional hook call)
+      const session = usePractice.getState().activePractice;
+      if (session && session.timeLimitMin > 0) {
+        const elapsed = Math.floor((Date.now() - session.startedAt) / 1000);
+        if (elapsed >= session.timeLimitMin * 60) {
+          handleEnd();
+        }
+      }
+    }, 500);
     return () => clearInterval(i);
-  }, [activePractice]);
+  }, [activePractice, handleEnd]);
 
   // === Auto-end when all questions done ===
   useEffect(() => {
@@ -142,12 +152,6 @@ export function PracticeRunner() {
   const skippedCount = activePractice.questions.filter(q => q.status === 'skipped').length;
   const reviewCount = activePractice.questions.filter(q => q.status === 'review-later').length;
   const timeLimitSec = activePractice.timeLimitMin * 60;
-  const timeUp = timeLimitSec > 0 && totalElapsed >= timeLimitSec;
-
-  // Check time limit
-  useEffect(() => {
-    if (timeUp) handleEnd();
-  }, [timeUp, handleEnd]);
 
   const visibleQuestions = activePractice.questions.slice(0, Math.max(30, currentIdx + 5));
   const qStatusColor = (q: typeof visibleQuestions[0]) => {
