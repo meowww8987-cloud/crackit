@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, ChevronRight, Flag, Save, XCircle } from 'lucide-react';
+import { Check, X, ChevronRight, Flag, Save } from 'lucide-react';
 import { usePractice, type PracticeSession, type PracticeQuestion } from '@/lib/store/practice';
 import { useSettings } from '@/lib/store/settings';
 import { formatHM, cn, vibrate } from '@/lib/utils';
@@ -168,10 +168,7 @@ export function PracticeRunner() {
   );
 }
 
-// ===== Review Phase — List → Bubble hybrid =====
-// Unmarked questions show as list rows with A/B/C/D selector.
-// Once you mark the correct answer, the row animates into a floating bubble.
-// Tap a bubble to re-expand it for editing (notes, change answer, etc.)
+// ===== Review Phase — List with A/B/C/D (questions persist even when correct) =====
 function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }: {
   session: PracticeSession;
   markCorrectAnswer: (sessionId: string, questionIndex: number, correctAnswer: string | null) => void;
@@ -179,7 +176,7 @@ function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }
   onClose: () => void;
   haptics: boolean;
 }) {
-  const [expandedBubble, setExpandedBubble] = useState<number | null>(null);
+  const [expandedQ, setExpandedQ] = useState<number | null>(null);
   const [conceptDraft, setConceptDraft] = useState('');
   const [formulaDraft, setFormulaDraft] = useState('');
 
@@ -192,200 +189,116 @@ function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }
   const fastest = times.length > 0 ? Math.min(...times) : 0;
   const slowest = times.length > 0 ? Math.max(...times) : 0;
 
-  // Split: marked (have correctAnswer) → bubbles; unmarked → list rows
-  const markedQuestions = session.questions.map((q, i) => ({ q, i })).filter(({ q }) => q.correctAnswer !== null);
-  const unmarkedQuestions = session.questions.map((q, i) => ({ q, i })).filter(({ q }) => q.correctAnswer === null);
-
-  const bubbleColor = (q: PracticeQuestion): string => {
-    if (q.result === 'correct') return '#22c55e';
-    if (q.result === 'wrong') return '#ef4444';
-    if (q.status === 'review-later') return '#f59e0b';
-    if (q.status === 'skipped') return '#6b7280';
-    return 'rgba(255,255,255,0.15)';
-  };
+  // Sort: wrong first, then unmarked, then correct
+  const sortedQuestions = [...session.questions].sort((a, b) => {
+    const order = { wrong: 0, unmarked: 1, correct: 2 };
+    return (order[a.result] ?? 1) - (order[b.result] ?? 1);
+  });
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-y-auto force-dark-ui"
       style={{ background: '#000000' }}>
-      <div className="p-4 pt-[env(safe-area-inset-top,0px)] pt-8 max-w-md mx-auto">
+      <div className="p-5 pt-[env(safe-area-inset-top,0px)] pt-8 max-w-md mx-auto">
 
-        {/* Header + stats */}
-        <div className="text-center mb-3">
-          <div className="text-3xl mb-1">📊</div>
+        {/* Header */}
+        <div className="text-center mb-5">
+          <div className="text-4xl mb-2">📊</div>
           <h2 className="text-lg font-bold text-white">Answer Key</h2>
-          <p className="text-[10px] text-white/40 mt-0.5">{session.name} · Select correct answer for each question</p>
+          <p className="text-xs text-white/40 mt-0.5">{session.name}</p>
+          <p className="text-[10px] text-white/30 mt-1">Select correct answer for each question. Tap to expand for notes.</p>
         </div>
 
-        <div className="glass rounded-2xl p-3 mb-4">
-          <div className="grid grid-cols-4 gap-1 text-center">
-            <div><div className="text-lg font-bold text-green-400 tabular">{correct}</div><div className="text-[8px] text-white/40">✓</div></div>
-            <div><div className="text-lg font-bold text-red-400 tabular">{wrong}</div><div className="text-[8px] text-white/40">✗</div></div>
-            <div><div className="text-lg font-bold text-white/40 tabular">{unmarked}</div><div className="text-[8px] text-white/40">?</div></div>
-            <div><div className="text-lg font-bold text-teal-400 tabular">{accuracy}%</div><div className="text-[8px] text-white/40">Acc</div></div>
+        {/* Stats */}
+        <div className="glass rounded-2xl p-4 mb-4">
+          <div className="grid grid-cols-3 gap-2 text-center mb-3">
+            <div><div className="text-2xl font-bold text-green-400 tabular">{correct}</div><div className="text-[9px] text-white/40">Correct</div></div>
+            <div><div className="text-2xl font-bold text-red-400 tabular">{wrong}</div><div className="text-[9px] text-white/40">Wrong</div></div>
+            <div><div className="text-2xl font-bold text-white/40 tabular">{unmarked}</div><div className="text-[9px] text-white/40">Unmarked</div></div>
+          </div>
+          <div className="h-px bg-white/10 my-3" />
+          <div className="grid grid-cols-2 gap-2 text-center">
+            <div><div className="text-sm font-bold text-amber-400 tabular">{formatHM(session.totalTimeSec)}</div><div className="text-[9px] text-white/40">Total Time</div></div>
+            <div><div className="text-sm font-bold text-teal-400 tabular">{accuracy}%</div><div className="text-[9px] text-white/40">Accuracy</div></div>
           </div>
           {times.length > 0 && (
-            <div className="grid grid-cols-2 gap-1 text-center mt-2 pt-2 border-t border-white/5">
-              <div><span className="text-[9px] text-white/30">Fastest </span><span className="text-xs text-green-300 tabular">{formatHM(fastest)}</span></div>
-              <div><span className="text-[9px] text-white/30">Slowest </span><span className="text-xs text-red-300 tabular">{formatHM(slowest)}</span></div>
+            <div className="grid grid-cols-2 gap-2 text-center mt-2">
+              <div><div className="text-xs text-green-300 tabular">{formatHM(fastest)}</div><div className="text-[9px] text-white/30">Fastest</div></div>
+              <div><div className="text-xs text-red-300 tabular">{formatHM(slowest)}</div><div className="text-[9px] text-white/30">Slowest</div></div>
             </div>
           )}
         </div>
 
-        {/* === Floating bubbles (marked questions) === */}
-        {markedQuestions.length > 0 && (
-          <div className="mb-4">
-            <div className="text-[10px] text-white/40 uppercase tracking-wide mb-2">Marked ({markedQuestions.length})</div>
-            <div className="flex flex-wrap gap-1.5 justify-start min-h-[40px]">
-              {markedQuestions.map(({ q, i }, idx) => {
-                const color = bubbleColor(q);
-                const text = `${q.number}${q.userAnswer || '?'}`;
-                const isExpanded = expandedBubble === i;
-                const bubbleIdx = idx; // for stagger animation
-                return (
-                  <motion.button
-                    key={i}
-                    layoutId={`bubble-${i}`}
-                    onClick={() => {
-                      if (haptics) vibrate(8);
-                      if (isExpanded) { setExpandedBubble(null); }
-                      else { setExpandedBubble(i); setConceptDraft(q.conceptNotes || ''); setFormulaDraft(q.formulaNotes || ''); }
-                    }}
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1, y: [0, -3, 0] }}
-                    transition={{
-                      scale: { type: 'spring', stiffness: 400, damping: 20, delay: bubbleIdx * 0.03 },
-                      opacity: { delay: bubbleIdx * 0.03 },
-                      y: { duration: 3 + (bubbleIdx % 3), repeat: Infinity, ease: 'easeInOut', delay: bubbleIdx * 0.1 },
-                    }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    className={cn('px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition', isExpanded && 'ring-2 ring-white')}
-                    style={{
-                      background: color,
-                      color: q.result === 'unmarked' ? 'rgba(255,255,255,0.7)' : '#000',
-                      borderColor: q.result === 'unmarked' ? 'rgba(255,255,255,0.1)' : color,
-                    }}
-                  >
-                    {text}
-                    {q.conceptNotes && <span className="text-[8px]">📝</span>}
-                  </motion.button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* Question list — ALL questions persist, even when correct */}
+        <div className="space-y-1.5 mb-6">
+          {sortedQuestions.map((q) => {
+            const originalIdx = session.questions.indexOf(q);
+            const isExpanded = expandedQ === originalIdx;
+            const resultColor = q.result === 'correct' ? '#22c55e' : q.result === 'wrong' ? '#ef4444' : 'rgba(255,255,255,0.15)';
+            return (
+              <div key={originalIdx} className="rounded-xl overflow-hidden" style={{ borderLeft: `3px solid ${resultColor}` }}>
+                <div className="glass p-2.5 flex items-center gap-3" onClick={() => {
+                  if (isExpanded) { setExpandedQ(null); }
+                  else { setExpandedQ(originalIdx); setConceptDraft(q.conceptNotes || ''); setFormulaDraft(q.formulaNotes || ''); }
+                }}>
+                  <div className="text-xs font-bold w-8 tabular" style={{ color: resultColor }}>Q{q.number}</div>
+                  <div className="flex-1 text-[10px] text-white/50">
+                    {formatHM(q.timeSpentSec)} · {q.status}
+                    {q.userAnswer && <span className="ml-1 text-white/70">You: {q.userAnswer}</span>}
+                    {q.conceptNotes && <span className="ml-1 text-amber-400/60">📝</span>}
+                  </div>
+                  {q.result === 'correct' && <Check size={14} className="text-green-400" />}
+                  {q.result === 'wrong' && <X size={14} className="text-red-400" />}
+                </div>
 
-        {/* === Expanded bubble (editing) === */}
-        <AnimatePresence mode="wait">
-          {expandedBubble !== null && session.questions[expandedBubble] && (
-            <motion.div
-              key={expandedBubble}
-              layoutId={`expanded-${expandedBubble}`}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              {(() => {
-                const q = session.questions[expandedBubble];
-                const color = bubbleColor(q);
-                return (
-                  <div className="glass rounded-2xl p-4 mb-4" style={{ borderLeft: `3px solid ${color}` }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-bold" style={{ color }}>Q{q.number}</span>
-                      <span className="text-[10px] text-white/50">{formatHM(q.timeSpentSec)} · {q.status}</span>
-                    </div>
-                    <div className="text-xs text-white/60 mb-3">
+                {isExpanded && (
+                  <div className="p-3 bg-white/[0.02] space-y-2">
+                    {/* Your answer + correct answer */}
+                    <div className="text-xs text-white/60">
                       Your answer: <span className="font-bold text-white">{q.userAnswer || '—'}</span>
                       {q.correctAnswer && <span className="ml-2">| Correct: <span className="font-bold text-white">{q.correctAnswer}</span></span>}
-                      {q.result === 'correct' && <span className="ml-2 text-green-400">✓</span>}
-                      {q.result === 'wrong' && <span className="ml-2 text-red-400">✗</span>}
+                      {q.result === 'correct' && <span className="ml-2 text-green-400">✓ Correct!</span>}
+                      {q.result === 'wrong' && <span className="ml-2 text-red-400">✗ Wrong</span>}
                     </div>
-                    {/* Change correct answer */}
-                    <div className="text-[9px] text-white/40 uppercase mb-1.5">Change correct answer:</div>
-                    <div className="flex gap-2 mb-3">
-                      {OPTIONS.map((opt) => {
-                        const isSelected = q.correctAnswer === opt;
-                        const optIdx = OPTIONS.indexOf(opt);
-                        const isYourAnswer = q.userAnswer === opt;
-                        return (
-                          <button key={opt} onClick={() => { if (haptics) vibrate(10); markCorrectAnswer(session.id, expandedBubble, isSelected ? null : opt); }}
-                            className={cn('flex-1 py-2.5 rounded-xl text-sm font-bold transition border-2', isSelected ? 'text-white' : 'text-white/40 bg-white/5 border-white/10')}
-                            style={isSelected ? { background: OPTION_COLORS[optIdx], borderColor: OPTION_COLORS[optIdx] } : isYourAnswer ? { borderColor: `${OPTION_COLORS[optIdx]}80` } : {}}>
-                            {opt}{isYourAnswer && <span className="block text-[7px] mt-0.5">yours</span>}
-                          </button>
-                        );
-                      })}
+
+                    {/* Correct answer selector — always available, even when already correct */}
+                    <div>
+                      <label className="text-[9px] text-white/40 uppercase">Select / change correct answer:</label>
+                      <div className="flex gap-2 mt-1">
+                        {OPTIONS.map((opt) => {
+                          const isSelected = q.correctAnswer === opt;
+                          const optIdx = OPTIONS.indexOf(opt);
+                          const isYourAnswer = q.userAnswer === opt;
+                          return (
+                            <button key={opt} onClick={() => { if (haptics) vibrate(10); markCorrectAnswer(session.id, originalIdx, isSelected ? null : opt); }}
+                              className={cn('flex-1 py-2.5 rounded-xl text-sm font-bold transition border-2', isSelected ? 'text-white' : 'text-white/40 bg-white/5 border-white/10')}
+                              style={isSelected ? { background: OPTION_COLORS[optIdx], borderColor: OPTION_COLORS[optIdx] } : isYourAnswer ? { borderColor: `${OPTION_COLORS[optIdx]}80` } : {}}>
+                              {opt}
+                              {isYourAnswer && <span className="block text-[7px] mt-0.5">yours</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
+
                     {/* Notes */}
-                    <div className="space-y-2">
-                      <textarea value={conceptDraft} onChange={(e) => setConceptDraft(e.target.value)} placeholder="Concept / what went wrong..." className="w-full p-2 rounded-lg bg-white/5 text-xs h-12 resize-none" />
-                      <textarea value={formulaDraft} onChange={(e) => setFormulaDraft(e.target.value)} placeholder="Formula for revision..." className="w-full p-2 rounded-lg bg-white/5 text-xs h-10 resize-none" />
-                      <button onClick={() => { saveNotes(session.id, expandedBubble, conceptDraft, formulaDraft); if (haptics) vibrate(10); setExpandedBubble(null); }}
-                        className="w-full py-2 rounded-lg bg-amber-500/15 text-amber-400 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition">
-                        <Save size={12} /> Save & Close
-                      </button>
+                    <div>
+                      <label className="text-[9px] text-white/40 uppercase">Concept / what went wrong</label>
+                      <textarea value={conceptDraft} onChange={(e) => setConceptDraft(e.target.value)} placeholder="e.g. Forgot the formula..." className="w-full p-2 rounded-lg bg-white/5 text-xs mt-1 h-14 resize-none" />
                     </div>
+                    <div>
+                      <label className="text-[9px] text-white/40 uppercase">Formula for revision</label>
+                      <textarea value={formulaDraft} onChange={(e) => setFormulaDraft(e.target.value)} placeholder="e.g. R = u²sin2θ/g" className="w-full p-2 rounded-lg bg-white/5 text-xs mt-1 h-10 resize-none" />
+                    </div>
+                    <button onClick={() => { saveNotes(session.id, originalIdx, conceptDraft, formulaDraft); if (haptics) vibrate(10); setExpandedQ(null); }}
+                      className="w-full py-2 rounded-lg bg-amber-500/15 text-amber-400 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition">
+                      <Save size={12} /> Save & Close
+                    </button>
                   </div>
-                );
-              })()}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* === Unmarked questions (list with A/B/C/D selector) === */}
-        {unmarkedQuestions.length > 0 && (
-          <div className="mb-4">
-            <div className="text-[10px] text-white/40 uppercase tracking-wide mb-2">Unmarked ({unmarkedQuestions.length})</div>
-            <div className="space-y-1.5">
-              {unmarkedQuestions.map(({ q, i }) => (
-                <motion.div
-                  key={i}
-                  layoutId={`row-${i}`}
-                  className="glass rounded-xl p-2.5 flex items-center gap-3"
-                >
-                  <span className="text-xs font-bold text-white/40 w-7">Q{q.number}</span>
-                  <span className="text-[10px] text-white/40 flex-1">
-                    {formatHM(q.timeSpentSec)}
-                    {q.userAnswer && <span className="ml-1 text-white/60">You: {q.userAnswer}</span>}
-                    {q.status === 'skipped' && <span className="ml-1 text-gray-500">skipped</span>}
-                    {q.status === 'review-later' && <span className="ml-1 text-amber-400">⚑</span>}
-                  </span>
-                  {/* A/B/C/D selector */}
-                  <div className="flex gap-1">
-                    {OPTIONS.map((opt) => {
-                      const optIdx = OPTIONS.indexOf(opt);
-                      const isYourAnswer = q.userAnswer === opt;
-                      return (
-                        <button
-                          key={opt}
-                          onClick={() => {
-                            if (haptics) vibrate(10);
-                            markCorrectAnswer(session.id, i, opt);
-                          }}
-                          className={cn('w-6 h-6 rounded text-[10px] font-bold transition border',
-                            isYourAnswer ? 'text-white' : 'text-white/40 bg-white/5 border-white/10')}
-                          style={isYourAnswer ? { background: OPTION_COLORS[optIdx], borderColor: OPTION_COLORS[optIdx] } : {}}
-                        >
-                          {opt}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Legend */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-4 text-[9px]">
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ background: '#22c55e' }} /><span className="text-white/40">Correct</span></span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444' }} /><span className="text-white/40">Wrong</span></span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ background: '#f59e0b' }} /><span className="text-white/40">Review</span></span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ background: '#6b7280' }} /><span className="text-white/40">Skipped</span></span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }} /><span className="text-white/40">Unmarked</span></span>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <button onClick={() => { if (haptics) vibrate(15); onClose(); }} className="w-full py-3.5 rounded-xl bg-teal-500 text-black font-bold text-base active:scale-95 transition">Save & Close</button>
