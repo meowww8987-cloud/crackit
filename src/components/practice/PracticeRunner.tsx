@@ -168,7 +168,10 @@ export function PracticeRunner() {
   );
 }
 
-// ===== Review Phase — Floating Answer Bubbles =====
+// ===== Review Phase — List → Bubble hybrid =====
+// Unmarked questions show as list rows with A/B/C/D selector.
+// Once you mark the correct answer, the row animates into a floating bubble.
+// Tap a bubble to re-expand it for editing (notes, change answer, etc.)
 function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }: {
   session: PracticeSession;
   markCorrectAnswer: (sessionId: string, questionIndex: number, correctAnswer: string | null) => void;
@@ -176,7 +179,7 @@ function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }
   onClose: () => void;
   haptics: boolean;
 }) {
-  const [expandedQ, setExpandedQ] = useState<number | null>(null);
+  const [expandedBubble, setExpandedBubble] = useState<number | null>(null);
   const [conceptDraft, setConceptDraft] = useState('');
   const [formulaDraft, setFormulaDraft] = useState('');
 
@@ -189,7 +192,10 @@ function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }
   const fastest = times.length > 0 ? Math.min(...times) : 0;
   const slowest = times.length > 0 ? Math.max(...times) : 0;
 
-  // Bubble color based on result
+  // Split: marked (have correctAnswer) → bubbles; unmarked → list rows
+  const markedQuestions = session.questions.map((q, i) => ({ q, i })).filter(({ q }) => q.correctAnswer !== null);
+  const unmarkedQuestions = session.questions.map((q, i) => ({ q, i })).filter(({ q }) => q.correctAnswer === null);
+
   const bubbleColor = (q: PracticeQuestion): string => {
     if (q.result === 'correct') return '#22c55e';
     if (q.result === 'wrong') return '#ef4444';
@@ -198,28 +204,19 @@ function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }
     return 'rgba(255,255,255,0.15)';
   };
 
-  // Bubble text: e.g. "4A", "12B", "15C"
-  const bubbleText = (q: PracticeQuestion): string => {
-    const answer = q.userAnswer || '?';
-    return `${q.number}${answer}`;
-  };
-
-  const expandedQuestion = expandedQ !== null ? session.questions[expandedQ] : null;
-
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-y-auto force-dark-ui"
       style={{ background: '#000000' }}>
       <div className="p-4 pt-[env(safe-area-inset-top,0px)] pt-8 max-w-md mx-auto">
 
-        {/* Header */}
-        <div className="text-center mb-4">
-          <div className="text-3xl mb-1">🫧</div>
+        {/* Header + stats */}
+        <div className="text-center mb-3">
+          <div className="text-3xl mb-1">📊</div>
           <h2 className="text-lg font-bold text-white">Answer Key</h2>
-          <p className="text-[10px] text-white/40 mt-0.5">{session.name}</p>
+          <p className="text-[10px] text-white/40 mt-0.5">{session.name} · Select correct answer for each question</p>
         </div>
 
-        {/* Stats bar */}
         <div className="glass rounded-2xl p-3 mb-4">
           <div className="grid grid-cols-4 gap-1 text-center">
             <div><div className="text-lg font-bold text-green-400 tabular">{correct}</div><div className="text-[8px] text-white/40">✓</div></div>
@@ -235,128 +232,152 @@ function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }
           )}
         </div>
 
-        {/* === Floating answer bubbles === */}
-        <div className="flex flex-wrap gap-1.5 justify-center mb-4 min-h-[80px]">
-          {session.questions.map((q, i) => {
-            const color = bubbleColor(q);
-            const text = bubbleText(q);
-            const isExpanded = expandedQ === i;
-            return (
-              <motion.button
-                key={i}
-                onClick={() => {
-                  if (haptics) vibrate(8);
-                  if (isExpanded) { setExpandedQ(null); }
-                  else { setExpandedQ(i); setConceptDraft(q.conceptNotes || ''); setFormulaDraft(q.formulaNotes || ''); }
-                }}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{
-                  scale: 1,
-                  opacity: 1,
-                  y: [0, -3, 0], // gentle floating
-                }}
-                transition={{
-                  scale: { type: 'spring', stiffness: 400, damping: 20, delay: i * 0.02 },
-                  opacity: { delay: i * 0.02 },
-                  y: { duration: 3 + (i % 3), repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 },
-                }}
-                whileHover={{ scale: 1.15 }}
-                whileTap={{ scale: 0.9 }}
-                className={cn('px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1 transition border', isExpanded && 'ring-2 ring-white scale-110')}
-                style={{
-                  background: color,
-                  color: q.result === 'unmarked' && q.status !== 'skipped' ? 'rgba(255,255,255,0.7)' : '#000',
-                  borderColor: q.result === 'unmarked' && q.status !== 'skipped' ? 'rgba(255,255,255,0.1)' : color,
-                }}
-              >
-                {text}
-                {q.conceptNotes && <span className="text-[8px]">📝</span>}
-              </motion.button>
-            );
-          })}
-        </div>
+        {/* === Floating bubbles (marked questions) === */}
+        {markedQuestions.length > 0 && (
+          <div className="mb-4">
+            <div className="text-[10px] text-white/40 uppercase tracking-wide mb-2">Marked ({markedQuestions.length})</div>
+            <div className="flex flex-wrap gap-1.5 justify-start min-h-[40px]">
+              {markedQuestions.map(({ q, i }, idx) => {
+                const color = bubbleColor(q);
+                const text = `${q.number}${q.userAnswer || '?'}`;
+                const isExpanded = expandedBubble === i;
+                const bubbleIdx = idx; // for stagger animation
+                return (
+                  <motion.button
+                    key={i}
+                    layoutId={`bubble-${i}`}
+                    onClick={() => {
+                      if (haptics) vibrate(8);
+                      if (isExpanded) { setExpandedBubble(null); }
+                      else { setExpandedBubble(i); setConceptDraft(q.conceptNotes || ''); setFormulaDraft(q.formulaNotes || ''); }
+                    }}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1, y: [0, -3, 0] }}
+                    transition={{
+                      scale: { type: 'spring', stiffness: 400, damping: 20, delay: bubbleIdx * 0.03 },
+                      opacity: { delay: bubbleIdx * 0.03 },
+                      y: { duration: 3 + (bubbleIdx % 3), repeat: Infinity, ease: 'easeInOut', delay: bubbleIdx * 0.1 },
+                    }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className={cn('px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition', isExpanded && 'ring-2 ring-white')}
+                    style={{
+                      background: color,
+                      color: q.result === 'unmarked' ? 'rgba(255,255,255,0.7)' : '#000',
+                      borderColor: q.result === 'unmarked' ? 'rgba(255,255,255,0.1)' : color,
+                    }}
+                  >
+                    {text}
+                    {q.conceptNotes && <span className="text-[8px]">📝</span>}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-        {/* === Expanded bubble editor === */}
+        {/* === Expanded bubble (editing) === */}
         <AnimatePresence mode="wait">
-          {expandedQ !== null && expandedQuestion && (
+          {expandedBubble !== null && session.questions[expandedBubble] && (
             <motion.div
-              key={expandedQ}
+              key={expandedBubble}
+              layoutId={`expanded-${expandedBubble}`}
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <div className="glass rounded-2xl p-4 mb-4" style={{ borderLeft: `3px solid ${bubbleColor(expandedQuestion)}` }}>
-                {/* Q info */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-sm font-bold" style={{ color: bubbleColor(expandedQuestion) }}>
-                    Q{expandedQuestion.number}
+              {(() => {
+                const q = session.questions[expandedBubble];
+                const color = bubbleColor(q);
+                return (
+                  <div className="glass rounded-2xl p-4 mb-4" style={{ borderLeft: `3px solid ${color}` }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold" style={{ color }}>Q{q.number}</span>
+                      <span className="text-[10px] text-white/50">{formatHM(q.timeSpentSec)} · {q.status}</span>
+                    </div>
+                    <div className="text-xs text-white/60 mb-3">
+                      Your answer: <span className="font-bold text-white">{q.userAnswer || '—'}</span>
+                      {q.correctAnswer && <span className="ml-2">| Correct: <span className="font-bold text-white">{q.correctAnswer}</span></span>}
+                      {q.result === 'correct' && <span className="ml-2 text-green-400">✓</span>}
+                      {q.result === 'wrong' && <span className="ml-2 text-red-400">✗</span>}
+                    </div>
+                    {/* Change correct answer */}
+                    <div className="text-[9px] text-white/40 uppercase mb-1.5">Change correct answer:</div>
+                    <div className="flex gap-2 mb-3">
+                      {OPTIONS.map((opt) => {
+                        const isSelected = q.correctAnswer === opt;
+                        const optIdx = OPTIONS.indexOf(opt);
+                        const isYourAnswer = q.userAnswer === opt;
+                        return (
+                          <button key={opt} onClick={() => { if (haptics) vibrate(10); markCorrectAnswer(session.id, expandedBubble, isSelected ? null : opt); }}
+                            className={cn('flex-1 py-2.5 rounded-xl text-sm font-bold transition border-2', isSelected ? 'text-white' : 'text-white/40 bg-white/5 border-white/10')}
+                            style={isSelected ? { background: OPTION_COLORS[optIdx], borderColor: OPTION_COLORS[optIdx] } : isYourAnswer ? { borderColor: `${OPTION_COLORS[optIdx]}80` } : {}}>
+                            {opt}{isYourAnswer && <span className="block text-[7px] mt-0.5">yours</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Notes */}
+                    <div className="space-y-2">
+                      <textarea value={conceptDraft} onChange={(e) => setConceptDraft(e.target.value)} placeholder="Concept / what went wrong..." className="w-full p-2 rounded-lg bg-white/5 text-xs h-12 resize-none" />
+                      <textarea value={formulaDraft} onChange={(e) => setFormulaDraft(e.target.value)} placeholder="Formula for revision..." className="w-full p-2 rounded-lg bg-white/5 text-xs h-10 resize-none" />
+                      <button onClick={() => { saveNotes(session.id, expandedBubble, conceptDraft, formulaDraft); if (haptics) vibrate(10); setExpandedBubble(null); }}
+                        className="w-full py-2 rounded-lg bg-amber-500/15 text-amber-400 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition">
+                        <Save size={12} /> Save & Close
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-[10px] text-white/50">{formatHM(expandedQuestion.timeSpentSec)} · {expandedQuestion.status}</div>
-                </div>
+                );
+              })()}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-                {/* Your answer */}
-                <div className="text-xs text-white/60 mb-3">
-                  Your answer: <span className="font-bold text-white">{expandedQuestion.userAnswer || '—'}</span>
-                  {expandedQuestion.correctAnswer && (
-                    <span className="ml-2">| Correct: <span className="font-bold text-white">{expandedQuestion.correctAnswer}</span></span>
-                  )}
-                  {expandedQuestion.result === 'correct' && <span className="ml-2 text-green-400">✓</span>}
-                  {expandedQuestion.result === 'wrong' && <span className="ml-2 text-red-400">✗</span>}
-                </div>
-
-                {/* Select correct answer */}
-                <div className="mb-3">
-                  <div className="text-[9px] text-white/40 uppercase mb-1.5">Select correct answer:</div>
-                  <div className="flex gap-2">
+        {/* === Unmarked questions (list with A/B/C/D selector) === */}
+        {unmarkedQuestions.length > 0 && (
+          <div className="mb-4">
+            <div className="text-[10px] text-white/40 uppercase tracking-wide mb-2">Unmarked ({unmarkedQuestions.length})</div>
+            <div className="space-y-1.5">
+              {unmarkedQuestions.map(({ q, i }) => (
+                <motion.div
+                  key={i}
+                  layoutId={`row-${i}`}
+                  className="glass rounded-xl p-2.5 flex items-center gap-3"
+                >
+                  <span className="text-xs font-bold text-white/40 w-7">Q{q.number}</span>
+                  <span className="text-[10px] text-white/40 flex-1">
+                    {formatHM(q.timeSpentSec)}
+                    {q.userAnswer && <span className="ml-1 text-white/60">You: {q.userAnswer}</span>}
+                    {q.status === 'skipped' && <span className="ml-1 text-gray-500">skipped</span>}
+                    {q.status === 'review-later' && <span className="ml-1 text-amber-400">⚑</span>}
+                  </span>
+                  {/* A/B/C/D selector */}
+                  <div className="flex gap-1">
                     {OPTIONS.map((opt) => {
-                      const isSelected = expandedQuestion.correctAnswer === opt;
                       const optIdx = OPTIONS.indexOf(opt);
-                      const isYourAnswer = expandedQuestion.userAnswer === opt;
+                      const isYourAnswer = q.userAnswer === opt;
                       return (
                         <button
                           key={opt}
-                          onClick={() => { if (haptics) vibrate(10); markCorrectAnswer(session.id, expandedQ!, isSelected ? null : opt); }}
-                          className={cn('flex-1 py-2.5 rounded-xl text-sm font-bold transition border-2',
-                            isSelected ? 'text-white' : 'text-white/40 bg-white/5 border-white/10')}
-                          style={isSelected ? { background: OPTION_COLORS[optIdx], borderColor: OPTION_COLORS[optIdx] } : isYourAnswer ? { borderColor: `${OPTION_COLORS[optIdx]}80` } : {}}
+                          onClick={() => {
+                            if (haptics) vibrate(10);
+                            markCorrectAnswer(session.id, i, opt);
+                          }}
+                          className={cn('w-6 h-6 rounded text-[10px] font-bold transition border',
+                            isYourAnswer ? 'text-white' : 'text-white/40 bg-white/5 border-white/10')}
+                          style={isYourAnswer ? { background: OPTION_COLORS[optIdx], borderColor: OPTION_COLORS[optIdx] } : {}}
                         >
                           {opt}
-                          {isYourAnswer && <span className="block text-[7px] mt-0.5">yours</span>}
                         </button>
                       );
                     })}
                   </div>
-                </div>
-
-                {/* Result */}
-                {expandedQuestion.correctAnswer && expandedQuestion.userAnswer && (
-                  <div className="text-[11px] mb-3 p-2 rounded-lg" style={{ background: expandedQuestion.result === 'correct' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)' }}>
-                    {expandedQuestion.result === 'correct'
-                      ? <span className="text-green-400">✓ Correct! You selected {expandedQuestion.userAnswer}, answer is {expandedQuestion.correctAnswer}.</span>
-                      : <span className="text-red-400">✗ Wrong. You selected {expandedQuestion.userAnswer}, correct is {expandedQuestion.correctAnswer}.</span>}
-                  </div>
-                )}
-
-                {/* Notes */}
-                <div className="space-y-2">
-                  <div>
-                    <label className="text-[9px] text-white/40 uppercase">Concept / What went wrong</label>
-                    <textarea value={conceptDraft} onChange={(e) => setConceptDraft(e.target.value)} placeholder="e.g. Forgot the formula..." className="w-full p-2 rounded-lg bg-white/5 text-xs mt-1 h-12 resize-none" />
-                  </div>
-                  <div>
-                    <label className="text-[9px] text-white/40 uppercase">Formula for revision</label>
-                    <textarea value={formulaDraft} onChange={(e) => setFormulaDraft(e.target.value)} placeholder="e.g. R = u²sin2θ/g" className="w-full p-2 rounded-lg bg-white/5 text-xs mt-1 h-10 resize-none" />
-                  </div>
-                  <button onClick={() => { saveNotes(session.id, expandedQ!, conceptDraft, formulaDraft); if (haptics) vibrate(10); setExpandedQ(null); }}
-                    className="w-full py-2 rounded-lg bg-amber-500/15 text-amber-400 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition">
-                    <Save size={12} /> Save & Close
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Legend */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-4 text-[9px]">
