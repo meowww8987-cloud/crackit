@@ -45,27 +45,27 @@ export function PracticeRunner() {
       usePractice.setState({ activePractice: { ...session, questions } });
     }
     endPractice();
+    // Fix timerResetRef so next practice session starts timer from 0
+    timerResetRef.current = false;
     // Fix #5: Also save as a study session in history (interlink with study stats)
     const justEnded = usePractice.getState().history[0];
     if (justEnded) {
-      // Push to study history so it shows in Home/Stats/Partner
-      try {
-        const studyHistory = useHistory.getState();
-        studyHistory.addSession({
-          targetId: null,
-          subject: justEnded.subject as any,
-          chapter: justEnded.chapter,
-          lecture: '',
-          topic: justEnded.name,
-          mode: 'free',
-          studySeconds: justEnded.totalTimeSec,
-          wastedSeconds: 0,
-          startedAt: justEnded.startedAt,
-          endedAt: justEnded.endedAt || Date.now(),
-          date: todayKey(),
-          mood: 'neutral' as any,
-        });
-      } catch {}
+      // Fix #2: Convert 'Mixed' to 'General' so it shows in Home/Stats
+      const studySubject = (justEnded.subject === 'Mixed' ? 'General' : justEnded.subject) as any;
+      useHistory.getState().addSession({
+        targetId: null,
+        subject: studySubject,
+        chapter: justEnded.chapter,
+        lecture: '',
+        topic: justEnded.name,
+        mode: 'free',
+        studySeconds: justEnded.totalTimeSec,
+        wastedSeconds: 0,
+        startedAt: justEnded.startedAt,
+        endedAt: justEnded.endedAt || Date.now(),
+        date: todayKey(),
+        mood: 'neutral' as any,
+      });
       setReviewSessionId(justEnded.id);
       setPhase('reviewing');
     }
@@ -169,7 +169,7 @@ export function PracticeRunner() {
   const reviewCount = activePractice.questions.filter(q => q.status === 'review-later').length;
   const timeLimitSec = activePractice.timeLimitMin * 60;
   const visibleQuestions = activePractice.questions.slice(0, Math.max(30, currentIdx + 5));
-  const qStatusColor = (q: typeof visibleQuestions[0]) => { if (q.status === 'answered') return '#22c55e'; if (q.status === 'skipped') return '#6b7280'; if (q.status === 'review-later') return '#f59e0b'; return 'rgba(255,255,255,0.15)'; };
+  const qStatusColor = (q: typeof visibleQuestions[0]) => { if (q.status === 'answered') return '#22c55e'; if (q.status === 'skipped') return '#6b7280'; if (q.status === 'review-later') return '#f59e0b'; return 'rgba(255,255,255,0.4)'; };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -259,7 +259,7 @@ function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }
         <div className="space-y-1.5 mb-4">
           {questions.map((q, i) => {
             const isExpanded = expandedQ === i;
-            const resultColor = q.result === 'correct' ? '#22c55e' : q.result === 'wrong' ? '#ef4444' : 'rgba(255,255,255,0.15)';
+            const resultColor = q.result === 'correct' ? '#22c55e' : q.result === 'wrong' ? '#ef4444' : 'rgba(255,255,255,0.4)';
             return (
               <div key={i} className="rounded-xl overflow-hidden" style={{ borderLeft: `3px solid ${resultColor}` }}>
                 {/* Row with inline A/B/C/D — no need to expand first */}

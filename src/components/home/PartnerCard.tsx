@@ -6,6 +6,7 @@ import { Users, X, Copy, Check, TrendingUp, Flame, Clock, Trophy, RefreshCw, Tar
 import { usePartner } from '@/lib/store/partner';
 import { useHistory } from '@/lib/store/history';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
+import { usePractice } from '@/lib/store/practice';
 import { useTargets } from '@/lib/store/targets';
 import { useTests } from '@/lib/store/tests';
 import { useSettings } from '@/lib/store/settings';
@@ -261,8 +262,11 @@ export function PartnerCard() {
   const partnerStatusText = partnerIsStudying ? 'Studying' : partnerIsWasting ? 'Wasting' : partnerIsPaused ? 'Paused' : partnerIsOffline ? 'Offline' : 'Online';
   const partnerStatusColor = partnerIsStudying ? '#22c55e' : partnerIsWasting ? '#ef4444' : partnerIsPaused ? '#f59e0b' : partnerIsOffline ? '#9ca3af' : '#3b82f6';
   // "You" are always online (you're looking at the app)
-  const myStatusText = myIsStudying ? 'Studying' : myIsWasting ? 'Wasting' : myIsPaused ? 'Paused' : 'Online';
-  const myStatusColor = myIsStudying ? '#22c55e' : myIsWasting ? '#ef4444' : myIsPaused ? '#f59e0b' : '#3b82f6';
+  // Also check if practicing (practice mode)
+  const activePractice = usePractice((s) => s.activePractice);
+  const myIsPracticing = !!activePractice;
+  const myStatusText = myIsStudying ? 'Studying' : myIsPracticing ? `Practicing ${activePractice?.subject || ''}` : myIsWasting ? 'Wasting' : myIsPaused ? 'Paused' : 'Online';
+  const myStatusColor = myIsStudying ? '#22c55e' : myIsPracticing ? '#3b82f6' : myIsWasting ? '#ef4444' : myIsPaused ? '#f59e0b' : '#3b82f6';
 
   return (
     <>
