@@ -117,6 +117,13 @@
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.10 0.005 250);
   --secondary-foreground: oklch(0.96 0.003 250);
+  --bg-app: #0a0b15;
+  --bg-card: #0a0b15;
+  --bg-card-solid: #0a0b15;
+  --bg-glass-strong: #0a0b15;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.5);
   --muted: oklch(0.10 0.005 250);
   --muted-foreground: oklch(0.65 0.005 250);
   --accent: oklch(0.12 0.005 250);
@@ -1164,6 +1171,138 @@ html:not(.dark):not(.warm) .card-tint,
 .warm .card-tint {
   mix-blend-mode: normal;
   opacity: 0.5;
+}
+
+/* ===== LIGHT MODE ADAPT — neutral light theme overrides =====
+ * The "light" theme adds ONLY .light-mode-adapt class (no .rose/.sage/.warm).
+ * Without these overrides, text-white stays white (invisible on white glass cards),
+ * and var(--bg-app) is undefined so falls back to dark — causing "dark page in light mode".
+ *
+ * Mirrors the rose/sage theme approach but with neutral gray colors so it works
+ * for any component using text-white/N + bg-white/N + border-white/N + var(--bg-app).
+ *
+ * Named palette: White / Off-White / Slate-800 / Slate-600 / Slate-400 / Slate-200
+ */
+html.light-mode-adapt {
+  --bg-app: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-solid: #ffffff;
+  --bg-glass-strong: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+  --border-color: rgba(15, 23, 42, 0.12);
+  --border-card: rgba(15, 23, 42, 0.16);
+}
+
+/* Body background — pure white */
+html.light-mode-adapt body {
+  background: #ffffff !important;
+  background-attachment: fixed !important;
+}
+
+/* Hide visual noise (consistent with other light themes) */
+html.light-mode-adapt .grid-bg,
+html.light-mode-adapt .aurora-noise,
+html.light-mode-adapt .aurora-vignette {
+  display: none !important;
+}
+
+/* === Text color overrides — Slate-800 (dark gray, high contrast on white) ===
+ * Full opacity ladder: Slate-800 → Slate-700 → Slate-600 → Slate-500 → Slate-400
+ */
+html.light-mode-adapt .text-white,
+html.light-mode-adapt text-white { color: #1f2937 !important; }
+html.light-mode-adapt .text-white\/95 { color: rgba(31, 41, 55, 0.95) !important; }
+html.light-mode-adapt .text-white\/90 { color: rgba(31, 41, 55, 0.90) !important; }
+html.light-mode-adapt .text-white\/85 { color: rgba(31, 41, 55, 0.85) !important; }
+html.light-mode-adapt .text-white\/80 { color: rgba(31, 41, 55, 0.80) !important; }
+html.light-mode-adapt .text-white\/75 { color: rgba(75, 85, 99, 0.81) !important; }
+html.light-mode-adapt .text-white\/70 { color: rgba(75, 85, 99, 0.76) !important; }
+html.light-mode-adapt .text-white\/65 { color: rgba(75, 85, 99, 0.71) !important; }
+html.light-mode-adapt .text-white\/60 { color: rgba(75, 85, 99, 0.66) !important; }
+html.light-mode-adapt .text-white\/55 { color: rgba(107, 114, 128, 0.65) !important; }
+html.light-mode-adapt .text-white\/50 { color: rgba(107, 114, 128, 0.60) !important; }
+html.light-mode-adapt .text-white\/45 { color: rgba(107, 114, 128, 0.55) !important; }
+html.light-mode-adapt .text-white\/40 { color: rgba(156, 163, 175, 0.55) !important; }
+html.light-mode-adapt .text-white\/35 { color: rgba(156, 163, 175, 0.50) !important; }
+html.light-mode-adapt .text-white\/30 { color: rgba(156, 163, 175, 0.45) !important; }
+html.light-mode-adapt .text-white\/25 { color: rgba(156, 163, 175, 0.40) !important; }
+html.light-mode-adapt .text-white\/20 { color: rgba(156, 163, 175, 0.35) !important; }
+html.light-mode-adapt .text-white\/15 { color: rgba(156, 163, 175, 0.30) !important; }
+html.light-mode-adapt .text-white\/10 { color: rgba(156, 163, 175, 0.25) !important; }
+html.light-mode-adapt .text-white\/5 { color: rgba(156, 163, 175, 0.20) !important; }
+
+/* === Surface overrides — subtle darkening on white (Slate-900 low alpha) === */
+html.light-mode-adapt .bg-white\/5 { background: rgba(15, 23, 42, 0.04) !important; }
+html.light-mode-adapt .bg-white\/10 { background: rgba(15, 23, 42, 0.07) !important; }
+html.light-mode-adapt .bg-white\/15 { background: rgba(15, 23, 42, 0.10) !important; }
+html.light-mode-adapt .bg-white\/20 { background: rgba(15, 23, 42, 0.14) !important; }
+html.light-mode-adapt .bg-white\/30 { background: rgba(15, 23, 42, 0.20) !important; }
+
+/* === Border overrides — subtle dark borders (Slate-900 low alpha) === */
+html.light-mode-adapt .border-white\/5 { border-color: rgba(15, 23, 42, 0.10) !important; }
+html.light-mode-adapt .border-white\/10 { border-color: rgba(15, 23, 42, 0.14) !important; }
+html.light-mode-adapt .border-white\/15 { border-color: rgba(15, 23, 42, 0.18) !important; }
+html.light-mode-adapt .border-white\/20 { border-color: rgba(15, 23, 42, 0.22) !important; }
+
+/* Ring overrides */
+html.light-mode-adapt .ring-white\/30 { --tw-ring-color: rgba(15, 23, 42, 0.22) !important; }
+html.light-mode-adapt .ring-white\/40 { --tw-ring-color: rgba(15, 23, 42, 0.30) !important; }
+
+/* === Inputs — dark text on white bg === */
+html.light-mode-adapt input,
+html.light-mode-adapt textarea,
+html.light-mode-adapt select {
+  color: #1f2937 !important;
+  background: rgba(15, 23, 42, 0.04) !important;
+  border-color: rgba(15, 23, 42, 0.16) !important;
+}
+html.light-mode-adapt input::placeholder,
+html.light-mode-adapt textarea::placeholder {
+  color: rgba(107, 114, 128, 0.6) !important;
+}
+html.light-mode-adapt input:focus,
+html.light-mode-adapt textarea:focus,
+html.light-mode-adapt select:focus {
+  border-color: #4b5563 !important;
+  box-shadow: 0 0 0 3px rgba(75, 85, 99, 0.15) !important;
+  outline: none !important;
+}
+
+/* Range sliders — neutral gray track + thumb */
+html.light-mode-adapt input[type="range"] {
+  background: rgba(15, 23, 42, 0.08) !important;
+}
+html.light-mode-adapt input[type="range"]::-webkit-slider-thumb {
+  border-color: #4b5563 !important;
+  box-shadow: 0 2px 8px rgba(31, 41, 55, 0.2) !important;
+}
+html.light-mode-adapt input[type="range"]::-moz-range-thumb {
+  border-color: #4b5563 !important;
+}
+
+/* === Force-dark-ui reset — keep text white within forced-dark overlays (Focus Timer etc.) ===
+ * Light theme is in :not(.dark):not(.warm), so the existing rule already covers it.
+ */
+
+/* ===== WARM THEME — missing CSS variable definitions =====
+ * The .warm theme had text/bg/border Tailwind class overrides but never defined
+ * the --bg-app / --text-* / --border-* CSS variables. Components using
+ * var(--bg-app) (like full-screen pages) fell back to #0a0b15 (dark) on warm theme.
+ *
+ * Adding these now so var(--bg-app) resolves to warm cream like other light themes.
+ */
+.warm {
+  --bg-app: #faf3e8;
+  --bg-card: #fff8ed;
+  --bg-card-solid: #fff8ed;
+  --bg-glass-strong: #fffaf2;
+  --text-primary: #2c1810;
+  --text-secondary: #4a3423;
+  --text-muted: #8c6e50;
+  --border-color: rgba(120, 80, 40, 0.22);
+  --border-card: rgba(120, 80, 40, 0.26);
 }
 
 /* Subject color tint overlay — sits ON TOP of .card-solid's dark base.
