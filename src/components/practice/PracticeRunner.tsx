@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, ChevronRight, Flag, Save } from 'lucide-react';
+import { Check, X, ChevronRight, Flag, Save, Clock } from 'lucide-react';
 import { usePractice, type PracticeSession, type PracticeQuestion } from '@/lib/store/practice';
+import { useHistory } from '@/lib/store/history';
 import { useSettings } from '@/lib/store/settings';
-import { formatHM, cn, vibrate } from '@/lib/utils';
+import { formatHMS, formatHM, cn, vibrate, todayKey } from '@/lib/utils';
 
 const OPTIONS = ['A', 'B', 'C', 'D'];
 const OPTION_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444'];
@@ -27,6 +28,7 @@ export function PracticeRunner() {
   const [reviewSessionId, setReviewSessionId] = useState<string | null>(null);
   const [orientationAngle, setOrientationAngle] = useState(0);
   const wakeLockRef = useRef<any>(null);
+  const timerResetRef = useRef(false); // Fix #4: reset timer when runner first shows
 
   const reviewSession = reviewSessionId ? history.find((s) => s.id === reviewSessionId) : null;
 
@@ -43,8 +45,30 @@ export function PracticeRunner() {
       usePractice.setState({ activePractice: { ...session, questions } });
     }
     endPractice();
+    // Fix #5: Also save as a study session in history (interlink with study stats)
     const justEnded = usePractice.getState().history[0];
-    if (justEnded) { setReviewSessionId(justEnded.id); setPhase('reviewing'); }
+    if (justEnded) {
+      // Push to study history so it shows in Home/Stats/Partner
+      try {
+        const studyHistory = useHistory.getState();
+        studyHistory.addSession({
+          targetId: null,
+          subject: justEnded.subject as any,
+          chapter: justEnded.chapter,
+          lecture: '',
+          topic: justEnded.name,
+          mode: 'free',
+          studySeconds: justEnded.totalTimeSec,
+          wastedSeconds: 0,
+          startedAt: justEnded.startedAt,
+          endedAt: justEnded.endedAt || Date.now(),
+          date: todayKey(),
+          mood: 'neutral' as any,
+        });
+      } catch {}
+      setReviewSessionId(justEnded.id);
+      setPhase('reviewing');
+    }
   }, [endPractice]);
 
   const handleSelectOption = useCallback((option: string) => {
@@ -96,6 +120,15 @@ export function PracticeRunner() {
   }, [haptics, answerQuestion]);
 
   useEffect(() => { questionStartRef.current = Date.now(); }, [currentIdx]);
+
+  // Fix #4: Reset startedAt to NOW when runner first shows (so timer starts from 0)
+  useEffect(() => {
+    if (activePractice && !timerResetRef.current) {
+      timerResetRef.current = true;
+      usePractice.setState({ activePractice: { ...activePractice, startedAt: Date.now() } });
+      questionStartRef.current = Date.now();
+    }
+  }, [activePractice]);
 
   useEffect(() => {
     if (!activePractice) return;
@@ -150,8 +183,9 @@ export function PracticeRunner() {
       </div>
       <div className="text-center mb-6">
         <div className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-1">Question {currentIdx + 1}{activePractice.questionCount > 0 ? ` of ${activePractice.questionCount}` : ''}</div>
-        <div className="text-4xl font-bold tabular text-white mb-1">{formatHM(questionElapsed)}</div>
-        <div className="text-sm text-white/50">Total: <span className="tabular text-amber-400">{formatHM(totalElapsed)}</span>{timeLimitSec > 0 && <span className="ml-2">· Left: <span className={cn('tabular', timeLimitSec - totalElapsed < 60 ? 'text-red-400' : 'text-white/40')}>{formatHM(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}</div>
+        {/* Fix #4: Use formatHMS (shows seconds) instead of formatHM */}
+        <div className="text-4xl font-bold tabular text-white mb-1">{formatHMS(questionElapsed)}</div>
+        <div className="text-sm text-white/50">Total: <span className="tabular text-amber-400">{formatHMS(totalElapsed)}</span>{timeLimitSec > 0 && <span className="ml-2">· Left: <span className={cn('tabular', timeLimitSec - totalElapsed < 60 ? 'text-red-400' : 'text-white/40')}>{formatHMS(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}</div>
         <div className="flex items-center justify-center gap-3 mt-2 text-xs"><span className="text-green-400">✓ {answeredCount}</span><span className="text-white/40">→ {skippedCount}</span><span className="text-amber-400">⚑ {reviewCount}</span></div>
       </div>
       <div className="text-xs text-white/30 mb-5">{activePractice.name}</div>
@@ -168,7 +202,7 @@ export function PracticeRunner() {
   );
 }
 
-// ===== Review Phase — List with A/B/C/D (questions persist even when correct) =====
+// ===== Review Phase — List with inline A/B/C/D + Save for Later =====
 function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }: {
   session: PracticeSession;
   markCorrectAnswer: (sessionId: string, questionIndex: number, correctAnswer: string | null) => void;
@@ -189,110 +223,85 @@ function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }
   const fastest = times.length > 0 ? Math.min(...times) : 0;
   const slowest = times.length > 0 ? Math.max(...times) : 0;
 
-  // Sort: wrong first, then unmarked, then correct
-  const sortedQuestions = [...session.questions].sort((a, b) => {
-    const order = { wrong: 0, unmarked: 1, correct: 2 };
-    return (order[a.result] ?? 1) - (order[b.result] ?? 1);
-  });
+  // Fix #3: NO sorting — keep original order (Q1, Q2, Q3...) stable
+  const questions = session.questions;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-y-auto force-dark-ui"
       style={{ background: '#000000' }}>
-      <div className="p-5 pt-[env(safe-area-inset-top,0px)] pt-8 max-w-md mx-auto">
+      <div className="p-4 pt-[env(safe-area-inset-top,0px)] pt-8 max-w-md mx-auto">
 
         {/* Header */}
-        <div className="text-center mb-5">
-          <div className="text-4xl mb-2">📊</div>
+        <div className="text-center mb-3">
+          <div className="text-3xl mb-1">📊</div>
           <h2 className="text-lg font-bold text-white">Answer Key</h2>
-          <p className="text-xs text-white/40 mt-0.5">{session.name}</p>
-          <p className="text-[10px] text-white/30 mt-1">Select correct answer for each question. Tap to expand for notes.</p>
+          <p className="text-[10px] text-white/40 mt-0.5">{session.name}</p>
         </div>
 
         {/* Stats */}
-        <div className="glass rounded-2xl p-4 mb-4">
-          <div className="grid grid-cols-3 gap-2 text-center mb-3">
-            <div><div className="text-2xl font-bold text-green-400 tabular">{correct}</div><div className="text-[9px] text-white/40">Correct</div></div>
-            <div><div className="text-2xl font-bold text-red-400 tabular">{wrong}</div><div className="text-[9px] text-white/40">Wrong</div></div>
-            <div><div className="text-2xl font-bold text-white/40 tabular">{unmarked}</div><div className="text-[9px] text-white/40">Unmarked</div></div>
-          </div>
-          <div className="h-px bg-white/10 my-3" />
-          <div className="grid grid-cols-2 gap-2 text-center">
-            <div><div className="text-sm font-bold text-amber-400 tabular">{formatHM(session.totalTimeSec)}</div><div className="text-[9px] text-white/40">Total Time</div></div>
-            <div><div className="text-sm font-bold text-teal-400 tabular">{accuracy}%</div><div className="text-[9px] text-white/40">Accuracy</div></div>
+        <div className="glass rounded-2xl p-3 mb-4">
+          <div className="grid grid-cols-4 gap-1 text-center">
+            <div><div className="text-lg font-bold text-green-400 tabular">{correct}</div><div className="text-[8px] text-white/40">✓</div></div>
+            <div><div className="text-lg font-bold text-red-400 tabular">{wrong}</div><div className="text-[8px] text-white/40">✗</div></div>
+            <div><div className="text-lg font-bold text-white/40 tabular">{unmarked}</div><div className="text-[8px] text-white/40">?</div></div>
+            <div><div className="text-lg font-bold text-teal-400 tabular">{accuracy}%</div><div className="text-[8px] text-white/40">Acc</div></div>
           </div>
           {times.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 text-center mt-2">
-              <div><div className="text-xs text-green-300 tabular">{formatHM(fastest)}</div><div className="text-[9px] text-white/30">Fastest</div></div>
-              <div><div className="text-xs text-red-300 tabular">{formatHM(slowest)}</div><div className="text-[9px] text-white/30">Slowest</div></div>
+            <div className="grid grid-cols-2 gap-1 text-center mt-2 pt-2 border-t border-white/5">
+              <div><span className="text-[9px] text-white/30">Fastest </span><span className="text-xs text-green-300 tabular">{formatHMS(fastest)}</span></div>
+              <div><span className="text-[9px] text-white/30">Slowest </span><span className="text-xs text-red-300 tabular">{formatHMS(slowest)}</span></div>
             </div>
           )}
         </div>
 
-        {/* Question list — ALL questions persist, even when correct */}
-        <div className="space-y-1.5 mb-6">
-          {sortedQuestions.map((q) => {
-            const originalIdx = session.questions.indexOf(q);
-            const isExpanded = expandedQ === originalIdx;
+        {/* Question list — inline A/B/C/D on each row, NO sorting */}
+        <div className="space-y-1.5 mb-4">
+          {questions.map((q, i) => {
+            const isExpanded = expandedQ === i;
             const resultColor = q.result === 'correct' ? '#22c55e' : q.result === 'wrong' ? '#ef4444' : 'rgba(255,255,255,0.15)';
             return (
-              <div key={originalIdx} className="rounded-xl overflow-hidden" style={{ borderLeft: `3px solid ${resultColor}` }}>
-                <div className="glass p-2.5 flex items-center gap-3" onClick={() => {
-                  if (isExpanded) { setExpandedQ(null); }
-                  else { setExpandedQ(originalIdx); setConceptDraft(q.conceptNotes || ''); setFormulaDraft(q.formulaNotes || ''); }
-                }}>
-                  <div className="text-xs font-bold w-8 tabular" style={{ color: resultColor }}>Q{q.number}</div>
-                  <div className="flex-1 text-[10px] text-white/50">
-                    {formatHM(q.timeSpentSec)} · {q.status}
-                    {q.userAnswer && <span className="ml-1 text-white/70">You: {q.userAnswer}</span>}
+              <div key={i} className="rounded-xl overflow-hidden" style={{ borderLeft: `3px solid ${resultColor}` }}>
+                {/* Row with inline A/B/C/D — no need to expand first */}
+                <div className="glass p-2 flex items-center gap-2">
+                  <span className="text-xs font-bold w-7 shrink-0" style={{ color: resultColor }}>Q{q.number}</span>
+                  <span className="text-[10px] text-white/50 flex-1 min-w-0 truncate">
+                    {formatHMS(q.timeSpentSec)}
+                    {q.userAnswer && <span className="ml-1 text-white/70">You:{q.userAnswer}</span>}
+                    {q.result === 'correct' && <span className="ml-1 text-green-400">✓</span>}
+                    {q.result === 'wrong' && <span className="ml-1 text-red-400">✗</span>}
                     {q.conceptNotes && <span className="ml-1 text-amber-400/60">📝</span>}
+                  </span>
+                  {/* Inline A/B/C/D buttons */}
+                  <div className="flex gap-0.5 shrink-0">
+                    {OPTIONS.map((opt) => {
+                      const isSelected = q.correctAnswer === opt;
+                      const optIdx = OPTIONS.indexOf(opt);
+                      const isYourAnswer = q.userAnswer === opt;
+                      return (
+                        <button key={opt} onClick={() => { if (haptics) vibrate(10); markCorrectAnswer(session.id, i, isSelected ? null : opt); }}
+                          className={cn('w-6 h-6 rounded text-[10px] font-bold transition border',
+                            isSelected ? 'text-white' : 'text-white/40 bg-white/5 border-white/10')}
+                          style={isSelected ? { background: OPTION_COLORS[optIdx], borderColor: OPTION_COLORS[optIdx] } : isYourAnswer ? { borderColor: `${OPTION_COLORS[optIdx]}80`, color: OPTION_COLORS[optIdx] } : {}}>
+                          {opt}
+                        </button>
+                      );
+                    })}
                   </div>
-                  {q.result === 'correct' && <Check size={14} className="text-green-400" />}
-                  {q.result === 'wrong' && <X size={14} className="text-red-400" />}
+                  {/* Expand button for notes */}
+                  <button onClick={() => { if (isExpanded) { setExpandedQ(null); } else { setExpandedQ(i); setConceptDraft(q.conceptNotes || ''); setFormulaDraft(q.formulaNotes || ''); } }}
+                    className="text-[9px] text-amber-400/50 hover:text-amber-400 transition shrink-0 w-5">
+                    {isExpanded ? '−' : '+'}
+                  </button>
                 </div>
-
+                {/* Expanded notes */}
                 {isExpanded && (
-                  <div className="p-3 bg-white/[0.02] space-y-2">
-                    {/* Your answer + correct answer */}
-                    <div className="text-xs text-white/60">
-                      Your answer: <span className="font-bold text-white">{q.userAnswer || '—'}</span>
-                      {q.correctAnswer && <span className="ml-2">| Correct: <span className="font-bold text-white">{q.correctAnswer}</span></span>}
-                      {q.result === 'correct' && <span className="ml-2 text-green-400">✓ Correct!</span>}
-                      {q.result === 'wrong' && <span className="ml-2 text-red-400">✗ Wrong</span>}
-                    </div>
-
-                    {/* Correct answer selector — always available, even when already correct */}
-                    <div>
-                      <label className="text-[9px] text-white/40 uppercase">Select / change correct answer:</label>
-                      <div className="flex gap-2 mt-1">
-                        {OPTIONS.map((opt) => {
-                          const isSelected = q.correctAnswer === opt;
-                          const optIdx = OPTIONS.indexOf(opt);
-                          const isYourAnswer = q.userAnswer === opt;
-                          return (
-                            <button key={opt} onClick={() => { if (haptics) vibrate(10); markCorrectAnswer(session.id, originalIdx, isSelected ? null : opt); }}
-                              className={cn('flex-1 py-2.5 rounded-xl text-sm font-bold transition border-2', isSelected ? 'text-white' : 'text-white/40 bg-white/5 border-white/10')}
-                              style={isSelected ? { background: OPTION_COLORS[optIdx], borderColor: OPTION_COLORS[optIdx] } : isYourAnswer ? { borderColor: `${OPTION_COLORS[optIdx]}80` } : {}}>
-                              {opt}
-                              {isYourAnswer && <span className="block text-[7px] mt-0.5">yours</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Notes */}
-                    <div>
-                      <label className="text-[9px] text-white/40 uppercase">Concept / what went wrong</label>
-                      <textarea value={conceptDraft} onChange={(e) => setConceptDraft(e.target.value)} placeholder="e.g. Forgot the formula..." className="w-full p-2 rounded-lg bg-white/5 text-xs mt-1 h-14 resize-none" />
-                    </div>
-                    <div>
-                      <label className="text-[9px] text-white/40 uppercase">Formula for revision</label>
-                      <textarea value={formulaDraft} onChange={(e) => setFormulaDraft(e.target.value)} placeholder="e.g. R = u²sin2θ/g" className="w-full p-2 rounded-lg bg-white/5 text-xs mt-1 h-10 resize-none" />
-                    </div>
-                    <button onClick={() => { saveNotes(session.id, originalIdx, conceptDraft, formulaDraft); if (haptics) vibrate(10); setExpandedQ(null); }}
-                      className="w-full py-2 rounded-lg bg-amber-500/15 text-amber-400 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition">
-                      <Save size={12} /> Save & Close
+                  <div className="p-2.5 bg-white/[0.02] space-y-2">
+                    <textarea value={conceptDraft} onChange={(e) => setConceptDraft(e.target.value)} placeholder="Concept / what went wrong..." className="w-full p-2 rounded-lg bg-white/5 text-xs h-12 resize-none" />
+                    <textarea value={formulaDraft} onChange={(e) => setFormulaDraft(e.target.value)} placeholder="Formula for revision..." className="w-full p-2 rounded-lg bg-white/5 text-xs h-10 resize-none" />
+                    <button onClick={() => { saveNotes(session.id, i, conceptDraft, formulaDraft); if (haptics) vibrate(10); setExpandedQ(null); }}
+                      className="w-full py-1.5 rounded-lg bg-amber-500/15 text-amber-400 text-[10px] font-semibold flex items-center justify-center gap-1 active:scale-95 transition">
+                      <Save size={10} /> Save Notes
                     </button>
                   </div>
                 )}
@@ -301,7 +310,13 @@ function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }
           })}
         </div>
 
-        <button onClick={() => { if (haptics) vibrate(15); onClose(); }} className="w-full py-3.5 rounded-xl bg-teal-500 text-black font-bold text-base active:scale-95 transition">Save & Close</button>
+        {/* Fix #1: Save for Later + Save & Close buttons */}
+        <div className="space-y-2">
+          <button onClick={() => { if (haptics) vibrate(10); onClose(); }} className="w-full py-3 rounded-xl bg-white/5 border border-white/15 text-white/70 text-sm font-semibold active:scale-95 transition flex items-center justify-center gap-2">
+            <Clock size={14} /> Save for Later — Mark answers anytime from Practice History
+          </button>
+          <button onClick={() => { if (haptics) vibrate(15); onClose(); }} className="w-full py-3.5 rounded-xl bg-teal-500 text-black font-bold text-base active:scale-95 transition">Save & Close</button>
+        </div>
       </div>
     </motion.div>
   );
