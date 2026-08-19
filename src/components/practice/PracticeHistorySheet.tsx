@@ -56,8 +56,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
             initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md max-h-[88vh] overflow-y-auto force-dark-ui rounded-3xl"
-            style={{ background: 'linear-gradient(180deg, #0a0f1a 0%, #0d1320 50%, #0a0f1a 100%)', border: '1px solid rgba(59,130,241,0.25)' }}>
+            className="relative w-full max-w-md max-h-[88vh] overflow-y-auto glass-strong rounded-3xl">
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4 mt-3" />
             <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition"><X size={16} /></button>
 
@@ -121,7 +120,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                   <ChevronDown size={12} className={cn('text-white/30 transition shrink-0', isExpanded && 'rotate-180')} />
                                 </div>
                                 {isExpanded && (
-                                  <div className="p-2.5 bg-white/[0.02] space-y-2">
+                                  <div className="p-2.5 bg-black/5 space-y-2">
                                     {q.conceptNotes && <div className="text-[10px] text-white/60"><span className="text-amber-400/60">Concept:</span> {q.conceptNotes}</div>}
                                     {q.formulaNotes && <div className="text-[10px] text-white/60"><span className="text-amber-400/60">Formula:</span> {q.formulaNotes}</div>}
                                     {/* Change correct answer */}
@@ -208,7 +207,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                   const qColor = q.result === 'correct' ? '#22c55e' : q.result === 'wrong' ? '#ef4444' : 'rgba(255,255,255,0.6)';
                                   return (
                                     <div key={qi} className="rounded-lg overflow-hidden" style={{ borderLeft: `2px solid ${qColor}` }}>
-                                      <div className="p-1.5 flex items-center gap-1.5 bg-white/[0.02]">
+                                      <div className="p-1.5 flex items-center gap-1.5 bg-black/5">
                                         <span className="text-[10px] font-bold w-7 shrink-0" style={{ color: qColor }}>Q{q.number}</span>
                                         <span className="text-[9px] text-white/50 flex-1 min-w-0 truncate">
                                           {formatHMS(q.timeSpentSec)}
@@ -235,7 +234,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                           className="text-[9px] text-amber-400/50 hover:text-amber-400 transition shrink-0 w-4">{qExpanded ? '−' : '+'}</button>
                                       </div>
                                       {qExpanded && (
-                                        <div className="p-2 bg-white/[0.02] space-y-1.5">
+                                        <div className="p-2 bg-black/5 space-y-1.5">
                                           {q.conceptNotes && <div className="text-[10px] text-white/60"><span className="text-amber-400/60">Concept:</span> {q.conceptNotes}</div>}
                                           {q.formulaNotes && <div className="text-[10px] text-white/60"><span className="text-amber-400/60">Formula:</span> {q.formulaNotes}</div>}
                                           <textarea value={conceptDraft} onChange={(e) => setConceptDraft(e.target.value)} placeholder="Concept notes..." className="w-full p-1.5 rounded bg-white/5 text-[10px] h-10 resize-none" />

@@ -228,8 +228,8 @@ function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9999] overflow-y-auto force-dark-ui"
-      style={{ background: '#000000' }}>
+      className="fixed inset-0 z-[9999] overflow-y-auto"
+      style={{ background: 'var(--bg-app, #0a0b15)' }}>
       <div className="p-4 pt-[env(safe-area-inset-top,0px)] pt-8 max-w-md mx-auto">
 
         {/* Header */}
@@ -296,7 +296,7 @@ function ReviewPhase({ session, markCorrectAnswer, saveNotes, onClose, haptics }
                 </div>
                 {/* Expanded notes */}
                 {isExpanded && (
-                  <div className="p-2.5 bg-white/[0.02] space-y-2">
+                  <div className="p-2.5 bg-black/5 space-y-2">
                     <textarea value={conceptDraft} onChange={(e) => setConceptDraft(e.target.value)} placeholder="Concept / what went wrong..." className="w-full p-2 rounded-lg bg-white/5 text-xs h-12 resize-none" />
                     <textarea value={formulaDraft} onChange={(e) => setFormulaDraft(e.target.value)} placeholder="Formula for revision..." className="w-full p-2 rounded-lg bg-white/5 text-xs h-10 resize-none" />
                     <button onClick={() => { saveNotes(session.id, i, conceptDraft, formulaDraft); if (haptics) vibrate(10); setExpandedQ(null); }}
