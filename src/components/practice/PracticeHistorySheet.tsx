@@ -270,9 +270,11 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                 <div className="text-right shrink-0">
                                   <div
                                     className="text-base font-bold tabular leading-none"
-                                    style={{ color: accuracy > 0 ? accColor : 'rgba(255,255,255,0.3)' }}
+                                    style={accuracy > 0 ? { color: accColor } : undefined}
                                   >
-                                    {accuracy > 0 ? `${accuracy}%` : '—'}
+                                    <span className={accuracy > 0 ? undefined : 'text-white/40'}>
+                                      {accuracy > 0 ? `${accuracy}%` : '—'}
+                                    </span>
                                   </div>
                                   <div className="text-[9px] text-white/40 mt-0.5">
                                     {session.correctCount}/{session.correctCount + session.wrongCount} ✓

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, ChevronLeft, Pencil, Check, XCircle, Clock, Eye, Save,
-  Calendar, BookOpen, Timer, Target, AlertCircle,
+  ChevronLeft, Pencil, Check, XCircle, Clock, Eye, Save,
+  Calendar, BookOpen, Target, AlertCircle,
 } from 'lucide-react';
 import { usePractice, type PracticeSession, type PracticeQuestion } from '@/lib/store/practice';
 import { cn, vibrate, formatHMS } from '@/lib/utils';
@@ -35,7 +35,6 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
 
   const [isEditing, setIsEditing] = useState(false);
   const [openNoteIdx, setOpenNoteIdx] = useState<number | null>(null);
-  // Draft notes buffer keyed by question index — only filled when entering edit mode.
   const [draftNotes, setDraftNotes] = useState<Record<number, { concept: string; formula: string }>>({});
 
   const focusRef = useRef<HTMLDivElement | null>(null);
@@ -48,7 +47,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
     }
   }, [focusQIndex]);
 
-  // Close on hardware back / Escape.
+  // Close on Escape (only when not editing).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !isEditing) onClose();
@@ -64,7 +63,8 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-md p-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          style={{ background: 'var(--bg-app, #0a0b15)' }}
           onClick={onClose}
         >
           <div className="text-center">
@@ -115,7 +115,8 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', stiffness: 360, damping: 36 }}
-        className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-md flex flex-col"
+        className="fixed inset-0 z-[200] flex flex-col"
+        style={{ background: 'var(--bg-app, #0a0b15)' }}
       >
         {/* ============ Top App Bar ============ */}
         <div className="shrink-0 px-3 pt-4 pb-3 border-b border-white/5">
@@ -137,7 +138,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <h2 className="text-sm font-bold truncate">{session.name}</h2>
+                <h2 className="text-sm font-bold text-white truncate">{session.name}</h2>
                 {isSet && (
                   <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold shrink-0">
                     SET
@@ -178,17 +179,18 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
           {/* Hero accuracy card */}
           <div
             className={cn(
-              'rounded-2xl p-4 flex items-center gap-4',
+              'glass rounded-2xl p-4 flex items-center gap-4',
               isEditing && 'ring-1 ring-amber-400/40'
             )}
-            style={{
-              background: `linear-gradient(135deg, ${accColor}22, ${accColor}08)`,
-              border: `1px solid ${accColor}40`,
-            }}
           >
             <div className="shrink-0">
-              <div className="text-3xl font-bold tabular leading-none" style={{ color: accColor }}>
-                {accuracy > 0 ? `${accuracy}%` : '—'}
+              <div
+                className="text-3xl font-bold tabular leading-none"
+                style={accuracy > 0 ? { color: accColor } : undefined}
+              >
+                <span className={accuracy > 0 ? undefined : 'text-white/40'}>
+                  {accuracy > 0 ? `${accuracy}%` : '—'}
+                </span>
               </div>
               <div className="text-[9px] text-white/40 uppercase tracking-wide mt-1">Accuracy</div>
             </div>
@@ -202,7 +204,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
 
           {/* Read-only banner for not-set sessions */}
           {!isSet && !isEditing && (
-            <div className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/5 text-white/40 text-[10px]">
+            <div className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/40 text-[10px]">
               <Eye size={12} /> Read-only report — no answers marked for this session
             </div>
           )}
@@ -238,9 +240,9 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                   key={qi}
                   ref={isFocus ? focusRef : null}
                   className={cn(
-                    'rounded-xl overflow-hidden bg-white/[0.02] transition',
+                    'rounded-xl overflow-hidden bg-white/5 border border-white/10 transition',
                     isFocus && 'ring-2 ring-amber-400/60',
-                    isEditing && 'bg-white/[0.04]'
+                    isEditing && 'bg-white/10'
                   )}
                   style={{ borderLeft: `3px solid ${qColor}` }}
                 >
@@ -253,17 +255,17 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                       Q{q.number}
                     </span>
 
-                    <span className="text-[10px] text-white/40 tabular flex items-center gap-1 shrink-0">
+                    <span className="text-[10px] text-white/50 tabular flex items-center gap-1 shrink-0">
                       <Clock size={9} /> {formatHMS(q.timeSpentSec)}
                     </span>
 
                     {/* User answer */}
                     {q.userAnswer ? (
                       <span className="text-[10px] text-white/70">
-                        You: <span className="font-bold" style={{ color: OPTION_COLORS[q.userAnswer] || '#fff' }}>{q.userAnswer}</span>
+                        You: <span className="font-bold" style={{ color: OPTION_COLORS[q.userAnswer] }}>{q.userAnswer}</span>
                       </span>
                     ) : (
-                      <span className="text-[10px] text-white/30 italic">No answer</span>
+                      <span className="text-[10px] text-white/40 italic">No answer</span>
                     )}
 
                     <div className="flex-1" />
@@ -308,7 +310,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                             }}
                             className={cn(
                               'flex-1 py-2 rounded-lg text-[11px] font-bold transition border',
-                              isSelected ? 'text-white' : 'text-white/40 bg-white/5 border-white/10'
+                              isSelected ? 'text-white' : 'text-white/60 bg-white/5 border-white/10'
                             )}
                             style={
                               isSelected
@@ -339,7 +341,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                               }))
                             }
                             placeholder="Concept notes…"
-                            className="w-full p-2 rounded-lg bg-white/5 text-[11px] h-14 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40"
+                            className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-14 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10"
                           />
                           <textarea
                             value={draft.formula}
@@ -350,7 +352,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                               }))
                             }
                             placeholder="Formula…"
-                            className="w-full p-2 rounded-lg bg-white/5 text-[11px] h-12 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40"
+                            className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-12 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10"
                           />
                           <button
                             onClick={() => { persistNotes(qi); vibrate(10); }}
@@ -372,7 +374,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                             </div>
                           )}
                           {!q.conceptNotes && !q.formulaNotes && (
-                            <p className="text-[10px] text-white/30 italic">No notes recorded.</p>
+                            <p className="text-[10px] text-white/40 italic">No notes recorded.</p>
                           )}
                         </>
                       )}
@@ -394,7 +396,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
 
         {/* ============ Sticky bottom action (only when editing) ============ */}
         {isEditing && (
-          <div className="shrink-0 p-3 border-t border-white/5 bg-black/80 backdrop-blur">
+          <div className="shrink-0 p-3 border-t border-white/10 glass">
             <button
               onClick={exitEditMode}
               className="w-full py-2.5 rounded-xl bg-green-500/20 text-green-400 text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition"
@@ -421,7 +423,7 @@ function Meta({ icon: Icon, label }: { icon: typeof Calendar; label: string }) {
 
 function StatChip({ color, value, label }: { color: string; value: number; label: string }) {
   return (
-    <div className="rounded-xl p-2 text-center" style={{ background: `${color}1a` }}>
+    <div className="rounded-xl p-2 text-center border border-white/10" style={{ background: `${color}1a` }}>
       <div className="text-base font-bold tabular leading-none" style={{ color }}>{value}</div>
       <div className="text-[8px] text-white/50 mt-0.5 uppercase tracking-wide">{label}</div>
     </div>
