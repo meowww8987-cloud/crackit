@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { Plus, Target as TargetIcon, Sparkles, X, Check, GripVertical, HelpCircle, Eye, EyeOff } from 'lucide-react';
 import { Reorder, motion, AnimatePresence } from 'framer-motion';
 import { useTargets } from '@/lib/store/targets';
-import { useSession } from '@/lib/store/session';
+import { useSession, getLiveStudySeconds } from '@/lib/store/session';
+import { usePractice } from '@/lib/store/practice';
 import { useHistory } from '@/lib/store/history';
 import { useSettings } from '@/lib/store/settings';
 import { useSyllabus } from '@/lib/store/syllabus';
@@ -64,7 +65,24 @@ export function StudyTab() {
 
   const doneCount = sortedTargets.filter((t) => t.done).length;
   const expectedTotalMin = sortedTargets.reduce((acc, t) => acc + t.expectedMinutes, 0);
-  const studySecToday = useHistory((s) => s.getTodayStudySeconds());
+  // Saved today study seconds + LIVE time from any running focus session or
+  // practice session. Practice time IS study time — it must show in the ring
+  // immediately, not just after End.
+  const savedStudySecToday = useHistory((s) => s.getTodayStudySeconds());
+  const activeFocusSession = useSession((s) => s.active);
+  const activePractice = usePractice((s) => s.activePractice);
+  // 1s re-render tick while a live session is running.
+  const [, setLiveTick] = useState(0);
+  useEffect(() => {
+    if (!activeFocusSession && !activePractice) return;
+    const i = setInterval(() => setLiveTick((t) => t + 1), 1000);
+    return () => clearInterval(i);
+  }, [activeFocusSession, activePractice]);
+  const liveFocus = activeFocusSession ? getLiveStudySeconds(activeFocusSession) : 0;
+  const livePractice = activePractice
+    ? Math.floor((Date.now() - activePractice.startedAt) / 1000)
+    : 0;
+  const studySecToday = savedStudySecToday + liveFocus + livePractice;
   const dailyGoal = useSettings((s) => s.dailyGoalHours);
   const goalSec = dailyGoal * 3600;
   const progressPct = goalSec > 0 ? Math.min(100, Math.round((studySecToday / goalSec) * 100)) : 0;

@@ -203,7 +203,16 @@ export function PartnerCard() {
   const liveWastedSec = getLiveWastedSeconds(myActiveSession);
   const savedTodaySec = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.studySeconds, 0);
   const savedTodayWastedSec = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.wastedSeconds, 0);
-  const myTodaySec = savedTodaySec + (myActiveSession ? liveSec : 0);
+
+  // Live practice time also counts toward myTodaySec — practice is study time.
+  const activePractice = usePractice((s) => s.activePractice);
+  const livePracticeSec = activePractice
+    ? Math.floor((Date.now() - activePractice.startedAt) / 1000)
+    : 0;
+
+  const myTodaySec = savedTodaySec
+    + (myActiveSession ? liveSec : 0)
+    + (activePractice ? livePracticeSec : 0);
   const myTodayWastedSec = savedTodayWastedSec + (myActiveSession ? liveWastedSec : 0);
   const myStreak = useHistory.getState().getStreak();
 
@@ -211,12 +220,13 @@ export function PartnerCard() {
   const myTargetsTotal = myTodayTargets.length;
   const myTargetsDone = myTodayTargets.filter((t) => t.done).length;
 
-  // My current subject/topic/chapter/lecture
-  const myCurrentSubject = myActiveSession?.subject || null;
-  const myCurrentChapter = myActiveSession?.chapter || null;
+  // My current subject/topic/chapter/lecture — prefer focus session, fall back
+  // to active practice (so "you" bar shows practice context too).
+  const myCurrentSubject = myActiveSession?.subject || activePractice?.subject || null;
+  const myCurrentChapter = myActiveSession?.chapter || activePractice?.chapter || null;
   const myCurrentLecture = myActiveSession?.lecture || null;
-  const myCurrentTopic = myActiveSession?.topic || null;
-  const myIsStudying = !!myActiveSession && !myActiveSession.paused && !myActiveSession.wasting;
+  const myCurrentTopic = myActiveSession?.topic || activePractice?.name || null;
+  const myIsStudying = (!!myActiveSession && !myActiveSession.paused && !myActiveSession.wasting) || !!activePractice;
   const myIsPaused = !!myActiveSession && myActiveSession.paused;
   const myIsWasting = !!myActiveSession && myActiveSession.wasting;
 
@@ -259,14 +269,51 @@ export function PartnerCard() {
   // Status badge — 5 explicit states: Online / Studying / Paused / Wasting / Offline
   // Partner is "Offline" if we haven't seen them in >2min, otherwise "Online" (idle).
   const partnerIsOffline = partnerDataAge === null || partnerDataAge > 120_000;
-  const partnerStatusText = partnerIsStudying ? 'Studying' : partnerIsWasting ? 'Wasting' : partnerIsPaused ? 'Paused' : partnerIsOffline ? 'Offline' : 'Online';
-  const partnerStatusColor = partnerIsStudying ? '#22c55e' : partnerIsWasting ? '#ef4444' : partnerIsPaused ? '#f59e0b' : partnerIsOffline ? '#9ca3af' : '#3b82f6';
-  // "You" are always online (you're looking at the app)
-  // Also check if practicing (practice mode)
-  const activePractice = usePractice((s) => s.activePractice);
-  const myIsPracticing = !!activePractice;
-  const myStatusText = myIsStudying ? 'Studying' : myIsPracticing ? `Practicing ${activePractice?.subject || ''}` : myIsWasting ? 'Wasting' : myIsPaused ? 'Paused' : 'Online';
-  const myStatusColor = myIsStudying ? '#22c55e' : myIsPracticing ? '#3b82f6' : myIsWasting ? '#ef4444' : myIsPaused ? '#f59e0b' : '#3b82f6';
+  // Partner activity type — distinguishes "Practicing" from "Studying".
+  const partnerActivityType = partnerData?.activityType || null;
+  const partnerIsPracticing = partnerData?.isPracticing || false;
+  const partnerStatusText = partnerIsPracticing
+    ? 'Practicing'
+    : partnerIsStudying
+      ? 'Studying'
+      : partnerIsWasting
+        ? 'Wasting'
+        : partnerIsPaused
+          ? 'Paused'
+          : partnerIsOffline
+            ? 'Offline'
+            : 'Online';
+  const partnerStatusColor = partnerIsPracticing
+    ? '#3b82f6'
+    : partnerIsStudying
+      ? '#22c55e'
+      : partnerIsWasting
+        ? '#ef4444'
+        : partnerIsPaused
+          ? '#f59e0b'
+          : partnerIsOffline
+            ? '#9ca3af'
+            : '#3b82f6';
+  // "You" status — distinguishes "Practicing" from "Studying".
+  const myIsPracticing = !!activePractice && !myActiveSession;
+  const myStatusText = myIsPracticing
+    ? `Practicing ${activePractice?.subject || ''}`
+    : myIsStudying
+      ? 'Studying'
+      : myIsWasting
+        ? 'Wasting'
+        : myIsPaused
+          ? 'Paused'
+          : 'Online';
+  const myStatusColor = myIsPracticing
+    ? '#3b82f6'
+    : myIsStudying
+      ? '#22c55e'
+      : myIsWasting
+        ? '#ef4444'
+        : myIsPaused
+          ? '#f59e0b'
+          : '#3b82f6';
 
   return (
     <>
@@ -436,7 +483,7 @@ export function PartnerCard() {
                 <PartnerAvatar
                   initials={(partner.partnerName || 'P').charAt(0).toUpperCase()}
                   accentColor="#8b5cf6"
-                  status={partnerIsStudying ? 'studying' : partnerIsWasting ? 'wasting' : partnerIsPaused ? 'paused' : partnerIsOffline ? 'offline' : 'online'}
+                  status={partnerIsPracticing ? 'studying' : partnerIsStudying ? 'studying' : partnerIsWasting ? 'wasting' : partnerIsPaused ? 'paused' : partnerIsOffline ? 'offline' : 'online'}
                   size={40}
                 />
                 <div className="flex-1 min-w-0">
@@ -489,21 +536,34 @@ export function PartnerCard() {
               )}
             </div>
 
-            {/* === Partner studying banner === */}
-            {partnerIsStudying && (
+            {/* === Partner studying banner ===
+                Renders "Practicing X" if the partner is in practice mode (activityType='practice'),
+                otherwise the default "studying X" banner. */}
+            {(partnerIsStudying || partnerIsPracticing) && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-2 text-[11px] bg-green-500/10 rounded-xl px-3 py-2 border border-green-500/20"
+                className={cn(
+                  "flex items-center gap-2 text-[11px] rounded-xl px-3 py-2 border",
+                  partnerIsPracticing
+                    ? "bg-blue-500/10 border-blue-500/20"
+                    : "bg-green-500/10 border-green-500/20"
+                )}
               >
                 <motion.div
                   animate={{ scale: [1, 1.3, 1] }}
                   transition={{ duration: 1, repeat: Infinity }}
-                  className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full shrink-0",
+                    partnerIsPracticing ? "bg-blue-500" : "bg-green-500"
+                  )}
                 />
-                <Play size={11} className="text-green-500 shrink-0" />
+                <Play size={11} className={cn("shrink-0", partnerIsPracticing ? "text-blue-500" : "text-green-500")} />
                 <span className="truncate text-t-secondary">
-                  <strong className="text-green-600 dark:text-green-400">{partner.partnerName}</strong> studying
+                  <strong className={cn(partnerIsPracticing ? "text-blue-600 dark:text-blue-400" : "text-green-600 dark:text-green-400")}>
+                    {partner.partnerName}
+                  </strong>{' '}
+                  {partnerIsPracticing ? 'practicing' : 'studying'}
                   {partnerLastSubject ? ` · ${partnerLastSubject}` : ''}
                   {partnerLastChapter ? ` · ${partnerLastChapter}` : ''}
                 </span>

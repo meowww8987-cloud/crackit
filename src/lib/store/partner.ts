@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware';
 import { useHistory } from './history';
 import { useTests } from './tests';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from './session';
+import { usePractice } from './practice';
 import { useTargets } from './targets';
 import { todayKey } from '@/lib/utils';
 
@@ -38,6 +39,13 @@ export interface PartnerSyncPayload {
   isWasting: boolean;
   /** Seconds studied in the CURRENT active session (0 if none active). */
   currentSessionSec: number;
+  /** What kind of activity the user is currently doing:
+   *  - 'focus'   → running a focus-timer study session
+   *  - 'practice'→ running a practice question session (subject shown in lastSubject)
+   *  - null      → no live activity (idle / just saved a session) */
+  activityType: 'focus' | 'practice' | null;
+  /** True if the user is currently mid-practice (activePractice is set). */
+  isPracticing: boolean;
 
   // === Today's targets ===
   /** Number of today's targets marked done. */
@@ -178,37 +186,66 @@ export const usePartner = create<PartnerStore>()(
           .reduce((a, s) => a + s.studySeconds, 0);
         const streak = useHistory.getState().getStreak();
 
-        // === LIVE active session ===
+        // === LIVE active session (focus timer) ===
         // CRITICAL: include the currently-running session's time so the
         // partner sees real-time progress. Previously only saved sessions
         // were synced, so if B studied 1h without stopping, A only saw the
         // time from B's last SAVED session (could be much smaller).
         const activeSession = useSession.getState().active;
-        // Debug: log what we're reading from the session store
-        console.log('[partner] syncData reading session:', {
-          hasActive: !!activeSession,
-          paused: activeSession?.paused,
-          wasting: activeSession?.wasting,
-          subject: activeSession?.subject,
-          lastResumeAt: activeSession?.lastResumeAt,
-          studySeconds: activeSession?.studySeconds,
-        });
         const liveSec = getLiveStudySeconds(activeSession);
         const liveWastedSec = getLiveWastedSeconds(activeSession);
-        const isStudying = !!activeSession && !activeSession.paused && !activeSession.wasting;
-        const isPaused = !!activeSession && activeSession.paused;
+
+        // === LIVE active practice (practice mode) ===
+        // Practice time also counts as study time. If the user is mid-practice
+        // (no focus session running), broadcast practice as the current activity
+        // so the partner card shows "Practicing Physics" instead of just "Online".
+        const activePractice = usePractice.getState().activePractice;
+        const livePracticeSec = activePractice
+          ? Math.floor((Date.now() - activePractice.startedAt) / 1000)
+          : 0;
+
+        // Determine which activity is "primary" — focus session takes priority
+        // (it's the more deliberate study mode), practice is the fallback.
+        const hasFocus = !!activeSession;
+        const hasPractice = !!activePractice;
+
+        const isStudying = (hasFocus && !activeSession!.paused && !activeSession!.wasting) || hasPractice;
+        const isPaused = !!activeSession && activeSession.paused;  // practice can't be "paused" in the focus-timer sense
         const isWasting = !!activeSession && activeSession.wasting;
+        const isPracticing = hasPractice && !hasFocus;  // practice shows as "Practicing" only when not also in a focus session
 
-        // todaySec = saved sessions today + live active session time.
-        const todaySec = savedTodaySec + (activeSession ? liveSec : 0);
-        const todayWastedSec = savedTodayWastedSec + (activeSession ? liveWastedSec : 0);
+        // todaySec = saved sessions + live focus time + live practice time.
+        const todaySec = savedTodaySec
+          + (hasFocus ? liveSec : 0)
+          + (hasPractice ? livePracticeSec : 0);
+        const todayWastedSec = savedTodayWastedSec + (hasFocus ? liveWastedSec : 0);
 
-        // === Current subject/topic/chapter/lecture (prefer active session) ===
-        let lastSubject: string | null = activeSession?.subject || null;
-        let lastChapter: string | null = activeSession?.chapter || null;
-        let lastLecture: string | null = activeSession?.lecture || null;
-        let lastTopic: string | null = activeSession?.topic || null;
-        if (!lastSubject) {
+        // === Current subject/topic/chapter/lecture ===
+        // Priority: active focus session > active practice > most recent saved session today.
+        let lastSubject: string | null = null;
+        let lastChapter: string | null = null;
+        let lastLecture: string | null = null;
+        let lastTopic: string | null = null;
+        let activityType: 'focus' | 'practice' | null = null;
+
+        if (hasFocus && activeSession!.subject) {
+          // Focus session is primary — use its subject/chapter/lecture/topic.
+          lastSubject = activeSession!.subject;
+          lastChapter = activeSession!.chapter || null;
+          lastLecture = activeSession!.lecture || null;
+          lastTopic = activeSession!.topic || null;
+          activityType = 'focus';
+        } else if (hasPractice) {
+          // Practice is primary — use its subject/chapter; the practice name
+          // (e.g. "Physics · ∞Q") goes into lastTopic so the partner sees context.
+          lastSubject = activePractice!.subject || null;
+          lastChapter = activePractice!.chapter || null;
+          lastLecture = null;
+          lastTopic = activePractice!.name || null;
+          activityType = 'practice';
+        } else {
+          // No live activity — fall back to most recent saved session today
+          // so the partner card still shows context.
           const lastSaved = sessions
             .filter((s) => s.date === today)
             .sort((a, b) => b.endedAt - a.endedAt)[0];
@@ -216,7 +253,15 @@ export const usePartner = create<PartnerStore>()(
           lastChapter = lastSaved?.chapter || null;
           lastLecture = lastSaved?.lecture || null;
           lastTopic = lastSaved?.topic || null;
+          activityType = null;
         }
+
+        // currentSessionSec = whichever live session is active right now.
+        const currentSessionSec = hasFocus
+          ? liveSec
+          : hasPractice
+            ? livePracticeSec
+            : 0;
 
         // === Today's targets (done / total) ===
         const todayTargets = useTargets.getState().getTodayTargets();
@@ -236,7 +281,9 @@ export const usePartner = create<PartnerStore>()(
         const payload: PartnerSyncPayload = {
           todaySec,
           todayWastedSec,
-          weekSec: savedWeekSec + (activeSession ? liveSec : 0),
+          weekSec: savedWeekSec
+            + (hasFocus ? liveSec : 0)
+            + (hasPractice ? livePracticeSec : 0),
           streak,
           lastSubject,
           lastChapter,
@@ -245,7 +292,9 @@ export const usePartner = create<PartnerStore>()(
           isStudying,
           isPaused,
           isWasting,
-          currentSessionSec: activeSession ? liveSec : 0,
+          currentSessionSec,
+          activityType,
+          isPracticing,
           targetsDone,
           targetsTotal,
           lastTestScore,

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { usePartner } from '@/lib/store/partner';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
 import { useHistory } from '@/lib/store/history';
+import { usePractice } from '@/lib/store/practice';
 import { useTargets } from '@/lib/store/targets';
 import { useTests } from '@/lib/store/tests';
 
@@ -15,7 +16,8 @@ import { useTests } from '@/lib/store/tests';
  *    - 5s while studying (partner sees timer counting up almost real-time)
  *    - 15s while idle (keeps "last seen" very fresh)
  * 2. **Sync on ANY state change** — not just session, but also when targets
- *    are added/done, when sessions are saved, when tests are logged.
+ *    are added/done, when sessions are saved, when tests are logged, AND when
+ *    practice starts/pauses/resumes.
  * 3. **Hydration-aware** — Zustand persist stores hydrate async from
  *    localStorage. We wait for hydration before the first sync so we don't
  *    push empty/default values to the server.
@@ -31,6 +33,8 @@ export function usePartnerSync() {
   // when the underlying data changes, so we sync immediately on any change.
   const activeSession = useSession((s) => s.active);
   const sessionsLen = useHistory((s) => s.sessions.length);
+  const activePractice = usePractice((s) => s.activePractice);  // ← NEW: triggers re-render when practice starts/pauses/resumes/ends
+  const pausedPracticesLen = usePractice((s) => s.pausedPractices.length);  // ← NEW: triggers sync when a paused practice is resumed/discarded
   const targetsLen = useTargets((s) => {
     // Sum all today's targets across byDate — triggers re-render on add/delete/toggle
     const today = new Date().toISOString().slice(0, 10);
@@ -44,13 +48,19 @@ export function usePartnerSync() {
     ? `${activeSession.targetId}:${activeSession.paused ? 'p' : 'r'}:${activeSession.wasting ? 'w' : 's'}:${activeSession.subject}`
     : 'none';
 
+  // Practice state key — changes when practice starts/pauses/resumes/ends.
+  // Includes startedAt so a brand-new practice (different start time) triggers a sync.
+  const practiceKey = activePractice
+    ? `${activePractice.id}:${activePractice.startedAt}:${activePractice.subject}`
+    : 'none';
+
   // Track whether session is active for interval speed selection.
   const hasActiveRef = useRef(false);
-  hasActiveRef.current = !!activeSession && !activeSession.paused;
+  hasActiveRef.current = (!!activeSession && !activeSession.paused) || !!activePractice;
 
   // === Immediate sync on ANY relevant state change (debounced 300ms) ===
   // Fires when: session starts/pauses/resumes/stops, target added/done,
-  // session saved, test logged.
+  // session saved, test logged, practice starts/pauses/resumes/ends.
   useEffect(() => {
     if (!partnerCode) return;
     const t = setTimeout(() => {
@@ -58,7 +68,7 @@ export function usePartnerSync() {
       fetchPartnerData();
     }, 300);
     return () => clearTimeout(t);
-  }, [partnerCode, sessionKey, sessionsLen, targetsLen, testsLen, syncData, fetchPartnerData]);
+  }, [partnerCode, sessionKey, practiceKey, sessionsLen, pausedPracticesLen, targetsLen, testsLen, syncData, fetchPartnerData]);
 
   // === Periodic sync — REAL-TIME, every 3 seconds ===
   // Push + fetch every 3s so both sides see updates within ~6s end-to-end.
@@ -78,7 +88,7 @@ export function usePartnerSync() {
     }, 3_000);
 
     return () => clearInterval(i);
-  }, [partnerCode, sessionKey, syncData, fetchPartnerData]);
+  }, [partnerCode, sessionKey, practiceKey, syncData, fetchPartnerData]);
 
   // Fetch partner data when tab becomes visible OR window regains focus.
   // CRITICAL: mobile browsers throttle setInterval when the tab goes to the
