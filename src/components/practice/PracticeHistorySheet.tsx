@@ -67,22 +67,22 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                 <BookOpen size={24} className="text-blue-300" />
               </div>
               <h2 className="text-lg font-bold text-white">Practice History</h2>
-              <p className="text-[11px] text-blue-200/50 mt-0.5">{totalSessions} sessions · {totalQuestions} questions · {overallAccuracy}% accuracy</p>
+              <p className="text-[11px] text-white/60 mt-0.5">{totalSessions} sessions · {totalQuestions} questions · {overallAccuracy}% accuracy</p>
             </div>
 
             <div className="px-4 pb-8">
               {history.length === 0 ? (
                 <div className="text-center py-12">
-                  <BookOpen size={40} className="text-blue-300/20 mx-auto mb-3" />
-                  <p className="text-blue-200/50 text-sm">No practice sessions yet.</p>
-                  <p className="text-blue-200/30 text-[10px] mt-1">Long-press the Tests tab → Practice Mode to start.</p>
+                  <BookOpen size={40} className="text-blue-300/40 mx-auto mb-3" />
+                  <p className="text-white/60 text-sm">No practice sessions yet.</p>
+                  <p className="text-white/40 text-[10px] mt-1">Long-press the Tests tab → Practice Mode to start.</p>
                 </div>
               ) : (
                 <>
                   {/* Toggle: All sessions vs Wrong questions revision */}
                   <div className="flex gap-1 p-1 rounded-xl bg-white/5 mb-4">
                     <button onClick={() => setFilterWrong(false)}
-                      className={cn('flex-1 py-2 rounded-lg text-xs font-bold transition', !filterWrong ? 'bg-blue-500/30 text-blue-200' : 'text-white/40')}>
+                      className={cn('flex-1 py-2 rounded-lg text-xs font-bold transition', !filterWrong ? 'bg-blue-500/30 text-white' : 'text-white/40')}>
                       All Sessions ({totalSessions})
                     </button>
                     <button onClick={() => setFilterWrong(true)}
@@ -257,7 +257,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                 </>
               )}
 
-              <p className="text-[9px] text-blue-200/30 text-center mt-4">📚 Practice History · Tap session to expand · Tap A/B/C/D to mark correct answer · + for notes</p>
+              <p className="text-[9px] text-white/40 text-center mt-4">📚 Practice History · Tap session to expand · Tap A/B/C/D to mark correct answer · + for notes</p>
             </div>
           </motion.div>
         </motion.div>
