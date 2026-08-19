@@ -205,7 +205,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                 {session.questions.map((q, qi) => {
                                   const key = qKey(session.id, qi);
                                   const qExpanded = expandedQ === key;
-                                  const qColor = q.result === 'correct' ? '#22c55e' : q.result === 'wrong' ? '#ef4444' : 'rgba(255,255,255,0.4)';
+                                  const qColor = q.result === 'correct' ? '#22c55e' : q.result === 'wrong' ? '#ef4444' : 'rgba(255,255,255,0.6)';
                                   return (
                                     <div key={qi} className="rounded-lg overflow-hidden" style={{ borderLeft: `2px solid ${qColor}` }}>
                                       <div className="p-1.5 flex items-center gap-1.5 bg-white/[0.02]">

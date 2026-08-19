@@ -753,6 +753,31 @@ html.sage .force-dark-ui input,
 html.sage .force-dark-ui textarea,
 html.sage .force-dark-ui select { color: #ffffff !important; background: rgba(255,255,255,0.08) !important; }
 
+/* === FORCE-DARK-UI GLASS RESET ===
+ * On light themes (rose, sage, light), .glass gets a WHITE background.
+ * Inside .force-dark-ui containers (Practice History, Practice Runner, Focus Timer),
+ * this creates invisible white-on-white text.
+ * This reset forces .glass to use dark backgrounds inside .force-dark-ui,
+ * regardless of theme.
+ */
+.force-dark-ui .glass {
+  background: rgba(12, 14, 20, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  box-shadow: 0 4px 24px -6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+.force-dark-ui .glass-strong {
+  background: rgba(22, 24, 32, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 12px 48px -8px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+.force-dark-ui .card-solid {
+  background: rgba(15, 17, 24, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 2px 12px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+/* Also reset bg-white/[0.02] and similar arbitrary opacities used in practice rows */
+.force-dark-ui .bg-white\/\[0\.02\] { background: rgba(255, 255, 255, 0.02) !important; }
+
 /* ===== MIDNIGHT GOLD THEME — Slight black + premium gold ambient, pure black cards ===== */
 .gold {
   --ring-track: rgba(251, 191, 36, 0.22);
