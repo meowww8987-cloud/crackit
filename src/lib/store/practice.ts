@@ -32,12 +32,23 @@ export interface PracticeSession {
   skippedCount: number;
   unmarkedCount: number;
   accuracy: number;
+  /** Total seconds elapsed when practice was paused — used on resume to
+   *  restore the global timer (startedAt = Date.now() - accumulatedTimeSec*1000). */
+  accumulatedTimeSec?: number;
+  /** Timestamp when the practice was last paused — used for display in the
+   *  "Resume" list. Null when running or completed. */
+  pausedAt?: number | null;
+  /** Question index the user was on when they paused — used on resume to
+   *  jump the runner back to that question. */
+  resumeQuestionIndex?: number;
 }
 
 interface PracticeStore {
   activePractice: PracticeSession | null;
   currentQuestionIndex: number;
   history: PracticeSession[];
+  /** Practices that the user paused mid-way — can be resumed later. */
+  pausedPractices: PracticeSession[];
 
   startPractice: (opts: {
     name?: string;
@@ -50,6 +61,16 @@ interface PracticeStore {
   answerQuestion: (status: 'answered' | 'skipped' | 'review-later') => void;
   endPractice: () => void;
   cancelPractice: () => void;
+
+  /** Pause the active practice — snapshots current state (incl. current
+   *  question's elapsed time + total elapsed time) into `pausedPractices`,
+   *  clears `activePractice`. The runner UI unmounts. */
+  pausePractice: (snapshot: PracticeSession) => void;
+  /** Resume a previously-paused practice — restores it as `activePractice`
+   *  with the timer continued from where it left off. Removes from `pausedPractices`. */
+  resumePractice: (sessionId: string) => void;
+  /** Discard a paused practice without resuming — just removes it from the list. */
+  deletePausedPractice: (sessionId: string) => void;
 
   markQuestion: (sessionId: string, questionIndex: number, result: 'correct' | 'wrong' | 'unmarked') => void;
   markCorrectAnswer: (sessionId: string, questionIndex: number, correctAnswer: string | null) => void;
@@ -65,6 +86,7 @@ export const usePractice = create<PracticeStore>()(
       activePractice: null,
       currentQuestionIndex: 0,
       history: [],
+      pausedPractices: [],
 
       startPractice: (opts) => {
         const id = `practice_${Date.now()}`;
@@ -117,6 +139,8 @@ export const usePractice = create<PracticeStore>()(
             timeSpentSec: 0,
             status: 'unanswered',
             result: 'unmarked',
+            userAnswer: null,
+            correctAnswer: null,
             conceptNotes: '',
             formulaNotes: '',
           });
@@ -176,6 +200,48 @@ export const usePractice = create<PracticeStore>()(
 
       cancelPractice: () => {
         set({ activePractice: null, currentQuestionIndex: 0 });
+      },
+
+      /** Snapshot the current activePractice into pausedPractices, then
+       *  clear activePractice so the runner UI unmounts.
+       *  The runner is responsible for updating the current question's
+       *  timeSpentSec + setting accumulatedTimeSec/pausedAt/resumeQuestionIndex
+       *  on the session BEFORE calling this — we just snapshot what we get. */
+      pausePractice: (snapshot) => {
+        set((s) => ({
+          activePractice: null,
+          currentQuestionIndex: 0,
+          pausedPractices: [snapshot, ...s.pausedPractices].slice(0, 50),
+        }));
+      },
+
+      /** Move a paused practice back into activePractice with the timer
+       *  restored to where it left off. The runner's mount effect reads
+       *  accumulatedTimeSec + the current question's timeSpentSec to set
+       *  questionStartRef correctly (so per-question timer continues). */
+      resumePractice: (sessionId) => {
+        const paused = get().pausedPractices.find((p) => p.id === sessionId);
+        if (!paused) return;
+        const accumulatedTimeSec = paused.accumulatedTimeSec || 0;
+        const resumeIdx = paused.resumeQuestionIndex ?? 0;
+        const restored: PracticeSession = {
+          ...paused,
+          // Shift startedAt so total elapsed timer shows accumulatedTimeSec
+          // immediately on mount, then continues ticking from now.
+          startedAt: Date.now() - accumulatedTimeSec * 1000,
+          pausedAt: null,
+        };
+        set((s) => ({
+          activePractice: restored,
+          currentQuestionIndex: resumeIdx,
+          pausedPractices: s.pausedPractices.filter((p) => p.id !== sessionId),
+        }));
+      },
+
+      deletePausedPractice: (sessionId) => {
+        set((s) => ({
+          pausedPractices: s.pausedPractices.filter((p) => p.id !== sessionId),
+        }));
       },
 
       markQuestion: (sessionId, questionIndex, result) => {

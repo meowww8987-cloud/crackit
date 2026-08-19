@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { usePractice } from '@/lib/store/practice';
+import { X, ChevronLeft, ChevronRight, Play, Trash2, Clock, Pause } from 'lucide-react';
+import { usePractice, type PracticeSession } from '@/lib/store/practice';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useSettings } from '@/lib/store/settings';
 import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
-import { cn, vibrate } from '@/lib/utils';
+import { cn, vibrate, formatHMS } from '@/lib/utils';
 import type { Subject } from '@/lib/types';
 
 const SUBJECTS: (Subject | 'Mixed')[] = ['Mixed', 'Physics', 'Chemistry', 'Botany', 'Zoology'];
@@ -17,8 +17,23 @@ interface Props {
   onClose: () => void;
 }
 
+function timeSincePause(pausedAt?: number | null): string {
+  if (!pausedAt) return '';
+  const diffMs = Date.now() - pausedAt;
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const days = Math.floor(hr / 24);
+  return `${days}d ago`;
+}
+
 export function PracticeSetupSheet({ open, onClose }: Props) {
   const startPractice = usePractice((s) => s.startPractice);
+  const pausedPractices = usePractice((s) => s.pausedPractices);
+  const resumePractice = usePractice((s) => s.resumePractice);
+  const deletePausedPractice = usePractice((s) => s.deletePausedPractice);
   const subjects = useSyllabus((s) => s.subjects);
   const chapters = useSyllabus((s) => s.chapters);
   const haptics = useSettings((s) => s.haptics);
@@ -102,6 +117,42 @@ export function PracticeSetupSheet({ open, onClose }: Props) {
                 <div key={i} className={cn('flex-1 h-1 rounded-full transition', i <= step ? 'bg-teal-500' : 'bg-white/10')} />
               ))}
             </div>
+
+            {/* === Resume Paused Practice section — only shown at step 0 if any exist === */}
+            {step === 0 && pausedPractices.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Pause size={12} className="text-amber-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-amber-400">Resume Paused Practice</span>
+                </div>
+                <div className="space-y-1.5">
+                  {pausedPractices.map((p) => (
+                    <PausedPracticeRow
+                      key={p.id}
+                      practice={p}
+                      onResume={() => {
+                        if (haptics) vibrate(15);
+                        resumePractice(p.id);
+                        onClose();
+                        // reset setup state in case user opens again later
+                        setStep(0); setSelectedSubject('Mixed'); setSelectedChapterId('All');
+                        setQuestionCount(0); setTimeLimit(0); setPracticeName('');
+                        setQInput(''); setTInput('');
+                      }}
+                      onDiscard={() => {
+                        if (haptics) vibrate(8);
+                        if (confirm(`Discard "${p.name}"? Progress will be lost.`)) {
+                          deletePausedPractice(p.id);
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="text-[9px] text-white/30 text-center mt-2">
+                  Or start a new practice below ↓
+                </div>
+              </div>
+            )}
 
             {/* === Step 0: Subject === */}
             {step === 0 && (
@@ -210,5 +261,65 @@ export function PracticeSetupSheet({ open, onClose }: Props) {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/* ---------- Paused practice row (used in the Resume section) ---------- */
+
+function PausedPracticeRow({
+  practice,
+  onResume,
+  onDiscard,
+}: {
+  practice: PracticeSession;
+  onResume: () => void;
+  onDiscard: () => void;
+}) {
+  const totalElapsed = practice.accumulatedTimeSec || 0;
+  const answeredCount = practice.questions.filter(q => q.status === 'answered').length;
+  const skippedCount = practice.questions.filter(q => q.status === 'skipped').length;
+  const reviewCount = practice.questions.filter(q => q.status === 'review-later').length;
+  const currentQ = practice.resumeQuestionIndex ?? 0;
+
+  return (
+    <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-2.5 flex items-center gap-2">
+      {/* Play button — resumes the practice */}
+      <button
+        onClick={onResume}
+        className="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 hover:bg-amber-500/30 active:scale-95 transition shrink-0"
+        aria-label="Resume practice"
+      >
+        <Play size={16} />
+      </button>
+
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-bold text-white truncate">{practice.name}</div>
+        <div className="text-[10px] text-white/50 flex items-center gap-1.5 mt-0.5">
+          <Clock size={9} />
+          <span className="tabular">{formatHMS(totalElapsed)}</span>
+          <span className="opacity-40">·</span>
+          <span>Q{currentQ + 1}{practice.questionCount > 0 ? `/${practice.questionCount}` : ''}</span>
+          {(answeredCount > 0 || skippedCount > 0 || reviewCount > 0) && (
+            <span className="opacity-40">·</span>
+          )}
+          {answeredCount > 0 && <span className="text-green-400">✓{answeredCount}</span>}
+          {skippedCount > 0 && <span className="text-white/40">→{skippedCount}</span>}
+          {reviewCount > 0 && <span className="text-amber-400">⚑{reviewCount}</span>}
+        </div>
+        <div className="text-[9px] text-white/30 mt-0.5">
+          Paused {timeSincePause(practice.pausedAt)}
+        </div>
+      </div>
+
+      {/* Discard button */}
+      <button
+        onClick={onDiscard}
+        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition shrink-0"
+        aria-label="Discard paused practice"
+        title="Discard"
+      >
+        <Trash2 size={13} />
+      </button>
+    </div>
   );
 }

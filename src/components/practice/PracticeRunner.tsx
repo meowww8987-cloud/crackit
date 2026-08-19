@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, ChevronRight, Flag, Save, Edit, Clock, TrendingUp } from 'lucide-react';
+import { Check, X, ChevronRight, Flag, Save, Edit, Clock, TrendingUp, Pause } from 'lucide-react';
 import { usePractice, type PracticeSession, type PracticeQuestion } from '@/lib/store/practice';
 import { useHistory } from '@/lib/store/history';
 import { useSettings } from '@/lib/store/settings';
@@ -17,6 +17,7 @@ export function PracticeRunner() {
   const answerQuestion = usePractice((s) => s.answerQuestion);
   const endPractice = usePractice((s) => s.endPractice);
   const cancelPractice = usePractice((s) => s.cancelPractice);
+  const pausePractice = usePractice((s) => s.pausePractice);
   const markCorrectAnswer = usePractice((s) => s.markCorrectAnswer);
   const saveNotes = usePractice((s) => s.saveNotes);
   const history = usePractice((s) => s.history);
@@ -107,15 +108,66 @@ export function PracticeRunner() {
     answerQuestion('review-later');
   }, [haptics, answerQuestion]);
 
+  /** Pause the current practice — captures current question elapsed time +
+   *  total elapsed time, snapshots into pausedPractices, runner unmounts.
+   *  The user can resume later from: long-press Tests → Practice Mode, or
+   *  long-press History → Practice History. */
+  const handlePause = useCallback(() => {
+    if (haptics) vibrate([10, 30, 10]);
+    const session = usePractice.getState().activePractice;
+    const idx = usePractice.getState().currentQuestionIndex;
+    if (!session) return;
+
+    const now = Date.now();
+    const qElapsed = Math.floor((now - questionStartRef.current) / 1000);
+    const totalElapsed = Math.floor((now - session.startedAt) / 1000);
+
+    // Pad questions if needed (unlimited mode + idx beyond length)
+    const questions = [...session.questions];
+    while (questions.length <= idx) {
+      questions.push({
+        number: questions.length + 1, timeSpentSec: 0, status: 'unanswered',
+        result: 'unmarked', userAnswer: null, correctAnswer: null,
+        conceptNotes: '', formulaNotes: '',
+      });
+    }
+    // Save current question's elapsed time on the question itself.
+    questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
+
+    const snapshot: PracticeSession = {
+      ...session,
+      questions,
+      accumulatedTimeSec: totalElapsed,
+      pausedAt: now,
+      resumeQuestionIndex: idx,
+    };
+
+    pausePractice(snapshot);
+    timerResetRef.current = false; // allow next mount (resume) to set refs
+  }, [haptics, pausePractice]);
+
   useEffect(() => { questionStartRef.current = Date.now(); }, [currentIdx]);
 
   useEffect(() => {
     if (activePractice && !timerResetRef.current) {
       timerResetRef.current = true;
-      usePractice.setState({ activePractice: { ...activePractice, startedAt: Date.now() } });
-      questionStartRef.current = Date.now();
+      // Detect if this is a RESUMED session (accumulatedTimeSec > 0 means
+      // the user paused before, so startedAt is already shifted correctly
+      // by the store; we just need to restore questionStartRef).
+      const isResume = !!(activePractice.accumulatedTimeSec && activePractice.accumulatedTimeSec > 0);
+      if (isResume) {
+        // Restore the per-question timer to where it was at pause.
+        const currentQ = activePractice.questions[currentIdx];
+        const qElapsedBeforePause = currentQ?.timeSpentSec || 0;
+        questionStartRef.current = Date.now() - qElapsedBeforePause * 1000;
+        // Do NOT touch startedAt — resumePractice() already shifted it.
+      } else {
+        // Brand-new practice — reset global timer + question timer.
+        usePractice.setState({ activePractice: { ...activePractice, startedAt: Date.now() } });
+        questionStartRef.current = Date.now();
+      }
     }
-  }, [activePractice]);
+  }, [activePractice, currentIdx]);
 
   useEffect(() => {
     if (!activePractice) return;
@@ -194,7 +246,24 @@ export function PracticeRunner() {
         <button onClick={handleReviewLater} className="flex-1 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-400 active:scale-95 transition flex items-center justify-center gap-1.5"><Flag size={14} /> Review Later</button>
       </div>
       <button onClick={() => { if (haptics) vibrate([10, 30, 10]); handleEnd(); }} className="px-8 py-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-sm font-semibold active:scale-95 transition">End Practice</button>
-      <button onClick={() => { if (confirm('Cancel practice? Progress will be lost.')) cancelPractice(); }} className="mt-2 text-[10px] text-white/30 underline">Cancel</button>
+
+      {/* Pause + Cancel row — small text buttons side by side */}
+      <div className="mt-2 flex items-center justify-center gap-4 text-[10px]">
+        <button
+          onClick={handlePause}
+          className="flex items-center gap-1 text-amber-400/70 hover:text-amber-400 underline transition"
+          title="Save progress and resume later"
+        >
+          <Pause size={11} /> Pause
+        </button>
+        <span className="text-white/20">·</span>
+        <button
+          onClick={() => { if (confirm('Cancel practice? Progress will be lost.')) cancelPractice(); }}
+          className="text-white/30 hover:text-white/50 underline transition"
+        >
+          Cancel
+        </button>
+      </div>
     </motion.div>
   );
 }

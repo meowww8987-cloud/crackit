@@ -2,10 +2,22 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, BookOpen, ChevronRight, Check, Clock, Eye, AlertCircle, ChevronDown } from 'lucide-react';
+import { X, BookOpen, ChevronRight, Check, Clock, Eye, AlertCircle, ChevronDown, Play, Trash2, Pause } from 'lucide-react';
 import { usePractice, type PracticeSession, type PracticeQuestion } from '@/lib/store/practice';
 import { cn, vibrate, formatHMS } from '@/lib/utils';
 import { PracticeSessionDetail } from './PracticeSessionDetail';
+
+function timeSincePause(pausedAt?: number | null): string {
+  if (!pausedAt) return '';
+  const diffMs = Date.now() - pausedAt;
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const days = Math.floor(hr / 24);
+  return `${days}d ago`;
+}
 
 interface Props {
   open: boolean;
@@ -33,6 +45,9 @@ function sessionIsSet(session: PracticeSession) {
 
 export function PracticeHistorySheet({ open, onClose }: Props) {
   const history = usePractice((s) => s.history);
+  const pausedPractices = usePractice((s) => s.pausedPractices);
+  const resumePractice = usePractice((s) => s.resumePractice);
+  const deletePausedPractice = usePractice((s) => s.deletePausedPractice);
 
   const [view, setView] = useState<'sessions' | 'wrong'>('sessions');
   // Tracks which session was tapped → opens full-screen detail page.
@@ -136,6 +151,73 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                   </div>
                 ) : (
                   <>
+                    {/* === Resume Paused Practice section (only shows if any exist) === */}
+                    {pausedPractices.length > 0 && (
+                      <div className="mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <Pause size={12} className="text-amber-400" />
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-amber-400">
+                            Resume Paused Practice
+                          </span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {pausedPractices.map((p) => {
+                            const totalElapsed = p.accumulatedTimeSec || 0;
+                            const answeredCount = p.questions.filter(q => q.status === 'answered').length;
+                            const skippedCount = p.questions.filter(q => q.status === 'skipped').length;
+                            const reviewCount = p.questions.filter(q => q.status === 'review-later').length;
+                            const currentQ = p.resumeQuestionIndex ?? 0;
+                            return (
+                              <div
+                                key={p.id}
+                                className="rounded-xl bg-amber-500/5 border border-amber-500/15 p-2.5 flex items-center gap-2"
+                              >
+                                <button
+                                  onClick={() => {
+                                    vibrate(15);
+                                    resumePractice(p.id);
+                                    onClose();
+                                  }}
+                                  className="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 hover:bg-amber-500/30 active:scale-95 transition shrink-0"
+                                  aria-label="Resume practice"
+                                >
+                                  <Play size={16} />
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs font-bold text-white truncate">{p.name}</div>
+                                  <div className="text-[10px] text-white/50 flex items-center gap-1.5 mt-0.5">
+                                    <Clock size={9} />
+                                    <span className="tabular">{formatHMS(totalElapsed)}</span>
+                                    <span className="opacity-40">·</span>
+                                    <span>Q{currentQ + 1}{p.questionCount > 0 ? `/${p.questionCount}` : ''}</span>
+                                    {answeredCount > 0 && <span className="text-green-400">✓{answeredCount}</span>}
+                                    {skippedCount > 0 && <span className="text-white/40">→{skippedCount}</span>}
+                                    {reviewCount > 0 && <span className="text-amber-400">⚑{reviewCount}</span>}
+                                  </div>
+                                  <div className="text-[9px] text-white/30 mt-0.5">
+                                    Paused {timeSincePause(p.pausedAt)}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    vibrate(8);
+                                    if (confirm(`Discard "${p.name}"? Progress will be lost.`)) {
+                                      deletePausedPractice(p.id);
+                                    }
+                                  }}
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition shrink-0"
+                                  aria-label="Discard paused practice"
+                                  title="Discard"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                     {/* View toggle */}
                     <div className="flex gap-1 p-1 rounded-xl bg-white/5 mb-4 sticky top-0 z-10">
                       <button
