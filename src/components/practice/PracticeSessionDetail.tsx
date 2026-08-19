@@ -202,7 +202,8 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
               </div>
             </div>
 
-            {/* Right-side action: Edit or Done */}
+            {/* Right-side action: Edit or Done — Edit is ALWAYS available
+                so the user can mark correct answers and add notes at any time. */}
             {isEditing ? (
               <button
                 onClick={exitEditMode}
@@ -210,14 +211,14 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
               >
                 <Check size={14} /> Done
               </button>
-            ) : isSet ? (
+            ) : (
               <button
                 onClick={enterEditMode}
                 className="px-3 h-9 rounded-xl bg-amber-500/20 text-amber-400 text-xs font-bold flex items-center gap-1 active:scale-95 transition shrink-0"
               >
                 <Pencil size={13} /> Edit
               </button>
-            ) : null}
+            )}
           </div>
         </div>
 
@@ -249,10 +250,10 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
             </div>
           </div>
 
-          {/* Read-only banner for not-set sessions */}
+          {/* Banner for not-set sessions — guides user to tap Edit (NOT a dead-end) */}
           {!isSet && !isEditing && (
-            <div className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/40 text-[10px]">
-              <Eye size={12} /> Read-only report — no answers marked for this session
+            <div className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-medium">
+              <Pencil size={12} /> Tap Edit to mark correct answers and add concept/formula notes
             </div>
           )}
 
@@ -526,7 +527,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                 ? `Filtered: showing ${visibleQuestionIndices.length} of ${session.questions.length} questions.`
                 : isSet
                   ? 'Tap a filter chip to filter questions. Tap a question with a book icon to view its notes.'
-                  : 'Detail report view — no markings to edit.'}
+                  : 'Tap Edit to mark correct answers and add notes.'}
           </p>
         </div>
 
