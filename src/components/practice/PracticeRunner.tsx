@@ -276,15 +276,13 @@ export function PracticeRunner() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui"
       style={{ background: '#000000' }}>
-      {/* === Inner content — CSS-rotated to fill viewport in landscape ===
-          When device is tilted 90°, we rotate the inner div to match.
-          Uses 100vmin × 100vmax + translate(-50%, -50%) rotate(angle) so the
-          visual rectangle is centered + fills the viewport after rotation.
-          This works EVEN when the PWA manifest is locked to portrait. */}
+      {/* === Centering wrapper — matches FocusTimer EXACTLY ===
+          Uses flex centering (NOT translate) which is more stable. */}
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+      {/* === Inner content — rotated to fill viewport ===
+          100vmin × 100vmax + rotate(angle) only (NO translate).
+          The flex centering wrapper above handles centering. */}
       <div style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
         width: '100vmin',
         height: '100vmax',
         display: 'flex',
@@ -294,7 +292,7 @@ export function PracticeRunner() {
         padding: isLandscape ? '1rem 1.5rem' : '1.5rem 1rem',
         paddingTop: isLandscape ? '1rem' : 'calc(env(safe-area-inset-top, 0px) + 1.5rem)',
         paddingBottom: isLandscape ? '1rem' : 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
-        transform: `translate(-50%, -50%) rotate(${effectiveAngle}deg)`,
+        transform: `rotate(${effectiveAngle}deg)`,
         transformOrigin: 'center center',
         transition: 'transform 0.3s ease',
         boxSizing: 'border-box',
@@ -566,7 +564,8 @@ export function PracticeRunner() {
           </div>
         )}
         </div>{/* === END Main content area === */}
-      </div>
+      </div>{/* === END inner rotated content === */}
+      </div>{/* === END centering wrapper === */}
 
       {/* === Hamburger menu overlay === */}
       <AnimatePresence>

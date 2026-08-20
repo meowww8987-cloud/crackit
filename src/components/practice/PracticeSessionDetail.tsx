@@ -10,7 +10,11 @@ import { usePractice, type PracticeSession, type PracticeQuestion } from '@/lib/
 import { cn, vibrate, formatHMS } from '@/lib/utils';
 
 const OPTIONS = ['A', 'B', 'C', 'D'];
-const OPTION_COLORS: Record<string, string> = { A: '#3b82f6', B: '#22c55e', C: '#f59e0b', D: '#ef4444' };
+const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+const OPTION_COLORS: Record<string, string> = {
+  A: '#3b82f6', B: '#22c55e', C: '#f59e0b', D: '#ef4444',
+  E: '#a855f7', F: '#06b6d4', G: '#ec4899', H: '#84cc16',
+};
 
 type FilterKey = 'correct' | 'wrong' | 'skipped' | 'unmarked';
 
@@ -39,6 +43,8 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
   const session = usePractice((s) => s.history.find((h) => h.id === sessionId));
   const markCorrectAnswer = usePractice((s) => s.markCorrectAnswer);
   const saveNotes = usePractice((s) => s.saveNotes);
+  const toggleMultiCorrectAnswer = usePractice((s) => s.toggleMultiCorrectAnswer);
+  const setSubCorrectAnswer = usePractice((s) => s.setSubCorrectAnswer);
 
   const [isEditing, setIsEditing] = useState(false);
   // Per-question notes panel open state — keyed by question index.
@@ -326,7 +332,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                 const isNoteOpen = openNoteIdx.has(qi);
                 const draft = draftNotes[qi] || { concept: q.conceptNotes || '', formula: q.formulaNotes || '' };
                 const hasNotes = questionHasNotes(q);
-                const qMode = (q.mode || 'single') as 'single' | 'multi' | 'written';
+                const qMode = (q.mode || 'single') as 'single' | 'multi' | 'multi-correct' | 'written';
 
                 // For multi-mode questions, expand into one card PER sub-question
                 // so each sub-Q (Q2.1, Q2.2, ..., Q2.6) shows its own answer + result.
@@ -431,8 +437,35 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                           )}
                         </div>
 
-                        {/* Editable A/B/C/D — NOT shown for sub-questions (kept simple for now) */}
-                        {/* Notes panel (only on first sub-row to avoid duplication) */}
+                        {/* INLINE A/B/C/D for sub-questions in EDIT mode — tap to mark correct answer */}
+                        {isEditing && (
+                          <div className="px-3 pb-2 flex gap-1 flex-wrap">
+                            {OPTION_LETTERS.slice(0, q.optionCount ?? 4).map((opt) => {
+                              const subIdx = si;
+                              const isSubCorrect = (q.subCorrectAnswers ?? [])[subIdx] === opt;
+                              const isUserAns = userAns === opt;
+                              return (
+                                <button key={opt}
+                                  onClick={() => {
+                                    vibrate(8);
+                                    setSubCorrectAnswer(session.id, qi, subIdx, isSubCorrect ? null : opt);
+                                  }}
+                                  className={cn(
+                                    'w-7 h-7 rounded text-[10px] font-bold transition border',
+                                    isSubCorrect ? 'text-white' : 'text-white/60 bg-white/5 border-white/10'
+                                  )}
+                                  style={isSubCorrect
+                                    ? { background: OPTION_COLORS[opt], borderColor: OPTION_COLORS[opt] }
+                                    : isUserAns
+                                      ? { borderColor: `${OPTION_COLORS[opt]}80`, color: OPTION_COLORS[opt] }
+                                      : {}}
+                                >
+                                  {opt}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                         {showNotesOnThisRow && isSubNoteOpen && (
                           <div className="px-3 pb-3 space-y-2">
                             {isEditing ? (
@@ -504,6 +537,126 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                       </div>
                     );
                   });
+                }
+
+                // === Multi-correct questions: 1 row with toggle A/B/C/D in edit + display in read-only ===
+                if (qMode === 'multi-correct') {
+                  const qColor = q.result === 'correct' ? '#22c55e' : q.result === 'wrong' ? '#ef4444' : '#94a3b8';
+                  const ResultIcon = q.result === 'correct' ? Check : q.result === 'wrong' ? XCircle : null;
+                  const userArr = q.multiCorrectUserAnswers ?? [];
+                  const corrArr = q.multiCorrectAnswers ?? [];
+                  const qOptCount = q.optionCount ?? 4;
+                  const qOpts = OPTION_LETTERS.slice(0, qOptCount);
+                  const isNoteOpenMC = openNoteIdx.has(qi);
+                  const hasNotesMC = questionHasNotes(q);
+
+                  return (
+                    <div key={qi} ref={isFocus ? focusRef : null}
+                      className={cn('rounded-xl overflow-hidden bg-white/5 border border-white/10 transition',
+                        isFocus && 'ring-2 ring-amber-400/60', isEditing && 'bg-white/10')}
+                      style={{ borderLeft: `3px solid ${qColor}` }}>
+                      <div className="p-3 flex items-center gap-2.5">
+                        <span className="text-xs font-bold w-8 shrink-0 tabular" style={{ color: qColor }}>Q{q.number}</span>
+                        <span className="text-[10px] text-white/50 tabular flex items-center gap-1 shrink-0">
+                          <Clock size={9} /> {formatHMS(q.timeSpentSec)}
+                        </span>
+                        {/* User answer */}
+                        {userArr.some(Boolean) ? (
+                          <span className="text-[10px] text-white/70">
+                            You: {userArr.map((v, i) => v ? String.fromCharCode(65 + i) : null).filter(Boolean).join(',')}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-white/40 italic">No answer</span>
+                        )}
+                        <div className="flex-1" />
+                        {/* Correct answer (read-only) */}
+                        {!isEditing && corrArr.some(Boolean) && (
+                          <span className="text-[10px] text-white/70">
+                            Ans: {corrArr.map((v, i) => v ? String.fromCharCode(65 + i) : null).filter(Boolean).join(',')}
+                          </span>
+                        )}
+                        {ResultIcon && <ResultIcon size={13} style={{ color: qColor }} />}
+                        {/* Notes toggle */}
+                        {hasNotesMC && !isEditing && (
+                          <button onClick={() => toggleNotePanel(qi)}
+                            className={cn('shrink-0 w-6 h-6 flex items-center justify-center rounded transition',
+                              isNoteOpenMC ? 'bg-amber-500/20 text-amber-400' : 'text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/10')}
+                            aria-label="Toggle notes"><BookText size={13} /></button>
+                        )}
+                        {isEditing && (
+                          <button onClick={() => toggleNotePanel(qi)}
+                            className={cn('shrink-0 flex items-center gap-1 px-2 h-6 rounded text-[10px] font-bold transition active:scale-95',
+                              isNoteOpenMC ? 'bg-amber-500/20 text-amber-400'
+                                : hasNotesMC ? 'bg-amber-500/15 text-amber-400/90 hover:bg-amber-500/25'
+                                  : 'bg-white/5 text-amber-400/70 hover:bg-amber-500/15 border border-amber-500/20')}
+                            aria-label="Toggle notes editor">
+                            <BookText size={11} />
+                            <span>{isNoteOpenMC ? 'Hide' : hasNotesMC ? 'Edit Notes' : 'Add Notes'}</span>
+                          </button>
+                        )}
+                      </div>
+                      {/* Toggle A/B/C/D in edit mode */}
+                      {isEditing && (
+                        <div className="px-3 pb-2 flex gap-1 flex-wrap">
+                          {qOpts.map((opt, oi) => {
+                            const isCorrect = corrArr[oi] === true;
+                            const isUserSelected = userArr[oi] === true;
+                            return (
+                              <button key={opt}
+                                onClick={() => { vibrate(8); toggleMultiCorrectAnswer(session.id, qi, oi); }}
+                                className={cn('w-7 h-7 rounded text-[10px] font-bold transition border',
+                                  isCorrect ? 'text-white' : 'text-white/60 bg-white/5 border-white/10')}
+                                style={isCorrect
+                                  ? { background: OPTION_COLORS[opt], borderColor: OPTION_COLORS[opt] }
+                                  : isUserSelected
+                                    ? { borderColor: `${OPTION_COLORS[opt]}80`, color: OPTION_COLORS[opt] }
+                                    : {}}
+                              >{opt}</button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {/* Notes panel */}
+                      {isNoteOpenMC && (
+                        <div className="px-3 pb-3 space-y-2">
+                          {isEditing ? (
+                            <>
+                              <textarea value={draft.concept}
+                                onChange={(e) => setDraftNotes((p) => ({ ...p, [qi]: { ...p[qi], concept: e.target.value } }))}
+                                placeholder="Concept notes…" className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-14 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10" />
+                              <textarea value={draft.formula}
+                                onChange={(e) => setDraftNotes((p) => ({ ...p, [qi]: { ...p[qi], formula: e.target.value } }))}
+                                placeholder="Formula…" className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-12 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10" />
+                              <button onClick={() => { persistNotes(qi); vibrate(10); }}
+                                className="w-full py-1.5 rounded-lg bg-amber-500/15 text-amber-400 text-[10px] font-semibold flex items-center justify-center gap-1 active:scale-95 transition">
+                                <Save size={11} /> Save Notes
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {q.conceptNotes && (
+                                <div className="text-[11px] text-white/80 leading-relaxed">
+                                  <div className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold mb-0.5 flex items-center gap-1">
+                                    <BookText size={10} /> Concept
+                                  </div>{q.conceptNotes}
+                                </div>
+                              )}
+                              {q.formulaNotes && (
+                                <div className="text-[11px] text-white/80 leading-relaxed">
+                                  <div className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold mb-0.5 flex items-center gap-1">
+                                    <BookText size={10} /> Formula
+                                  </div>{q.formulaNotes}
+                                </div>
+                              )}
+                              {!q.conceptNotes && !q.formulaNotes && (
+                                <p className="text-[10px] text-white/40 italic">No notes recorded.</p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
                 }
 
                 // Single + written questions: render as one row (existing behavior)
