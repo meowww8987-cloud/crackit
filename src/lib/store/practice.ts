@@ -14,6 +14,23 @@ export interface PracticeQuestion {
   correctAnswer: string | null;   // 'A' | 'B' | 'C' | 'D' | null — correct answer (set during review)
   conceptNotes: string;
   formulaNotes: string;
+  /** Question mode — set per-question via the hamburger menu mid-practice.
+   *  - 'single'  (default): one MCQ with 4 options A/B/C/D (current behavior)
+   *  - 'multi'   : one statement/scenario with N sub-MCQs, each with its own A/B/C/D
+   *                (for assertion-reason, multi-correct, statement-based questions)
+   *  - 'written' : long-answer / numerical — user writes on paper, just marks done
+   *  Stored so the report + edit phase can render the right UI per question. */
+  mode?: 'single' | 'multi' | 'written';
+  /** For 'multi' mode: how many sub-questions (default 3). User-adjustable 1-6. */
+  subQuestionCount?: number;
+  /** For 'multi' mode: user's selected option per sub-question.
+   *  Length = subQuestionCount. Each entry is 'A' | 'B' | 'C' | 'D' | null. */
+  subUserAnswers?: (string | null)[];
+  /** For 'multi' mode: correct option per sub-question (set during review). */
+  subCorrectAnswers?: (string | null)[];
+  /** For 'written' mode: brief note about the answer (optional, user can fill
+   *  in during review). The actual written answer stays on paper. */
+  writtenAnswer?: string;
 }
 
 export interface PracticeSession {
@@ -75,6 +92,15 @@ interface PracticeStore {
   markQuestion: (sessionId: string, questionIndex: number, result: 'correct' | 'wrong' | 'unmarked') => void;
   markCorrectAnswer: (sessionId: string, questionIndex: number, correctAnswer: string | null) => void;
   saveNotes: (sessionId: string, questionIndex: number, conceptNotes: string, formulaNotes: string) => void;
+
+  /** Change the current question's mode mid-practice.
+   *  - 'single'  → 1 MCQ with A/B/C/D
+   *  - 'multi'   → N sub-MCQs each with A/B/C/D (default N=3)
+   *  - 'written' → just mark as done (answer is on paper)
+   *  Persists the mode on the question + initializes sub-arrays for multi mode. */
+  setQuestionMode: (questionIndex: number, mode: 'single' | 'multi' | 'written', subCount?: number) => void;
+  /** For multi mode: record the user's answer for one sub-question. */
+  setSubAnswer: (questionIndex: number, subIndex: number, answer: string | null) => void;
 
   getRecent: (n: number) => PracticeSession[];
   getForDate: (date: string) => PracticeSession[];
@@ -302,6 +328,62 @@ export const usePractice = create<PracticeStore>()(
             return { ...session, questions };
           }),
         }));
+      },
+
+      /** Change the current question's mode mid-practice.
+       *  Operates on activePractice (the live running session). */
+      setQuestionMode: (questionIndex, mode, subCount) => {
+        const session = get().activePractice;
+        if (!session) return;
+        const questions = [...session.questions];
+        // Pad if needed (for unlimited mode + idx beyond length)
+        while (questions.length <= questionIndex) {
+          questions.push({
+            number: questions.length + 1, timeSpentSec: 0, status: 'unanswered' as const,
+            result: 'unmarked' as const, userAnswer: null, correctAnswer: null,
+            conceptNotes: '', formulaNotes: '',
+          });
+        }
+        const q = questions[questionIndex];
+        const updated: PracticeQuestion = { ...q, mode };
+        if (mode === 'multi') {
+          const n = Math.max(1, Math.min(6, subCount ?? q.subQuestionCount ?? 3));
+          updated.subQuestionCount = n;
+          // Preserve existing sub-answers if same length, otherwise resize (pad with null).
+          const existing = q.subUserAnswers ?? [];
+          updated.subUserAnswers = Array.from({ length: n }, (_, i) => existing[i] ?? null);
+          const existingCorrect = q.subCorrectAnswers ?? [];
+          updated.subCorrectAnswers = Array.from({ length: n }, (_, i) => existingCorrect[i] ?? null);
+        } else if (mode === 'single') {
+          // Clear multi-mode fields when reverting to single.
+          updated.subQuestionCount = undefined;
+          updated.subUserAnswers = undefined;
+          updated.subCorrectAnswers = undefined;
+          updated.writtenAnswer = undefined;
+        } else if (mode === 'written') {
+          // Clear multi-mode fields too.
+          updated.subQuestionCount = undefined;
+          updated.subUserAnswers = undefined;
+          updated.subCorrectAnswers = undefined;
+          if (!updated.writtenAnswer) updated.writtenAnswer = '';
+        }
+        questions[questionIndex] = updated;
+        set({ activePractice: { ...session, questions } });
+      },
+
+      /** For multi mode: record the user's answer for one sub-question. */
+      setSubAnswer: (questionIndex, subIndex, answer) => {
+        const session = get().activePractice;
+        if (!session) return;
+        const questions = [...session.questions];
+        if (questionIndex < 0 || questionIndex >= questions.length) return;
+        const q = questions[questionIndex];
+        const subAnswers = [...(q.subUserAnswers ?? [])];
+        // Pad if needed
+        while (subAnswers.length <= subIndex) subAnswers.push(null);
+        subAnswers[subIndex] = answer;
+        questions[questionIndex] = { ...q, subUserAnswers: subAnswers };
+        set({ activePractice: { ...session, questions } });
       },
 
       getRecent: (n) => {
