@@ -10,7 +10,6 @@ import {
 import { usePractice, type PracticeSession, type PracticeQuestion } from '@/lib/store/practice';
 import { useHistory } from '@/lib/store/history';
 import { useSettings } from '@/lib/store/settings';
-import { useDeviceOrientation } from '@/lib/hooks/useDeviceOrientation';
 import { formatHMS, formatHM, cn, vibrate, todayKey } from '@/lib/utils';
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -20,6 +19,24 @@ const OPTION_COLORS: Record<string, string> = {
 };
 
 type QuestionMode = 'single' | 'multi' | 'multi-correct' | 'written';
+
+/** Simple viewport-orientation detection — NO CSS rotation.
+ *  Returns true when viewport is wider than tall (landscape).
+ *  The browser/OS handles device rotation natively. */
+function useViewportLandscape(): boolean {
+  const [isLandscape, setIsLandscape] = useState(false);
+  useEffect(() => {
+    const check = () => setIsLandscape(window.innerWidth > window.innerHeight);
+    check();
+    window.addEventListener('resize', check);
+    window.addEventListener('orientationchange', check);
+    return () => {
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', check);
+    };
+  }, []);
+  return isLandscape;
+}
 
 export function PracticeRunner() {
   const activePractice = usePractice((s) => s.activePractice);
@@ -38,14 +55,7 @@ export function PracticeRunner() {
   const setSubCorrectAnswer = usePractice((s) => s.setSubCorrectAnswer);
   const history = usePractice((s) => s.history);
   const haptics = useSettings((s) => s.haptics);
-  const lockedOrientation = useSettings((s) => s.lockedOrientation);
-
-  // === CSS rotation for landscape (works even when PWA manifest is locked) ===
-  // The browser/OS may not rotate the webview (manifest lock), so we detect
-  // device tilt via DeviceOrientationEvent + apply CSS rotation ourselves.
-  // Text will be sideways but layout uses the wide viewport.
-  const { effectiveAngle } = useDeviceOrientation({ lockedOrientation });
-  const isLandscape = effectiveAngle === 90 || effectiveAngle === 270;
+  const isLandscape = useViewportLandscape();
 
   const [, setTick] = useState(0);
   const questionStartRef = useRef(Date.now());
@@ -272,217 +282,200 @@ export function PracticeRunner() {
   const optionCount = currentQ?.optionCount ?? 4;  // 2-8, default 4 (A/B/C/D)
   const currentOptions = OPTION_LETTERS.slice(0, optionCount);
 
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui"
-      style={{ background: '#000000' }}>
-      {/* === Centering wrapper — matches FocusTimer EXACTLY === */}
-      <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-      {/* === Inner content — SIMPLE single column (no nested LEFT/RIGHT split)
-          that rotates as a unit. This is the KEY to smooth rotation —
-          no layout reflow during the rotation animation. */}
-      <div style={{
-        width: '100vmin',
-        height: '100vmax',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '1.5rem 1rem',
-        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)',
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
-        transform: `rotate(${effectiveAngle}deg)`,
-        transformOrigin: 'center center',
-        transition: 'transform 0.3s ease',
-        boxSizing: 'border-box',
-        overflow: 'hidden',
+  // === Shared JSX blocks (used by both portrait + landscape layouts) ===
+
+  // Hamburger button (always top-right)
+  const hamburgerBtn = (
+    <button
+      onClick={() => { if (haptics) vibrate(8); setMenuOpen(true); }}
+      className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 active:scale-90 transition"
+      style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff' }}
+      aria-label="Practice menu">
+      <Menu size={20} />
+    </button>
+  );
+
+  // Question pills
+  const questionPills = (
+    <div className="flex flex-wrap gap-1 justify-start">
+      {visibleQuestions.map((q, i) => (
+        <div key={i} className={cn('w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold transition', i === currentIdx && 'ring-2 ring-white')}
+          style={{ background: q.status === 'answered' ? '#22c55e' : q.status === 'skipped' ? '#6b7280' : q.status === 'review-later' ? '#f59e0b' : 'rgba(255,255,255,0.3)', color: q.status === 'unanswered' ? 'rgba(255,255,255,0.6)' : '#000' }}>{q.number}</div>
+      ))}
+    </div>
+  );
+
+  // Timer + stats block
+  const timerBlock = (
+    <div className="text-center" style={{ color: '#ffffff' }}>
+      <div className="text-[10px] uppercase tracking-[0.2em] mb-0.5 flex items-center justify-center gap-1.5 flex-wrap" style={{ color: 'rgba(255,255,255,0.4)' }}>
+        <span>Q{currentIdx + 1}{activePractice.questionCount > 0 ? `/${activePractice.questionCount}` : ''}</span>
+        {currentMode !== 'single' && (
+          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
+            style={{ background: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
+            {currentMode === 'multi' ? `${subCount} sub` : currentMode === 'multi-correct' ? 'Multi' : 'Written'}
+          </span>
+        )}
+        {optionCount !== 4 && currentMode !== 'written' && (
+          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
+            style={{ background: 'rgba(168,85,247,0.2)', color: '#d8b4fe' }}>{optionCount}opt</span>
+        )}
+        {menuOpen && (
+          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase animate-pulse"
+            style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24' }}>Paused</span>
+        )}
+      </div>
+      <div className="text-3xl font-bold tabular mb-0.5" style={{ color: '#ffffff' }}>{formatHMS(questionElapsed)}</div>
+      <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Total: <span className="tabular" style={{ color: '#fbbf24' }}>{formatHMS(totalElapsed)}</span>{timeLimitSec > 0 && <span className="ml-2">· <span className="tabular" style={{ color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.4)' }}>{formatHMS(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}</div>
+      <div className="flex items-center justify-center gap-3 mt-1 text-[11px]">
+        <span style={{ color: '#4ade80' }}>✓{answeredCount}</span>
+        <span style={{ color: 'rgba(255,255,255,0.4)' }}>→{skippedCount}</span>
+        <span style={{ color: '#fbbf24' }}>⚑{reviewCount}</span>
+      </div>
+      <div className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>{activePractice.name}</div>
+    </div>
+  );
+
+  // Options block (all modes)
+  const optionsBlock = (
+    <div className="w-full flex flex-col"
+      style={{
+        flex: '1 1 0', minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
+        WebkitOverflowScrolling: 'touch', scrollbarWidth: 'thin',
+        scrollbarColor: 'rgba(255,255,255,0.2) transparent',
       } as React.CSSProperties}>
-        {/* === Top bar: question pills + hamburger menu === */}
-        <div className="w-full max-w-xs flex items-start justify-between gap-2" style={{ flexShrink: 0 }}>
-          <div className="flex-1 min-w-0 flex flex-wrap gap-1 justify-start max-w-[calc(100%-50px)]">
-            {visibleQuestions.map((q, i) => (
-              <div key={i} className={cn('w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold transition', i === currentIdx && 'ring-2 ring-white')}
-                style={{ background: q.status === 'answered' ? '#22c55e' : q.status === 'skipped' ? '#6b7280' : q.status === 'review-later' ? '#f59e0b' : 'rgba(255,255,255,0.3)', color: q.status === 'unanswered' ? 'rgba(255,255,255,0.6)' : '#000' }}>{q.number}</div>
-            ))}
-          </div>
-          <button
-            onClick={() => { if (haptics) vibrate(8); setMenuOpen(true); }}
-            className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 active:scale-90 transition"
-            style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff' }}
-            aria-label="Practice menu">
-            <Menu size={20} />
-          </button>
-        </div>
 
-        {/* === Timer + stats === */}
-        <div className="text-center" style={{ color: '#ffffff', flexShrink: 0 }}>
-          <div className="text-[10px] uppercase tracking-[0.2em] mb-0.5 flex items-center justify-center gap-1.5 flex-wrap" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            <span>Question {currentIdx + 1}{activePractice.questionCount > 0 ? ` of ${activePractice.questionCount}` : ''}</span>
-            {currentMode !== 'single' && (
-              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
-                style={{ background: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
-                {currentMode === 'multi' ? `${subCount} sub` : currentMode === 'multi-correct' ? 'Multi-Correct' : 'Written'}
-              </span>
-            )}
-            {optionCount !== 4 && currentMode !== 'written' && (
-              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
-                style={{ background: 'rgba(168,85,247,0.2)', color: '#d8b4fe' }}>
-                {optionCount} opts
-              </span>
-            )}
-            {menuOpen && (
-              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase animate-pulse"
-                style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24' }}>
-                Paused
-              </span>
-            )}
-          </div>
-          <div className="text-3xl font-bold tabular mb-0.5" style={{ color: '#ffffff' }}>{formatHMS(questionElapsed)}</div>
-          <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Total: <span className="tabular" style={{ color: '#fbbf24' }}>{formatHMS(totalElapsed)}</span>{timeLimitSec > 0 && <span className="ml-2">· Left: <span className="tabular" style={{ color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.4)' }}>{formatHMS(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}</div>
-          <div className="flex items-center justify-center gap-3 mt-1 text-[11px]">
-            <span style={{ color: '#4ade80' }}>✓ {answeredCount}</span>
-            <span style={{ color: 'rgba(255,255,255,0.4)' }}>→ {skippedCount}</span>
-            <span style={{ color: '#fbbf24' }}>⚑ {reviewCount}</span>
-          </div>
-          <div className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>{activePractice.name}</div>
-        </div>
-
-        {/* === Question options — flex: 1 + SCROLLABLE === */}
-        <div className="w-full max-w-xs flex flex-col"
-          style={{
-            flex: '1 1 0',
-            minHeight: 0,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'thin',
-            scrollbarColor: 'rgba(255,255,255,0.2) transparent',
-          } as React.CSSProperties}>
-
-          {currentMode === 'single' && (
-            <div className={cn('grid gap-2', optionCount <= 4 ? 'grid-cols-2' : 'grid-cols-3')}>
-              {currentOptions.map((opt) => {
-                const isSelected = currentQ?.userAnswer === opt;
-                return (
-                  <button key={opt} onClick={() => handleSelectOption(opt)}
-                    className={cn('flex items-center justify-center gap-2 py-3 rounded-2xl border-2 active:scale-95 transition',
-                      isSelected ? 'border-white' : '')}
-                    style={{ borderColor: isSelected ? '#ffffff' : `${OPTION_COLORS[opt]}40`, background: isSelected ? `${OPTION_COLORS[opt]}30` : `${OPTION_COLORS[opt]}15` }}>
-                    <span className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
-                      style={{ background: OPTION_COLORS[opt], color: '#fff' }}>{opt}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {currentMode === 'multi' && (
-            <div className="space-y-1.5">
-              <p className="text-[10px] text-center mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                One statement, {subCount} sub-questions — tap an option for each
-              </p>
-              {Array.from({ length: subCount }, (_, si) => (
-                <div key={si} className="rounded-lg p-2"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                      Q{currentQ?.number ?? currentIdx + 1}.{si + 1}
-                    </span>
-                    {subAnswers[si] && (
-                      <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                        <span className="font-bold" style={{ color: OPTION_COLORS[subAnswers[si] as string] }}>{subAnswers[si]}</span>
-                      </span>
-                    )}
-                  </div>
-                  <div className={cn('grid gap-1', optionCount <= 4 ? 'grid-cols-4' : 'grid-cols-3')}>
-                    {currentOptions.map((opt) => {
-                      const isSelected = subAnswers[si] === opt;
-                      return (
-                        <button key={opt} onClick={() => handleSelectSubAnswer(si, opt)}
-                          className="py-1 rounded-md text-[10px] font-bold transition border"
-                          style={isSelected
-                            ? { background: OPTION_COLORS[opt], borderColor: OPTION_COLORS[opt], color: '#fff' }
-                            : { background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
-                          {opt}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              <button onClick={handleMultiDone}
-                className="w-full py-2 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5 mt-1 sticky bottom-0"
-                style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
-                <Check size={13} /> Mark Answered
+      {currentMode === 'single' && (
+        <div className={cn('grid gap-2', optionCount <= 4 ? 'grid-cols-2' : 'grid-cols-3')}>
+          {currentOptions.map((opt) => {
+            const isSelected = currentQ?.userAnswer === opt;
+            return (
+              <button key={opt} onClick={() => handleSelectOption(opt)}
+                className={cn('flex items-center justify-center gap-2 py-3 rounded-2xl border-2 active:scale-95 transition', isSelected ? 'border-white' : '')}
+                style={{ borderColor: isSelected ? '#ffffff' : `${OPTION_COLORS[opt]}40`, background: isSelected ? `${OPTION_COLORS[opt]}30` : `${OPTION_COLORS[opt]}15` }}>
+                <span className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
+                  style={{ background: OPTION_COLORS[opt], color: '#fff' }}>{opt}</span>
               </button>
-            </div>
-          )}
+            );
+          })}
+        </div>
+      )}
 
-          {currentMode === 'multi-correct' && (
-            <div className="space-y-2">
-              <p className="text-[10px] text-center mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                Multi-correct — tap ALL correct options, then mark answered
-              </p>
-              <div className={cn('grid gap-2', optionCount <= 4 ? 'grid-cols-2' : 'grid-cols-3')}>
-                {currentOptions.map((opt, oi) => {
-                  const isSelected = currentQ?.multiCorrectUserAnswers?.[oi] === true;
+      {currentMode === 'multi' && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] text-center mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>One statement, {subCount} sub-questions</p>
+          {Array.from({ length: subCount }, (_, si) => (
+            <div key={si} className="rounded-lg p-2" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.7)' }}>Q{currentQ?.number ?? currentIdx + 1}.{si + 1}</span>
+                {subAnswers[si] && <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.4)' }}><span className="font-bold" style={{ color: OPTION_COLORS[subAnswers[si] as string] }}>{subAnswers[si]}</span></span>}
+              </div>
+              <div className={cn('grid gap-1', optionCount <= 4 ? 'grid-cols-4' : 'grid-cols-3')}>
+                {currentOptions.map((opt) => {
+                  const isSelected = subAnswers[si] === opt;
                   return (
-                    <button key={opt}
-                      onClick={() => { if (haptics) vibrate(10); toggleMultiCorrectUserAnswer(currentIdx, oi); }}
-                      className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 active:scale-95 transition"
-                      style={isSelected
-                        ? { borderColor: '#ffffff', background: `${OPTION_COLORS[opt]}30` }
-                        : { borderColor: `${OPTION_COLORS[opt]}40`, background: `${OPTION_COLORS[opt]}15` }}>
-                      {isSelected
-                        ? <CheckSquare size={16} style={{ color: OPTION_COLORS[opt] }} />
-                        : <Square size={16} style={{ color: `${OPTION_COLORS[opt]}80` }} />}
-                      <span className="text-sm font-bold" style={{ color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.6)' }}>{opt}</span>
-                    </button>
+                    <button key={opt} onClick={() => handleSelectSubAnswer(si, opt)}
+                      className="py-1 rounded-md text-[10px] font-bold transition border"
+                      style={isSelected ? { background: OPTION_COLORS[opt], borderColor: OPTION_COLORS[opt], color: '#fff' } : { background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>{opt}</button>
                   );
                 })}
               </div>
-              <button onClick={handleMultiDone}
-                className="w-full py-2.5 rounded-xl text-sm font-bold active:scale-95 transition flex items-center justify-center gap-1.5 mt-2"
-                style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
-                <Check size={14} /> Mark Answered
-              </button>
             </div>
-          )}
-
-          {currentMode === 'written' && (
-            <div className="space-y-2">
-              <div className="rounded-xl p-4 text-center"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <PenLine size={24} className="mx-auto mb-2" style={{ color: 'rgba(255,255,255,0.4)' }} />
-                <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>Write your answer on paper</p>
-                <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>Tap below once you've written it</p>
-              </div>
-              <button onClick={handleWrittenDone}
-                className="w-full py-2.5 rounded-xl text-sm font-bold active:scale-95 transition flex items-center justify-center gap-1.5"
-                style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
-                <Check size={14} /> I've Written the Answer
-              </button>
-            </div>
-          )}
+          ))}
+          <button onClick={handleMultiDone} className="w-full py-2 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5 mt-1 sticky bottom-0" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}><Check size={13} /> Mark Answered</button>
         </div>
+      )}
 
-        {/* === Action buttons: Skip / Review === */}
-        <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>
-          <div className="flex gap-2">
-            <button onClick={handleSkip}
-              className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
-              <ChevronRight size={13} /> Skip
-            </button>
-            <button onClick={handleReviewLater}
-              className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
-              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
-              <Flag size={13} /> Review
-            </button>
+      {currentMode === 'multi-correct' && (
+        <div className="space-y-2">
+          <p className="text-[10px] text-center mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Tap ALL correct options</p>
+          <div className={cn('grid gap-2', optionCount <= 4 ? 'grid-cols-2' : 'grid-cols-3')}>
+            {currentOptions.map((opt, oi) => {
+              const isSelected = currentQ?.multiCorrectUserAnswers?.[oi] === true;
+              return (
+                <button key={opt} onClick={() => { if (haptics) vibrate(10); toggleMultiCorrectUserAnswer(currentIdx, oi); }}
+                  className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 active:scale-95 transition"
+                  style={isSelected ? { borderColor: '#ffffff', background: `${OPTION_COLORS[opt]}30` } : { borderColor: `${OPTION_COLORS[opt]}40`, background: `${OPTION_COLORS[opt]}15` }}>
+                  {isSelected ? <CheckSquare size={16} style={{ color: OPTION_COLORS[opt] }} /> : <Square size={16} style={{ color: `${OPTION_COLORS[opt]}80` }} />}
+                  <span className="text-sm font-bold" style={{ color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.6)' }}>{opt}</span>
+                </button>
+              );
+            })}
           </div>
+          <button onClick={handleMultiDone} className="w-full py-2.5 rounded-xl text-sm font-bold active:scale-95 transition flex items-center justify-center gap-1.5 mt-2" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}><Check size={14} /> Mark Answered</button>
         </div>
-      </div>{/* === END inner rotated content === */}
-      </div>{/* === END centering wrapper === */}
+      )}
+
+      {currentMode === 'written' && (
+        <div className="space-y-2">
+          <div className="rounded-xl p-4 text-center" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <PenLine size={24} className="mx-auto mb-2" style={{ color: 'rgba(255,255,255,0.4)' }} />
+            <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>Write your answer on paper</p>
+            <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>Tap below once you've written it</p>
+          </div>
+          <button onClick={handleWrittenDone} className="w-full py-2.5 rounded-xl text-sm font-bold active:scale-95 transition flex items-center justify-center gap-1.5" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}><Check size={14} /> I've Written the Answer</button>
+        </div>
+      )}
+    </div>
+  );
+
+  // Skip / Review buttons
+  const actionButtons = (
+    <div className="flex gap-2">
+      <button onClick={handleSkip} className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}><ChevronRight size={13} /> Skip</button>
+      <button onClick={handleReviewLater} className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}><Flag size={13} /> Review</button>
+    </div>
+  );
+
+  // === Render — different layouts for portrait vs landscape ===
+  if (isLandscape) {
+    // LANDSCAPE: 3-column row. LEFT = pills + timer + stats. CENTER = options. RIGHT = skip/review.
+    // Hamburger stays at top-right corner.
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui flex flex-row"
+        style={{ background: '#000000', padding: '1rem', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)', boxSizing: 'border-box' }}>
+        {/* Hamburger top-right */}
+        <button
+          onClick={() => { if (haptics) vibrate(8); setMenuOpen(true); }}
+          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 active:scale-90 transition"
+          style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff' }}
+          aria-label="Practice menu">
+          <Menu size={20} />
+        </button>
+        {/* LEFT column: pills + timer + stats (~25%) */}
+        <div className="flex flex-col items-center justify-center gap-3" style={{ flex: '0 0 25%', maxWidth: '12rem' }}>
+          {questionPills}
+          {timerBlock}
+        </div>
+        {/* CENTER column: options (~50%) */}
+        <div className="flex flex-col items-center justify-center" style={{ flex: '1 1 0', maxWidth: '24rem', minHeight: 0 }}>
+          {optionsBlock}
+        </div>
+        {/* RIGHT column: skip/review (~25%) */}
+        <div className="flex flex-col items-center justify-center gap-2" style={{ flex: '0 0 25%', maxWidth: '10rem' }}>
+          <div className="w-full">{actionButtons}</div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // PORTRAIT: single column (current working layout)
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui flex flex-col items-center justify-between"
+      style={{ background: '#000000', padding: '1.5rem 1rem', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)', boxSizing: 'border-box' }}>
+        {/* Top bar: pills + hamburger */}
+        <div className="w-full max-w-xs flex items-start justify-between gap-2" style={{ flexShrink: 0 }}>
+          {questionPills}
+          {hamburgerBtn}
+        </div>
+        {/* Timer */}
+        <div style={{ flexShrink: 0 }}>{timerBlock}</div>
+        {/* Options */}
+        {optionsBlock}
+        {/* Actions */}
+        <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>{actionButtons}</div>
 
       {/* === Hamburger menu overlay === */}
       <AnimatePresence>
