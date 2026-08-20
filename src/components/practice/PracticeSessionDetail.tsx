@@ -320,13 +320,193 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                 <p className="text-white/50 text-xs">No questions in this category.</p>
               </div>
             ) : (
-              visibleQuestionIndices.map((qi) => {
+              visibleQuestionIndices.flatMap((qi) => {
                 const q = session.questions[qi];
                 const isFocus = focusQIndex === qi;
                 const isNoteOpen = openNoteIdx.has(qi);
                 const draft = draftNotes[qi] || { concept: q.conceptNotes || '', formula: q.formulaNotes || '' };
                 const hasNotes = questionHasNotes(q);
+                const qMode = (q.mode || 'single') as 'single' | 'multi' | 'written';
 
+                // For multi-mode questions, expand into one card PER sub-question
+                // so each sub-Q (Q2.1, Q2.2, ..., Q2.6) shows its own answer + result.
+                // The parent question's notes (concept/formula) are shown on the
+                // first sub-Q row to avoid duplication.
+                if (qMode === 'multi' && q.subUserAnswers && q.subUserAnswers.length > 0) {
+                  const subCount = q.subUserAnswers.length;
+                  const subCorrect = q.subCorrectAnswers ?? [];
+                  return Array.from({ length: subCount }, (_, si) => {
+                    const userAns = q.subUserAnswers![si];
+                    const correctAns = subCorrect[si] ?? null;
+                    // Per-sub result
+                    let subResult: 'correct' | 'wrong' | 'unmarked' = 'unmarked';
+                    if (userAns && correctAns) {
+                      subResult = userAns === correctAns ? 'correct' : 'wrong';
+                    }
+                    const subColor =
+                      subResult === 'correct' ? '#22c55e' : subResult === 'wrong' ? '#ef4444' : '#94a3b8';
+                    const SubResultIcon = subResult === 'correct' ? Check : subResult === 'wrong' ? XCircle : null;
+                    const showNotesOnThisRow = si === 0;  // only first sub-row shows parent's notes toggle
+                    const isSubNoteOpen = showNotesOnThisRow && isNoteOpen;
+
+                    return (
+                      <div
+                        key={`${qi}-${si}`}
+                        ref={isFocus && si === 0 ? focusRef : null}
+                        className={cn(
+                          'rounded-xl overflow-hidden bg-white/5 border border-white/10 transition',
+                          isFocus && si === 0 && 'ring-2 ring-amber-400/60',
+                          isEditing && 'bg-white/10'
+                        )}
+                        style={{ borderLeft: `3px solid ${subColor}` }}
+                      >
+                        {/* Row header */}
+                        <div className="p-3 flex items-center gap-2.5">
+                          <span
+                            className="text-xs font-bold w-12 shrink-0 tabular"
+                            style={{ color: subColor }}
+                          >
+                            Q{q.number}.{si + 1}
+                          </span>
+
+                          <span className="text-[10px] text-white/50 tabular flex items-center gap-1 shrink-0">
+                            <Clock size={9} /> {formatHMS(q.timeSpentSec)}
+                          </span>
+
+                          {/* User answer */}
+                          {userAns ? (
+                            <span className="text-[10px] text-white/70">
+                              You: <span className="font-bold" style={{ color: OPTION_COLORS[userAns] || '#fff' }}>{userAns}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-white/40 italic">No answer</span>
+                          )}
+
+                          <div className="flex-1" />
+
+                          {/* Correct answer (read-only when not editing) */}
+                          {!isEditing && correctAns && (
+                            <span className="text-[10px] text-white/70">
+                              Ans: <span className="font-bold" style={{ color: subColor }}>{correctAns}</span>
+                            </span>
+                          )}
+
+                          {/* Result icon */}
+                          {SubResultIcon && <SubResultIcon size={13} style={{ color: subColor }} />}
+
+                          {/* Read-only: Book icon if parent question HAS notes (only on first sub-row) */}
+                          {!isEditing && showNotesOnThisRow && hasNotes && (
+                            <button
+                              onClick={() => toggleNotePanel(qi)}
+                              className={cn(
+                                'shrink-0 w-6 h-6 flex items-center justify-center rounded transition',
+                                isSubNoteOpen
+                                  ? 'bg-amber-500/20 text-amber-400'
+                                  : 'text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/10'
+                              )}
+                              aria-label="Toggle notes"
+                              title="View concept/formula notes"
+                            >
+                              <BookText size={13} />
+                            </button>
+                          )}
+
+                          {/* Edit mode: "Add Notes" / "Edit Notes" button (only on first sub-row) */}
+                          {isEditing && showNotesOnThisRow && (
+                            <button
+                              onClick={() => toggleNotePanel(qi)}
+                              className={cn(
+                                'shrink-0 flex items-center gap-1 px-2 h-6 rounded text-[10px] font-bold transition active:scale-95',
+                                isSubNoteOpen
+                                  ? 'bg-amber-500/20 text-amber-400'
+                                  : hasNotes
+                                    ? 'bg-amber-500/15 text-amber-400/90 hover:bg-amber-500/25'
+                                    : 'bg-white/5 text-amber-400/70 hover:bg-amber-500/15 border border-amber-500/20'
+                              )}
+                              aria-label="Toggle notes editor"
+                            >
+                              <BookText size={11} />
+                              <span>{isSubNoteOpen ? 'Hide' : hasNotes ? 'Edit Notes' : 'Add Notes'}</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Editable A/B/C/D — NOT shown for sub-questions (kept simple for now) */}
+                        {/* Notes panel (only on first sub-row to avoid duplication) */}
+                        {showNotesOnThisRow && isSubNoteOpen && (
+                          <div className="px-3 pb-3 space-y-2">
+                            {isEditing ? (
+                              <>
+                                <div>
+                                  <label className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold block mb-1">
+                                    Concept
+                                  </label>
+                                  <textarea
+                                    value={draft.concept}
+                                    onChange={(e) =>
+                                      setDraftNotes((p) => ({
+                                        ...p,
+                                        [qi]: { ...p[qi], concept: e.target.value },
+                                      }))
+                                    }
+                                    placeholder="Write the concept behind this question…"
+                                    className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-14 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold block mb-1">
+                                    Formula
+                                  </label>
+                                  <textarea
+                                    value={draft.formula}
+                                    onChange={(e) =>
+                                      setDraftNotes((p) => ({
+                                        ...p,
+                                        [qi]: { ...p[qi], formula: e.target.value },
+                                      }))
+                                    }
+                                    placeholder="Write the formula(e) used…"
+                                    className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-12 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10"
+                                  />
+                                </div>
+                                <button
+                                  onClick={() => { persistNotes(qi); vibrate(10); }}
+                                  className="w-full py-1.5 rounded-lg bg-amber-500/15 text-amber-400 text-[10px] font-semibold flex items-center justify-center gap-1 active:scale-95 transition"
+                                >
+                                  <Save size={11} /> Save Notes
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                {q.conceptNotes && (
+                                  <div className="text-[11px] text-white/80 leading-relaxed">
+                                    <div className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold mb-0.5 flex items-center gap-1">
+                                      <BookText size={10} /> Concept
+                                    </div>
+                                    {q.conceptNotes}
+                                  </div>
+                                )}
+                                {q.formulaNotes && (
+                                  <div className="text-[11px] text-white/80 leading-relaxed">
+                                    <div className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold mb-0.5 flex items-center gap-1">
+                                      <BookText size={10} /> Formula
+                                    </div>
+                                    {q.formulaNotes}
+                                  </div>
+                                )}
+                                {!q.conceptNotes && !q.formulaNotes && (
+                                  <p className="text-[10px] text-white/40 italic">No notes recorded.</p>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                }
+
+                // Single + written questions: render as one row (existing behavior)
                 const qColor =
                   q.result === 'correct' ? '#22c55e' : q.result === 'wrong' ? '#ef4444' : '#94a3b8';
                 const ResultIcon = q.result === 'correct' ? Check : q.result === 'wrong' ? XCircle : null;
@@ -360,6 +540,8 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                         <span className="text-[10px] text-white/70">
                           You: <span className="font-bold" style={{ color: OPTION_COLORS[q.userAnswer] }}>{q.userAnswer}</span>
                         </span>
+                      ) : qMode === 'written' ? (
+                        <span className="text-[10px] text-amber-400/70 italic">Written</span>
                       ) : (
                         <span className="text-[10px] text-white/40 italic">No answer</span>
                       )}
