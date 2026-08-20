@@ -10,27 +10,35 @@ export interface PracticeQuestion {
   timeSpentSec: number;
   status: 'unanswered' | 'answered' | 'skipped' | 'review-later';
   result: 'correct' | 'wrong' | 'unmarked';
-  userAnswer: string | null;      // 'A' | 'B' | 'C' | 'D' | null — what user selected during practice
-  correctAnswer: string | null;   // 'A' | 'B' | 'C' | 'D' | null — correct answer (set during review)
+  userAnswer: string | null;      // 'A' | 'B' | 'C' | 'D' | ... | null — what user selected during practice
+  correctAnswer: string | null;   // 'A' | 'B' | 'C' | 'D' | ... | null — correct answer (set during review)
   conceptNotes: string;
   formulaNotes: string;
   /** Question mode — set per-question via the hamburger menu mid-practice.
-   *  - 'single'  (default): one MCQ with 4 options A/B/C/D (current behavior)
-   *  - 'multi'   : one statement/scenario with N sub-MCQs, each with its own A/B/C/D
-   *                (for assertion-reason, multi-correct, statement-based questions)
+   *  - 'single'  (default): one MCQ with N options (default N=4)
+   *  - 'multi'   : one statement/scenario with N sub-MCQs, each with M options
    *  - 'written' : long-answer / numerical — user writes on paper, just marks done
    *  Stored so the report + edit phase can render the right UI per question. */
   mode?: 'single' | 'multi' | 'written';
   /** For 'multi' mode: how many sub-questions (default 3). User-adjustable 1-6. */
   subQuestionCount?: number;
   /** For 'multi' mode: user's selected option per sub-question.
-   *  Length = subQuestionCount. Each entry is 'A' | 'B' | 'C' | 'D' | null. */
+   *  Length = subQuestionCount. Each entry is 'A' | 'B' | 'C' | 'D' | ... | null. */
   subUserAnswers?: (string | null)[];
   /** For 'multi' mode: correct option per sub-question (set during review). */
   subCorrectAnswers?: (string | null)[];
   /** For 'written' mode: brief note about the answer (optional, user can fill
    *  in during review). The actual written answer stays on paper. */
   writtenAnswer?: string;
+  /** How many options this question has — some questions have 5, 6, 7 options
+   *  (multi-correct, match-the-following, etc.). User-adjustable 2-8 per
+   *  question via the hamburger menu. Default 4 (A/B/C/D).
+   *  Letters used: A, B, C, D, E, F, G, H. */
+  optionCount?: number;
+  /** For 'multi' mode: how many options each sub-question has (default same
+   *  as optionCount). If user wants different per-sub-question, they can edit
+   *  during review. */
+  subOptionCount?: number;
 }
 
 export interface PracticeSession {
@@ -101,6 +109,9 @@ interface PracticeStore {
   setQuestionMode: (questionIndex: number, mode: 'single' | 'multi' | 'written', subCount?: number) => void;
   /** For multi mode: record the user's answer for one sub-question. */
   setSubAnswer: (questionIndex: number, subIndex: number, answer: string | null) => void;
+  /** Change the number of options for the current question (2-8).
+   *  Some questions have 5+ options (multi-correct, match-the-following, etc.). */
+  setOptionCount: (questionIndex: number, count: number) => void;
 
   getRecent: (n: number) => PracticeSession[];
   getForDate: (date: string) => PracticeSession[];
@@ -178,6 +189,36 @@ export const usePractice = create<PracticeStore>()(
           ...questions[idx],
           status,
         };
+
+        // === Question numbering: the NEXT question's number must skip
+        // ahead by the current question's "size" ===
+        //   - single mode:  size = 1 (e.g., Q2 → Q3)
+        //   - multi mode:   size = subQuestionCount (e.g., Q2 with 5 subs → Q7)
+        //   - written mode: size = 1
+        // This way, multi-questions consume multiple numbers and the next
+        // single question picks up after them.
+        const currentQ = questions[idx];
+        const currentMode = currentQ?.mode || 'single';
+        const sizeConsumed = currentMode === 'multi' ? (currentQ?.subQuestionCount || 3) : 1;
+        const currentNumber = currentQ?.number || (idx + 1);
+        const nextNumber = currentNumber + sizeConsumed;
+
+        // Ensure next question exists (pad for unlimited mode) + set its number.
+        while (questions.length <= idx + 1) {
+          questions.push({
+            number: questions.length === idx + 1 ? nextNumber : questions.length + 1,
+            timeSpentSec: 0,
+            status: 'unanswered',
+            result: 'unmarked',
+            userAnswer: null,
+            correctAnswer: null,
+            conceptNotes: '',
+            formulaNotes: '',
+          });
+        }
+        // Set the next question's number explicitly (in case it already existed
+        // with a stale number from before the current question's mode change).
+        questions[idx + 1] = { ...questions[idx + 1], number: nextNumber };
 
         // Update session
         const updatedSession = {
@@ -383,6 +424,42 @@ export const usePractice = create<PracticeStore>()(
         while (subAnswers.length <= subIndex) subAnswers.push(null);
         subAnswers[subIndex] = answer;
         questions[questionIndex] = { ...q, subUserAnswers: subAnswers };
+        set({ activePractice: { ...session, questions } });
+      },
+
+      /** Change the number of options for the current question (2-8).
+       *  Some questions have 5, 6, 7+ options (multi-correct, match-the-following).
+       *  Letters used: A, B, C, D, E, F, G, H.
+       *  If userAnswer is now beyond the new count, clear it (user must re-pick). */
+      setOptionCount: (questionIndex, count) => {
+        const session = get().activePractice;
+        if (!session) return;
+        const n = Math.max(2, Math.min(8, count));
+        const questions = [...session.questions];
+        // Pad if needed
+        while (questions.length <= questionIndex) {
+          questions.push({
+            number: questions.length + 1, timeSpentSec: 0, status: 'unanswered' as const,
+            result: 'unmarked' as const, userAnswer: null, correctAnswer: null,
+            conceptNotes: '', formulaNotes: '',
+          });
+        }
+        const q = questions[questionIndex];
+        // Clear userAnswer if it's beyond the new option count.
+        const userAnswerLetter = q.userAnswer;
+        const userAnswerIdx = userAnswerLetter ? userAnswerLetter.charCodeAt(0) - 65 : -1;
+        const clearedUserAnswer = (userAnswerIdx >= n) ? null : userAnswerLetter;
+        // Same for correctAnswer.
+        const correctAnswerLetter = q.correctAnswer;
+        const correctAnswerIdx = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 65 : -1;
+        const clearedCorrectAnswer = (correctAnswerIdx >= n) ? null : correctAnswerLetter;
+        questions[questionIndex] = {
+          ...q,
+          optionCount: n,
+          subOptionCount: n,
+          userAnswer: clearedUserAnswer,
+          correctAnswer: clearedCorrectAnswer,
+        };
         set({ activePractice: { ...session, questions } });
       },
 
