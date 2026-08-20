@@ -326,23 +326,30 @@ export function PracticeRunner() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui"
       style={{ background: '#000000' }}>
-      {/* === Inner content — rotated + sized to fill viewport (matches FocusTimer) === */}
+      {/* === Inner content — rotated + sized to fill viewport (matches FocusTimer) ===
+          Always use flexDirection: 'column' (NOT 'row' in landscape). After 90° rotation,
+          CSS column becomes visual row — naturally fills landscape viewport with
+          timer on visual left, actions on visual right. */}
       <div style={{
         width: '100vmin',
         height: '100vmax',
         display: 'flex',
-        flexDirection: isLandscape ? 'row' : 'column',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: isLandscape ? 'center' : 'space-between',
-        gap: isLandscape ? '1rem' : undefined,
-        padding: isLandscape ? '1rem 2rem' : '2rem 1rem',
+        justifyContent: 'space-between',
+        padding: isLandscape ? '1.5rem 1rem' : '2rem 1rem',
+        paddingTop: isLandscape ? '1.5rem' : 'calc(env(safe-area-inset-top, 0px) + 3rem)',
+        paddingBottom: isLandscape ? '1.5rem' : 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
         transform: `rotate(${effectiveAngle}deg)`,
         transformOrigin: 'center center',
         transition: 'transform 0.3s ease',
+        boxSizing: 'border-box',
       }}>
-        {/* === Top bar: question pills + hamburger menu === */}
-        <div className="absolute top-[env(safe-area-inset-top,0px)] top-4 left-0 right-0 px-4 z-10 flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0 flex flex-wrap gap-1 justify-start max-w-[calc(100%-50px)] mx-auto">
+        {/* === Top bar: question pills + hamburger menu ===
+            Now part of the flex column (NOT absolute) so it rotates correctly
+            with the content + doesn't end up at the wrong corner in landscape. */}
+        <div className="w-full max-w-md flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0 flex flex-wrap gap-1 justify-start max-w-[calc(100%-50px)]">
             {visibleQuestions.map((q, i) => (
               <div key={i} className={cn('w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold transition', i === currentIdx && 'ring-2 ring-white')}
                 style={{ background: q.status === 'answered' ? '#22c55e' : q.status === 'skipped' ? '#6b7280' : q.status === 'review-later' ? '#f59e0b' : 'rgba(255,255,255,0.3)', color: q.status === 'unanswered' ? 'rgba(255,255,255,0.6)' : '#000' }}>{q.number}</div>
@@ -350,38 +357,46 @@ export function PracticeRunner() {
           </div>
           <button
             onClick={() => { if (haptics) vibrate(8); setMenuOpen(true); }}
-            className="shrink-0 w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-white hover:bg-white/20 active:scale-90 transition"
+            className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 active:scale-90 transition"
+            style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff' }}
             aria-label="Practice menu">
             <Menu size={20} />
           </button>
         </div>
 
         {/* === Timer + stats === */}
-        <div className="text-center">
-          <div className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-1 flex items-center justify-center gap-1.5">
+        <div className="text-center" style={{ color: '#ffffff' }}>
+          <div className="text-[10px] uppercase tracking-[0.2em] mb-1 flex items-center justify-center gap-1.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
             <span>Question {currentIdx + 1}{activePractice.questionCount > 0 ? ` of ${activePractice.questionCount}` : ''}</span>
             {currentMode !== 'single' && (
-              <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[8px] font-bold uppercase">
+              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
+                style={{ background: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
                 {currentMode === 'multi' ? `${subCount} sub` : 'Written'}
               </span>
             )}
             {optionCount !== 4 && currentMode !== 'written' && (
-              <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[8px] font-bold uppercase">
+              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
+                style={{ background: 'rgba(168,85,247,0.2)', color: '#d8b4fe' }}>
                 {optionCount} opts
               </span>
             )}
             {menuOpen && (
-              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[8px] font-bold uppercase animate-pulse">
+              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase animate-pulse"
+                style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24' }}>
                 Paused
               </span>
             )}
           </div>
-          <div className="text-4xl font-bold tabular text-white mb-1">{formatHMS(questionElapsed)}</div>
-          <div className="text-sm text-white/50">Total: <span className="tabular text-amber-400">{formatHMS(totalElapsed)}</span>{timeLimitSec > 0 && <span className="ml-2">· Left: <span className={cn('tabular', timeLimitSec - totalElapsed < 60 ? 'text-red-400' : 'text-white/40')}>{formatHMS(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}</div>
-          <div className="flex items-center justify-center gap-3 mt-2 text-xs"><span className="text-green-400">✓ {answeredCount}</span><span className="text-white/40">→ {skippedCount}</span><span className="text-amber-400">⚑ {reviewCount}</span></div>
+          <div className="text-4xl font-bold tabular mb-1" style={{ color: '#ffffff' }}>{formatHMS(questionElapsed)}</div>
+          <div className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Total: <span className="tabular" style={{ color: '#fbbf24' }}>{formatHMS(totalElapsed)}</span>{timeLimitSec > 0 && <span className="ml-2">· Left: <span className="tabular" style={{ color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.4)' }}>{formatHMS(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}</div>
+          <div className="flex items-center justify-center gap-3 mt-2 text-xs">
+            <span style={{ color: '#4ade80' }}>✓ {answeredCount}</span>
+            <span style={{ color: 'rgba(255,255,255,0.4)' }}>→ {skippedCount}</span>
+            <span style={{ color: '#fbbf24' }}>⚑ {reviewCount}</span>
+          </div>
         </div>
 
-        <div className="text-xs text-white/30">{activePractice.name}</div>
+        <div className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>{activePractice.name}</div>
 
         {/* === Question options — render based on mode === */}
         <div className="w-full max-w-xs">
@@ -404,17 +419,18 @@ export function PracticeRunner() {
 
           {currentMode === 'multi' && (
             <div className="space-y-2">
-              <p className="text-[10px] text-white/50 text-center mb-1">
+              <p className="text-[10px] text-center mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
                 One statement, {subCount} sub-questions — tap an option for each
               </p>
               {Array.from({ length: subCount }, (_, si) => (
-                <div key={si} className="rounded-xl bg-white/5 border border-white/10 p-2.5">
+                <div key={si} className="rounded-xl p-2.5"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold text-white/70">
+                    <span className="text-[11px] font-bold" style={{ color: 'rgba(255,255,255,0.7)' }}>
                       Q{currentQ?.number ?? currentIdx + 1}.{si + 1}
                     </span>
                     {subAnswers[si] && (
-                      <span className="text-[9px] text-white/40">Selected: <span className="font-bold" style={{ color: OPTION_COLORS[subAnswers[si] as string] }}>{subAnswers[si]}</span></span>
+                      <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.4)' }}>Selected: <span className="font-bold" style={{ color: OPTION_COLORS[subAnswers[si] as string] }}>{subAnswers[si]}</span></span>
                     )}
                   </div>
                   <div className={cn('grid gap-1.5', optionCount <= 4 ? 'grid-cols-4' : 'grid-cols-3')}>
@@ -422,10 +438,10 @@ export function PracticeRunner() {
                       const isSelected = subAnswers[si] === opt;
                       return (
                         <button key={opt} onClick={() => handleSelectSubAnswer(si, opt)}
-                          className={cn('py-1.5 rounded-lg text-[10px] font-bold transition border', isSelected ? 'text-white' : 'text-white/60 bg-white/5 border-white/10')}
+                          className={cn('py-1.5 rounded-lg text-[10px] font-bold transition border', isSelected ? '' : '')}
                           style={isSelected
-                            ? { background: OPTION_COLORS[opt], borderColor: OPTION_COLORS[opt] }
-                            : {}}>
+                            ? { background: OPTION_COLORS[opt], borderColor: OPTION_COLORS[opt], color: '#fff' }
+                            : { background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
                           {opt}
                         </button>
                       );
@@ -434,7 +450,8 @@ export function PracticeRunner() {
                 </div>
               ))}
               <button onClick={handleMultiDone}
-                className="w-full py-2.5 rounded-xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-bold active:scale-95 transition flex items-center justify-center gap-1.5 mt-2">
+                className="w-full py-2.5 rounded-xl text-sm font-bold active:scale-95 transition flex items-center justify-center gap-1.5 mt-2"
+                style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
                 <Check size={14} /> Mark Answered
               </button>
             </div>
@@ -442,13 +459,15 @@ export function PracticeRunner() {
 
           {currentMode === 'written' && (
             <div className="space-y-2">
-              <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-center">
-                <PenLine size={24} className="text-white/40 mx-auto mb-2" />
-                <p className="text-xs text-white/70 mb-1">Write your answer on paper</p>
-                <p className="text-[10px] text-white/40">Tap below once you've written it</p>
+              <div className="rounded-xl p-4 text-center"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <PenLine size={24} className="mx-auto mb-2" style={{ color: 'rgba(255,255,255,0.4)' }} />
+                <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>Write your answer on paper</p>
+                <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>Tap below once you've written it</p>
               </div>
               <button onClick={handleWrittenDone}
-                className="w-full py-2.5 rounded-xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-bold active:scale-95 transition flex items-center justify-center gap-1.5">
+                className="w-full py-2.5 rounded-xl text-sm font-bold active:scale-95 transition flex items-center justify-center gap-1.5"
+                style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
                 <Check size={14} /> I've Written the Answer
               </button>
             </div>
@@ -458,8 +477,16 @@ export function PracticeRunner() {
         {/* === Bottom: Skip / Review Later + Rotate button === */}
         <div className="w-full max-w-xs">
           <div className="flex gap-3 mb-3">
-            <button onClick={handleSkip} className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-white/50 active:scale-95 transition flex items-center justify-center gap-1.5"><ChevronRight size={14} /> Skip</button>
-            <button onClick={handleReviewLater} className="flex-1 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-400 active:scale-95 transition flex items-center justify-center gap-1.5"><Flag size={14} /> Review Later</button>
+            <button onClick={handleSkip}
+              className="flex-1 py-2.5 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1.5"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
+              <ChevronRight size={14} /> Skip
+            </button>
+            <button onClick={handleReviewLater}
+              className="flex-1 py-2.5 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1.5"
+              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
+              <Flag size={14} /> Review Later
+            </button>
           </div>
           {/* Rotate / Lock button — matches FocusTimer gestures */}
           <div className="flex justify-center">
@@ -467,12 +494,13 @@ export function PracticeRunner() {
               onPointerDown={handleRotatePointerDown}
               onPointerUp={handleRotatePointerUp}
               onPointerLeave={() => { if (rotateLongPressRef.current) { clearTimeout(rotateLongPressRef.current); rotateLongPressRef.current = null; } }}
-              className="px-3 py-2 rounded-xl font-semibold text-sm bg-white/5 text-white/70 active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+              className="px-3 py-2 rounded-xl font-semibold text-sm active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+              style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)' }}
               title={`Rotate (current: ${effectiveAngle}°${lockedOrientation !== null ? ' · locked' : ''}${tempLockAngle !== null ? ' · temp-locked' : ''})\n• Tap: rotate 90°\n• Double-tap: temp lock\n• Long-press: persistent lock`}
               aria-label="Rotate or lock orientation"
             >
               {(lockedOrientation !== null || tempLockAngle !== null) ? (
-                <Lock size={16} className="text-amber-400" style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
+                <Lock size={16} style={{ color: '#fbbf24', transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
               ) : (
                 <RotateCw size={16} style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
               )}
@@ -555,6 +583,24 @@ function PracticeMenu({
   onPause: () => void;
   onCancel: () => void;
 }) {
+  // All colors via inline style — BULLETPROOF against any theme override.
+  // (Previous version used text-white Tailwind classes which got overridden
+  // to dark colors on light themes, making text invisible on dark menu bg.)
+  const C = {
+    bg: '#0a0b15',
+    text: '#ffffff',
+    textSecondary: 'rgba(255,255,255,0.7)',
+    textMuted: 'rgba(255,255,255,0.5)',
+    textFaint: 'rgba(255,255,255,0.4)',
+    textDim: 'rgba(255,255,255,0.3)',
+    border: 'rgba(255,255,255,0.1)',
+    surface: 'rgba(255,255,255,0.05)',
+    surfaceHover: 'rgba(255,255,255,0.1)',
+    amber: '#fbbf24',
+    green: '#4ade80',
+    red: '#f87171',
+    blue: '#93c5fd',
+  };
   return (
     <>
       {/* Dim backdrop — inline style so guaranteed dark on all themes */}
@@ -574,19 +620,20 @@ function PracticeMenu({
         transition={{ type: 'spring', stiffness: 360, damping: 32 }}
         onClick={(e) => e.stopPropagation()}
         className="fixed top-0 right-0 bottom-0 z-[10001] w-[85%] max-w-xs flex flex-col force-dark-ui"
-        style={{ background: '#0a0b15', borderLeft: '1px solid rgba(255,255,255,0.1)' }}
+        style={{ background: C.bg, borderLeft: `1px solid ${C.border}` }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-[env(safe-area-inset-top,0px)] pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <div className="flex items-center justify-between px-4 pt-4 pb-3"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)', borderBottom: `1px solid ${C.border}` }}>
           <div>
-            <div className="text-sm font-bold text-white">Practice Menu</div>
-            <div className="text-[10px] text-amber-400 flex items-center gap-1 mt-0.5">
+            <div className="text-sm font-bold" style={{ color: C.text }}>Practice Menu</div>
+            <div className="text-[10px] flex items-center gap-1 mt-0.5" style={{ color: C.amber }}>
               <Pause size={10} /> Timer paused
             </div>
           </div>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/70 hover:bg-white/10 active:scale-90 transition"
-            style={{ background: 'rgba(255,255,255,0.05)' }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition"
+            style={{ background: C.surface, color: C.textSecondary }}
             aria-label="Close menu">
             <XIcon size={16} />
           </button>
@@ -596,7 +643,8 @@ function PracticeMenu({
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
           {/* === Section 1: Question Type === */}
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-white/40 font-bold mb-2 flex items-center gap-1">
+            <div className="text-[10px] uppercase tracking-wide font-bold mb-2 flex items-center gap-1"
+              style={{ color: C.textFaint }}>
               <ListTree size={11} /> Question Type — Q{activePractice.questions[currentIdx]?.number ?? currentIdx + 1}
             </div>
             <div className="space-y-1.5">
@@ -622,7 +670,8 @@ function PracticeMenu({
           {/* === Section 2: Options count (applies to single + multi, NOT written) === */}
           {currentMode !== 'written' && (
             <div>
-              <div className="text-[10px] uppercase tracking-wide text-white/40 font-bold mb-2 flex items-center gap-1">
+              <div className="text-[10px] uppercase tracking-wide font-bold mb-2 flex items-center gap-1"
+                style={{ color: C.textFaint }}>
                 <Plus size={11} /> Options per question
               </div>
               <AdjusterRow
@@ -633,7 +682,7 @@ function PracticeMenu({
                 onIncrement={() => onAdjustOptionCount(1)}
                 big
               />
-              <p className="text-[9px] text-white/40 mt-1.5 leading-relaxed">
+              <p className="text-[9px] mt-1.5 leading-relaxed" style={{ color: C.textFaint }}>
                 Some questions have 5+ options (multi-correct, match-the-following).
                 Adjust to match the question paper.
               </p>
@@ -642,7 +691,7 @@ function PracticeMenu({
 
           {/* === Section 3: Actions === */}
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-white/40 font-bold mb-2">
+            <div className="text-[10px] uppercase tracking-wide font-bold mb-2" style={{ color: C.textFaint }}>
               Actions
             </div>
             <div className="space-y-1.5">
@@ -655,7 +704,7 @@ function PracticeMenu({
             </div>
           </div>
 
-          <div className="text-[9px] text-white/30 text-center pt-2 leading-relaxed">
+          <div className="text-[9px] text-center pt-2 leading-relaxed" style={{ color: C.textDim }}>
             Timer stays paused while this menu is open.<br />Close to resume.
           </div>
         </div>
@@ -674,9 +723,10 @@ function MenuOption({
   onClick: () => void;
   color: string;
 }) {
+  // Inline styles for ALL colors — bulletproof against theme overrides.
   return (
     <button onClick={onClick}
-      className="w-full flex items-center gap-3 p-3 rounded-xl border text-left active:scale-[0.98] transition"
+      className="w-full flex items-center gap-3 p-3 rounded-xl text-left active:scale-[0.98] transition"
       style={active
         ? { background: `${color}20`, border: `2px solid ${color}` }
         : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -685,11 +735,11 @@ function MenuOption({
         <Icon size={18} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-bold text-white flex items-center gap-1.5">
+        <div className="text-xs font-bold flex items-center gap-1.5" style={{ color: '#ffffff' }}>
           {title}
           {active && <Check size={11} style={{ color }} />}
         </div>
-        <div className="text-[10px] text-white/50 mt-0.5">{desc}</div>
+        <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>{desc}</div>
       </div>
     </button>
   );
@@ -704,17 +754,18 @@ function ActionButton({
   onClick: () => void;
   color: string;
 }) {
+  // Inline styles for ALL colors — bulletproof against theme overrides.
   return (
     <button onClick={onClick}
-      className="w-full flex items-center gap-3 p-3 rounded-xl border text-left active:scale-[0.98] transition"
+      className="w-full flex items-center gap-3 p-3 rounded-xl text-left active:scale-[0.98] transition"
       style={{ background: `${color}15`, border: `1px solid ${color}40` }}>
       <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
         style={{ background: `${color}25`, color }}>
         <Icon size={18} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-bold text-white">{title}</div>
-        <div className="text-[10px] text-white/50 mt-0.5">{desc}</div>
+        <div className="text-xs font-bold" style={{ color: '#ffffff' }}>{title}</div>
+        <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>{desc}</div>
       </div>
     </button>
   );
@@ -732,20 +783,22 @@ function AdjusterRow({
   onIncrement: () => void;
   big?: boolean;
 }) {
+  // Inline styles for ALL colors — bulletproof against theme overrides.
   return (
     <div className="ml-3 mt-1.5 flex items-center justify-between rounded-lg p-2.5"
       style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-      <span className={cn('text-white/60', big ? 'text-[11px]' : 'text-[11px]')}>{label}</span>
+      <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.6)' }}>{label}</span>
       <div className="flex items-center gap-2">
         <button onClick={onDecrement} disabled={value <= min}
-          className="w-7 h-7 rounded flex items-center justify-center text-white/80 transition disabled:opacity-30"
-          style={{ background: 'rgba(255,255,255,0.1)' }}>
+          className="w-7 h-7 rounded flex items-center justify-center transition disabled:opacity-30"
+          style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)' }}>
           <Minus size={13} />
         </button>
-        <span className={cn('font-bold text-white tabular text-center', big ? 'text-base w-8' : 'text-sm w-6')}>{value}</span>
+        <span className={cn('font-bold tabular text-center', big ? 'text-base w-8' : 'text-sm w-6')}
+          style={{ color: '#ffffff' }}>{value}</span>
         <button onClick={onIncrement} disabled={value >= max}
-          className="w-7 h-7 rounded flex items-center justify-center text-white/80 transition disabled:opacity-30"
-          style={{ background: 'rgba(255,255,255,0.1)' }}>
+          className="w-7 h-7 rounded flex items-center justify-center transition disabled:opacity-30"
+          style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)' }}>
           <Plus size={13} />
         </button>
       </div>
