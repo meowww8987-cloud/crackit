@@ -256,6 +256,36 @@ export function PracticeRunner() {
 
   useEffect(() => { if (!activePractice) return; if (activePractice.questionCount > 0 && currentIdx >= activePractice.questionCount) handleEnd(); }, [currentIdx, activePractice, handleEnd]);
 
+  // === Auto-pause on refresh/close ===
+  // If user refreshes or closes the tab while practicing, save the session
+  // to pausedPractices so they can resume from where they left off.
+  useEffect(() => {
+    const handleUnload = () => {
+      const session = usePractice.getState().activePractice;
+      const idx = usePractice.getState().currentQuestionIndex;
+      if (!session) return;
+      const now = Date.now();
+      const qElapsed = Math.floor((now - questionStartRef.current) / 1000);
+      const totalElapsed = Math.floor((now - session.startedAt) / 1000);
+      const questions = [...session.questions];
+      while (questions.length <= idx) {
+        questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', userAnswer: null, correctAnswer: null, conceptNotes: '', formulaNotes: '' });
+      }
+      questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
+      const snapshot: PracticeSession = {
+        ...session, questions,
+        accumulatedTimeSec: totalElapsed, pausedAt: now, resumeQuestionIndex: idx,
+      };
+      usePractice.getState().pausePractice(snapshot);
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    window.addEventListener('pagehide', handleUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+      window.removeEventListener('pagehide', handleUnload);
+    };
+  }, []);
+
   if (!activePractice && phase === 'practicing' && !reviewSession) return null;
   if (phase === 'report' && reviewSession) {
     return <ReportPhase session={reviewSession} onEdit={() => setPhase('edit')} onClose={() => { setPhase('practicing'); setReviewSessionId(null); }} haptics={haptics} />;
@@ -427,11 +457,51 @@ export function PracticeRunner() {
     </div>
   );
 
+  // === Menu overlay (shared by both portrait + landscape layouts) ===
+  const menuOverlay = (
+    <AnimatePresence>
+      {menuOpen && (
+        <PracticeMenu
+          activePractice={activePractice}
+          currentIdx={currentIdx}
+          currentMode={currentMode}
+          subCount={subCount}
+          optionCount={optionCount}
+          haptics={haptics}
+          onClose={() => setMenuOpen(false)}
+          onSetMode={(mode, n) => {
+            setQuestionMode(currentIdx, mode, n);
+            if (haptics) vibrate(12);
+          }}
+          onAdjustSubCount={(delta) => {
+            const newCount = Math.max(1, Math.min(6, subCount + delta));
+            setQuestionMode(currentIdx, 'multi', newCount);
+            if (haptics) vibrate(8);
+          }}
+          onAdjustOptionCount={(delta) => {
+            const newCount = Math.max(2, Math.min(8, optionCount + delta));
+            setOptionCount(currentIdx, newCount);
+            if (haptics) vibrate(8);
+          }}
+          onEnd={() => { setMenuOpen(false); setTimeout(() => handleEnd(), 100); }}
+          onPause={() => { setMenuOpen(false); setTimeout(() => handlePause(), 100); }}
+          onCancel={() => {
+            setMenuOpen(false);
+            setTimeout(() => {
+              if (confirm('Cancel practice? Progress will be lost.')) cancelPractice();
+            }, 100);
+          }}
+        />
+      )}
+    </AnimatePresence>
+  );
+
   // === Render — different layouts for portrait vs landscape ===
   if (isLandscape) {
     // LANDSCAPE: 3-column row. LEFT = pills + timer + stats. CENTER = options. RIGHT = skip/review.
     // Hamburger stays at top-right corner.
     return (
+      <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui flex flex-row"
         style={{ background: '#000000', padding: '1rem', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)', boxSizing: 'border-box' }}>
@@ -457,11 +527,14 @@ export function PracticeRunner() {
           <div className="w-full">{actionButtons}</div>
         </div>
       </motion.div>
+      {menuOverlay}
+      </>
     );
   }
 
   // PORTRAIT: single column (current working layout)
   return (
+    <>
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui flex flex-col items-center justify-between"
       style={{ background: '#000000', padding: '1.5rem 1rem', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)', boxSizing: 'border-box' }}>
@@ -476,44 +549,9 @@ export function PracticeRunner() {
         {optionsBlock}
         {/* Actions */}
         <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>{actionButtons}</div>
-
-      {/* === Hamburger menu overlay === */}
-      <AnimatePresence>
-        {menuOpen && (
-          <PracticeMenu
-            activePractice={activePractice}
-            currentIdx={currentIdx}
-            currentMode={currentMode}
-            subCount={subCount}
-            optionCount={optionCount}
-            haptics={haptics}
-            onClose={() => setMenuOpen(false)}
-            onSetMode={(mode, n) => {
-              setQuestionMode(currentIdx, mode, n);
-              if (haptics) vibrate(12);
-            }}
-            onAdjustSubCount={(delta) => {
-              const newCount = Math.max(1, Math.min(6, subCount + delta));
-              setQuestionMode(currentIdx, 'multi', newCount);
-              if (haptics) vibrate(8);
-            }}
-            onAdjustOptionCount={(delta) => {
-              const newCount = Math.max(2, Math.min(8, optionCount + delta));
-              setOptionCount(currentIdx, newCount);
-              if (haptics) vibrate(8);
-            }}
-            onEnd={() => { setMenuOpen(false); setTimeout(() => handleEnd(), 100); }}
-            onPause={() => { setMenuOpen(false); setTimeout(() => handlePause(), 100); }}
-            onCancel={() => {
-              setMenuOpen(false);
-              setTimeout(() => {
-                if (confirm('Cancel practice? Progress will be lost.')) cancelPractice();
-              }, 100);
-            }}
-          />
-        )}
-      </AnimatePresence>
     </motion.div>
+    {menuOverlay}
+    </>
   );
 }
 
