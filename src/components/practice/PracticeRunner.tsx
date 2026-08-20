@@ -326,32 +326,36 @@ export function PracticeRunner() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui"
       style={{ background: '#000000' }}>
-      {/* === Inner content — rotated + sized to fill viewport (matches FocusTimer) ===
-          Always use flexDirection: 'column' (NOT 'row' in landscape). After 90° rotation,
-          CSS column becomes visual row — naturally fills landscape viewport with
-          timer on visual left, actions on visual right. */}
+      {/* === Inner content — rotated + sized to fill viewport ===
+          Always flexDirection: 'column' (after 90° rotation, CSS column becomes
+          visual row — naturally fills landscape viewport).
+
+          LAYOUT STRATEGY (fixes both landscape overflow + multi-mode 6 sub-Q overflow):
+          - Top bar, timer, action buttons: flexShrink: 0 (fixed natural height)
+          - Options section: flex: 1 + overflowY: auto (scrolls when content
+            exceeds available space — e.g. 6 sub-questions or 8 options)
+          - No more content going off-screen — it scrolls within the viewport. */}
       <div style={{
         width: '100vmin',
         height: '100vmax',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: isLandscape ? '1.5rem 1rem' : '2rem 1rem',
-        paddingTop: isLandscape ? '1.5rem' : 'calc(env(safe-area-inset-top, 0px) + 3rem)',
-        paddingBottom: isLandscape ? '1.5rem' : 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
+        padding: isLandscape ? '1rem 1.5rem' : '1.5rem 1rem',
+        paddingTop: isLandscape ? '1rem' : 'calc(env(safe-area-inset-top, 0px) + 1.5rem)',
+        paddingBottom: isLandscape ? '1rem' : 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
         transform: `rotate(${effectiveAngle}deg)`,
         transformOrigin: 'center center',
         transition: 'transform 0.3s ease',
         boxSizing: 'border-box',
+        overflow: 'hidden',
       }}>
         {/* === Top bar: question pills + hamburger menu ===
-            Now part of the flex column (NOT absolute) so it rotates correctly
-            with the content + doesn't end up at the wrong corner in landscape. */}
-        <div className="w-full max-w-md flex items-start justify-between gap-2">
+            flexShrink: 0 so it never gets squeezed. */}
+        <div className="w-full max-w-md flex items-start justify-between gap-2" style={{ flexShrink: 0 }}>
           <div className="flex-1 min-w-0 flex flex-wrap gap-1 justify-start max-w-[calc(100%-50px)]">
             {visibleQuestions.map((q, i) => (
-              <div key={i} className={cn('w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold transition', i === currentIdx && 'ring-2 ring-white')}
+              <div key={i} className={cn('w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold transition', i === currentIdx && 'ring-2 ring-white')}
                 style={{ background: q.status === 'answered' ? '#22c55e' : q.status === 'skipped' ? '#6b7280' : q.status === 'review-later' ? '#f59e0b' : 'rgba(255,255,255,0.3)', color: q.status === 'unanswered' ? 'rgba(255,255,255,0.6)' : '#000' }}>{q.number}</div>
             ))}
           </div>
@@ -364,9 +368,9 @@ export function PracticeRunner() {
           </button>
         </div>
 
-        {/* === Timer + stats === */}
-        <div className="text-center" style={{ color: '#ffffff' }}>
-          <div className="text-[10px] uppercase tracking-[0.2em] mb-1 flex items-center justify-center gap-1.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
+        {/* === Timer + stats === (flexShrink: 0) */}
+        <div className="text-center mt-2" style={{ color: '#ffffff', flexShrink: 0 }}>
+          <div className="text-[10px] uppercase tracking-[0.2em] mb-0.5 flex items-center justify-center gap-1.5 flex-wrap" style={{ color: 'rgba(255,255,255,0.4)' }}>
             <span>Question {currentIdx + 1}{activePractice.questionCount > 0 ? ` of ${activePractice.questionCount}` : ''}</span>
             {currentMode !== 'single' && (
               <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
@@ -387,19 +391,34 @@ export function PracticeRunner() {
               </span>
             )}
           </div>
-          <div className="text-4xl font-bold tabular mb-1" style={{ color: '#ffffff' }}>{formatHMS(questionElapsed)}</div>
-          <div className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Total: <span className="tabular" style={{ color: '#fbbf24' }}>{formatHMS(totalElapsed)}</span>{timeLimitSec > 0 && <span className="ml-2">· Left: <span className="tabular" style={{ color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.4)' }}>{formatHMS(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}</div>
-          <div className="flex items-center justify-center gap-3 mt-2 text-xs">
+          <div className="text-3xl sm:text-4xl font-bold tabular mb-0.5" style={{ color: '#ffffff' }}>{formatHMS(questionElapsed)}</div>
+          <div className="text-xs sm:text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Total: <span className="tabular" style={{ color: '#fbbf24' }}>{formatHMS(totalElapsed)}</span>{timeLimitSec > 0 && <span className="ml-2">· Left: <span className="tabular" style={{ color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.4)' }}>{formatHMS(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}</div>
+          <div className="flex items-center justify-center gap-3 mt-1 text-[11px]">
             <span style={{ color: '#4ade80' }}>✓ {answeredCount}</span>
             <span style={{ color: 'rgba(255,255,255,0.4)' }}>→ {skippedCount}</span>
             <span style={{ color: '#fbbf24' }}>⚑ {reviewCount}</span>
           </div>
+          <div className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>{activePractice.name}</div>
         </div>
 
-        <div className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>{activePractice.name}</div>
+        {/* === Question options — flex: 1 + SCROLLABLE ===
+            Takes remaining vertical space. When content exceeds available
+            height (e.g. 6 sub-questions, 8 options), it scrolls vertically
+            instead of overflowing off-screen. */}
+        <div className="w-full max-w-xs mt-2 flex flex-col"
+          style={{
+            flex: '1 1 0',
+            minHeight: 0,  // critical for flexbox overflow to work
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            msOverflowStyle: 'none',
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(255,255,255,0.2) transparent',
+          } as React.CSSProperties}>
+          {/* Hide scrollbar for cleaner look but keep functionality */}
+          <style>{`.practice-scroll::-webkit-scrollbar { width: 4px; } .practice-scroll::-webkit-scrollbar-track { background: transparent; } .practice-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }`}</style>
 
-        {/* === Question options — render based on mode === */}
-        <div className="w-full max-w-xs">
           {currentMode === 'single' && (
             <div className={cn('grid gap-2', optionCount <= 4 ? 'grid-cols-2' : 'grid-cols-3')}>
               {currentOptions.map((opt) => {
@@ -418,27 +437,29 @@ export function PracticeRunner() {
           )}
 
           {currentMode === 'multi' && (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <p className="text-[10px] text-center mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
                 One statement, {subCount} sub-questions — tap an option for each
               </p>
               {Array.from({ length: subCount }, (_, si) => (
-                <div key={si} className="rounded-xl p-2.5"
+                <div key={si} className="rounded-lg p-2"
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.7)' }}>
                       Q{currentQ?.number ?? currentIdx + 1}.{si + 1}
                     </span>
                     {subAnswers[si] && (
-                      <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.4)' }}>Selected: <span className="font-bold" style={{ color: OPTION_COLORS[subAnswers[si] as string] }}>{subAnswers[si]}</span></span>
+                      <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                        <span className="font-bold" style={{ color: OPTION_COLORS[subAnswers[si] as string] }}>{subAnswers[si]}</span>
+                      </span>
                     )}
                   </div>
-                  <div className={cn('grid gap-1.5', optionCount <= 4 ? 'grid-cols-4' : 'grid-cols-3')}>
+                  <div className={cn('grid gap-1', optionCount <= 4 ? 'grid-cols-4' : 'grid-cols-3')}>
                     {currentOptions.map((opt) => {
                       const isSelected = subAnswers[si] === opt;
                       return (
                         <button key={opt} onClick={() => handleSelectSubAnswer(si, opt)}
-                          className={cn('py-1.5 rounded-lg text-[10px] font-bold transition border', isSelected ? '' : '')}
+                          className="py-1 rounded-md text-[10px] font-bold transition border"
                           style={isSelected
                             ? { background: OPTION_COLORS[opt], borderColor: OPTION_COLORS[opt], color: '#fff' }
                             : { background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
@@ -450,9 +471,9 @@ export function PracticeRunner() {
                 </div>
               ))}
               <button onClick={handleMultiDone}
-                className="w-full py-2.5 rounded-xl text-sm font-bold active:scale-95 transition flex items-center justify-center gap-1.5 mt-2"
+                className="w-full py-2 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5 mt-1 sticky bottom-0"
                 style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
-                <Check size={14} /> Mark Answered
+                <Check size={13} /> Mark Answered
               </button>
             </div>
           )}
@@ -474,18 +495,18 @@ export function PracticeRunner() {
           )}
         </div>
 
-        {/* === Bottom: Skip / Review Later + Rotate button === */}
-        <div className="w-full max-w-xs">
-          <div className="flex gap-3 mb-3">
+        {/* === Bottom: Skip / Review Later + Rotate button === (flexShrink: 0) */}
+        <div className="w-full max-w-xs mt-2" style={{ flexShrink: 0 }}>
+          <div className="flex gap-2 mb-2">
             <button onClick={handleSkip}
-              className="flex-1 py-2.5 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1.5"
+              className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
-              <ChevronRight size={14} /> Skip
+              <ChevronRight size={13} /> Skip
             </button>
             <button onClick={handleReviewLater}
-              className="flex-1 py-2.5 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1.5"
+              className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
               style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
-              <Flag size={14} /> Review Later
+              <Flag size={13} /> Review
             </button>
           </div>
           {/* Rotate / Lock button — matches FocusTimer gestures */}
@@ -494,17 +515,17 @@ export function PracticeRunner() {
               onPointerDown={handleRotatePointerDown}
               onPointerUp={handleRotatePointerUp}
               onPointerLeave={() => { if (rotateLongPressRef.current) { clearTimeout(rotateLongPressRef.current); rotateLongPressRef.current = null; } }}
-              className="px-3 py-2 rounded-xl font-semibold text-sm active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl font-semibold text-xs active:scale-[0.98] transition flex items-center justify-center gap-1.5"
               style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)' }}
               title={`Rotate (current: ${effectiveAngle}°${lockedOrientation !== null ? ' · locked' : ''}${tempLockAngle !== null ? ' · temp-locked' : ''})\n• Tap: rotate 90°\n• Double-tap: temp lock\n• Long-press: persistent lock`}
               aria-label="Rotate or lock orientation"
             >
               {(lockedOrientation !== null || tempLockAngle !== null) ? (
-                <Lock size={16} style={{ color: '#fbbf24', transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
+                <Lock size={14} style={{ color: '#fbbf24', transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
               ) : (
-                <RotateCw size={16} style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
+                <RotateCw size={14} style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
               )}
-              <span className="text-[10px] hidden sm:inline">{(lockedOrientation !== null || tempLockAngle !== null) ? 'Locked' : 'Rotate'}</span>
+              <span>{(lockedOrientation !== null || tempLockAngle !== null) ? 'Locked' : 'Rotate'}</span>
             </button>
           </div>
         </div>
