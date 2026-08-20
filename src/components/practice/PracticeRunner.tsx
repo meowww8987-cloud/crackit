@@ -343,16 +343,18 @@ export function PracticeRunner() {
           marginTop: '0.5rem',
         } as React.CSSProperties}>
 
-        {/* === LEFT column (portrait: top / landscape: left): Timer + stats + practice name === */}
+        {/* === LEFT column (portrait: top / landscape: left ~30%): Timer + stats + practice name + (landscape) actions === */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: isLandscape ? 'center' : 'flex-start',
-          flex: isLandscape ? '0 0 auto' : '0 0 auto',
-          width: isLandscape ? 'auto' : '100%',
+          flex: isLandscape ? '0 0 30%' : '0 0 auto',
+          width: isLandscape ? '30%' : '100%',
+          maxWidth: isLandscape ? '14rem' : 'none',
           textAlign: 'center',
-        }}>
+          gap: '0.5rem',
+        } as React.CSSProperties}>
 
         {/* === Timer + stats === (flexShrink: 0) */}
         <div className="text-center" style={{ color: '#ffffff', flexShrink: 0 }}>
@@ -386,17 +388,37 @@ export function PracticeRunner() {
           </div>
           <div className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>{activePractice.name}</div>
         </div>
+
+        {/* === Action buttons: Skip / Review Later ===
+            In LANDSCAPE: placed inside LEFT column (under timer + practice name).
+            In PORTRAIT: hidden here — rendered at the bottom of the main column instead. */}
+        {isLandscape && (
+          <div className="w-full mt-3 flex flex-col gap-2" style={{ flexShrink: 0 }}>
+            <button onClick={handleSkip}
+              className="w-full py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
+              <ChevronRight size={13} /> Skip
+            </button>
+            <button onClick={handleReviewLater}
+              className="w-full py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
+              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
+              <Flag size={13} /> Review
+            </button>
+          </div>
+        )}
         </div>{/* === END LEFT column === */}
 
-        {/* === RIGHT column (portrait: bottom / landscape: right): Options + Actions === */}
+        {/* === RIGHT column (portrait: bottom / landscape: right ~70%): Options ===
+            In landscape: takes most of the width so option buttons have plenty of
+            horizontal space (they're tapped frequently). No max-width constraint. */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'stretch',
           justifyContent: isLandscape ? 'center' : 'flex-start',
           flex: isLandscape ? '1 1 0' : '1 1 0',
-          width: isLandscape ? '50%' : '100%',
-          maxWidth: isLandscape ? '24rem' : '20rem',
+          width: isLandscape ? '70%' : '100%',
+          maxWidth: isLandscape ? 'none' : '20rem',
           minHeight: 0,
         } as React.CSSProperties}>
 
@@ -419,7 +441,11 @@ export function PracticeRunner() {
           <style>{`.practice-scroll::-webkit-scrollbar { width: 4px; } .practice-scroll::-webkit-scrollbar-track { background: transparent; } .practice-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }`}</style>
 
           {currentMode === 'single' && (
-            <div className={cn('grid gap-2', optionCount <= 4 ? 'grid-cols-2' : 'grid-cols-3')}>
+            <div className={cn('grid gap-2',
+              isLandscape
+                ? (optionCount <= 4 ? 'grid-cols-4' : 'grid-cols-4')
+                : (optionCount <= 4 ? 'grid-cols-2' : 'grid-cols-3')
+            )}>
               {currentOptions.map((opt) => {
                 const isSelected = currentQ?.userAnswer === opt;
                 return (
@@ -493,23 +519,26 @@ export function PracticeRunner() {
             </div>
           )}
         </div>
-
-        {/* === Bottom: Skip / Review Later === (flexShrink: 0) */}
-        <div className="w-full max-w-xs mt-2" style={{ flexShrink: 0 }}>
-          <div className="flex gap-2">
-            <button onClick={handleSkip}
-              className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
-              <ChevronRight size={13} /> Skip
-            </button>
-            <button onClick={handleReviewLater}
-              className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
-              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
-              <Flag size={13} /> Review
-            </button>
-          </div>
-        </div>
         </div>{/* === END RIGHT column === */}
+
+        {/* === Action buttons (PORTRAIT ONLY): Skip / Review Later at the bottom ===
+            In landscape, these are inside the LEFT column instead (under timer). */}
+        {!isLandscape && (
+          <div className="w-full max-w-xs mt-2" style={{ flexShrink: 0 }}>
+            <div className="flex gap-2">
+              <button onClick={handleSkip}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
+                <ChevronRight size={13} /> Skip
+              </button>
+              <button onClick={handleReviewLater}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
+                style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
+                <Flag size={13} /> Review
+              </button>
+            </div>
+          </div>
+        )}
         </div>{/* === END Main content area === */}
       </div>
 
