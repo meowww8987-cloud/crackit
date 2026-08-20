@@ -220,15 +220,17 @@ export function PartnerCard() {
   const myTargetsTotal = myTodayTargets.length;
   const myTargetsDone = myTodayTargets.filter((t) => t.done).length;
 
-  // My current subject/topic/chapter/lecture — prefer focus session, fall back
-  // to active practice (so "you" bar shows practice context too).
-  const myCurrentSubject = myActiveSession?.subject || activePractice?.subject || null;
-  const myCurrentChapter = myActiveSession?.chapter || activePractice?.chapter || null;
-  const myCurrentLecture = myActiveSession?.lecture || null;
-  const myCurrentTopic = myActiveSession?.topic || activePractice?.name || null;
+  // My current subject/topic/chapter/lecture — PRACTICE TAKES PRIORITY over
+  // focus session (matches partner-side syncData priority). If a focus session
+  // is lingering in the store but the user is currently in practice mode, we
+  // show the practice's subject/chapter, not the focus session's.
+  const myCurrentSubject = activePractice?.subject || myActiveSession?.subject || null;
+  const myCurrentChapter = activePractice?.chapter || myActiveSession?.chapter || null;
+  const myCurrentLecture = activePractice ? null : (myActiveSession?.lecture || null);
+  const myCurrentTopic = activePractice?.name || myActiveSession?.topic || null;
   const myIsStudying = (!!myActiveSession && !myActiveSession.paused && !myActiveSession.wasting) || !!activePractice;
-  const myIsPaused = !!myActiveSession && myActiveSession.paused;
-  const myIsWasting = !!myActiveSession && myActiveSession.wasting;
+  const myIsPaused = !!myActiveSession && myActiveSession.paused && !activePractice;
+  const myIsWasting = !!myActiveSession && myActiveSession.wasting && !activePractice;
 
   // My last test score
   const myTests = useTests.getState().tests;
@@ -295,7 +297,9 @@ export function PartnerCard() {
             ? '#9ca3af'
             : '#3b82f6';
   // "You" status — distinguishes "Practicing" from "Studying".
-  const myIsPracticing = !!activePractice && !myActiveSession;
+  // Practice takes priority: if activePractice is set, we are "Practicing X"
+  // regardless of any lingering focus session in the store.
+  const myIsPracticing = !!activePractice;
   const myStatusText = myIsPracticing
     ? `Practicing ${activePractice?.subject || ''}`
     : myIsStudying

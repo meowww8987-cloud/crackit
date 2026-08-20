@@ -204,38 +204,49 @@ export const usePartner = create<PartnerStore>()(
           ? Math.floor((Date.now() - activePractice.startedAt) / 1000)
           : 0;
 
-        // Determine which activity is "primary" — focus session takes priority
-        // (it's the more deliberate study mode), practice is the fallback.
+        // Determine which activity is "primary" for the partner card display.
+        //
+        // PRIORITY: practice > focus session > saved sessions.
+        //
+        // Why practice wins: practice mode is the most RECENT + intentional user
+        // action — the user explicitly opened Practice Setup → walked through 4
+        // steps → started practice. PracticeRunner renders on top of FocusTimer
+        // (both z-[9999], but PracticeRunner comes later in DOM). So if both are
+        // "active" in their stores, the user is currently looking at / interacting
+        // with practice, not the focus timer. A lingering focus session in the
+        // store should NOT override the practice as the "current activity".
+        //
+        // (Time accounting below still sums BOTH live times toward todaySec.)
         const hasFocus = !!activeSession;
         const hasPractice = !!activePractice;
+        const focusRunning = hasFocus && !activeSession!.paused && !activeSession!.wasting;
 
-        const isStudying = (hasFocus && !activeSession!.paused && !activeSession!.wasting) || hasPractice;
-        const isPaused = !!activeSession && activeSession.paused;  // practice can't be "paused" in the focus-timer sense
-        const isWasting = !!activeSession && activeSession.wasting;
-        const isPracticing = hasPractice && !hasFocus;  // practice shows as "Practicing" only when not also in a focus session
+        const isStudying = focusRunning || hasPractice;
+        // isPaused / isWasting only true if focus is in that state AND practice
+        // is NOT running (practice takes over as primary when active).
+        const isPaused = !!activeSession && activeSession.paused && !hasPractice;
+        const isWasting = !!activeSession && activeSession.wasting && !hasPractice;
+        // isPracticing = true when practice is the primary activity (regardless
+        // of any lingering focus session state).
+        const isPracticing = hasPractice;
 
         // todaySec = saved sessions + live focus time + live practice time.
+        // (If both are active — e.g. paused focus + running practice — we count
+        // both. liveSec is 0 when focus is paused, so this is safe.)
         const todaySec = savedTodaySec
           + (hasFocus ? liveSec : 0)
           + (hasPractice ? livePracticeSec : 0);
         const todayWastedSec = savedTodayWastedSec + (hasFocus ? liveWastedSec : 0);
 
         // === Current subject/topic/chapter/lecture ===
-        // Priority: active focus session > active practice > most recent saved session today.
+        // Priority: active practice > active focus session > most recent saved session today.
         let lastSubject: string | null = null;
         let lastChapter: string | null = null;
         let lastLecture: string | null = null;
         let lastTopic: string | null = null;
         let activityType: 'focus' | 'practice' | null = null;
 
-        if (hasFocus && activeSession!.subject) {
-          // Focus session is primary — use its subject/chapter/lecture/topic.
-          lastSubject = activeSession!.subject;
-          lastChapter = activeSession!.chapter || null;
-          lastLecture = activeSession!.lecture || null;
-          lastTopic = activeSession!.topic || null;
-          activityType = 'focus';
-        } else if (hasPractice) {
+        if (hasPractice) {
           // Practice is primary — use its subject/chapter; the practice name
           // (e.g. "Physics · ∞Q") goes into lastTopic so the partner sees context.
           lastSubject = activePractice!.subject || null;
@@ -243,6 +254,13 @@ export const usePartner = create<PartnerStore>()(
           lastLecture = null;
           lastTopic = activePractice!.name || null;
           activityType = 'practice';
+        } else if (hasFocus && activeSession!.subject) {
+          // Focus session is secondary — use its subject/chapter/lecture/topic.
+          lastSubject = activeSession!.subject;
+          lastChapter = activeSession!.chapter || null;
+          lastLecture = activeSession!.lecture || null;
+          lastTopic = activeSession!.topic || null;
+          activityType = 'focus';
         } else {
           // No live activity — fall back to most recent saved session today
           // so the partner card still shows context.
@@ -256,11 +274,12 @@ export const usePartner = create<PartnerStore>()(
           activityType = null;
         }
 
-        // currentSessionSec = whichever live session is active right now.
-        const currentSessionSec = hasFocus
-          ? liveSec
-          : hasPractice
-            ? livePracticeSec
+        // currentSessionSec = whichever live session is the primary activity.
+        // Practice takes priority (matches the display priority above).
+        const currentSessionSec = hasPractice
+          ? livePracticeSec
+          : hasFocus
+            ? liveSec
             : 0;
 
         // === Today's targets (done / total) ===
