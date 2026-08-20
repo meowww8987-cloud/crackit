@@ -276,12 +276,11 @@ export function PracticeRunner() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui"
       style={{ background: '#000000' }}>
-      {/* === Centering wrapper — matches FocusTimer EXACTLY ===
-          Uses flex centering (NOT translate) which is more stable. */}
+      {/* === Centering wrapper — matches FocusTimer EXACTLY === */}
       <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-      {/* === Inner content — rotated to fill viewport ===
-          100vmin × 100vmax + rotate(angle) only (NO translate).
-          The flex centering wrapper above handles centering. */}
+      {/* === Inner content — SIMPLE single column (no nested LEFT/RIGHT split)
+          that rotates as a unit. This is the KEY to smooth rotation —
+          no layout reflow during the rotation animation. */}
       <div style={{
         width: '100vmin',
         height: '100vmax',
@@ -289,18 +288,17 @@ export function PracticeRunner() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: isLandscape ? '1rem 1.5rem' : '1.5rem 1rem',
-        paddingTop: isLandscape ? '1rem' : 'calc(env(safe-area-inset-top, 0px) + 1.5rem)',
-        paddingBottom: isLandscape ? '1rem' : 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
+        padding: '1.5rem 1rem',
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
         transform: `rotate(${effectiveAngle}deg)`,
         transformOrigin: 'center center',
         transition: 'transform 0.3s ease',
         boxSizing: 'border-box',
         overflow: 'hidden',
       } as React.CSSProperties}>
-        {/* === Top bar: question pills + hamburger menu ===
-            Always at the top, full width. flexShrink: 0. */}
-        <div className="w-full max-w-2xl flex items-start justify-between gap-2" style={{ flexShrink: 0 }}>
+        {/* === Top bar: question pills + hamburger menu === */}
+        <div className="w-full max-w-xs flex items-start justify-between gap-2" style={{ flexShrink: 0 }}>
           <div className="flex-1 min-w-0 flex flex-wrap gap-1 justify-start max-w-[calc(100%-50px)]">
             {visibleQuestions.map((q, i) => (
               <div key={i} className={cn('w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold transition', i === currentIdx && 'ring-2 ring-white')}
@@ -316,44 +314,14 @@ export function PracticeRunner() {
           </button>
         </div>
 
-        {/* === Main content area ===
-            - Portrait: single column (timer on top → options → actions)
-            - Landscape: 2 columns (timer+practice-name on LEFT, options+actions on RIGHT)
-            flex: 1 + minHeight: 0 so it takes remaining space after top bar */}
-        <div style={{
-          flex: '1 1 0',
-          minHeight: 0,
-          display: 'flex',
-          flexDirection: isLandscape ? 'row' : 'column',
-          alignItems: isLandscape ? 'stretch' : 'center',
-          justifyContent: isLandscape ? 'space-between' : 'flex-start',
-          gap: isLandscape ? '1rem' : 0,
-          width: '100%',
-          maxWidth: isLandscape ? 'none' : '20rem',
-          marginTop: '0.5rem',
-        } as React.CSSProperties}>
-
-        {/* === LEFT column (portrait: top / landscape: left ~30%): Timer + stats + practice name + (landscape) actions === */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: isLandscape ? 'center' : 'flex-start',
-          flex: isLandscape ? '0 0 30%' : '0 0 auto',
-          width: isLandscape ? '30%' : '100%',
-          maxWidth: isLandscape ? '14rem' : 'none',
-          textAlign: 'center',
-          gap: '0.5rem',
-        } as React.CSSProperties}>
-
-        {/* === Timer + stats === (flexShrink: 0) */}
+        {/* === Timer + stats === */}
         <div className="text-center" style={{ color: '#ffffff', flexShrink: 0 }}>
           <div className="text-[10px] uppercase tracking-[0.2em] mb-0.5 flex items-center justify-center gap-1.5 flex-wrap" style={{ color: 'rgba(255,255,255,0.4)' }}>
             <span>Question {currentIdx + 1}{activePractice.questionCount > 0 ? ` of ${activePractice.questionCount}` : ''}</span>
             {currentMode !== 'single' && (
               <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
                 style={{ background: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
-                {currentMode === 'multi' ? `${subCount} sub` : 'Written'}
+                {currentMode === 'multi' ? `${subCount} sub` : currentMode === 'multi-correct' ? 'Multi-Correct' : 'Written'}
               </span>
             )}
             {optionCount !== 4 && currentMode !== 'written' && (
@@ -369,8 +337,8 @@ export function PracticeRunner() {
               </span>
             )}
           </div>
-          <div className="text-3xl sm:text-4xl font-bold tabular mb-0.5" style={{ color: '#ffffff' }}>{formatHMS(questionElapsed)}</div>
-          <div className="text-xs sm:text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Total: <span className="tabular" style={{ color: '#fbbf24' }}>{formatHMS(totalElapsed)}</span>{timeLimitSec > 0 && <span className="ml-2">· Left: <span className="tabular" style={{ color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.4)' }}>{formatHMS(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}</div>
+          <div className="text-3xl font-bold tabular mb-0.5" style={{ color: '#ffffff' }}>{formatHMS(questionElapsed)}</div>
+          <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Total: <span className="tabular" style={{ color: '#fbbf24' }}>{formatHMS(totalElapsed)}</span>{timeLimitSec > 0 && <span className="ml-2">· Left: <span className="tabular" style={{ color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.4)' }}>{formatHMS(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}</div>
           <div className="flex items-center justify-center gap-3 mt-1 text-[11px]">
             <span style={{ color: '#4ade80' }}>✓ {answeredCount}</span>
             <span style={{ color: 'rgba(255,255,255,0.4)' }}>→ {skippedCount}</span>
@@ -379,63 +347,20 @@ export function PracticeRunner() {
           <div className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>{activePractice.name}</div>
         </div>
 
-        {/* === Action buttons: Skip / Review Later ===
-            In LANDSCAPE: placed inside LEFT column (under timer + practice name).
-            In PORTRAIT: hidden here — rendered at the bottom of the main column instead. */}
-        {isLandscape && (
-          <div className="w-full mt-3 flex flex-col gap-2" style={{ flexShrink: 0 }}>
-            <button onClick={handleSkip}
-              className="w-full py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
-              <ChevronRight size={13} /> Skip
-            </button>
-            <button onClick={handleReviewLater}
-              className="w-full py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
-              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
-              <Flag size={13} /> Review
-            </button>
-          </div>
-        )}
-        </div>{/* === END LEFT column === */}
-
-        {/* === RIGHT column (portrait: bottom / landscape: right ~70%): Options ===
-            In landscape: takes most of the width so option buttons have plenty of
-            horizontal space (they're tapped frequently). No max-width constraint. */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'stretch',
-          justifyContent: isLandscape ? 'center' : 'flex-start',
-          flex: isLandscape ? '1 1 0' : '1 1 0',
-          width: isLandscape ? '70%' : '100%',
-          maxWidth: isLandscape ? 'none' : '20rem',
-          minHeight: 0,
-        } as React.CSSProperties}>
-
-        {/* === Question options — flex: 1 + SCROLLABLE ===
-            Takes remaining vertical space. When content exceeds available
-            height (e.g. 6 sub-questions, 8 options), it scrolls vertically
-            instead of overflowing off-screen. */}
-        <div className="w-full flex flex-col"
+        {/* === Question options — flex: 1 + SCROLLABLE === */}
+        <div className="w-full max-w-xs flex flex-col"
           style={{
             flex: '1 1 0',
-            minHeight: 0,  // critical for flexbox overflow to work
+            minHeight: 0,
             overflowY: 'auto',
             overflowX: 'hidden',
             WebkitOverflowScrolling: 'touch',
-            msOverflowStyle: 'none',
             scrollbarWidth: 'thin',
             scrollbarColor: 'rgba(255,255,255,0.2) transparent',
           } as React.CSSProperties}>
-          {/* Hide scrollbar for cleaner look but keep functionality */}
-          <style>{`.practice-scroll::-webkit-scrollbar { width: 4px; } .practice-scroll::-webkit-scrollbar-track { background: transparent; } .practice-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }`}</style>
 
           {currentMode === 'single' && (
-            <div className={cn('grid gap-2',
-              isLandscape
-                ? (optionCount <= 4 ? 'grid-cols-4' : 'grid-cols-4')
-                : (optionCount <= 4 ? 'grid-cols-2' : 'grid-cols-3')
-            )}>
+            <div className={cn('grid gap-2', optionCount <= 4 ? 'grid-cols-2' : 'grid-cols-3')}>
               {currentOptions.map((opt) => {
                 const isSelected = currentQ?.userAnswer === opt;
                 return (
@@ -503,11 +428,8 @@ export function PracticeRunner() {
                   const isSelected = currentQ?.multiCorrectUserAnswers?.[oi] === true;
                   return (
                     <button key={opt}
-                      onClick={() => {
-                        if (haptics) vibrate(10);
-                        toggleMultiCorrectUserAnswer(currentIdx, oi);
-                      }}
-                      className={cn('flex items-center justify-center gap-2 py-3 rounded-2xl border-2 active:scale-95 transition')}
+                      onClick={() => { if (haptics) vibrate(10); toggleMultiCorrectUserAnswer(currentIdx, oi); }}
+                      className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 active:scale-95 transition"
                       style={isSelected
                         ? { borderColor: '#ffffff', background: `${OPTION_COLORS[opt]}30` }
                         : { borderColor: `${OPTION_COLORS[opt]}40`, background: `${OPTION_COLORS[opt]}15` }}>
@@ -543,27 +465,22 @@ export function PracticeRunner() {
             </div>
           )}
         </div>
-        </div>{/* === END RIGHT column === */}
 
-        {/* === Action buttons (PORTRAIT ONLY): Skip / Review Later at the bottom ===
-            In landscape, these are inside the LEFT column instead (under timer). */}
-        {!isLandscape && (
-          <div className="w-full max-w-xs mt-2" style={{ flexShrink: 0 }}>
-            <div className="flex gap-2">
-              <button onClick={handleSkip}
-                className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
-                <ChevronRight size={13} /> Skip
-              </button>
-              <button onClick={handleReviewLater}
-                className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
-                style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
-                <Flag size={13} /> Review
-              </button>
-            </div>
+        {/* === Action buttons: Skip / Review === */}
+        <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>
+          <div className="flex gap-2">
+            <button onClick={handleSkip}
+              className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
+              <ChevronRight size={13} /> Skip
+            </button>
+            <button onClick={handleReviewLater}
+              className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
+              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
+              <Flag size={13} /> Review
+            </button>
           </div>
-        )}
-        </div>{/* === END Main content area === */}
+        </div>
       </div>{/* === END inner rotated content === */}
       </div>{/* === END centering wrapper === */}
 
