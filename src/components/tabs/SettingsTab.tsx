@@ -905,6 +905,53 @@ function DataSection({ s }: { s: Settings }) {
     }
   };
 
+  /** Reinstall PWA — clears SW + all caches (preserves localStorage data).
+   *  Use this when the app manifest or core assets have changed and the
+   *  installed PWA is using stale cached versions. After reinstall, the
+   *  browser fetches fresh HTML + JS + manifest on next load.
+   *
+   *  CRITICAL: localStorage is NOT touched — all your data (sessions,
+   *  settings, history, syllabus, etc.) stays intact. */
+  const [reinstalling, setReinstalling] = useState(false);
+  const reinstallPWA = async () => {
+    const confirmed = confirm(
+      'Reinstall PWA (keep data)?\n\n' +
+      'This will:\n' +
+      '• Unregister the service worker\n' +
+      '• Clear all cached files\n' +
+      '• Reload the page (fresh assets + manifest)\n\n' +
+      'Your DATA is safe — sessions, settings, history, syllabus all preserved (stored in localStorage, not touched).\n\n' +
+      'After reload, you may need to "Add to Home Screen" again if the old install is stale.'
+    );
+    if (!confirmed) return;
+    setReinstalling(true);
+    try {
+      // 1. Unregister all service workers
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+      }
+      // 2. Clear all caches (HTTP caches, NOT localStorage)
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      // 3. Clear sessionStorage (transient, not user data)
+      try { sessionStorage.clear(); } catch {}
+      // 4. Don't touch localStorage — that's where user data lives!
+      // 5. Reload with cache-busting to force fresh fetch
+      const url = window.location.origin + window.location.pathname + '?reinstalled=' + Date.now();
+      window.location.href = url;
+    } catch (e) {
+      console.warn('[reinstall] error:', e);
+      setReinstalling(false);
+      alert('Reinstall failed. Try closing all app tabs and reopening, or use "Hard Refresh" instead.');
+    }
+  };
+
+
   return (
     <>
       <Row label="Export Backup">
@@ -984,6 +1031,22 @@ function DataSection({ s }: { s: Settings }) {
             Hard Refresh
           </button>
         </div>
+        <button
+          onClick={reinstallPWA}
+          disabled={reinstalling}
+          className="w-full mt-2 py-2.5 rounded-xl bg-blue-500/15 text-blue-400 text-xs font-bold active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-1.5"
+        >
+          {reinstalling ? (
+            <><span className="inline-block w-3 h-3 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" /> Reinstalling…</>
+          ) : (
+            <>🔄 Reinstall PWA (Keep Data)</>
+          )}
+        </button>
+        <p className="text-[10px] text-white/40 mt-1">
+          Use this if landscape mode, theme, or other features aren't updating.
+          Clears cached files + service worker, reloads with fresh assets.
+          <strong className="text-white/60"> Your data is safe.</strong>
+        </p>
       </Row>
 
       <Row label="Install as App">

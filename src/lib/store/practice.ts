@@ -15,11 +15,13 @@ export interface PracticeQuestion {
   conceptNotes: string;
   formulaNotes: string;
   /** Question mode — set per-question via the hamburger menu mid-practice.
-   *  - 'single'  (default): one MCQ with N options (default N=4)
-   *  - 'multi'   : one statement/scenario with N sub-MCQs, each with M options
-   *  - 'written' : long-answer / numerical — user writes on paper, just marks done
+   *  - 'single'        (default): one MCQ with N options, exactly 1 correct
+   *  - 'multi'         : one statement/scenario with N sub-MCQs, each with M options
+   *  - 'multi-correct' : one question with N options, MULTIPLE can be correct (AIIMS format)
+   *                      e.g. "Dog is…" → A) animal B) human friend C) military — A,B,C all correct
+   *  - 'written'       : long-answer / numerical — user writes on paper, just marks done
    *  Stored so the report + edit phase can render the right UI per question. */
-  mode?: 'single' | 'multi' | 'written';
+  mode?: 'single' | 'multi' | 'multi-correct' | 'written';
   /** For 'multi' mode: how many sub-questions (default 3). User-adjustable 1-6. */
   subQuestionCount?: number;
   /** For 'multi' mode: user's selected option per sub-question.
@@ -27,6 +29,12 @@ export interface PracticeQuestion {
   subUserAnswers?: (string | null)[];
   /** For 'multi' mode: correct option per sub-question (set during review). */
   subCorrectAnswers?: (string | null)[];
+  /** For 'multi-correct' mode: which options the user selected as correct
+   *  during practice. Length = optionCount. true = selected. */
+  multiCorrectUserAnswers?: boolean[];
+  /** For 'multi-correct' mode: which options are actually correct (set during
+   *  review). Length = optionCount. true = correct. */
+  multiCorrectAnswers?: boolean[];
   /** For 'written' mode: brief note about the answer (optional, user can fill
    *  in during review). The actual written answer stays on paper. */
   writtenAnswer?: string;
@@ -106,12 +114,18 @@ interface PracticeStore {
    *  - 'multi'   → N sub-MCQs each with A/B/C/D (default N=3)
    *  - 'written' → just mark as done (answer is on paper)
    *  Persists the mode on the question + initializes sub-arrays for multi mode. */
-  setQuestionMode: (questionIndex: number, mode: 'single' | 'multi' | 'written', subCount?: number) => void;
+  setQuestionMode: (questionIndex: number, mode: 'single' | 'multi' | 'multi-correct' | 'written', subCount?: number) => void;
   /** For multi mode: record the user's answer for one sub-question. */
   setSubAnswer: (questionIndex: number, subIndex: number, answer: string | null) => void;
   /** Change the number of options for the current question (2-8).
    *  Some questions have 5+ options (multi-correct, match-the-following, etc.). */
   setOptionCount: (questionIndex: number, count: number) => void;
+  /** For multi-correct mode: toggle one option's selected state during practice. */
+  toggleMultiCorrectUserAnswer: (questionIndex: number, optionIndex: number) => void;
+  /** For multi-correct mode: set the correct set during review (per-option toggle). */
+  toggleMultiCorrectAnswer: (sessionId: string, questionIndex: number, optionIndex: number) => void;
+  /** For multi mode: set the correct answer for one sub-question during review. */
+  setSubCorrectAnswer: (sessionId: string, questionIndex: number, subIndex: number, answer: string | null) => void;
 
   getRecent: (n: number) => PracticeSession[];
   getForDate: (date: string) => PracticeSession[];
@@ -395,17 +409,34 @@ export const usePractice = create<PracticeStore>()(
           updated.subUserAnswers = Array.from({ length: n }, (_, i) => existing[i] ?? null);
           const existingCorrect = q.subCorrectAnswers ?? [];
           updated.subCorrectAnswers = Array.from({ length: n }, (_, i) => existingCorrect[i] ?? null);
+          // Clear multi-correct fields
+          updated.multiCorrectUserAnswers = undefined;
+          updated.multiCorrectAnswers = undefined;
+        } else if (mode === 'multi-correct') {
+          // Initialize multiCorrectUserAnswers to all false (none selected).
+          const optN = q.optionCount ?? 4;
+          const existing = q.multiCorrectUserAnswers ?? [];
+          updated.multiCorrectUserAnswers = Array.from({ length: optN }, (_, i) => existing[i] ?? false);
+          // Clear sub-mode fields
+          updated.subQuestionCount = undefined;
+          updated.subUserAnswers = undefined;
+          updated.subCorrectAnswers = undefined;
+          updated.writtenAnswer = undefined;
         } else if (mode === 'single') {
           // Clear multi-mode fields when reverting to single.
           updated.subQuestionCount = undefined;
           updated.subUserAnswers = undefined;
           updated.subCorrectAnswers = undefined;
           updated.writtenAnswer = undefined;
+          updated.multiCorrectUserAnswers = undefined;
+          updated.multiCorrectAnswers = undefined;
         } else if (mode === 'written') {
           // Clear multi-mode fields too.
           updated.subQuestionCount = undefined;
           updated.subUserAnswers = undefined;
           updated.subCorrectAnswers = undefined;
+          updated.multiCorrectUserAnswers = undefined;
+          updated.multiCorrectAnswers = undefined;
           if (!updated.writtenAnswer) updated.writtenAnswer = '';
         }
         questions[questionIndex] = updated;
@@ -453,14 +484,112 @@ export const usePractice = create<PracticeStore>()(
         const correctAnswerLetter = q.correctAnswer;
         const correctAnswerIdx = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 65 : -1;
         const clearedCorrectAnswer = (correctAnswerIdx >= n) ? null : correctAnswerLetter;
+        // Resize multiCorrect arrays if in multi-correct mode
+        let multiUserAns = q.multiCorrectUserAnswers;
+        let multiCorr = q.multiCorrectAnswers;
+        if (q.mode === 'multi-correct') {
+          const oldUser = q.multiCorrectUserAnswers ?? [];
+          multiUserAns = Array.from({ length: n }, (_, i) => oldUser[i] ?? false);
+          const oldCorr = q.multiCorrectAnswers ?? [];
+          multiCorr = Array.from({ length: n }, (_, i) => oldCorr[i] ?? false);
+        }
         questions[questionIndex] = {
           ...q,
           optionCount: n,
           subOptionCount: n,
           userAnswer: clearedUserAnswer,
           correctAnswer: clearedCorrectAnswer,
+          multiCorrectUserAnswers: multiUserAns,
+          multiCorrectAnswers: multiCorr,
         };
         set({ activePractice: { ...session, questions } });
+      },
+
+      /** Multi-correct mode: toggle one option's selected state during practice. */
+      toggleMultiCorrectUserAnswer: (questionIndex, optionIndex) => {
+        const session = get().activePractice;
+        if (!session) return;
+        const questions = [...session.questions];
+        if (questionIndex < 0 || questionIndex >= questions.length) return;
+        const q = questions[questionIndex];
+        const arr = [...(q.multiCorrectUserAnswers ?? [])];
+        while (arr.length <= optionIndex) arr.push(false);
+        arr[optionIndex] = !arr[optionIndex];
+        questions[questionIndex] = { ...q, multiCorrectUserAnswers: arr };
+        set({ activePractice: { ...session, questions } });
+      },
+
+      /** Multi-correct mode: toggle one option's correct state during review.
+       *  Operates on a SAVED session in history (not activePractice). */
+      toggleMultiCorrectAnswer: (sessionId, questionIndex, optionIndex) => {
+        set((s) => ({
+          history: s.history.map((session) => {
+            if (session.id !== sessionId) return session;
+            const questions = [...session.questions];
+            if (questionIndex < 0 || questionIndex >= questions.length) return session;
+            const q = questions[questionIndex];
+            const arr = [...(q.multiCorrectAnswers ?? [])];
+            while (arr.length <= optionIndex) arr.push(false);
+            arr[optionIndex] = !arr[optionIndex];
+            // Re-evaluate result: correct only if user's selection EXACTLY matches
+            // the correct set (all correct options selected, no wrong ones).
+            const userArr = q.multiCorrectUserAnswers ?? [];
+            const optN = q.optionCount ?? 4;
+            const userSet = Array.from({ length: optN }, (_, i) => userArr[i] ?? false);
+            const corrSet = Array.from({ length: optN }, (_, i) => arr[i] ?? false);
+            const isCorrect = userSet.every((v, i) => v === corrSet[i]);
+            const result = isCorrect ? 'correct' as const : 'wrong' as const;
+            questions[questionIndex] = {
+              ...q, multiCorrectAnswers: arr, result,
+              correctAnswer: arr.map((v, i) => v ? String.fromCharCode(65 + i) : null).filter(Boolean).join(',') || null,
+            };
+            // Recompute session totals
+            const correct = questions.filter(qq => qq.result === 'correct').length;
+            const wrong = questions.filter(qq => qq.result === 'wrong').length;
+            const unmarked = questions.filter(qq => qq.result === 'unmarked').length;
+            const totalMarked = correct + wrong;
+            const accuracy = totalMarked > 0 ? Math.round((correct / totalMarked) * 100) : 0;
+            return { ...session, questions, correctCount: correct, wrongCount: wrong, unmarkedCount: unmarked, accuracy };
+          }),
+        }));
+      },
+
+      /** Multi mode: set the correct answer for one sub-question during review.
+       *  Operates on a SAVED session in history (not activePractice). */
+      setSubCorrectAnswer: (sessionId, questionIndex, subIndex, answer) => {
+        set((s) => ({
+          history: s.history.map((session) => {
+            if (session.id !== sessionId) return session;
+            const questions = [...session.questions];
+            if (questionIndex < 0 || questionIndex >= questions.length) return session;
+            const q = questions[questionIndex];
+            const subArr = [...(q.subCorrectAnswers ?? [])];
+            while (subArr.length <= subIndex) subArr.push(null);
+            subArr[subIndex] = answer;
+            // Re-evaluate parent result based on ALL sub-answers
+            const userSubs = q.subUserAnswers ?? [];
+            const subN = q.subQuestionCount ?? 0;
+            let allCorrect = true;
+            let anyMarked = false;
+            for (let i = 0; i < subN; i++) {
+              const u = userSubs[i];
+              const c = subArr[i];
+              if (u && c) {
+                anyMarked = true;
+                if (u !== c) allCorrect = false;
+              }
+            }
+            const result = !anyMarked ? 'unmarked' as const : allCorrect ? 'correct' as const : 'wrong' as const;
+            questions[questionIndex] = { ...q, subCorrectAnswers: subArr, result };
+            // Recompute session totals
+            const correct = questions.filter(qq => qq.result === 'correct').length;
+            const wrong = questions.filter(qq => qq.result === 'wrong').length;
+            const unmarked = questions.filter(qq => qq.result === 'unmarked').length;
+            const totalMarked = correct + wrong;
+            const accuracy = totalMarked > 0 ? Math.round((correct / totalMarked) * 100) : 0;
+            return { ...session, questions, correctCount: correct, wrongCount: wrong, unmarkedCount: unmarked, accuracy };
+          }),
+        }));
       },
 
       getRecent: (n) => {

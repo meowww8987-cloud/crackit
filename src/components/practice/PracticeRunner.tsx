@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, X, ChevronRight, Flag, Save, Edit, Clock, TrendingUp, Pause,
   Menu, X as XIcon, Play, FileText, ListTree, PenLine, AlertCircle, Plus, Minus,
+  CheckSquare, Square,
 } from 'lucide-react';
 import { usePractice, type PracticeSession, type PracticeQuestion } from '@/lib/store/practice';
 import { useHistory } from '@/lib/store/history';
 import { useSettings } from '@/lib/store/settings';
+import { useDeviceOrientation } from '@/lib/hooks/useDeviceOrientation';
 import { formatHMS, formatHM, cn, vibrate, todayKey } from '@/lib/utils';
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -17,26 +19,7 @@ const OPTION_COLORS: Record<string, string> = {
   E: '#a855f7', F: '#06b6d4', G: '#ec4899', H: '#84cc16',
 };
 
-type QuestionMode = 'single' | 'multi' | 'written';
-
-/** Hook to detect viewport orientation — returns true when viewport is
- *  wider than it is tall (landscape). Updates on window resize. */
-function useViewportLandscape(): boolean {
-  const [isLandscape, setIsLandscape] = useState(false);
-  useEffect(() => {
-    const check = () => {
-      setIsLandscape(window.innerWidth > window.innerHeight);
-    };
-    check();
-    window.addEventListener('resize', check);
-    window.addEventListener('orientationchange', check);
-    return () => {
-      window.removeEventListener('resize', check);
-      window.removeEventListener('orientationchange', check);
-    };
-  }, []);
-  return isLandscape;
-}
+type QuestionMode = 'single' | 'multi' | 'multi-correct' | 'written';
 
 export function PracticeRunner() {
   const activePractice = usePractice((s) => s.activePractice);
@@ -50,14 +33,19 @@ export function PracticeRunner() {
   const setQuestionMode = usePractice((s) => s.setQuestionMode);
   const setSubAnswer = usePractice((s) => s.setSubAnswer);
   const setOptionCount = usePractice((s) => s.setOptionCount);
+  const toggleMultiCorrectUserAnswer = usePractice((s) => s.toggleMultiCorrectUserAnswer);
+  const toggleMultiCorrectAnswer = usePractice((s) => s.toggleMultiCorrectAnswer);
+  const setSubCorrectAnswer = usePractice((s) => s.setSubCorrectAnswer);
   const history = usePractice((s) => s.history);
   const haptics = useSettings((s) => s.haptics);
+  const lockedOrientation = useSettings((s) => s.lockedOrientation);
 
-  // === Viewport orientation — drives layout, NOT rotation ===
-  // The browser already handles device rotation (the viewport becomes
-  // landscape when the user tilts their phone). We just detect this and
-  // apply a 2-column layout that uses the wide viewport properly.
-  const isLandscape = useViewportLandscape();
+  // === CSS rotation for landscape (works even when PWA manifest is locked) ===
+  // The browser/OS may not rotate the webview (manifest lock), so we detect
+  // device tilt via DeviceOrientationEvent + apply CSS rotation ourselves.
+  // Text will be sideways but layout uses the wide viewport.
+  const { effectiveAngle } = useDeviceOrientation({ lockedOrientation });
+  const isLandscape = effectiveAngle === 90 || effectiveAngle === 270;
 
   const [, setTick] = useState(0);
   const questionStartRef = useRef(Date.now());
@@ -263,7 +251,7 @@ export function PracticeRunner() {
     return <ReportPhase session={reviewSession} onEdit={() => setPhase('edit')} onClose={() => { setPhase('practicing'); setReviewSessionId(null); }} haptics={haptics} />;
   }
   if (phase === 'edit' && reviewSession) {
-    return <EditPhase session={reviewSession} markCorrectAnswer={markCorrectAnswer} saveNotes={saveNotes} onBack={() => setPhase('report')} onClose={() => { setPhase('practicing'); setReviewSessionId(null); }} haptics={haptics} />;
+    return <EditPhase session={reviewSession} markCorrectAnswer={markCorrectAnswer} saveNotes={saveNotes} onBack={() => setPhase('report')} onClose={() => { setPhase('practicing'); setReviewSessionId(null); }} haptics={haptics} toggleMultiCorrectAnswer={toggleMultiCorrectAnswer} setSubCorrectAnswer={setSubCorrectAnswer} />;
   }
   if (!activePractice) return null;
 
@@ -288,25 +276,29 @@ export function PracticeRunner() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui"
       style={{ background: '#000000' }}>
-      {/* === Inner content — orientation-aware layout (NO rotation) ===
-          - Portrait: single column (timer on top, options below, actions at bottom)
-          - Landscape: 2-column row (timer+stats on LEFT, options+actions on RIGHT)
-          The browser already handles device rotation — when the user tilts their
-          phone, the viewport becomes landscape (width > height) and we detect it
-          via the useViewportLandscape hook (resize + orientationchange events). */}
+      {/* === Inner content — CSS-rotated to fill viewport in landscape ===
+          When device is tilted 90°, we rotate the inner div to match.
+          Uses 100vmin × 100vmax + translate(-50%, -50%) rotate(angle) so the
+          visual rectangle is centered + fills the viewport after rotation.
+          This works EVEN when the PWA manifest is locked to portrait. */}
       <div style={{
-        width: '100%',
-        height: '100%',
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        width: '100vmin',
+        height: '100vmax',
         display: 'flex',
-        flexDirection: isLandscape ? 'row' : 'column',
-        alignItems: isLandscape ? 'stretch' : 'center',
-        justifyContent: isLandscape ? 'space-between' : 'flex-start',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         padding: isLandscape ? '1rem 1.5rem' : '1.5rem 1rem',
         paddingTop: isLandscape ? '1rem' : 'calc(env(safe-area-inset-top, 0px) + 1.5rem)',
         paddingBottom: isLandscape ? '1rem' : 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
+        transform: `translate(-50%, -50%) rotate(${effectiveAngle}deg)`,
+        transformOrigin: 'center center',
+        transition: 'transform 0.3s ease',
         boxSizing: 'border-box',
         overflow: 'hidden',
-        gap: isLandscape ? '1rem' : 0,
       } as React.CSSProperties}>
         {/* === Top bar: question pills + hamburger menu ===
             Always at the top, full width. flexShrink: 0. */}
@@ -503,6 +495,40 @@ export function PracticeRunner() {
             </div>
           )}
 
+          {currentMode === 'multi-correct' && (
+            <div className="space-y-2">
+              <p className="text-[10px] text-center mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                Multi-correct — tap ALL correct options, then mark answered
+              </p>
+              <div className={cn('grid gap-2', optionCount <= 4 ? 'grid-cols-2' : 'grid-cols-3')}>
+                {currentOptions.map((opt, oi) => {
+                  const isSelected = currentQ?.multiCorrectUserAnswers?.[oi] === true;
+                  return (
+                    <button key={opt}
+                      onClick={() => {
+                        if (haptics) vibrate(10);
+                        toggleMultiCorrectUserAnswer(currentIdx, oi);
+                      }}
+                      className={cn('flex items-center justify-center gap-2 py-3 rounded-2xl border-2 active:scale-95 transition')}
+                      style={isSelected
+                        ? { borderColor: '#ffffff', background: `${OPTION_COLORS[opt]}30` }
+                        : { borderColor: `${OPTION_COLORS[opt]}40`, background: `${OPTION_COLORS[opt]}15` }}>
+                      {isSelected
+                        ? <CheckSquare size={16} style={{ color: OPTION_COLORS[opt] }} />
+                        : <Square size={16} style={{ color: `${OPTION_COLORS[opt]}80` }} />}
+                      <span className="text-sm font-bold" style={{ color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.6)' }}>{opt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <button onClick={handleMultiDone}
+                className="w-full py-2.5 rounded-xl text-sm font-bold active:scale-95 transition flex items-center justify-center gap-1.5 mt-2"
+                style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
+                <Check size={14} /> Mark Answered
+              </button>
+            </div>
+          )}
+
           {currentMode === 'written' && (
             <div className="space-y-2">
               <div className="rounded-xl p-4 text-center"
@@ -680,12 +706,14 @@ function PracticeMenu({
                   onIncrement={() => onAdjustSubCount(1)}
                 />
               )}
+              <MenuOption icon={CheckSquare} title="Multi-Correct (AIIMS)" desc="Multiple options can all be correct"
+                active={currentMode === 'multi-correct'} onClick={() => onSetMode('multi-correct')} color="#a855f7" />
               <MenuOption icon={PenLine} title="Written / Numerical" desc="Long answer on paper"
                 active={currentMode === 'written'} onClick={() => onSetMode('written')} color="#f59e0b" />
             </div>
           </div>
 
-          {/* === Section 2: Options count (applies to single + multi, NOT written) === */}
+          {/* === Section 2: Options count (applies to single + multi + multi-correct, NOT written) === */}
           {currentMode !== 'written' && (
             <div>
               <div className="text-[10px] uppercase tracking-wide font-bold mb-2 flex items-center gap-1"
@@ -926,6 +954,16 @@ function ReportPhase({ session, onEdit, onClose, haptics }: {
                     {mode === 'written' && <span className="ml-1.5 text-amber-500">written</span>}
                     {mode === 'single' && q.userAnswer && <span className="ml-1" style={{ color: textColor }}>You: {q.userAnswer}</span>}
                     {mode === 'single' && q.correctAnswer && <span className="ml-1" style={{ color }}>Ans: {q.correctAnswer}</span>}
+                    {mode === 'multi-correct' && q.multiCorrectUserAnswers && (
+                      <span className="ml-1" style={{ color: textColor }}>
+                        You: {q.multiCorrectUserAnswers.map((v, i) => v ? String.fromCharCode(65 + i) : null).filter(Boolean).join(',') || '—'}
+                      </span>
+                    )}
+                    {mode === 'multi-correct' && q.multiCorrectAnswers && (
+                      <span className="ml-1" style={{ color }}>
+                        Ans: {q.multiCorrectAnswers.map((v, i) => v ? String.fromCharCode(65 + i) : null).filter(Boolean).join(',') || '—'}
+                      </span>
+                    )}
                   </div>
                   {q.conceptNotes && <div className="text-[9px] truncate" style={{ color: '#b45309' }}>📝 {q.conceptNotes}</div>}
                 </div>
@@ -953,13 +991,15 @@ function ReportPhase({ session, onEdit, onClose, haptics }: {
 }
 
 // ===== EDIT PHASE =====
-function EditPhase({ session, markCorrectAnswer, saveNotes, onBack, onClose, haptics }: {
+function EditPhase({ session, markCorrectAnswer, saveNotes, onBack, onClose, haptics, toggleMultiCorrectAnswer, setSubCorrectAnswer }: {
   session: PracticeSession;
   markCorrectAnswer: (sessionId: string, questionIndex: number, correctAnswer: string | null) => void;
   saveNotes: (sessionId: string, questionIndex: number, conceptNotes: string, formulaNotes: string) => void;
   onBack: () => void;
   onClose: () => void;
   haptics: boolean;
+  toggleMultiCorrectAnswer: (sessionId: string, questionIndex: number, optionIndex: number) => void;
+  setSubCorrectAnswer: (sessionId: string, questionIndex: number, subIndex: number, answer: string | null) => void;
 }) {
   const [expandedQ, setExpandedQ] = useState<number | null>(null);
   const [conceptDraft, setConceptDraft] = useState('');
@@ -999,19 +1039,139 @@ function EditPhase({ session, markCorrectAnswer, saveNotes, onBack, onClose, hap
         <p className="text-xs mb-3 text-center" style={{ color: subTextColor }}>Tap A/B/C/D to mark correct answer. Tap + for notes.</p>
 
         <div className="space-y-1.5 mb-4">
-          {session.questions.map((q, i) => {
-            const isExpanded = expandedQ === i;
+          {session.questions.flatMap((q, i) => {
             const color = qColor(q);
             const mode = q.mode || 'single';
             const qOptionCount = q.optionCount ?? 4;
             const qOptions = OPTION_LETTERS.slice(0, qOptionCount);
+
+            // === Multi-mode: expand into per-sub-Q rows with INLINE A/B/C/D ===
+            if (mode === 'multi' && q.subUserAnswers && q.subUserAnswers.length > 0) {
+              const subN = q.subUserAnswers.length;
+              const subCorrect = q.subCorrectAnswers ?? [];
+              return Array.from({ length: subN }, (_, si) => {
+                const userAns = q.subUserAnswers![si];
+                const correctAns = subCorrect[si] ?? null;
+                let subResult: 'correct' | 'wrong' | 'unmarked' = 'unmarked';
+                if (userAns && correctAns) subResult = userAns === correctAns ? 'correct' : 'wrong';
+                const subColor = subResult === 'correct' ? correctColor : subResult === 'wrong' ? wrongColor : unmarkedColor;
+                const showNotesOnThisRow = si === 0;
+                const isExpanded = showNotesOnThisRow && expandedQ === i;
+                return (
+                  <div key={`${i}-${si}`} className="rounded-xl overflow-hidden glass" style={{ borderLeft: `3px solid ${subColor}` }}>
+                    <div className="p-2 flex items-center gap-2">
+                      <span className="text-xs font-bold w-12 shrink-0" style={{ color: subColor }}>Q{q.number}.{si + 1}</span>
+                      <span className="text-[10px] flex-1 min-w-0 truncate" style={{ color: subTextColor }}>
+                        {formatHMS(q.timeSpentSec)}
+                        {userAns && <span className="ml-1" style={{ color: textColor }}>You:{userAns}</span>}
+                        {!userAns && <span className="ml-1">unanswered</span>}
+                      </span>
+                      {/* INLINE A/B/C/D — tap to set correct answer for this sub-Q */}
+                      <div className={cn('flex gap-0.5 shrink-0', qOptionCount > 4 && 'flex-wrap max-w-[120px]')}>
+                        {qOptions.map((opt) => {
+                          const isSelected = correctAns === opt;
+                          const isYourAnswer = userAns === opt;
+                          return (
+                            <button key={opt}
+                              onClick={() => { if (haptics) vibrate(10); setSubCorrectAnswer(session.id, i, si, isSelected ? null : opt); }}
+                              className="w-6 h-6 rounded text-[10px] font-bold transition border"
+                              style={isSelected
+                                ? { background: OPTION_COLORS[opt], borderColor: OPTION_COLORS[opt], color: '#fff' }
+                                : isYourAnswer
+                                  ? { borderColor: `${OPTION_COLORS[opt]}80`, color: OPTION_COLORS[opt], background: 'transparent' }
+                                  : { color: subTextColor, background: 'rgba(0,0,0,0.05)', borderColor: 'rgba(0,0,0,0.1)' }}>
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* Notes toggle — only on first sub-row */}
+                      {showNotesOnThisRow && (
+                        <button onClick={() => { if (isExpanded) { setExpandedQ(null); } else { setExpandedQ(i); setConceptDraft(q.conceptNotes || ''); setFormulaDraft(q.formulaNotes || ''); } }}
+                          className="text-[12px] shrink-0 w-4" style={{ color: '#b45309' }}>{isExpanded ? '−' : '+'}</button>
+                      )}
+                    </div>
+                    {isExpanded && (
+                      <div className="p-2.5 space-y-2" style={{ background: 'rgba(0,0,0,0.03)' }}>
+                        <textarea value={conceptDraft} onChange={(e) => setConceptDraft(e.target.value)} placeholder="Concept / what went wrong..." className="w-full p-2 rounded-lg text-xs h-12 resize-none" style={{ background: 'rgba(0,0,0,0.05)', color: textColor }} />
+                        <textarea value={formulaDraft} onChange={(e) => setFormulaDraft(e.target.value)} placeholder="Formula for revision..." className="w-full p-2 rounded-lg text-xs h-10 resize-none" style={{ background: 'rgba(0,0,0,0.05)', color: textColor }} />
+                        <button onClick={() => { saveNotes(session.id, i, conceptDraft, formulaDraft); if (haptics) vibrate(10); setExpandedQ(null); }}
+                          className="w-full py-1.5 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1 active:scale-95 transition"
+                          style={{ background: 'rgba(180,83,9,0.15)', color: '#b45309' }}>
+                          <Save size={10} /> Save Notes
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            }
+
+            // === Multi-correct: 1 row with toggle A/B/C/D (multi-select) ===
+            if (mode === 'multi-correct') {
+              const isExpanded = expandedQ === i;
+              const userArr = q.multiCorrectUserAnswers ?? [];
+              const corrArr = q.multiCorrectAnswers ?? [];
+              return (
+                <div key={i} className="rounded-xl overflow-hidden glass" style={{ borderLeft: `3px solid ${color}` }}>
+                  <div className="p-2 flex items-center gap-2">
+                    <span className="text-xs font-bold w-7 shrink-0" style={{ color }}>Q{q.number}</span>
+                    <span className="text-[10px] flex-1 min-w-0 truncate" style={{ color: subTextColor }}>
+                      {formatHMS(q.timeSpentSec)}
+                      <span className="ml-1 text-purple-500">multi-correct</span>
+                      {userArr.some(Boolean) && (
+                        <span className="ml-1" style={{ color: textColor }}>
+                          You: {userArr.map((v, j) => v ? String.fromCharCode(65 + j) : null).filter(Boolean).join(',')}
+                        </span>
+                      )}
+                      {q.result === 'correct' && <span className="ml-1" style={{ color: correctColor }}>✓</span>}
+                      {q.result === 'wrong' && <span className="ml-1" style={{ color: wrongColor }}>✗</span>}
+                      {q.conceptNotes && <span className="ml-1" style={{ color: '#b45309' }}>📝</span>}
+                    </span>
+                    {/* Toggle A/B/C/D — tap to toggle "is this option correct?" (multi-select) */}
+                    <div className={cn('flex gap-0.5 shrink-0', qOptionCount > 4 && 'flex-wrap max-w-[120px]')}>
+                      {qOptions.map((opt, oi) => {
+                        const isCorrect = corrArr[oi] === true;
+                        const isUserSelected = userArr[oi] === true;
+                        return (
+                          <button key={opt}
+                            onClick={() => { if (haptics) vibrate(10); toggleMultiCorrectAnswer(session.id, i, oi); }}
+                            className="w-6 h-6 rounded text-[10px] font-bold transition border"
+                            style={isCorrect
+                              ? { background: OPTION_COLORS[opt], borderColor: OPTION_COLORS[opt], color: '#fff' }
+                              : isUserSelected
+                                ? { borderColor: `${OPTION_COLORS[opt]}80`, color: OPTION_COLORS[opt], background: 'transparent' }
+                                : { color: subTextColor, background: 'rgba(0,0,0,0.05)', borderColor: 'rgba(0,0,0,0.1)' }}>
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button onClick={() => { if (isExpanded) { setExpandedQ(null); } else { setExpandedQ(i); setConceptDraft(q.conceptNotes || ''); setFormulaDraft(q.formulaNotes || ''); } }}
+                      className="text-[12px] shrink-0 w-4" style={{ color: '#b45309' }}>{isExpanded ? '−' : '+'}</button>
+                  </div>
+                  {isExpanded && (
+                    <div className="p-2.5 space-y-2" style={{ background: 'rgba(0,0,0,0.03)' }}>
+                      <textarea value={conceptDraft} onChange={(e) => setConceptDraft(e.target.value)} placeholder="Concept / what went wrong..." className="w-full p-2 rounded-lg text-xs h-12 resize-none" style={{ background: 'rgba(0,0,0,0.05)', color: textColor }} />
+                      <textarea value={formulaDraft} onChange={(e) => setFormulaDraft(e.target.value)} placeholder="Formula for revision..." className="w-full p-2 rounded-lg text-xs h-10 resize-none" style={{ background: 'rgba(0,0,0,0.05)', color: textColor }} />
+                      <button onClick={() => { saveNotes(session.id, i, conceptDraft, formulaDraft); if (haptics) vibrate(10); setExpandedQ(null); }}
+                        className="w-full py-1.5 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1 active:scale-95 transition"
+                        style={{ background: 'rgba(180,83,9,0.15)', color: '#b45309' }}>
+                        <Save size={10} /> Save Notes
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // === Single + written: 1 row with inline A/B/C/D (single-select) ===
             return (
               <div key={i} className="rounded-xl overflow-hidden glass" style={{ borderLeft: `3px solid ${color}` }}>
                 <div className="p-2 flex items-center gap-2">
                   <span className="text-xs font-bold w-7 shrink-0" style={{ color }}>Q{q.number}</span>
                   <span className="text-[10px] flex-1 min-w-0 truncate" style={{ color: subTextColor }}>
                     {formatHMS(q.timeSpentSec)}
-                    {mode === 'multi' && <span className="ml-1 text-blue-500">[{q.subQuestionCount ?? 0} sub]</span>}
                     {mode === 'written' && <span className="ml-1 text-amber-500">written</span>}
                     {mode === 'single' && q.userAnswer && <span className="ml-1" style={{ color: textColor }}>You:{q.userAnswer}</span>}
                     {mode === 'single' && q.result === 'correct' && <span className="ml-1" style={{ color: correctColor }}>✓</span>}
@@ -1037,10 +1197,10 @@ function EditPhase({ session, markCorrectAnswer, saveNotes, onBack, onClose, hap
                       })}
                     </div>
                   )}
-                  <button onClick={() => { if (isExpanded) { setExpandedQ(null); } else { setExpandedQ(i); setConceptDraft(q.conceptNotes || ''); setFormulaDraft(q.formulaNotes || ''); } }}
-                    className="text-[12px] shrink-0 w-4" style={{ color: '#b45309' }}>{isExpanded ? '−' : '+'}</button>
+                  <button onClick={() => { const isExp = expandedQ === i; if (isExp) { setExpandedQ(null); } else { setExpandedQ(i); setConceptDraft(q.conceptNotes || ''); setFormulaDraft(q.formulaNotes || ''); } }}
+                    className="text-[12px] shrink-0 w-4" style={{ color: '#b45309' }}>{expandedQ === i ? '−' : '+'}</button>
                 </div>
-                {isExpanded && (
+                {expandedQ === i && (
                   <div className="p-2.5 space-y-2" style={{ background: 'rgba(0,0,0,0.03)' }}>
                     <textarea value={conceptDraft} onChange={(e) => setConceptDraft(e.target.value)} placeholder="Concept / what went wrong..." className="w-full p-2 rounded-lg text-xs h-12 resize-none" style={{ background: 'rgba(0,0,0,0.05)', color: textColor }} />
                     <textarea value={formulaDraft} onChange={(e) => setFormulaDraft(e.target.value)} placeholder="Formula for revision..." className="w-full p-2 rounded-lg text-xs h-10 resize-none" style={{ background: 'rgba(0,0,0,0.05)', color: textColor }} />
