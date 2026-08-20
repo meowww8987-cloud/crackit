@@ -5,12 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, X, ChevronRight, Flag, Save, Edit, Clock, TrendingUp, Pause,
   Menu, X as XIcon, Play, FileText, ListTree, PenLine, AlertCircle, Plus, Minus,
-  RotateCw, Lock,
 } from 'lucide-react';
 import { usePractice, type PracticeSession, type PracticeQuestion } from '@/lib/store/practice';
 import { useHistory } from '@/lib/store/history';
 import { useSettings } from '@/lib/store/settings';
-import { useDeviceOrientation } from '@/lib/hooks/useDeviceOrientation';
 import { formatHMS, formatHM, cn, vibrate, todayKey } from '@/lib/utils';
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -20,6 +18,25 @@ const OPTION_COLORS: Record<string, string> = {
 };
 
 type QuestionMode = 'single' | 'multi' | 'written';
+
+/** Hook to detect viewport orientation — returns true when viewport is
+ *  wider than it is tall (landscape). Updates on window resize. */
+function useViewportLandscape(): boolean {
+  const [isLandscape, setIsLandscape] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+    check();
+    window.addEventListener('resize', check);
+    window.addEventListener('orientationchange', check);
+    return () => {
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', check);
+    };
+  }, []);
+  return isLandscape;
+}
 
 export function PracticeRunner() {
   const activePractice = usePractice((s) => s.activePractice);
@@ -35,17 +52,12 @@ export function PracticeRunner() {
   const setOptionCount = usePractice((s) => s.setOptionCount);
   const history = usePractice((s) => s.history);
   const haptics = useSettings((s) => s.haptics);
-  const lockedOrientation = useSettings((s) => s.lockedOrientation);
-  const setSetting = useSettings((s) => s.set);
 
-  // === Orientation (matches FocusTimer) ===
-  const {
-    effectiveAngle, tempLockAngle, setTempLockAngle, rotateBy90,
-  } = useDeviceOrientation({ lockedOrientation });
-
-  const rotateLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastRotateTapRef = useRef(0);
-  const [lockToast, setLockToast] = useState<string | null>(null);
+  // === Viewport orientation — drives layout, NOT rotation ===
+  // The browser already handles device rotation (the viewport becomes
+  // landscape when the user tilts their phone). We just detect this and
+  // apply a 2-column layout that uses the wide viewport properly.
+  const isLandscape = useViewportLandscape();
 
   const [, setTick] = useState(0);
   const questionStartRef = useRef(Date.now());
@@ -272,93 +284,33 @@ export function PracticeRunner() {
   const optionCount = currentQ?.optionCount ?? 4;  // 2-8, default 4 (A/B/C/D)
   const currentOptions = OPTION_LETTERS.slice(0, optionCount);
 
-  const isLandscape = effectiveAngle === 90 || effectiveAngle === 270;
-
-  // === Rotate / Lock button gestures (matches FocusTimer) ===
-  const handleRotatePointerDown = (e: React.PointerEvent) => {
-    e.stopPropagation();
-    rotateLongPressRef.current = setTimeout(() => {
-      // Long-press → toggle persistent lock
-      if (lockedOrientation !== null) {
-        setSetting('lockedOrientation', null);
-        setTempLockAngle(null);
-        setLockToast('🔓 Orientation unlocked — auto-rotate on');
-        vibrate([10, 30, 10]);
-      } else {
-        setSetting('lockedOrientation', effectiveAngle);
-        setLockToast(`🔒 Orientation locked at ${effectiveAngle}° — stays even after restart`);
-        vibrate([10, 30, 10, 30, 50]);
-      }
-      setTimeout(() => setLockToast(null), 2500);
-      rotateLongPressRef.current = null;
-    }, 500);
-  };
-  const handleRotatePointerUp = (e: React.PointerEvent) => {
-    e.stopPropagation();
-    if (rotateLongPressRef.current === null) return;
-    clearTimeout(rotateLongPressRef.current);
-    rotateLongPressRef.current = null;
-    const now = Date.now();
-    const isDoubleTap = now - lastRotateTapRef.current < 300;
-    lastRotateTapRef.current = now;
-    if (isDoubleTap) {
-      // Double-tap → toggle temp lock
-      if (tempLockAngle !== null) {
-        setTempLockAngle(null);
-        setLockToast('🔓 Temporary lock released');
-        vibrate([10, 30]);
-      } else if (lockedOrientation === null) {
-        setTempLockAngle(effectiveAngle);
-        setLockToast(`⏸ Temporarily locked at ${effectiveAngle}° (double-tap to release)`);
-        vibrate([10, 30]);
-      }
-      setTimeout(() => setLockToast(null), 2000);
-    } else {
-      // Single tap → cycle by 90°
-      if (lockedOrientation !== null) setSetting('lockedOrientation', null);
-      if (tempLockAngle !== null) setTempLockAngle(null);
-      rotateBy90();
-      vibrate(8);
-    }
-  };
-
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui"
       style={{ background: '#000000' }}>
-      {/* === Inner content — rotated + centered to fill viewport ===
-          CRITICAL: position: absolute + top/left 50% + translate(-50%, -50%)
-          centers the inner div's CENTER at the parent's center BEFORE rotating.
-          Without this, the inner div sits at top-left (0,0) of the parent, so
-          in landscape its center (190, 400) is BELOW the parent's bottom edge
-          (parent is only ~380 tall) — after rotation, the visual rectangle is
-          centered at (190, 400) which is mostly off-screen.
-
-          With the centering, the inner div's center is at the parent's center
-          (400, 190 in landscape) — after rotation, the visual rectangle
-          (800×380) exactly fills the viewport. */}
+      {/* === Inner content — orientation-aware layout (NO rotation) ===
+          - Portrait: single column (timer on top, options below, actions at bottom)
+          - Landscape: 2-column row (timer+stats on LEFT, options+actions on RIGHT)
+          The browser already handles device rotation — when the user tilts their
+          phone, the viewport becomes landscape (width > height) and we detect it
+          via the useViewportLandscape hook (resize + orientationchange events). */}
       <div style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        width: '100vmin',
-        height: '100vmax',
+        width: '100%',
+        height: '100%',
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
+        flexDirection: isLandscape ? 'row' : 'column',
+        alignItems: isLandscape ? 'stretch' : 'center',
+        justifyContent: isLandscape ? 'space-between' : 'flex-start',
         padding: isLandscape ? '1rem 1.5rem' : '1.5rem 1rem',
         paddingTop: isLandscape ? '1rem' : 'calc(env(safe-area-inset-top, 0px) + 1.5rem)',
         paddingBottom: isLandscape ? '1rem' : 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
-        // Order matters: translate FIRST (centers), THEN rotate (around new center).
-        transform: `translate(-50%, -50%) rotate(${effectiveAngle}deg)`,
-        transformOrigin: 'center center',
-        transition: 'transform 0.3s ease',
         boxSizing: 'border-box',
         overflow: 'hidden',
+        gap: isLandscape ? '1rem' : 0,
       } as React.CSSProperties}>
         {/* === Top bar: question pills + hamburger menu ===
-            flexShrink: 0 so it never gets squeezed. */}
-        <div className="w-full max-w-md flex items-start justify-between gap-2" style={{ flexShrink: 0 }}>
+            Always at the top, full width. flexShrink: 0. */}
+        <div className="w-full max-w-2xl flex items-start justify-between gap-2" style={{ flexShrink: 0 }}>
           <div className="flex-1 min-w-0 flex flex-wrap gap-1 justify-start max-w-[calc(100%-50px)]">
             {visibleQuestions.map((q, i) => (
               <div key={i} className={cn('w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold transition', i === currentIdx && 'ring-2 ring-white')}
@@ -374,8 +326,36 @@ export function PracticeRunner() {
           </button>
         </div>
 
+        {/* === Main content area ===
+            - Portrait: single column (timer on top → options → actions)
+            - Landscape: 2 columns (timer+practice-name on LEFT, options+actions on RIGHT)
+            flex: 1 + minHeight: 0 so it takes remaining space after top bar */}
+        <div style={{
+          flex: '1 1 0',
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: isLandscape ? 'row' : 'column',
+          alignItems: isLandscape ? 'stretch' : 'center',
+          justifyContent: isLandscape ? 'space-between' : 'flex-start',
+          gap: isLandscape ? '1rem' : 0,
+          width: '100%',
+          maxWidth: isLandscape ? 'none' : '20rem',
+          marginTop: '0.5rem',
+        } as React.CSSProperties}>
+
+        {/* === LEFT column (portrait: top / landscape: left): Timer + stats + practice name === */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: isLandscape ? 'center' : 'flex-start',
+          flex: isLandscape ? '0 0 auto' : '0 0 auto',
+          width: isLandscape ? 'auto' : '100%',
+          textAlign: 'center',
+        }}>
+
         {/* === Timer + stats === (flexShrink: 0) */}
-        <div className="text-center mt-2" style={{ color: '#ffffff', flexShrink: 0 }}>
+        <div className="text-center" style={{ color: '#ffffff', flexShrink: 0 }}>
           <div className="text-[10px] uppercase tracking-[0.2em] mb-0.5 flex items-center justify-center gap-1.5 flex-wrap" style={{ color: 'rgba(255,255,255,0.4)' }}>
             <span>Question {currentIdx + 1}{activePractice.questionCount > 0 ? ` of ${activePractice.questionCount}` : ''}</span>
             {currentMode !== 'single' && (
@@ -406,12 +386,25 @@ export function PracticeRunner() {
           </div>
           <div className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>{activePractice.name}</div>
         </div>
+        </div>{/* === END LEFT column === */}
+
+        {/* === RIGHT column (portrait: bottom / landscape: right): Options + Actions === */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          justifyContent: isLandscape ? 'center' : 'flex-start',
+          flex: isLandscape ? '1 1 0' : '1 1 0',
+          width: isLandscape ? '50%' : '100%',
+          maxWidth: isLandscape ? '24rem' : '20rem',
+          minHeight: 0,
+        } as React.CSSProperties}>
 
         {/* === Question options — flex: 1 + SCROLLABLE ===
             Takes remaining vertical space. When content exceeds available
             height (e.g. 6 sub-questions, 8 options), it scrolls vertically
             instead of overflowing off-screen. */}
-        <div className="w-full max-w-xs mt-2 flex flex-col"
+        <div className="w-full flex flex-col"
           style={{
             flex: '1 1 0',
             minHeight: 0,  // critical for flexbox overflow to work
@@ -501,9 +494,9 @@ export function PracticeRunner() {
           )}
         </div>
 
-        {/* === Bottom: Skip / Review Later + Rotate button === (flexShrink: 0) */}
+        {/* === Bottom: Skip / Review Later === (flexShrink: 0) */}
         <div className="w-full max-w-xs mt-2" style={{ flexShrink: 0 }}>
-          <div className="flex gap-2 mb-2">
+          <div className="flex gap-2">
             <button onClick={handleSkip}
               className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1"
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
@@ -515,41 +508,10 @@ export function PracticeRunner() {
               <Flag size={13} /> Review
             </button>
           </div>
-          {/* Rotate / Lock button — matches FocusTimer gestures */}
-          <div className="flex justify-center">
-            <button
-              onPointerDown={handleRotatePointerDown}
-              onPointerUp={handleRotatePointerUp}
-              onPointerLeave={() => { if (rotateLongPressRef.current) { clearTimeout(rotateLongPressRef.current); rotateLongPressRef.current = null; } }}
-              className="px-3 py-1.5 rounded-xl font-semibold text-xs active:scale-[0.98] transition flex items-center justify-center gap-1.5"
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)' }}
-              title={`Rotate (current: ${effectiveAngle}°${lockedOrientation !== null ? ' · locked' : ''}${tempLockAngle !== null ? ' · temp-locked' : ''})\n• Tap: rotate 90°\n• Double-tap: temp lock\n• Long-press: persistent lock`}
-              aria-label="Rotate or lock orientation"
-            >
-              {(lockedOrientation !== null || tempLockAngle !== null) ? (
-                <Lock size={14} style={{ color: '#fbbf24', transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
-              ) : (
-                <RotateCw size={14} style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
-              )}
-              <span>{(lockedOrientation !== null || tempLockAngle !== null) ? 'Locked' : 'Rotate'}</span>
-            </button>
-          </div>
         </div>
+        </div>{/* === END RIGHT column === */}
+        </div>{/* === END Main content area === */}
       </div>
-
-      {/* === Lock toast (matches FocusTimer) === */}
-      <AnimatePresence>
-        {lockToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-[10002] px-4 py-2 rounded-xl bg-black/80 backdrop-blur border border-white/10 text-white text-xs font-semibold"
-          >
-            {lockToast}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* === Hamburger menu overlay === */}
       <AnimatePresence>
@@ -885,18 +847,53 @@ function ReportPhase({ session, onEdit, onClose, haptics }: {
         </div>
 
         <div className="space-y-1.5 mb-4">
-          {session.questions.map((q, i) => {
+          {session.questions.flatMap((q, i) => {
             const color = qColor(q);
             const mode = q.mode || 'single';
+
+            // For multi-mode questions, render each sub-question as a SEPARATE
+            // row so the user sees Q2.1, Q2.2, Q2.3, ... with their own answers.
+            // Previously only ONE row was shown per multi-mode question with
+            // all sub-answers condensed into a single bracket — confusing.
+            if (mode === 'multi' && q.subUserAnswers && q.subUserAnswers.length > 0) {
+              const subCount = q.subUserAnswers.length;
+              const subCorrect = q.subCorrectAnswers ?? [];
+              return Array.from({ length: subCount }, (_, si) => {
+                const userAns = q.subUserAnswers![si];
+                const correctAns = subCorrect[si] ?? null;
+                // Per-sub result: 'correct' if userAns === correctAns (and both set),
+                // 'wrong' if both set but differ, 'unmarked' otherwise.
+                let subResult: 'correct' | 'wrong' | 'unmarked' = 'unmarked';
+                if (userAns && correctAns) {
+                  subResult = userAns === correctAns ? 'correct' : 'wrong';
+                }
+                const subColor = subResult === 'correct' ? correctColor : subResult === 'wrong' ? wrongColor : unmarkedColor;
+                return (
+                  <div key={`${i}-${si}`} className="glass rounded-xl p-2.5 flex items-center gap-3"
+                    style={{ borderLeft: `3px solid ${subColor}` }}>
+                    <span className="text-xs font-bold w-12 shrink-0" style={{ color: subColor }}>Q{q.number}.{si + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px]" style={{ color: subTextColor }}>
+                        {formatHMS(q.timeSpentSec)}
+                        {userAns && <span className="ml-1" style={{ color: textColor }}>You: {userAns}</span>}
+                        {correctAns && <span className="ml-1" style={{ color: subColor }}>Ans: {correctAns}</span>}
+                        {!userAns && !correctAns && <span className="ml-1" style={{ color: subTextColor }}>unanswered</span>}
+                      </div>
+                    </div>
+                    {subResult === 'correct' && <Check size={14} style={{ color: correctColor }} />}
+                    {subResult === 'wrong' && <X size={14} style={{ color: wrongColor }} />}
+                  </div>
+                );
+              });
+            }
+
+            // For single + written questions, render one row (current behavior).
             return (
               <div key={i} className="glass rounded-xl p-2.5 flex items-center gap-3" style={{ borderLeft: `3px solid ${color}` }}>
                 <span className="text-xs font-bold w-8 shrink-0" style={{ color }}>Q{q.number}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px]" style={{ color: subTextColor }}>
                     {formatHMS(q.timeSpentSec)}
-                    {mode === 'multi' && q.subUserAnswers && (
-                      <span className="ml-1.5 text-blue-500">[{q.subUserAnswers.filter(Boolean).join('/')}]</span>
-                    )}
                     {mode === 'written' && <span className="ml-1.5 text-amber-500">written</span>}
                     {mode === 'single' && q.userAnswer && <span className="ml-1" style={{ color: textColor }}>You: {q.userAnswer}</span>}
                     {mode === 'single' && q.correctAnswer && <span className="ml-1" style={{ color }}>Ans: {q.correctAnswer}</span>}
