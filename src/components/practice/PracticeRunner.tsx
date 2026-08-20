@@ -326,16 +326,21 @@ export function PracticeRunner() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui"
       style={{ background: '#000000' }}>
-      {/* === Inner content — rotated + sized to fill viewport ===
-          Always flexDirection: 'column' (after 90° rotation, CSS column becomes
-          visual row — naturally fills landscape viewport).
+      {/* === Inner content — rotated + centered to fill viewport ===
+          CRITICAL: position: absolute + top/left 50% + translate(-50%, -50%)
+          centers the inner div's CENTER at the parent's center BEFORE rotating.
+          Without this, the inner div sits at top-left (0,0) of the parent, so
+          in landscape its center (190, 400) is BELOW the parent's bottom edge
+          (parent is only ~380 tall) — after rotation, the visual rectangle is
+          centered at (190, 400) which is mostly off-screen.
 
-          LAYOUT STRATEGY (fixes both landscape overflow + multi-mode 6 sub-Q overflow):
-          - Top bar, timer, action buttons: flexShrink: 0 (fixed natural height)
-          - Options section: flex: 1 + overflowY: auto (scrolls when content
-            exceeds available space — e.g. 6 sub-questions or 8 options)
-          - No more content going off-screen — it scrolls within the viewport. */}
+          With the centering, the inner div's center is at the parent's center
+          (400, 190 in landscape) — after rotation, the visual rectangle
+          (800×380) exactly fills the viewport. */}
       <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
         width: '100vmin',
         height: '100vmax',
         display: 'flex',
@@ -344,12 +349,13 @@ export function PracticeRunner() {
         padding: isLandscape ? '1rem 1.5rem' : '1.5rem 1rem',
         paddingTop: isLandscape ? '1rem' : 'calc(env(safe-area-inset-top, 0px) + 1.5rem)',
         paddingBottom: isLandscape ? '1rem' : 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
-        transform: `rotate(${effectiveAngle}deg)`,
+        // Order matters: translate FIRST (centers), THEN rotate (around new center).
+        transform: `translate(-50%, -50%) rotate(${effectiveAngle}deg)`,
         transformOrigin: 'center center',
         transition: 'transform 0.3s ease',
         boxSizing: 'border-box',
         overflow: 'hidden',
-      }}>
+      } as React.CSSProperties}>
         {/* === Top bar: question pills + hamburger menu ===
             flexShrink: 0 so it never gets squeezed. */}
         <div className="w-full max-w-md flex items-start justify-between gap-2" style={{ flexShrink: 0 }}>
