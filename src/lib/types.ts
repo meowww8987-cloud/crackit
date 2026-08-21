@@ -46,6 +46,10 @@ export interface ActiveSession {
   lastWasteStart: number | null; // ms timestamp
   startedAt: number;
   lastWasteThreshold: number; // last 30s boundary crossed
+  /** The date (YYYY-MM-DD) when this session was started. Used to detect
+   *  midnight rollover — if the app reopens on a different date, the
+   *  accumulated time is saved to THIS date (the start date), not today. */
+  date: string;
   // Cumulative study/wasted seconds already logged for this target earlier today.
   // Used to continue the timer from where the user left off when restarting a session
   // for the same target on the same day. The current session's own time (studySeconds)

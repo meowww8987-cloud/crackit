@@ -78,7 +78,7 @@ export function StudyTab() {
     const i = setInterval(() => setLiveTick((t) => t + 1), 1000);
     return () => clearInterval(i);
   }, [activeFocusSession, activePractice]);
-  const liveFocus = activeFocusSession ? getLiveStudySeconds(activeFocusSession) : 0;
+  const liveFocus = (activeFocusSession && (activeFocusSession as any).date === todayKey()) ? getLiveStudySeconds(activeFocusSession) : 0;
   const livePractice = activePractice
     ? Math.floor((Date.now() - activePractice.startedAt) / 1000)
     : 0;

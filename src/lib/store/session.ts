@@ -73,7 +73,7 @@ export const useSession = create<SessionStore>()(
             wastedSeconds: finalSession.wastedSeconds,
             startedAt: finalSession.startedAt,
             endedAt: Date.now(),
-            date: todayKey(),
+            date: finalSession.date ?? todayKey(), // Use session's START date, not today
           };
           // Save directly without mood prompt for the previous session
           useHistory.getState().addSession({ ...saved, id: uid(), mood: null });
@@ -108,6 +108,7 @@ export const useSession = create<SessionStore>()(
           lastWasteStart: null,
           startedAt: Date.now(),
           lastWasteThreshold: 0,
+          date: todayKey(), // Bind session to its START date
           baselineStudySeconds,
           baselineWastedSeconds,
         };
@@ -187,7 +188,7 @@ export const useSession = create<SessionStore>()(
           wastedSeconds: finalSession.wastedSeconds,
           startedAt: finalSession.startedAt,
           endedAt: Date.now(),
-          date: todayKey(),
+          date: finalSession.date ?? todayKey(), // Use session's START date, not today
         };
         set({
           pendingMoodSession: pending,
@@ -222,7 +223,36 @@ export const useSession = create<SessionStore>()(
       restoreSession: () => {
         const s = get().active;
         if (!s) return;
-        // If session was running (not paused), auto-pause it on reload
+
+        // === DATE CHANGE DETECTION ===
+        // If the session was started on a different day than today (e.g. user
+        // studied Aug 21, left widget open, reopened Aug 22), auto-save the
+        // accumulated time to the ORIGINAL start date, then close the session.
+        // This prevents yesterday's study time from being attributed to today.
+        const sessionDate = s.date ?? todayKey();
+        const today = todayKey();
+        if (sessionDate !== today) {
+          const committed = commitInflight(s);
+          const saved: Omit<SavedSession, 'mood' | 'id'> = {
+            targetId: committed.targetId,
+            subject: committed.subject,
+            chapter: committed.chapter,
+            lecture: committed.lecture,
+            topic: committed.topic,
+            mode: committed.mode,
+            studySeconds: committed.studySeconds,
+            wastedSeconds: committed.wastedSeconds,
+            startedAt: committed.startedAt,
+            endedAt: Date.now(),
+            date: sessionDate, // Save to the ORIGINAL start date
+          };
+          useHistory.getState().addSession({ ...saved, id: uid(), mood: null });
+          // Close the session entirely — user must start fresh today
+          set({ active: null, focusOpen: false, widgetHidden: false });
+          return;
+        }
+
+        // Same day — normal restore: auto-pause if was running
         if (!s.paused) {
           const committed = commitInflight(s);
           set({
@@ -296,6 +326,32 @@ export const useSession = create<SessionStore>()(
         // Reads FRESH state every tick — no closure staleness
         const s = get().active;
         if (!s) return;
+
+        // === MIDNIGHT ROLLOVER DETECTION ===
+        // If the session's start date is different from today (user kept
+        // the app open past midnight), auto-save yesterday's portion to
+        // the original date and close the session.
+        const sessionDate = s.date ?? todayKey();
+        if (sessionDate !== todayKey()) {
+          const committed = commitInflight(s);
+          const saved: Omit<SavedSession, 'mood' | 'id'> = {
+            targetId: committed.targetId,
+            subject: committed.subject,
+            chapter: committed.chapter,
+            lecture: committed.lecture,
+            topic: committed.topic,
+            mode: committed.mode,
+            studySeconds: committed.studySeconds,
+            wastedSeconds: committed.wastedSeconds,
+            startedAt: committed.startedAt,
+            endedAt: Date.now(),
+            date: sessionDate,
+          };
+          useHistory.getState().addSession({ ...saved, id: uid(), mood: null });
+          set({ active: null, focusOpen: false, widgetHidden: false });
+          return;
+        }
+
         // HARD STOP: if paused, absolutely no counting
         if (s.paused) return;
         // If no lastResumeAt and not wasting, nothing to count
@@ -316,6 +372,17 @@ export const useSession = create<SessionStore>()(
             });
           }
         }
+
+        // === PERIODIC COMMIT ===
+        // Every ~60 seconds, commit inflight study time to persisted state
+        // so it's not lost if the app is killed without firing pagehide/freeze.
+        if (s.lastResumeAt && !s.wasting) {
+          const inflight = Math.floor((now - s.lastResumeAt) / 1000);
+          if (inflight > 0 && inflight % 60 === 0) {
+            const committed = commitInflight(s);
+            set({ active: committed });
+          }
+        }
       },
     }),
     {
@@ -323,6 +390,7 @@ export const useSession = create<SessionStore>()(
       partialize: (s) => ({
         active: s.active,
         widgetHidden: s.widgetHidden,
+        awaySince: s.awaySince, // Persist so it survives app death
       }),
     }
   )

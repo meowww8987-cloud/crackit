@@ -192,7 +192,8 @@ export const usePartner = create<PartnerStore>()(
         // were synced, so if B studied 1h without stopping, A only saw the
         // time from B's last SAVED session (could be much smaller).
         const activeSession = useSession.getState().active;
-        const liveSec = getLiveStudySeconds(activeSession);
+        // Only count live session time if it's from TODAY (not a stale yesterday session)
+        const liveSec = (activeSession && (activeSession as any).date === today) ? getLiveStudySeconds(activeSession) : 0;
         const liveWastedSec = getLiveWastedSeconds(activeSession);
 
         // === LIVE active practice (practice mode) ===

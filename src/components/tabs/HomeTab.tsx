@@ -84,14 +84,11 @@ export function HomeTab() {
     const saved = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.studySeconds, 0);
     // Add LIVE time from currently-running focus session + practice.
     // Practice time IS study time — it should be counted everywhere.
-    const liveFocus = activeFocusSession ? getLiveStudySeconds(activeFocusSession) : 0;
+    const liveFocus = (activeFocusSession && (activeFocusSession as any).date === today) ? getLiveStudySeconds(activeFocusSession) : 0;
     const livePractice = activePractice
       ? Math.floor((Date.now() - activePractice.startedAt) / 1000)
       : 0;
     return saved + liveFocus + livePractice;
-    // NOTE: todaySec depends on a 1s tick (via setLiveTick above) which mutates
-    // state but isn't in deps — that's intentional, the tick causes re-render
-    // which re-runs useMemo with fresh Date.now() values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions, activeFocusSession, activePractice]);
 
@@ -105,7 +102,7 @@ export function HomeTab() {
   const thisWeek = useMemo(() => {
     const weekAgo = Date.now() - 7 * 86400000;
     const saved = sessions.filter((s) => s.endedAt >= weekAgo).reduce((a, s) => a + s.studySeconds, 0);
-    const liveFocus = activeFocusSession ? getLiveStudySeconds(activeFocusSession) : 0;
+    const liveFocus = (activeFocusSession && (activeFocusSession as any).date === todayKey()) ? getLiveStudySeconds(activeFocusSession) : 0;
     const livePractice = activePractice
       ? Math.floor((Date.now() - activePractice.startedAt) / 1000)
       : 0;

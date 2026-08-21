@@ -199,7 +199,7 @@ export function PartnerCard() {
   // myActiveSession and myTodayTargets are declared at the top (before early
   // return) for Rules of Hooks. Here we just compute derived values.
   const today = _today;
-  const liveSec = getLiveStudySeconds(myActiveSession);
+  const liveSec = (myActiveSession && (myActiveSession as any).date === _today) ? getLiveStudySeconds(myActiveSession) : 0;
   const liveWastedSec = getLiveWastedSeconds(myActiveSession);
   const savedTodaySec = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.studySeconds, 0);
   const savedTodayWastedSec = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.wastedSeconds, 0);
