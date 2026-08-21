@@ -59,7 +59,7 @@ export function ProgressTimeline({ onClose }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[1000] bg-[#0a0a0f] flex flex-col"
+      className="fixed inset-0 z-[1000] bg-[#0a0a0f] flex flex-col force-dark-ui"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">

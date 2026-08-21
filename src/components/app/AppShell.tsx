@@ -684,7 +684,7 @@ export function AppShell() {
               onClick={(e) => e.stopPropagation()}
               className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[88vh] flex flex-col"
             >
-              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
                 <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold">Formula Vault</h2>
@@ -714,7 +714,7 @@ export function AppShell() {
               onClick={(e) => e.stopPropagation()}
               className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[88vh] flex flex-col"
             >
-              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
                 <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold">Weekly Goals</h2>
@@ -744,7 +744,7 @@ export function AppShell() {
               onClick={(e) => e.stopPropagation()}
               className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[88vh] flex flex-col"
             >
-              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
                 <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold">Test History</h2>
@@ -774,7 +774,7 @@ export function AppShell() {
               onClick={(e) => e.stopPropagation()}
               className="relative w-full max-w-md glass-strong rounded-3xl max-h-[85vh] flex flex-col"
             >
-              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-teal-500/15 flex items-center justify-center">

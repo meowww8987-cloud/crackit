@@ -84,7 +84,7 @@ export function AddChapterSheet({ subject, onClose, showToast }: Props) {
         style={{ borderTop: `3px solid ${color.hex}` }}
       >
         {/* Sticky header */}
-        <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -210,7 +210,7 @@ export function AddChapterSheet({ subject, onClose, showToast }: Props) {
         </div>
 
         {/* Sticky footer with Create button */}
-        <div className="sticky bottom-0 z-10 px-5 py-3 glass" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="sticky bottom-0 z-10 px-5 py-3 glass" style={{ borderTop: '1px solid var(--border)' }}>
           <button
             onClick={handleCreate}
             disabled={!chapterName.trim()}

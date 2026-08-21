@@ -322,7 +322,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9999] flex flex-col py-8 px-5"
+      className="fixed inset-0 z-[9999] flex flex-col py-8 px-5 force-dark-ui"
       style={{
         backgroundColor: '#000000',
         backgroundImage: pt.isPaused
@@ -873,7 +873,7 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9999] overflow-y-auto scroll-area"
+      className="fixed inset-0 z-[9999] overflow-y-auto scroll-area force-dark-ui"
       style={{ backgroundColor: '#000000' }}
     >
       <div className="max-w-md mx-auto px-5 py-10">

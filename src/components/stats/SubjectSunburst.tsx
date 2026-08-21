@@ -99,8 +99,8 @@ export function SubjectSunburst() {
         <div className="relative shrink-0" style={{ width: size, height: size }}>
           <svg width={size} height={size}>
             {/* Background circles */}
-            <circle cx={cx} cy={cy} r={allR} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
-            <circle cx={cx} cy={cy} r={weekR} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+            <circle cx={cx} cy={cy} r={allR} fill="none" stroke="var(--ring-track)" strokeWidth={1} />
+            <circle cx={cx} cy={cy} r={weekR} fill="none" stroke="var(--ring-track)" strokeWidth={1} />
 
             {/* Slices */}
             {slices.map((s, i) => (
@@ -131,7 +131,7 @@ export function SubjectSunburst() {
             ))}
 
             {/* Center hole */}
-            <circle cx={cx} cy={cy} r={innerR} fill="rgba(15,17,25,0.95)" />
+            <circle cx={cx} cy={cy} r={innerR} fill="var(--card)" />
           </svg>
 
           {/* Center label */}

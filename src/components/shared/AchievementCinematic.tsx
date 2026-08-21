@@ -40,7 +40,7 @@ export function AchievementCinematic({ data, onClose }: Props) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[9996] flex flex-col items-center justify-center"
+          className="fixed inset-0 z-[9996] flex flex-col items-center justify-center force-dark-ui"
           style={{ background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(12px)' }}
         >
           {/* Pulsing glow behind badge */}

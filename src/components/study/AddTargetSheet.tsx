@@ -215,7 +215,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
         style={{ borderTop: `3px solid ${color.hex}` }}
       >
         {/* === Header with step indicator === */}
-        <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {step > 1 && !editing && (
@@ -510,7 +510,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
         </div>
 
         {/* === Footer with Next / Create button === */}
-        <div className="sticky bottom-0 z-10 px-5 py-3 glass rounded-b-3xl" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="sticky bottom-0 z-10 px-5 py-3 glass rounded-b-3xl" style={{ borderTop: '1px solid var(--border)' }}>
           {step === 1 && (
             <p className="text-[10px] text-white/30 text-center py-3">Tap a subject to continue</p>
           )}

@@ -167,7 +167,7 @@ export function TabInfoSheet({ tab, onClose }: { tab: TabKey; onClose: () => voi
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[85vh] flex flex-col"
       >
-        <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

@@ -90,7 +90,7 @@ export function TabLongPressOverlay({ tab, topAction, bottomAction, thirdAction,
             <button
               onClick={(e) => { e.stopPropagation(); vibrate(10); topAction.onClick(); }}
               className="relative flex-1 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition"
-              style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ borderBottom: '1px solid var(--border)' }}
             >
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
@@ -118,7 +118,7 @@ export function TabLongPressOverlay({ tab, topAction, bottomAction, thirdAction,
             <button
               onClick={(e) => { e.stopPropagation(); vibrate(10); thirdAction.onClick(); }}
               className="relative flex-1 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition"
-              style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ borderBottom: '1px solid var(--border)' }}
             >
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}

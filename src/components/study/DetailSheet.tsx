@@ -131,7 +131,7 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
         className="relative w-full max-w-md glass rounded-t-3xl max-h-[88vh] flex flex-col"
       >
         {/* Sticky header */}
-        <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
@@ -176,7 +176,7 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
         {/* Circular progress */}
         <div className="flex flex-col items-center my-5">
           <svg width="120" height="120" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
+            <circle cx="60" cy="60" r="50" fill="none" stroke="var(--ring-track)" strokeWidth="8" />
             <motion.circle
               cx="60"
               cy="60"
@@ -241,7 +241,7 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
         </div>
 
         {/* Sticky footer with action buttons — always visible */}
-        <div className="sticky bottom-0 z-10 px-5 py-3 glass" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="sticky bottom-0 z-10 px-5 py-3 glass" style={{ borderTop: '1px solid var(--border)' }}>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleStartPause}

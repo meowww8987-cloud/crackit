@@ -38,7 +38,7 @@ export function LiquidRing({ pct, color, size = 96, strokeWidth = 8, children }:
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.08)"
+          stroke="var(--ring-track)"
           strokeWidth={strokeWidth}
         />
         {/* Progress arc — drawn from top, clockwise */}

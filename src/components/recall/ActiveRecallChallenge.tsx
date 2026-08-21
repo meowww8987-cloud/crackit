@@ -70,7 +70,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[1000] bg-[#0a0a0f] flex flex-col px-6 py-10"
+        className="fixed inset-0 z-[1000] bg-[#0a0a0f] flex flex-col px-6 py-10 force-dark-ui"
       >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
@@ -156,7 +156,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[1000] bg-[#0a0a0f] flex flex-col px-6 py-10"
+        className="fixed inset-0 z-[1000] bg-[#0a0a0f] flex flex-col px-6 py-10 force-dark-ui"
       >
         {/* Progress bar */}
         <div className="mb-6">
@@ -246,7 +246,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[1000] bg-[#0a0a0f] flex flex-col px-6 py-10"
+      className="fixed inset-0 z-[1000] bg-[#0a0a0f] flex flex-col px-6 py-10 force-dark-ui"
     >
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">

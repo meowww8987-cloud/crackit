@@ -159,7 +159,7 @@ export function TestTimer({ testId, onClose }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-between py-12 px-6"
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-between py-12 px-6 force-dark-ui"
       style={{
         backgroundColor: '#000000',
         backgroundImage: bgGradient,

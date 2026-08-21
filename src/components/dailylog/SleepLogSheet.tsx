@@ -43,7 +43,7 @@ export function SleepLogSheet({ onClose }: Props) {
       <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', stiffness: 400, damping: 35 }} onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass rounded-t-3xl max-h-[88vh] flex flex-col">
-        <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2"><Moon size={18} className="text-indigo-400" /><h2 className="text-lg font-bold">Sleep & Energy</h2></div>
@@ -124,7 +124,7 @@ export function SleepLogSheet({ onClose }: Props) {
             </div>
           </div>
         </div>
-        <div className="sticky bottom-0 z-10 px-5 py-3 glass" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="sticky bottom-0 z-10 px-5 py-3 glass" style={{ borderTop: '1px solid var(--border)' }}>
           <button onClick={handleSave} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold text-sm active:scale-[0.98]">Save Log</button>
         </div>
       </motion.div>

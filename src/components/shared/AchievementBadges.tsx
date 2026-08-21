@@ -130,7 +130,7 @@ export function AchievementBadges() {
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
                 style={{
                   background: isUnlocked ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.03)',
-                  border: isUnlocked ? '1.5px solid rgba(34,197,94,0.4)' : '1px solid rgba(255,255,255,0.05)',
+                  border: isUnlocked ? '1.5px solid rgba(34,197,94,0.4)' : '1px solid var(--border)',
                   filter: isUnlocked ? 'none' : 'grayscale(1) brightness(0.4)',
                 }}
               >

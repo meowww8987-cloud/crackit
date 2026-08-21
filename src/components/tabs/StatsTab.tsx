@@ -93,7 +93,7 @@ export function StatsTab() {
               <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
-                labelStyle={{ color: '#fff' }}
+                labelStyle={{ color: 'var(--foreground)' }}
               />
               <Bar dataKey="study" radius={[4, 4, 0, 0]} fill="#14b8a6" name="Study (min)" />
               <Bar dataKey="wasted" radius={[4, 4, 0, 0]} fill="#ef4444" name="Wasted (min)" />

@@ -16,8 +16,8 @@ export function TimeManagementChart({ analytics }: { analytics: Record<Subject, 
     <div className="h-48">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-          <XAxis dataKey="subject" tick={{ fill: '#ffffff60', fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: '#ffffff60', fontSize: 10 }} axisLine={false} tickLine={false} />
+          <XAxis dataKey="subject" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
           <ReferenceLine y={45} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: '45m', fill: '#f59e0b', fontSize: 9 }} />
           <Bar dataKey="time" radius={[4, 4, 0, 0]}>
             {data.map((d, i) => (
@@ -42,9 +42,9 @@ export function NegativeMarkingChart({ analytics }: { analytics: Record<Subject,
     <div className="h-48">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-          <XAxis dataKey="subject" tick={{ fill: '#ffffff60', fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: '#ffffff60', fontSize: 10 }} axisLine={false} tickLine={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+          <XAxis dataKey="subject" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
           <Bar dataKey="correct" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} name="Correct" />
           <Bar dataKey="wrong" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} name="Wrong" />
         </BarChart>
@@ -71,26 +71,26 @@ export function ConfidenceAccuracyChart({ analytics }: { analytics: Record<Subje
     <div className="h-56 relative">
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ top: 10, right: 15, left: -10, bottom: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis
             type="number"
             dataKey="x"
             name="Confidence"
             domain={[0, 100]}
-            tick={{ fill: '#ffffff60', fontSize: 9 }}
+            tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }}
             axisLine={false}
             tickLine={false}
-            label={{ value: 'Confidence →', position: 'insideBottom', offset: -10, fill: '#ffffff60', fontSize: 10 }}
+            label={{ value: 'Confidence →', position: 'insideBottom', offset: -10, fill: 'var(--muted-foreground)', fontSize: 10 }}
           />
           <YAxis
             type="number"
             dataKey="y"
             name="Accuracy"
             domain={[0, 100]}
-            tick={{ fill: '#ffffff60', fontSize: 9 }}
+            tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }}
             axisLine={false}
             tickLine={false}
-            label={{ value: 'Accuracy →', angle: -90, position: 'insideLeft', fill: '#ffffff60', fontSize: 10 }}
+            label={{ value: 'Accuracy →', angle: -90, position: 'insideLeft', fill: 'var(--muted-foreground)', fontSize: 10 }}
           />
           <ZAxis range={[120, 120]} />
           <Scatter data={data}>

@@ -160,7 +160,7 @@ export function TutorialOnboarding({ onClose }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] pointer-events-none"
+      className="fixed inset-0 z-[200] pointer-events-none force-dark-ui"
       style={{
         // Cover everything EXCEPT the bottom nav (bottom 80px + safe area).
         // This lets the user actually tap/long-press the nav buttons.
