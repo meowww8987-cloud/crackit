@@ -350,7 +350,7 @@ export function AppShell() {
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
 
     // Ignore touches on focus overlay, widget, cards, or interactive elements
-    if (target?.closest('[data-focus-overlay], [data-session-widget], [data-card], button, input, textarea, [role="slider"], [role="dialog"]')) {
+    if (target?.closest('[data-focus-overlay], [data-session-widget], [data-card], [data-heatmap], button, input, textarea, [role="slider"], [role="dialog"]')) {
       return;
     }
 
