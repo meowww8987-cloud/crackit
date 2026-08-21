@@ -79,7 +79,6 @@ export function AppShell() {
   const { active, focusOpen, pendingMoodSession, tick } = useSession();
   const minimalMode = useSettings((s) => s.minimalMode);
   const oledBlack = useSettings((s) => s.oledBlack);
-  const lowEndMode = useSettings((s) => s.lowEndMode);
   // === Global partner sync — runs on ALL tabs so live data is always fresh ===
   usePartnerSync();
   const [navVisible, setNavVisible] = useState(true);
@@ -391,7 +390,7 @@ export function AppShell() {
           depth + subject-aware brightness boost when a session is running.
           PAUSED when FocusTimer is open (hidden behind solid black overlay —
           rendering 5 full-screen gradients per frame is pure waste). */}
-      {!focusOpen && !lowEndMode && <GradientMesh />}
+      {!focusOpen && !minimalMode && <GradientMesh />}
 
       {/* === Adaptive Subject Glow ===
           When a session is active, adds a subtle colored tint to the entire screen
@@ -412,7 +411,7 @@ export function AppShell() {
           Sits above the aurora but below the grid/noise/vignette overlays.
           Returns null when bg3DMode === 'off' (settings-controlled).
           PAUSED when FocusTimer is open (invisible behind black overlay). */}
-      {!focusOpen && !lowEndMode && <Scene3D />}
+      {!focusOpen && !minimalMode && <Scene3D />}
 
       {/* Grid overlay for texture */}
       <div className="fixed inset-0 grid-bg pointer-events-none" style={{ zIndex: 1 }} />
