@@ -195,31 +195,37 @@ export function AppShell() {
   // === Back button prevention ===
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    // On PWA / mobile, a single back press should NOT exit the app.
-    // Strategy: push a dummy history state on mount, then intercept popstate.
-    // First back press: show "Press back again to exit" toast, re-push state.
-    // Second back press (within 2s): allow exit.
-    // Push a dummy state so there's something to "go back" to
-    window.history.pushState({ app: true }, '');
-    let backPressedAt = 0;
+    // === Prevent back button from closing the app ===
+    // Strategy: continuously re-push a dummy history state so there's
+    // ALWAYS something to "go back" to. The back button never exits
+    // the app — it just stays on the current page.
+    // This handles the case where in-app navigation (sheets, tabs)
+    // consumes the initial dummy state.
+    window.history.pushState({ app: true, depth: 0 }, '');
+    let stateDepth = 0;
     const onPopState = (e: PopStateEvent) => {
-      const now = Date.now();
-      if (now - backPressedAt < 2000) {
-        // Second press within 2s → allow exit
-        window.history.back();
-        return;
-      }
-      // First press → prevent exit, show toast, re-push state
-      backPressedAt = now;
-      window.history.pushState({ app: true }, '');
-      vibrate(15);
-      import('@/components/shared/Toast').then(({ pushToast }) =>
-        pushToast('Press back again to exit', '', 'info')
-      );
+      // Always re-push to prevent exit. The back button does nothing
+      // except maybe close an open sheet (handled by the sheet's own
+      // Escape/back logic). If no sheet is open, the app stays put.
+      stateDepth = Math.max(0, stateDepth - 1);
+      // Re-push so there's always a state to catch the next back press
+      window.history.pushState({ app: true, depth: stateDepth }, '');
+      vibrate(8);
     };
     window.addEventListener('popstate', onPopState);
+
+    // Periodically ensure there's always a dummy state on the stack.
+    // If in-app navigation or a sheet open/close adds/removes states,
+    // this re-pushes if needed.
+    const ensureState = setInterval(() => {
+      if (window.history.state?.app !== true) {
+        window.history.pushState({ app: true, depth: ++stateDepth }, '');
+      }
+    }, 1000);
+
     return () => {
       window.removeEventListener('popstate', onPopState);
+      clearInterval(ensureState);
     };
   }, []);
 
