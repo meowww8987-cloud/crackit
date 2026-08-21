@@ -2001,3 +2001,101 @@ textarea:focus-visible {
 .stagger-card {
   animation: card-slide-in 0.4s ease-out backwards;
 }
+
+/* ===== FORCE-DARK-UI INSIDE @layer base — FIXES CASCADE LAYER PRIORITY =====
+ * ROOT CAUSE: force-dark-ui rules were OUTSIDE @layer base, while the
+ * light/warm theme overrides (text-white → dark colors) were INSIDE
+ * @layer base. CSS Cascade Layers spec: for !important, LAYERED wins
+ * over UNLAYERED (reversed priority). So theme overrides killed
+ * force-dark-ui, making text invisible on FocusTimer's black bg.
+ *
+ * FIX: These rules are INSIDE @layer base (same layer as theme overrides)
+ * AND come AFTER them in source order. For equal specificity, later wins.
+ * For higher specificity (force-dark-ui has 3 classes vs 2), force-dark-ui
+ * wins regardless. This correctly resets text-white/bg-white to actual
+ * white inside force-dark-ui scope on ALL light themes.
+ *
+ * Selector: html:not(.dark) matches light, warm, rose, sage (all non-dark).
+ * Also html.warm explicitly (since :not(.dark) covers it but for safety). */
+@layer base {
+  /* Reset text-white/N → actual white for ALL light themes */
+  html:not(.dark) .force-dark-ui .text-white { color: #ffffff !important; }
+  html:not(.dark) .force-dark-ui .text-white\/95 { color: rgba(255,255,255,0.95) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/90 { color: rgba(255,255,255,0.90) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/85 { color: rgba(255,255,255,0.85) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/80 { color: rgba(255,255,255,0.80) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/75 { color: rgba(255,255,255,0.75) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/70 { color: rgba(255,255,255,0.70) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/65 { color: rgba(255,255,255,0.65) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/60 { color: rgba(255,255,255,0.60) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/55 { color: rgba(255,255,255,0.55) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/50 { color: rgba(255,255,255,0.50) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/45 { color: rgba(255,255,255,0.45) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/40 { color: rgba(255,255,255,0.40) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/35 { color: rgba(255,255,255,0.35) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/30 { color: rgba(255,255,255,0.30) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/25 { color: rgba(255,255,255,0.25) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/20 { color: rgba(255,255,255,0.20) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/15 { color: rgba(255,255,255,0.15) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/10 { color: rgba(255,255,255,0.10) !important; }
+  html:not(.dark) .force-dark-ui .text-white\/5 { color: rgba(255,255,255,0.05) !important; }
+
+  /* Reset bg-white/N → actual white at N% for ALL light themes */
+  html:not(.dark) .force-dark-ui .bg-white\/5 { background: rgba(255,255,255,0.05) !important; }
+  html:not(.dark) .force-dark-ui .bg-white\/10 { background: rgba(255,255,255,0.10) !important; }
+  html:not(.dark) .force-dark-ui .bg-white\/15 { background: rgba(255,255,255,0.15) !important; }
+  html:not(.dark) .force-dark-ui .bg-white\/20 { background: rgba(255,255,255,0.20) !important; }
+  html:not(.dark) .force-dark-ui .bg-white\/30 { background: rgba(255,255,255,0.30) !important; }
+
+  /* Reset border-white/N → actual white at N% */
+  html:not(.dark) .force-dark-ui .border-white\/5 { border-color: rgba(255,255,255,0.05) !important; }
+  html:not(.dark) .force-dark-ui .border-white\/10 { border-color: rgba(255,255,255,0.10) !important; }
+  html:not(.dark) .force-dark-ui .border-white\/15 { border-color: rgba(255,255,255,0.15) !important; }
+  html:not(.dark) .force-dark-ui .border-white\/20 { border-color: rgba(255,255,255,0.20) !important; }
+
+  /* Reset ring-white/N */
+  html:not(.dark) .force-dark-ui .ring-white\/30 { --tw-ring-color: rgba(255,255,255,0.30) !important; }
+  html:not(.dark) .force-dark-ui .ring-white\/40 { --tw-ring-color: rgba(255,255,255,0.40) !important; }
+
+  /* Reset bg-black/N → actual black at N% (keep dark overlays dark) */
+  html:not(.dark) .force-dark-ui .bg-black\/60 { background: rgba(0,0,0,0.60) !important; }
+  html:not(.dark) .force-dark-ui .bg-black\/70 { background: rgba(0,0,0,0.70) !important; }
+  html:not(.dark) .force-dark-ui .bg-black\/80 { background: rgba(0,0,0,0.80) !important; }
+  html:not(.dark) .force-dark-ui .bg-black\/90 { background: rgba(0,0,0,0.90) !important; }
+
+  /* Reset inputs to dark-theme styling */
+  html:not(.dark) .force-dark-ui input,
+  html:not(.dark) .force-dark-ui textarea,
+  html:not(.dark) .force-dark-ui select {
+    color: #ffffff !important;
+    background: rgba(255,255,255,0.08) !important;
+  }
+
+  /* Reset .glass/.glass-strong/.card-solid inside force-dark-ui */
+  .force-dark-ui .glass {
+    background: rgba(12,14,20,0.65) !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
+    box-shadow: 0 4px 24px -6px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+  }
+  .force-dark-ui .glass-strong {
+    background: rgba(22,24,32,0.92) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    box-shadow: 0 12px 48px -8px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+  }
+  .force-dark-ui .card-solid {
+    background: rgba(15,17,24,0.85) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    box-shadow: 0 2px 12px -2px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  }
+
+  /* Keep bright colored text inside force-dark-ui (don't let the
+   * html:not(.dark) .text-*-400 overrides dim them on black bg) */
+  html:not(.dark) .force-dark-ui .text-amber-400 { color: #fbbf24 !important; }
+  html:not(.dark) .force-dark-ui .text-green-400 { color: #4ade80 !important; }
+  html:not(.dark) .force-dark-ui .text-red-400 { color: #f87171 !important; }
+  html:not(.dark) .force-dark-ui .text-blue-400 { color: #60a5fa !important; }
+  html:not(.dark) .force-dark-ui .text-purple-400 { color: #c084fc !important; }
+  html:not(.dark) .force-dark-ui .text-teal-400 { color: #2dd4bf !important; }
+  html:not(.dark) .force-dark-ui .text-cyan-400 { color: #22d3ee !important; }
+  html:not(.dark) .force-dark-ui .text-indigo-400 { color: #818cf8 !important; }
+}
