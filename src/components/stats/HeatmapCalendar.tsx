@@ -179,22 +179,22 @@ export function HeatmapCalendar() {
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div className="text-center rounded-lg bg-white/5 py-1.5">
           <div className="text-base font-bold tabular text-green-400">{Math.round(yearlyStats.totalHours)}h</div>
-          <div className="text-[8px] text-white/40 uppercase">365d Total</div>
+          <div className="text-[8px] text-white/60 uppercase">365d Total</div>
         </div>
         <div className="text-center rounded-lg bg-white/5 py-1.5">
           <div className="text-base font-bold tabular text-teal-400">{yearlyStats.activeDays}</div>
-          <div className="text-[8px] text-white/40 uppercase">Active days</div>
+          <div className="text-[8px] text-white/60 uppercase">Active days</div>
         </div>
         <div className="text-center rounded-lg bg-white/5 py-1.5">
           <div className="text-base font-bold tabular text-amber-400">{yearlyStats.bestStreak}</div>
-          <div className="text-[8px] text-white/40 uppercase">Best streak</div>
+          <div className="text-[8px] text-white/60 uppercase">Best streak</div>
         </div>
       </div>
 
       {/* Weekday header */}
       <div className="grid grid-cols-7 gap-1 mb-1">
         {weekdays.map((wd, i) => (
-          <div key={i} className="text-[9px] text-white/40 text-center font-bold uppercase">{wd}</div>
+          <div key={i} className="text-[9px] text-white/60 text-center font-bold uppercase">{wd}</div>
         ))}
       </div>
 
@@ -215,7 +215,7 @@ export function HeatmapCalendar() {
               }}
               className={cn(
                 'aspect-square rounded-md flex items-center justify-center text-[11px] font-bold transition active:scale-90 relative',
-                cell.intensity > 0 ? 'text-white' : 'text-white/40'
+                cell.intensity > 0 ? 'text-white' : 'text-white/60'
               )}
               style={{
                 background: intensityColors[cell.intensity],
@@ -234,7 +234,7 @@ export function HeatmapCalendar() {
       </div>
 
       {/* Legend + hint */}
-      <div className="flex items-center justify-between mt-3 text-[8px] text-white/40">
+      <div className="flex items-center justify-between mt-3 text-[8px] text-white/60">
         <span>← swipe to navigate →</span>
         <div className="flex items-center gap-1">
           <span>Less</span>
@@ -272,7 +272,7 @@ export function HeatmapCalendar() {
                 </div>
                 <button
                   onClick={() => setSelectedDate(null)}
-                  className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white"
+                  className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-white"
                 >
                   <X size={12} />
                 </button>
@@ -295,7 +295,7 @@ export function HeatmapCalendar() {
                           <div className="text-[11px] font-semibold truncate">
                             {s.subject}{s.chapter && s.chapter !== 'All' ? ` · ${s.chapter}` : ''}
                           </div>
-                          <div className="text-[9px] text-white/40 truncate">
+                          <div className="text-[9px] text-white/60 truncate">
                             {s.lecture || s.topic || ''}
                             {s.mood && ` · ${s.mood}`}
                           </div>
@@ -314,7 +314,7 @@ export function HeatmapCalendar() {
                 </div>
               ) : (
                 <div className="text-center py-3">
-                  <p className="text-[10px] text-white/30">No sessions recorded this day.</p>
+                  <p className="text-[10px] text-white/50">No sessions recorded this day.</p>
                 </div>
               )}
             </div>

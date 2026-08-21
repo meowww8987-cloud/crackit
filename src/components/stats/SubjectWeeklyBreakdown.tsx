@@ -83,7 +83,7 @@ export function SubjectWeeklyBreakdown() {
                 })}
               </div>
               {/* Day label */}
-              <span className="text-[9px] text-white/40">{day.label}</span>
+              <span className="text-[9px] text-white/60">{day.label}</span>
             </div>
           );
         })}
@@ -110,7 +110,7 @@ export function SubjectWeeklyBreakdown() {
           );
         })}
         {SUBJECTS.every(subj => data.totals[subj].study === 0) && (
-          <p className="text-xs text-white/30 text-center py-2">No study data this week yet</p>
+          <p className="text-xs text-white/50 text-center py-2">No study data this week yet</p>
         )}
       </div>
     </div>

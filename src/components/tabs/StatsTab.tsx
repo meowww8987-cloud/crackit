@@ -68,7 +68,7 @@ export function StatsTab() {
           Stats
         </h1>
         <div className="glass rounded-2xl p-8 text-center">
-          <BarChart3 size={40} className="text-white/20 mx-auto mb-3" />
+          <BarChart3 size={40} className="text-white/40 mx-auto mb-3" />
           <p className="text-white/60 text-sm">Complete study sessions to see analytics here.</p>
         </div>
         <ProgressTimelineSection />
@@ -130,7 +130,7 @@ export function StatsTab() {
             </div>
             <div className="flex-1">
               <div className="text-sm font-bold">Sleep Health</div>
-              <div className="text-[10px] text-white/40">Long-press for full report</div>
+              <div className="text-[10px] text-white/60">Long-press for full report</div>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold tabular" style={{ color: verdictColor(sleepReport.verdict) }}>
@@ -143,17 +143,17 @@ export function StatsTab() {
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
-              <div className="text-[9px] uppercase text-white/40">Avg</div>
+              <div className="text-[9px] uppercase text-white/60">Avg</div>
               <div className="text-sm font-semibold tabular">{sleepReport.avgNightHours.toFixed(1)}h</div>
             </div>
             <div>
-              <div className="text-[9px] uppercase text-white/40">Quality</div>
+              <div className="text-[9px] uppercase text-white/60">Quality</div>
               <div className="text-sm font-semibold tabular">
                 {sleepReport.avgQuality > 0 ? `${sleepReport.avgQuality.toFixed(1)}★` : '—'}
               </div>
             </div>
             <div>
-              <div className="text-[9px] uppercase text-white/40">Consist.</div>
+              <div className="text-[9px] uppercase text-white/60">Consist.</div>
               <div className="text-sm font-semibold tabular">{sleepReport.bedtimeConsistency}%</div>
             </div>
           </div>
@@ -272,10 +272,10 @@ export function StatsTab() {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-xl font-bold tabular text-red-400">{wasted.ratio}%</span>
-              <span className="text-[9px] text-white/40">wasted</span>
+              <span className="text-[9px] text-white/60">wasted</span>
             </div>
           </div>
-          <div className="text-[10px] text-white/40 mt-1 text-center tabular">
+          <div className="text-[10px] text-white/60 mt-1 text-center tabular">
             {formatHM(wasted.studyMin * 60)} study · {formatHM(wasted.wastedMin * 60)} wasted
           </div>
         </ChartCard>
@@ -285,14 +285,14 @@ export function StatsTab() {
       <ChartCard title="Weekly Comparison">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-[10px] text-white/40 mb-1">This Week</div>
+            <div className="text-[10px] text-white/60 mb-1">This Week</div>
             <div className="text-lg font-bold tabular text-teal-400">{formatHM(comparison.thisWeekStudy * 60)}</div>
             <div className="text-[10px] text-red-400 tabular">⚠ {formatHM(comparison.thisWeekWasted * 60)}</div>
           </div>
           <div>
-            <div className="text-[10px] text-white/40 mb-1">Last Week</div>
+            <div className="text-[10px] text-white/60 mb-1">Last Week</div>
             <div className="text-lg font-bold tabular text-white/60">{formatHM(comparison.lastWeekStudy * 60)}</div>
-            <div className="text-[10px] text-white/40 tabular">⚠ {formatHM(comparison.lastWeekWasted * 60)}</div>
+            <div className="text-[10px] text-white/60 tabular">⚠ {formatHM(comparison.lastWeekWasted * 60)}</div>
           </div>
         </div>
         <div className="flex items-center gap-3 mt-3">
@@ -335,7 +335,7 @@ export function StatsTab() {
                   <AlertTriangle size={12} className="text-amber-400" />
                   <span className="w-2 h-2 rounded-full" style={{ background: c.hex }} />
                   <span className="text-white/70 flex-1">{n.subject}</span>
-                  <span className="tabular text-white/40">{n.minutes}m ({n.pct}%)</span>
+                  <span className="tabular text-white/60">{n.minutes}m ({n.pct}%)</span>
                 </div>
               );
             })}
@@ -374,14 +374,14 @@ export function StatsTab() {
             <div key={r.label} className="glass rounded-xl p-2.5 text-center">
               <div className="text-base mb-0.5">{r.icon}</div>
               <CountUp value={r.done} duration={900} animateOnChange className="text-lg font-bold tabular" style={{ color: r.color }} />
-              <div className="text-[8px] text-white/40">{r.label}</div>
-              <div className="text-[8px] text-white/30 tabular">/ {lectures.length}</div>
+              <div className="text-[8px] text-white/60">{r.label}</div>
+              <div className="text-[8px] text-white/50 tabular">/ {lectures.length}</div>
             </div>
           ))}
         </div>
         {lectures.length > 0 && (
           <div className="mt-3 pt-2 border-t border-white/5">
-            <div className="flex justify-between text-[10px] text-white/40 mb-1">
+            <div className="flex justify-between text-[10px] text-white/60 mb-1">
               <span>Overall completion</span>
               <span className="tabular font-bold text-teal-400">
                 {Math.round(
@@ -416,15 +416,15 @@ export function StatsTab() {
         <div className="grid grid-cols-3 gap-2">
           <div className="glass rounded-xl p-2.5 text-center">
             <div className="text-xl font-bold tabular text-green-400">{lectures.filter(l => l.done && l.revisionStage >= 0 && !isRevisionOverdue(l.nextRevisionAt)).length}</div>
-            <div className="text-[9px] text-white/40">On track</div>
+            <div className="text-[9px] text-white/60">On track</div>
           </div>
           <div className="glass rounded-xl p-2.5 text-center">
             <div className="text-xl font-bold tabular text-amber-400">{overdueRevisions.length}</div>
-            <div className="text-[9px] text-white/40">Overdue</div>
+            <div className="text-[9px] text-white/60">Overdue</div>
           </div>
           <div className="glass rounded-xl p-2.5 text-center">
             <div className="text-xl font-bold tabular text-white/60">{dueRevisions.length}</div>
-            <div className="text-[9px] text-white/40">Total due</div>
+            <div className="text-[9px] text-white/60">Total due</div>
           </div>
         </div>
       </ChartCard>
@@ -433,7 +433,7 @@ export function StatsTab() {
       <ProgressTimelineSection />
 
       {prefer2D && (
-        <p className="text-center text-[10px] text-white/30">2D graph mode enabled in settings</p>
+        <p className="text-center text-[10px] text-white/50">2D graph mode enabled in settings</p>
       )}
     </div>
   );
@@ -465,7 +465,7 @@ function ProgressTimelineSection() {
       </div>
 
       {recentEvents.length === 0 ? (
-        <p className="text-xs text-white/40 text-center py-3">
+        <p className="text-xs text-white/60 text-center py-3">
           No progress yet. Mark lectures done to see your timeline.
         </p>
       ) : (
@@ -477,7 +477,7 @@ function ProgressTimelineSection() {
               <div key={e.id} className="flex items-center gap-2 text-xs">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: color.hex }} />
                 <span className="text-white/70 truncate flex-1">{e.topic}</span>
-                <span className="text-[10px] text-white/30 tabular">{time}</span>
+                <span className="text-[10px] text-white/50 tabular">{time}</span>
               </div>
             );
           })}
@@ -485,7 +485,7 @@ function ProgressTimelineSection() {
       )}
 
       <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
-        <span className="text-white/40">Total lectures done</span>
+        <span className="text-white/60">Total lectures done</span>
         <span className="font-bold tabular text-green-400">{totalDone}</span>
       </div>
     </div>
