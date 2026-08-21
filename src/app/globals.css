@@ -752,6 +752,41 @@ html.sage .force-dark-ui .border-white\/5 { border-color: rgba(255, 255, 255, 0.
 html.sage .force-dark-ui .border-white\/10 { border-color: rgba(255, 255, 255, 0.10) !important; }
 html.sage .force-dark-ui .border-white\/15 { border-color: rgba(255, 255, 255, 0.15) !important; }
 html.sage .force-dark-ui .border-white\/20 { border-color: rgba(255, 255, 255, 0.20) !important; }
+
+/* ===== WARM THEME force-dark-ui — missing! =====
+ * The main selector 'html:not(.dark):not(.warm)' EXCLUDES warm, so
+ * force-dark-ui never reset text-white/bg-white for the warm theme.
+ * This caused invisible text + buttons in FocusTimer on warm theme.
+ * These rules mirror the rose/sage/light overrides. */
+html.warm .force-dark-ui .text-white { color: #ffffff !important; }
+html.warm .force-dark-ui .text-white\/95 { color: rgba(255, 255, 255, 0.95) !important; }
+html.warm .force-dark-ui .text-white\/90 { color: rgba(255, 255, 255, 0.90) !important; }
+html.warm .force-dark-ui .text-white\/85 { color: rgba(255, 255, 255, 0.85) !important; }
+html.warm .force-dark-ui .text-white\/80 { color: rgba(255, 255, 255, 0.80) !important; }
+html.warm .force-dark-ui .text-white\/75 { color: rgba(255, 255, 255, 0.75) !important; }
+html.warm .force-dark-ui .text-white\/70 { color: rgba(255, 255, 255, 0.70) !important; }
+html.warm .force-dark-ui .text-white\/65 { color: rgba(255, 255, 255, 0.65) !important; }
+html.warm .force-dark-ui .text-white\/60 { color: rgba(255, 255, 255, 0.60) !important; }
+html.warm .force-dark-ui .text-white\/55 { color: rgba(255, 255, 255, 0.55) !important; }
+html.warm .force-dark-ui .text-white\/50 { color: rgba(255, 255, 255, 0.50) !important; }
+html.warm .force-dark-ui .text-white\/45 { color: rgba(255, 255, 255, 0.45) !important; }
+html.warm .force-dark-ui .text-white\/40 { color: rgba(255, 255, 255, 0.40) !important; }
+html.warm .force-dark-ui .text-white\/35 { color: rgba(255, 255, 255, 0.35) !important; }
+html.warm .force-dark-ui .text-white\/30 { color: rgba(255, 255, 255, 0.30) !important; }
+html.warm .force-dark-ui .text-white\/25 { color: rgba(255, 255, 255, 0.25) !important; }
+html.warm .force-dark-ui .text-white\/20 { color: rgba(255, 255, 255, 0.20) !important; }
+html.warm .force-dark-ui .text-white\/15 { color: rgba(255, 255, 255, 0.15) !important; }
+html.warm .force-dark-ui .text-white\/10 { color: rgba(255, 255, 255, 0.10) !important; }
+html.warm .force-dark-ui .text-white\/5 { color: rgba(255, 255, 255, 0.05) !important; }
+html.warm .force-dark-ui .bg-white\/5 { background: rgba(255, 255, 255, 0.05) !important; }
+html.warm .force-dark-ui .bg-white\/10 { background: rgba(255, 255, 255, 0.10) !important; }
+html.warm .force-dark-ui .bg-white\/15 { background: rgba(255, 255, 255, 0.15) !important; }
+html.warm .force-dark-ui .bg-white\/20 { background: rgba(255, 255, 255, 0.20) !important; }
+html.warm .force-dark-ui .bg-white\/30 { background: rgba(255, 255, 255, 0.30) !important; }
+html.warm .force-dark-ui .border-white\/5 { border-color: rgba(255, 255, 255, 0.05) !important; }
+html.warm .force-dark-ui .border-white\/10 { border-color: rgba(255, 255, 255, 0.10) !important; }
+html.warm .force-dark-ui .border-white\/15 { border-color: rgba(255, 255, 255, 0.15) !important; }
+html.warm .force-dark-ui .border-white\/20 { border-color: rgba(255, 255, 255, 0.20) !important; }
 html.sage .force-dark-ui .ring-white\/30 { --tw-ring-color: rgba(255, 255, 255, 0.30) !important; }
 html.sage .force-dark-ui .bg-black\/60 { background: rgba(0, 0, 0, 0.60) !important; }
 html.sage .force-dark-ui .bg-black\/70 { background: rgba(0, 0, 0, 0.70) !important; }

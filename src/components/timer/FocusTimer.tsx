@@ -774,6 +774,8 @@ export function FocusTimer() {
               // Cancel long-press
               clearTimeout(rotateLongPressRef.current);
               rotateLongPressRef.current = null;
+              // Dispatch custom event for RotateHintToast to count taps
+              window.dispatchEvent(new Event('neet-rotate-tap'));
               // Detect double-tap
               const now = Date.now();
               const isDoubleTap = now - lastRotateTapRef.current < 300;
@@ -842,6 +844,12 @@ export function FocusTimer() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Rotate hint — shows when user taps rotate multiple times.
+              Has "Got it" (dismiss) and "Don't show again" (permanent dismiss
+              via localStorage). Reappears if user struggles again (taps rotate
+              5+ times in a session after dismissing with "Got it"). */}
+          <RotateHintToast />
         </div>
       </div>
       </div>
@@ -849,3 +857,96 @@ export function FocusTimer() {
     </motion.div>
   );
 }
+
+/** RotateHintToast — educates the user about the rotate button gestures.
+ *  Shows when the user taps the rotate button 3+ times in quick succession
+ *  (struggling = tapping repeatedly trying to figure it out).
+ *  - "Got it" → dismisses for this session. Reappears next session or after
+ *    5 more taps.
+ *  - "Don't show again" → sets localStorage flag. Never shows again.
+ *  - If "Got it" was tapped and user taps rotate 5+ more times → shows again. */
+function RotateHintToast() {
+  const [show, setShow] = useState(false);
+  const tapCountRef = useRef(0);
+  const lastTapRef = useRef(0);
+  const dismissedThisSession = useRef(false);
+  const tapsSinceDismiss = useRef(0);
+
+  useEffect(() => {
+    // Check if user permanently dismissed
+    if (typeof window !== 'undefined' && localStorage.getItem('neet-rotate-hint-dismissed')) {
+      return; // Never show
+    }
+
+    const onRotateTap = () => {
+      const now = Date.now();
+      // Reset count if more than 5s between taps
+      if (now - lastTapRef.current > 5000) {
+        tapCountRef.current = 0;
+        tapsSinceDismiss.current = 0;
+      }
+      lastTapRef.current = now;
+      tapCountRef.current++;
+
+      if (dismissedThisSession.current) {
+        tapsSinceDismiss.current++;
+        // Reappear after 5 more taps if user dismissed with "Got it"
+        if (tapsSinceDismiss.current >= 5) {
+          dismissedThisSession.current = false;
+          tapsSinceDismiss.current = 0;
+          setShow(true);
+        }
+      } else if (tapCountRef.current >= 3) {
+        setShow(true);
+      }
+    };
+
+    // Listen for rotate taps via a custom event
+    window.addEventListener('neet-rotate-tap', onRotateTap);
+    return () => window.removeEventListener('neet-rotate-tap', onRotateTap);
+  }, []);
+
+  if (!show) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 20, scale: 0.9 }}
+      className="absolute bottom-40 left-1/2 -translate-x-1/2 w-[280px] px-4 py-3 rounded-xl bg-black/90 backdrop-blur-md border border-white/20 text-white z-50"
+    >
+      <div className="text-xs font-bold mb-1.5 flex items-center gap-1.5">
+        <RotateCw size={13} className="text-amber-400" /> Rotate Button Tips
+      </div>
+      <div className="text-[10px] text-white/80 space-y-0.5 mb-2.5">
+        <div>• <strong>Tap</strong> → rotate 90°</div>
+        <div>• <strong>Double-tap</strong> → temporary lock</div>
+        <div>• <strong>Long-press</strong> → permanent lock</div>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={() => {
+            vibrate(8);
+            setShow(false);
+            dismissedThisSession.current = true;
+            tapCountRef.current = 0;
+          }}
+          className="flex-1 py-1.5 rounded-lg bg-white/15 text-white text-[10px] font-bold active:scale-95 transition"
+        >
+          Got it
+        </button>
+        <button
+          onClick={() => {
+            vibrate(8);
+            setShow(false);
+            try { localStorage.setItem('neet-rotate-hint-dismissed', '1'); } catch {}
+          }}
+          className="flex-1 py-1.5 rounded-lg bg-white/5 text-white/60 text-[10px] font-semibold active:scale-95 transition"
+        >
+          Don't show again
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
