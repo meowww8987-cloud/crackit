@@ -245,56 +245,56 @@ export function PartnerCard() {
   const partnerStreak = partnerData?.streak || 0;
   const partnerTargetsDone = partnerData?.targetsDone || 0;
   const partnerTargetsTotal = partnerData?.targetsTotal || 0;
-  const partnerIsStudying = partnerData?.isStudying || false;
-  const partnerIsPaused = partnerData?.isPaused || false;
-  const partnerIsWasting = partnerData?.isWasting || false;
+  // === Freshness-aware status ===
+  // Partner's activity flags (isStudying, isPracticing, etc.) are only
+  // trusted if the data is FRESH (<30s old). If data is stale (30s-120s),
+  // we show "Online" instead of "Studying" because we don't know if they're
+  // still studying. If >120s, show "Offline".
+  // This prevents the bug where partner closed their app 81s ago but the
+  // card still shows "Studying" because the stale payload has isStudying=true.
+  const partnerUpdatedAt = partner.partnerLastSeen ?? partnerData?.updatedAt ?? null;
+  const partnerDataAge = partnerUpdatedAt ? Date.now() - partnerUpdatedAt : null;
+  const partnerIsLive = partnerDataAge !== null && partnerDataAge < 30_000;
+  const partnerIsOffline = partnerDataAge === null || partnerDataAge > 120_000;
+  // Only trust payload flags if data is fresh (live)
+  const partnerIsStudying = partnerIsLive && (partnerData?.isStudying || false);
+  const partnerIsPaused = partnerIsLive && (partnerData?.isPaused || false);
+  const partnerIsWasting = partnerIsLive && (partnerData?.isWasting || false);
+  const partnerIsPracticing = partnerIsLive && (partnerData?.isPracticing || false);
+  const partnerActivityType = partnerIsLive ? (partnerData?.activityType || null) : null;
   const partnerLastSubject = partnerData?.lastSubject || null;
   const partnerLastChapter = partnerData?.lastChapter || null;
   const partnerLastLecture = partnerData?.lastLecture || null;
   const partnerLastTopic = partnerData?.lastTopic || null;
   const partnerLastTestScore = partnerData?.lastTestScore || null;
-  // Use the SERVER timestamp (partnerLastSeen) for freshness — immune to
-  // client clock skew. Falls back to client-side updatedAt if server time
-  // isn't available yet (e.g., partner never synced).
-  const partnerUpdatedAt = partner.partnerLastSeen ?? partnerData?.updatedAt ?? null;
 
   // Comparison bar — who's studied more today
   const maxSec = Math.max(myTodaySec, partnerSec, 1);
   const myPct = Math.round((myTodaySec / maxSec) * 100);
   const partnerPct = Math.round((partnerSec / maxSec) * 100);
 
-  // === Freshness indicator ===
-  // How long ago did the partner's data get pushed? If < 30s, show "live".
-  const partnerDataAge = partnerUpdatedAt ? Date.now() - partnerUpdatedAt : null;
-  const partnerIsLive = partnerDataAge !== null && partnerDataAge < 30_000;
-
-  // Status badge — 5 explicit states: Online / Studying / Paused / Wasting / Offline
-  // Partner is "Offline" if we haven't seen them in >2min, otherwise "Online" (idle).
-  const partnerIsOffline = partnerDataAge === null || partnerDataAge > 120_000;
-  // Partner activity type — distinguishes "Practicing" from "Studying".
-  const partnerActivityType = partnerData?.activityType || null;
-  const partnerIsPracticing = partnerData?.isPracticing || false;
-  const partnerStatusText = partnerIsPracticing
-    ? 'Practicing'
-    : partnerIsStudying
-      ? 'Studying'
-      : partnerIsWasting
-        ? 'Wasting'
-        : partnerIsPaused
-          ? 'Paused'
-          : partnerIsOffline
-            ? 'Offline'
+  // Status text — offline/online checked FIRST, then activity (only if live)
+  const partnerStatusText = partnerIsOffline
+    ? 'Offline'
+    : partnerIsPracticing
+      ? 'Practicing'
+      : partnerIsStudying
+        ? 'Studying'
+        : partnerIsWasting
+          ? 'Wasting'
+          : partnerIsPaused
+            ? 'Paused'
             : 'Online';
-  const partnerStatusColor = partnerIsPracticing
-    ? '#3b82f6'
-    : partnerIsStudying
-      ? '#22c55e'
-      : partnerIsWasting
-        ? '#ef4444'
-        : partnerIsPaused
-          ? '#f59e0b'
-          : partnerIsOffline
-            ? '#9ca3af'
+  const partnerStatusColor = partnerIsOffline
+    ? '#9ca3af'
+    : partnerIsPracticing
+      ? '#3b82f6'
+      : partnerIsStudying
+        ? '#22c55e'
+        : partnerIsWasting
+          ? '#ef4444'
+          : partnerIsPaused
+            ? '#f59e0b'
             : '#3b82f6';
   // "You" status — distinguishes "Practicing" from "Studying".
   // Practice takes priority: if activePractice is set, we are "Practicing X"

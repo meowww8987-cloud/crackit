@@ -126,4 +126,35 @@ export function usePartnerSync() {
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
   }, [partnerCode, syncData, fetchPartnerData]);
+
+  // === Push isStudying:false when closing/backgrounding the app ===
+  // When the user closes/backgrounds the app while studying, the last pushed
+  // payload has isStudying:true and stays on the server forever. The partner
+  // then sees "Studying" indefinitely until the user reopens.
+  // This handler fires on beforeunload/pagehide/visibilitychange(hidden) and
+  // pushes a final sync with the CURRENT state (which will have isStudying
+  // based on whether the session is still active at close time).
+  // NOTE: syncData reads FRESH state from stores, so if restoreSession/tick
+  // already closed the session on date-change, isStudying will be false.
+  useEffect(() => {
+    if (!partnerCode) return;
+    const onUnload = () => {
+      // Fire-and-forget — the fetch may not complete before the page unloads,
+      // but sendBeacon-style headers give it the best chance.
+      try { syncData(); } catch {}
+    };
+    const onVisibilityHidden = () => {
+      if (document.hidden) {
+        try { syncData(); } catch {}
+      }
+    };
+    window.addEventListener('beforeunload', onUnload);
+    window.addEventListener('pagehide', onUnload);
+    document.addEventListener('visibilitychange', onVisibilityHidden);
+    return () => {
+      window.removeEventListener('beforeunload', onUnload);
+      window.removeEventListener('pagehide', onUnload);
+      document.removeEventListener('visibilitychange', onVisibilityHidden);
+    };
+  }, [partnerCode, syncData]);
 }
