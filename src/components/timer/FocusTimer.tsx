@@ -582,13 +582,13 @@ export function FocusTimer() {
           <span className="font-bold" style={{ color: color.hex }}>{active.subject}</span>
           {active.chapter && (
             <>
-              <span className="text-white/50">·</span>
+              <span className="text-white/70">·</span>
               <span className="text-white/85 font-medium">{active.chapter}</span>
             </>
           )}
         </div>
         {active.topic && (
-          <div className="text-xs text-white/80 mt-0.5">{active.topic}</div>
+          <div className="text-xs text-white/90 mt-0.5">{active.topic}</div>
         )}
       </div>
 
@@ -639,7 +639,7 @@ export function FocusTimer() {
           />
           {/* Timer label — small caption so the meaning is unambiguous */}
           {!dimmed && (
-            <div className="text-center mt-1 text-[10px] uppercase tracking-widest text-white/70 font-semibold">
+            <div className="text-center mt-1 text-[10px] uppercase tracking-widest text-white/80 font-semibold">
               {isPaused ? 'Paused at' : isWasting ? 'Wasting for' : 'Studied for'}
             </div>
           )}
@@ -655,11 +655,11 @@ export function FocusTimer() {
         {/* Expected time progress — HIDDEN when dimmed */}
         {active.expectedMinutes && (
           <div className={cn('mt-6 w-64 transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
-            <div className="flex justify-between text-[11px] text-white/80 mb-1 tabular font-medium">
+            <div className="flex justify-between text-[11px] text-white/90 mb-1 tabular font-medium">
               <span>{formatHM(studySec)} done</span>
               <span>{active.expectedMinutes}m goal</span>
             </div>
-            <div className="h-2 rounded-full bg-white/15 overflow-hidden">
+            <div className="h-2 rounded-full bg-white/20 overflow-hidden">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
@@ -683,7 +683,7 @@ export function FocusTimer() {
             if (isPaused) resume();
             else pause();
           }}
-          className="w-full py-4 rounded-2xl font-bold text-base bg-white/15 text-white backdrop-blur-md active:scale-[0.98] transition flex items-center justify-center gap-2"
+          className="w-full py-4 rounded-2xl font-bold text-base bg-white/20 text-white backdrop-blur-md active:scale-[0.98] transition flex items-center justify-center gap-2"
         >
           {isPaused ? <><Play size={18} fill="currentColor" /> Resume</> : <><Pause size={18} fill="currentColor" /> Pause</>}
         </button>
@@ -732,7 +732,7 @@ export function FocusTimer() {
               handleInteraction();
               setFocusOpen(false);
             }}
-            className="px-5 py-4 rounded-2xl font-semibold text-sm bg-white/10 text-white/80 active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+            className="px-5 py-4 rounded-2xl font-bold text-sm bg-white/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5"
           >
             <ChevronDown size={16} /> Min
           </button>
@@ -810,7 +810,7 @@ export function FocusTimer() {
                 rotateLongPressRef.current = null;
               }
             }}
-            className="px-4 py-4 rounded-2xl font-semibold text-sm bg-white/5 text-white/70 active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
+            className="px-4 py-4 rounded-2xl font-bold text-sm bg-white/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
             title={`Rotate (current: ${effectiveAngle}°${settings.lockedOrientation !== null ? ' · locked' : ''}${tempLockAngle !== null ? ' · temp-locked' : ''})\n• Tap: rotate 90°\n• Double-tap: temp lock\n• Long-press: persistent lock`}
             aria-label="Rotate or lock orientation"
           >
