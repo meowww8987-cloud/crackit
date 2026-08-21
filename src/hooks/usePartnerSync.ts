@@ -81,15 +81,16 @@ export function usePartnerSync() {
     syncData();
     fetchPartnerData();
 
-    // Sync interval — 3s normally, 30s when FocusTimer is open (saves battery/CPU).
-    // The interval is RE-CREATED when focusOpen changes (dep array includes focusOpen).
+    // Sync interval — 30s globally (was 3s, too aggressive for low-end devices).
+    // During FocusTimer: still 30s (already optimized).
+    // The 'updated Xs ago' display on PartnerCard handles the perception of freshness.
     const i = setInterval(() => {
       syncData();
       fetchPartnerData();
-    }, focusOpen ? 30_000 : 3_000);
+    }, 30_000);
 
     return () => clearInterval(i);
-  }, [partnerCode, sessionKey, practiceKey, sessionsLen, pausedPracticesLen, targetsLen, focusOpen, syncData, fetchPartnerData]);
+  }, [partnerCode, sessionKey, practiceKey, sessionsLen, pausedPracticesLen, targetsLen, syncData, fetchPartnerData]);
 
   // Fetch partner data when tab becomes visible OR window regains focus.
   // CRITICAL: mobile browsers throttle setInterval when the tab goes to the

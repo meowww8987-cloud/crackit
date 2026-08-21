@@ -88,7 +88,7 @@ export function SettingsTab() {
                 // Show central toast listing all changes point-by-point
                 pushToast(
                   '⚡ Minimal Mode Activated',
-                  '• 3D background disabled (saves battery)\n• Gradient mesh disabled (saves GPU)\n• Non-essential tabs hidden\n• Partner sync slowed during focus\n• Focus timer optimized for low-end devices',
+                  '• 3D background disabled (saves battery)\n• Gradient mesh disabled (saves GPU)\n• Non-essential tabs hidden\n• Partner sync every 30s (saves network)\n• Focus timer optimized for low-end devices\n• Animations reduced for smoother UX',
                   'success'
                 );
               } else {

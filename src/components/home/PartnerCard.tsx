@@ -122,23 +122,8 @@ export function PartnerCard() {
       else setSyncError(null);
     });
 
-    // Poll faster when data is stale or partner is studying — 3s for real-time feel
-    const intervalMs = !partner.partnerName
-      ? 8_000
-      : (_partnerStudyingForPoll || _partnerDataStale)
-      ? 3_000
-      : 5_000;
-    const i = setInterval(() => {
-      fetchPartnerData().then((status) => {
-        setLastChecked(Date.now());
-        if (status === 'notfound') setSyncError('notfound');
-        else if (status === 'error') setSyncError('error');
-        else setSyncError(null);
-      });
-    }, intervalMs);
-
-    // Re-poll immediately when the tab becomes visible (user came back to the
-    // app — they want fresh data, not stale data from when they left).
+    // Local polling REMOVED — global usePartnerSync (30s) handles all push/fetch.
+    // Keep only visibilitychange for immediate refresh on tab return.
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
         syncData();
@@ -151,17 +136,12 @@ export function PartnerCard() {
       }
     };
     document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [partner.code, syncData, fetchPartnerData]);
 
-    return () => {
-      clearInterval(i);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, [partner.code, partner.partnerName, _partnerStudyingForPoll, _partnerDataStale, syncData, fetchPartnerData]);
-
-  // Tick every 1s so the "Xs ago" counters update in real-time — makes the
-  // card feel alive instead of jumping in 5s steps.
+  // Tick every 5s so "updated Xs ago" counter stays fresh (30s sync, 5s display)
   useEffect(() => {
-    const t = setInterval(() => setTick((x) => x + 1), 1_000);
+    const t = setInterval(() => setTick((x) => x + 1), 5_000);
     return () => clearInterval(t);
   }, []);
 

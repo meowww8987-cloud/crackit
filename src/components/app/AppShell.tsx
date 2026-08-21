@@ -236,7 +236,7 @@ export function AppShell() {
       if (window.history.state?.app !== true) {
         window.history.pushState({ app: true }, '');
       }
-    }, 1000);
+    }, 5000);
 
     return () => {
       window.removeEventListener('popstate', onPopState);

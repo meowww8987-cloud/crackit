@@ -436,11 +436,11 @@ function UpcomingView({ test, readinessPct }: { test: Test; readinessPct: number
 
   // Live ticking for elapsed display
   const [, setTick] = useState(0);
-  useState(() => {
+  useEffect(() => {
     if (test.timerState !== 'running') return;
     const i = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(i);
-  });
+  }, [test.timerState]);
 
   if (showTimer) {
     return <TestTimer testId={test.id} onClose={() => setShowTimer(false)} />;

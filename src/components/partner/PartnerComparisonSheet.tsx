@@ -44,18 +44,11 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   // Real-time polling
   const [, setTick] = useState(0);
   useEffect(() => {
-    syncData();
-    fetchPartnerData();
-    const tickInterval = setInterval(() => setTick(t => t + 1), 1000);
-    const syncInterval = setInterval(() => {
-      syncData();
-      fetchPartnerData();
-    }, 3000);
-    return () => {
-      clearInterval(tickInterval);
-      clearInterval(syncInterval);
-    };
-  }, [syncData, fetchPartnerData]);
+    // REMOVED local syncInterval — global usePartnerSync (30s) handles push/fetch.
+    // Keep only a 5s tick for the "updated Xs ago" display.
+    const tickInterval = setInterval(() => setTick(t => t + 1), 5000);
+    return () => clearInterval(tickInterval);
+  }, []);
 
   // My stats
   const today = _today;

@@ -24,11 +24,12 @@ export function FloatingWidget() {
   const x = useMotionValue(typeof window !== 'undefined' ? window.innerWidth - 210 : 100);
   const y = useMotionValue(typeof window !== 'undefined' ? window.innerHeight - 280 : 100);
 
-  // Live ticking
+  // Live ticking — skip when widget is hidden (saves CPU on low-end devices)
   useEffect(() => {
-    const i = setInterval(() => setTick((t) => t + 1), 500);
+    if (widgetHidden) return;
+    const i = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(i);
-  }, []);
+  }, [widgetHidden]);
 
   if (!active) return null;
 

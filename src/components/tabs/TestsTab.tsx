@@ -106,7 +106,6 @@ export function TestsTab() {
           return (
             <motion.button
               key={test.id}
-              layout
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ type: 'spring', stiffness: 500, damping: 35 }}

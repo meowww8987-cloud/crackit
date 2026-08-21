@@ -108,10 +108,12 @@ export const usePartner = create<PartnerStore>()(
           });
           const data = await res.json();
           if (data.error) {
+            // eslint-disable-next-line
             console.warn('[partner] createPair server error:', data.error);
             return { error: data.error };
           }
           if (!data.code) {
+            // eslint-disable-next-line
             console.warn('[partner] createPair: no code in response');
             return { error: 'Server returned no code. Try again.' };
           }
@@ -128,7 +130,8 @@ export const usePartner = create<PartnerStore>()(
           });
           return { code: data.code };
         } catch (e) {
-          console.warn('[partner] createPair network error:', e);
+          // eslint-disable-next-line
+            console.warn('[partner] createPair network error:', e);
           return { error: 'Network error. Check your connection and try again.' };
         }
       },
@@ -142,6 +145,7 @@ export const usePartner = create<PartnerStore>()(
           });
           const data = await res.json();
           if (data.error) {
+            // eslint-disable-next-line
             console.warn('[partner] joinPair server error:', data.error);
             return { ok: false, error: data.error };
           }
@@ -161,7 +165,8 @@ export const usePartner = create<PartnerStore>()(
           setTimeout(() => { get().syncData(); }, 0);
           return { ok: true };
         } catch (e) {
-          console.warn('[partner] joinPair network error:', e);
+          // eslint-disable-next-line
+            console.warn('[partner] joinPair network error:', e);
           return { ok: false, error: 'Network error. Check your connection and try again.' };
         }
       },
@@ -330,22 +335,14 @@ export const usePartner = create<PartnerStore>()(
             cache: 'no-store',
           });
           if (!res.ok) {
+            // eslint-disable-next-line
             console.warn('[partner] syncData POST failed:', res.status, 'for code', state.code);
           } else {
             set({ lastSyncAt: Date.now() });
-            // Verbose diagnostic — helps verify pushes are actually happening.
-            // Check DevTools console for this log to confirm your device is pushing.
-            console.log('[partner] syncData OK — pushed', {
-              code: state.code,
-              isUserB: state.isUserB,
-              todaySec,
-              isStudying,
-              lastSubject,
-              updatedAt: payload.updatedAt,
-            });
           }
         } catch (e) {
-          console.warn('[partner] syncData network error:', e);
+          // eslint-disable-next-line
+            console.warn('[partner] syncData network error:', e);
         }
       },
 
@@ -364,15 +361,18 @@ export const usePartner = create<PartnerStore>()(
           if (res.status === 404) {
             // Pair doesn't exist on server anymore — DB was reset, or the
             // code was never valid. Caller should show a "reset" UI.
+            // eslint-disable-next-line
             console.warn('[partner] Pair not found on server for code:', state.code);
             return 'notfound';
           }
           if (!res.ok) {
+            // eslint-disable-next-line
             console.warn('[partner] sync fetch failed:', res.status);
             return 'error';
           }
           const data = await res.json();
           if (data.error) {
+            // eslint-disable-next-line
             console.warn('[partner] sync returned error:', data.error);
             return 'error';
           }
@@ -391,7 +391,8 @@ export const usePartner = create<PartnerStore>()(
           });
           return 'ok';
         } catch (e) {
-          console.warn('[partner] sync network error:', e);
+          // eslint-disable-next-line
+            console.warn('[partner] sync network error:', e);
           return 'error';
         }
       },

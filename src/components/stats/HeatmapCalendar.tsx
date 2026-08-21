@@ -53,12 +53,12 @@ export function HeatmapCalendar() {
       cells.push({ date: null, dayNum: null, key: null, studySec: 0, wastedSec: 0, hours: 0, intensity: 0 });
     }
 
-    // Days of the month
+    // Days of the month — use sessionMap for O(1) lookup instead of O(N) filter
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, month, d);
       const key = dateKey(date);
       const daySessions = sessions.filter((s) => s.date === key);
-      const studySec = daySessions.reduce((a, s) => a + s.studySeconds, 0);
+      const studySec = sessionMap.get(key) || 0;
       const wastedSec = daySessions.reduce((a, s) => a + s.wastedSeconds, 0);
       const hours = studySec / 3600;
       const intensity = hours >= 7 ? 4 : hours >= 4 ? 3 : hours >= 1 ? 2 : hours > 0 ? 1 : 0;
@@ -74,7 +74,7 @@ export function HeatmapCalendar() {
     }
 
     return cells;
-  }, [currentMonth, sessions]);
+  }, [currentMonth, sessions, sessionMap]);
 
   // Intensity colors
   const intensityColors = [
@@ -85,7 +85,16 @@ export function HeatmapCalendar() {
     'rgba(34,197,94,1)',
   ];
 
-  // Stats for the full 365 days
+  // Precompute a Map<dateKey, studySec> in O(N) instead of O(N × 365)
+  const sessionMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of sessions) {
+      m.set(s.date, (m.get(s.date) || 0) + s.studySeconds);
+    }
+    return m;
+  }, [sessions]);
+
+  // Stats for the full 365 days — uses precomputed map (O(365) lookups, not O(365×N))
   const yearlyStats = useMemo(() => {
     const today = new Date();
     let totalSec = 0;
@@ -96,7 +105,7 @@ export function HeatmapCalendar() {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const key = dateKey(d);
-      const daySec = sessions.filter((s) => s.date === key).reduce((a, s) => a + s.studySeconds, 0);
+      const daySec = sessionMap.get(key) || 0;
       if (daySec > 0) {
         totalSec += daySec;
         activeDays++;
@@ -107,7 +116,7 @@ export function HeatmapCalendar() {
       }
     }
     return { totalHours: totalSec / 3600, activeDays, bestStreak };
-  }, [sessions]);
+  }, [sessionMap]);
 
   // Touch handlers for swipe-to-navigate (doesn't bubble to AppShell)
   const onTouchStart = (e: React.TouchEvent) => {
