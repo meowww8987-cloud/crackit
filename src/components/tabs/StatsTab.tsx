@@ -88,11 +88,11 @@ export function StatsTab() {
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={weekly} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: '#ffffff60', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#ffffff60', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <Tooltip
-                contentStyle={{ background: '#1a1a25', border: '1px solid #ffffff20', borderRadius: 8, fontSize: 11 }}
+                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
                 labelStyle={{ color: '#fff' }}
               />
               <Bar dataKey="study" radius={[4, 4, 0, 0]} fill="#14b8a6" name="Study (min)" />
@@ -193,7 +193,7 @@ export function StatsTab() {
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ background: '#1a1a25', border: '1px solid #ffffff20', borderRadius: 8, fontSize: 11 }}
+                    contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -216,11 +216,11 @@ export function StatsTab() {
         <div className="h-36">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trend} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: '#ffffff60', fontSize: 9 }} axisLine={false} tickLine={false} interval={5} />
-              <YAxis tick={{ fill: '#ffffff60', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }} axisLine={false} tickLine={false} interval={5} />
+              <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <Tooltip
-                contentStyle={{ background: '#1a1a25', border: '1px solid #ffffff20', borderRadius: 8, fontSize: 11 }}
+                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
               />
               <Line type="monotone" dataKey="minutes" stroke="#22c55e" strokeWidth={2} dot={false} name="Study (min)" />
             </LineChart>
@@ -241,7 +241,7 @@ export function StatsTab() {
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ background: '#1a1a25', border: '1px solid #ffffff20', borderRadius: 8, fontSize: 11 }}
+                    contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -267,7 +267,7 @@ export function StatsTab() {
                 startAngle={90}
                 endAngle={-270}
               >
-                <RadialBar background={{ fill: '#ffffff10' }} dataKey="value" cornerRadius={10} />
+                <RadialBar background={{ fill: 'var(--border)' }} dataKey="value" cornerRadius={10} />
               </RadialBarChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -312,11 +312,11 @@ export function StatsTab() {
         <div className="h-32">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={bestHour} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-              <XAxis dataKey="hour" tick={{ fill: '#ffffff60', fontSize: 8 }} axisLine={false} tickLine={false} interval={3} />
-              <YAxis tick={{ fill: '#ffffff60', fontSize: 9 }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="hour" tick={{ fill: 'var(--muted-foreground)', fontSize: 8 }} axisLine={false} tickLine={false} interval={3} />
+              <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }} axisLine={false} tickLine={false} />
               <Tooltip
-                contentStyle={{ background: '#1a1a25', border: '1px solid #ffffff20', borderRadius: 8, fontSize: 11 }}
+                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
               />
               <Bar dataKey="minutes" radius={[2, 2, 0, 0]} fill="#14b8a6" />
             </BarChart>
@@ -349,11 +349,11 @@ export function StatsTab() {
           <div className="h-32">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={retentionData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: '#ffffff60', fontSize: 8 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 100]} tick={{ fill: '#ffffff60', fontSize: 9 }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: 'var(--muted-foreground)', fontSize: 8 }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ background: '#1a1a25', border: '1px solid #ffffff20', borderRadius: 8, fontSize: 11 }}
+                  contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
                 />
                 <Line type="monotone" dataKey="score" stroke="#a855f7" strokeWidth={2} dot={{ r: 3 }} name="Retention %" />
               </LineChart>

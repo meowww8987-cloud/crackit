@@ -44,7 +44,7 @@ export function PWARegister() {
         }
         // Re-register fresh
         navigator.serviceWorker
-          .register('/sw.js?v=26')
+          .register('/sw.js?v=27')
           .catch(() => {});
       });
     }
