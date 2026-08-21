@@ -73,11 +73,11 @@ export function FocusTimer() {
   const lastWastedRef = useRef(0);
   const lastInteractRef = useRef(Date.now());
 
-  // Live ticking — 500ms for smooth display
+  // Live ticking — 500ms normally, 5s when dimmed (saves CPU on low-end devices)
   useEffect(() => {
-    const i = setInterval(() => setTick((t) => t + 1), 500);
+    const i = setInterval(() => setTick((t) => t + 1), dimmed ? 5000 : 500);
     return () => clearInterval(i);
-  }, []);
+  }, [dimmed]);
 
   // === Hysteresis-based angle computation ===
   // Uses the CURRENT orientation state to decide which threshold to apply.
@@ -119,6 +119,8 @@ export function FocusTimer() {
 
   // === Orientation detection effect ===
   useEffect(() => {
+    // Skip orientation detection when dimmed (saves 60Hz sensor polling)
+    if (dimmed) return;
     const lockAngle = tempLockAngle ?? settings.lockedOrientation;
     if (lockAngle !== null && lockAngle !== undefined) {
       const normalized = ((lockAngle % 360) + 360) % 360;
@@ -214,7 +216,7 @@ export function FocusTimer() {
       }
       clearInterval(fallbackInterval);
     };
-  }, [computeAngleHysteresis, tempLockAngle, settings.lockedOrientation]);
+  }, [computeAngleHysteresis, tempLockAngle, settings.lockedOrientation, dimmed]);
 
   // Watch for wasted seconds increase (returning from background) — show flash
   // that auto-dismisses after 2.5s. Only depends on wastedSeconds (not the
@@ -612,9 +614,9 @@ export function FocusTimer() {
           {isPaused ? (
             <span>⏸ PAUSED</span>
           ) : isWasting ? (
-            <span className="pulse-fast">⚠ WASTING TIME — tap to resume</span>
+            <span className={cn('pulse-fast', dimmed && '!animate-none')}>⚠ WASTING TIME — tap to resume</span>
           ) : (
-            <span className="pulse-slow">● STUDYING</span>
+            <span className={cn('pulse-slow', dimmed && '!animate-none')}>● STUDYING</span>
           )}
         </motion.div>
 
@@ -628,15 +630,27 @@ export function FocusTimer() {
             filter: dimmed ? 'drop-shadow(0 0 40px rgba(255,255,255,0.1))' : 'none',
           }}
         >
-          <FlipTimer
-            value={formatClock(displayTime)}
-            className="text-7xl sm:text-8xl font-bold tabular tracking-tight text-center"
-            style={{
-              color: timerColor,
-              textShadow: dimmed ? 'none' : `0 0 40px ${timerColor}40`,
-              transition: 'color 600ms ease-in-out, text-shadow 600ms ease-in-out',
-            }}
-          />
+          {dimmed ? (
+            <div
+              className="text-7xl sm:text-8xl font-bold tabular tracking-tight text-center"
+              style={{
+                color: timerColor,
+                transition: 'color 600ms ease-in-out',
+              }}
+            >
+              {formatClock(displayTime)}
+            </div>
+          ) : (
+            <FlipTimer
+              value={formatClock(displayTime)}
+              className="text-7xl sm:text-8xl font-bold tabular tracking-tight text-center"
+              style={{
+                color: timerColor,
+                textShadow: `0 0 40px ${timerColor}40`,
+                transition: 'color 600ms ease-in-out, text-shadow 600ms ease-in-out',
+              }}
+            />
+          )}
           {/* Timer label — small caption so the meaning is unambiguous */}
           {!dimmed && (
             <div className="text-center mt-1 text-[10px] uppercase tracking-widest text-white/80 font-semibold">

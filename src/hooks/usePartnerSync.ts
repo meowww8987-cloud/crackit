@@ -29,12 +29,11 @@ export function usePartnerSync() {
   const syncData = usePartner((s) => s.syncData);
   const fetchPartnerData = usePartner((s) => s.fetchPartnerData);
 
-  // Reactive subscriptions — these trigger re-renders (and thus effect re-runs)
-  // when the underlying data changes, so we sync immediately on any change.
   const activeSession = useSession((s) => s.active);
   const sessionsLen = useHistory((s) => s.sessions.length);
-  const activePractice = usePractice((s) => s.activePractice);  // ← NEW: triggers re-render when practice starts/pauses/resumes/ends
-  const pausedPracticesLen = usePractice((s) => s.pausedPractices.length);  // ← NEW: triggers sync when a paused practice is resumed/discarded
+  const focusOpen = useSession((s) => s.focusOpen);
+  const activePractice = usePractice((s) => s.activePractice);
+  const pausedPracticesLen = usePractice((s) => s.pausedPractices.length);
   const targetsLen = useTargets((s) => {
     // Sum all today's targets across byDate — triggers re-render on add/delete/toggle
     const today = new Date().toISOString().slice(0, 10);
@@ -82,13 +81,15 @@ export function usePartnerSync() {
     syncData();
     fetchPartnerData();
 
+    // Sync interval — 3s normally, 30s when FocusTimer is open (saves battery/CPU).
+    // The interval is RE-CREATED when focusOpen changes (dep array includes focusOpen).
     const i = setInterval(() => {
       syncData();
       fetchPartnerData();
-    }, 3_000);
+    }, focusOpen ? 30_000 : 3_000);
 
     return () => clearInterval(i);
-  }, [partnerCode, sessionKey, practiceKey, syncData, fetchPartnerData]);
+  }, [partnerCode, sessionKey, practiceKey, sessionsLen, pausedPracticesLen, targetsLen, focusOpen, syncData, fetchPartnerData]);
 
   // Fetch partner data when tab becomes visible OR window regains focus.
   // CRITICAL: mobile browsers throttle setInterval when the tab goes to the

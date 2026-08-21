@@ -629,6 +629,15 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
           <Toggle value={s.prefer2D} onChange={(v) => update('prefer2D', v)} />
         </div>
       </Row>
+      <Row label="Low-End Device Mode">
+        <div className="flex items-center justify-between">
+          <div className="flex-1 mr-3">
+            <span className="text-sm text-white/85 font-medium block">Save battery & prevent heating</span>
+            <span className="text-[10px] text-white/50">Disables 3D background, gradient mesh, and heavy animations. Reduces partner sync to 30s during focus. Recommended for devices that heat up during long study sessions.</span>
+          </div>
+          <Toggle value={s.lowEndMode} onChange={(v) => update('lowEndMode', v)} />
+        </div>
+      </Row>
       <Row label="Haptic Feedback">
         <div className="flex items-center justify-between">
           <span className="text-sm text-white/85 font-medium flex items-center gap-1.5"><Vibrate size={14} /> Vibration on actions</span>

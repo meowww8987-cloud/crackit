@@ -37,6 +37,9 @@ const DEFAULTS: Settings = {
   // Animation controls — reduce disables bounces/confetti; intensity scales loudness
   reduceAnimations: false,
   animationIntensity: 60,
+  // Low-end device mode — disables 3D background, gradient mesh, and heavy
+  // animations globally. For devices that heat up during long study sessions.
+  lowEndMode: false,
   // Tutorial mode — shows one-time coach marks for every major feature
   tutorialMode: false,
   // Screen dimming opacity during focus timer (0-100%)
