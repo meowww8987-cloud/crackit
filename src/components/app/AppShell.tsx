@@ -192,34 +192,49 @@ export function AppShell() {
     import('@/lib/store/settings').then(({ applyMinimalMode }) => applyMinimalMode(minimalMode));
   }, [minimalMode]);
 
-  // === Back button prevention ===
+  // === Back button: triple-press to exit ===
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    // === Prevent back button from closing the app ===
-    // Strategy: continuously re-push a dummy history state so there's
-    // ALWAYS something to "go back" to. The back button never exits
-    // the app — it just stays on the current page.
-    // This handles the case where in-app navigation (sheets, tabs)
-    // consumes the initial dummy state.
-    window.history.pushState({ app: true, depth: 0 }, '');
-    let stateDepth = 0;
+    // Strategy:
+    // 1st back press  → zero response (silent, re-push state)
+    // 2nd back press  → show toast "Press back once more to exit"
+    // 3rd back press  → exit the app (must be within 10s of 2nd press)
+    // If any press is >10s apart, the counter resets to 0.
+    window.history.pushState({ app: true }, '');
+    let backCount = 0;
+    let lastBackAt = 0;
     const onPopState = (e: PopStateEvent) => {
-      // Always re-push to prevent exit. The back button does nothing
-      // except maybe close an open sheet (handled by the sheet's own
-      // Escape/back logic). If no sheet is open, the app stays put.
-      stateDepth = Math.max(0, stateDepth - 1);
+      const now = Date.now();
+      // Reset if more than 10s since last press
+      if (now - lastBackAt > 10000) {
+        backCount = 0;
+      }
+      backCount++;
+      lastBackAt = now;
+
+      if (backCount === 1) {
+        // 1st press → silent, no response
+      } else if (backCount === 2) {
+        // 2nd press → show toast
+        vibrate(10);
+        import('@/components/shared/Toast').then(({ pushToast }) =>
+          pushToast('Press back once more to exit', '', 'info')
+        );
+      } else {
+        // 3rd press → exit
+        vibrate([10, 30, 10]);
+        window.history.back();
+        return;
+      }
       // Re-push so there's always a state to catch the next back press
-      window.history.pushState({ app: true, depth: stateDepth }, '');
-      vibrate(8);
+      window.history.pushState({ app: true }, '');
     };
     window.addEventListener('popstate', onPopState);
 
-    // Periodically ensure there's always a dummy state on the stack.
-    // If in-app navigation or a sheet open/close adds/removes states,
-    // this re-pushes if needed.
+    // Periodically ensure there's always a dummy state on the stack
     const ensureState = setInterval(() => {
       if (window.history.state?.app !== true) {
-        window.history.pushState({ app: true, depth: ++stateDepth }, '');
+        window.history.pushState({ app: true }, '');
       }
     }, 1000);
 
