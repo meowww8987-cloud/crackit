@@ -58,7 +58,7 @@ export function ToastContainer() {
             >
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold text-white">{t.message}</div>
-                {t.sub && <div className="text-[10px] text-white/50 truncate">{t.sub}</div>}
+                {t.sub && <div className="text-[10px] text-white/50 whitespace-pre-line leading-relaxed">{t.sub}</div>}
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); remove(t.id); }}

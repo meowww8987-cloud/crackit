@@ -24,6 +24,7 @@ import type { Settings } from '@/lib/types';
 import { ConcentricRings } from '@/components/ui/concentric-rings';
 import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 import { triggerTutorialOnboarding } from '@/components/app/AppShell';
+import { pushToast } from '@/components/shared/Toast';
 
 type SectionKey = 'goals' | 'focus' | 'appearance' | 'notifications' | 'data';
 
@@ -79,7 +80,25 @@ export function SettingsTab() {
           </button>
           {/* Minimal Mode toggle */}
           <button
-            onClick={() => { vibrate(15); update('minimalMode', !s.minimalMode); }}
+            onClick={() => {
+              vibrate(15);
+              const newVal = !s.minimalMode;
+              update('minimalMode', newVal);
+              if (newVal) {
+                // Show central toast listing all changes point-by-point
+                pushToast(
+                  '⚡ Minimal Mode Activated',
+                  '• 3D background disabled (saves battery)\n• Gradient mesh disabled (saves GPU)\n• Non-essential tabs hidden\n• Partner sync slowed during focus\n• Focus timer optimized for low-end devices',
+                  'success'
+                );
+              } else {
+                pushToast(
+                  '✨ Full Mode Restored',
+                  '• 3D background enabled\n• Gradient mesh enabled\n• All tabs visible\n• Full partner sync speed',
+                  'info'
+                );
+              }
+            }}
             className={cn(
               'px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95',
               s.minimalMode
