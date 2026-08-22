@@ -74,12 +74,12 @@ export function PartnerComparisonSheet({ onClose }: Props) {
 
   // === Weekly leaderboard with weekOffset ===
   // YOUR data is accurate per-day (from local sessions).
-  // PARTNER data: only weekSec (total 7-day) + todaySec (today) are available.
-  // We CANNOT show accurate per-day partner data for past days.
-  // Strategy:
-  //   - For THIS week (weekOffset=0): show partner's todaySec for today,
-  //     and "(avg)" label for past days using weekSec/7.
-  //   - For PAST weeks (weekOffset>0): show "No data" for partner.
+  // PARTNER only sends todaySec (today's total) + weekSec (7-day total).
+  // No per-day breakdown available. Show ONLY real data:
+  //   - Today (this week): show partner's actual todaySec
+  //   - Past days: show "—" (no data available)
+  //   - Past weeks: show "—" for all days
+  //   - Week total: show partner's actual weekSec (not sum of per-day)
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(new Date(), -((6 - i) + weekOffset * 7));
     return dateKey(d);
@@ -93,24 +93,16 @@ export function PartnerComparisonSheet({ onClose }: Props) {
     sessions.filter((s) => s.date === date).reduce((a, s) => a + s.wastedSeconds, 0)
   );
   const partnerWeekSec = pd?.weekSec || 0;
-  const partnerHasData = weekOffset === 0 && partnerWeekSec > 0;
-  // For today (last day of current week): use partnerSec (todaySec from payload).
-  // For other days: use average (weekSec - todaySec) / 6 for past days of THIS week.
-  // This avoids double-counting today's time in the average.
   const partnerTodaySec = pd?.todaySec || 0;
-  const partnerPastDaysAvg = partnerWeekSec > partnerTodaySec
-    ? Math.floor((partnerWeekSec - partnerTodaySec) / 6)
-    : Math.floor(partnerWeekSec / 7);
+  const partnerHasData = weekOffset === 0 && partnerWeekSec > 0;
+  // Partner per-day: ONLY today has real data. Past days = 0 (shown as "—").
   const partnerDailySec = weekDates.map((_, i) => {
-    if (!partnerHasData) return 0;
-    if (i === 6) return partnerTodaySec; // today
-    return partnerPastDaysAvg; // past days = average (clearly labeled in UI)
+    if (weekOffset === 0 && i === 6) return partnerTodaySec; // today = real data
+    return 0; // past days = no data
   });
-  const maxDaily = Math.max(...myDailySec, ...partnerDailySec, 1);
-  // Only count "won" for days where we have actual partner data (this week only)
-  const daysWon = partnerHasData
-    ? myDailySec.filter((my, i) => my > partnerDailySec[i]).length
-    : 0;
+  const maxDaily = Math.max(...myDailySec, partnerTodaySec, 1);
+  // Only count "won" for today (the only day with real partner data)
+  const daysWon = partnerHasData && myDailySec[6] > partnerTodaySec ? 1 : 0;
   const myWeekTotal = myDailySec.reduce((a, b) => a + b, 0);
   const partnerWeekTotal = partnerHasData ? partnerWeekSec : 0;
   const myWeekWasted = myDailyWasted.reduce((a, b) => a + b, 0);
@@ -260,12 +252,17 @@ export function PartnerComparisonSheet({ onClose }: Props) {
               {myWeekWasted > 0 && <div className="text-[8px] text-red-400/70 tabular">⚠ {formatHM(myWeekWasted)}</div>}
             </div>
             <div className="text-center">
-              <div className="text-[9px] text-white/40 uppercase">Won</div>
-              <div className="text-sm font-bold tabular text-white/80">{partnerHasData ? `${daysWon}/7` : '—'}</div>
+              <div className="text-[9px] text-white/40 uppercase">Today</div>
+              <div className="text-sm font-bold tabular text-white/80">
+                {partnerHasData ? (
+                  myDailySec[6] > partnerTodaySec ? 'You ✅' : myDailySec[6] < partnerTodaySec ? 'Partner ✅' : 'Tie'
+                ) : '—'}
+              </div>
             </div>
             <div className="text-center">
               <div className="text-[9px] text-violet-400 font-bold uppercase">Partner</div>
               <div className="text-sm font-bold tabular text-violet-400">{partnerHasData ? formatHM(partnerWeekTotal) : 'No data'}</div>
+              {partnerHasData && <div className="text-[8px] text-white/40">7-day total</div>}
             </div>
           </div>
 
@@ -300,19 +297,16 @@ export function PartnerComparisonSheet({ onClose }: Props) {
                         {myW > 0 && <span className="text-red-400/60 text-[8px] ml-0.5">⚠{Math.round(myW/60)}m</span>}
                       </span>
                     </div>
-                    {/* Partner bar */}
+                    {/* Partner bar — only today has real data */}
                     <div className="flex items-center gap-1">
                       <div className="flex-1 h-2.5 bg-white/5 rounded-full overflow-hidden">
-                        {partnerHasData ? (
+                        {partnerHasData && pH > 0 ? (
                           <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${(pH/maxDaily)*100}%` }} />
                         ) : null}
                       </div>
-                      <span className={`tabular w-12 text-right font-mono ${!myWon && partnerHasData ? 'text-violet-400 font-bold' : 'text-white/50'}`}>
-                        {partnerHasData ? (
-                          <>
-                            {formatHM(pH)}
-                            {i < 6 && pH > 0 && <span className="text-[7px] text-white/30 ml-0.5">avg</span>}
-                          </>
+                      <span className={`tabular w-12 text-right font-mono ${!myWon && partnerHasData && pH > 0 ? 'text-violet-400 font-bold' : 'text-white/50'}`}>
+                        {partnerHasData && pH > 0 ? (
+                          formatHM(pH)
                         ) : (
                           <span className="text-white/30 text-[9px]">—</span>
                         )}
