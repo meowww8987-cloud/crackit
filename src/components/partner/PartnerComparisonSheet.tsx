@@ -73,6 +73,13 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   const partnerLastTestScore = pd?.lastTestScore ?? null;
 
   // === Weekly leaderboard with weekOffset ===
+  // YOUR data is accurate per-day (from local sessions).
+  // PARTNER data: only weekSec (total 7-day) + todaySec (today) are available.
+  // We CANNOT show accurate per-day partner data for past days.
+  // Strategy:
+  //   - For THIS week (weekOffset=0): show partner's todaySec for today,
+  //     and "(avg)" label for past days using weekSec/7.
+  //   - For PAST weeks (weekOffset>0): show "No data" for partner.
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(new Date(), -((6 - i) + weekOffset * 7));
     return dateKey(d);
@@ -86,15 +93,26 @@ export function PartnerComparisonSheet({ onClose }: Props) {
     sessions.filter((s) => s.date === date).reduce((a, s) => a + s.wastedSeconds, 0)
   );
   const partnerWeekSec = pd?.weekSec || 0;
-  const partnerDailyAvg = Math.floor(partnerWeekSec / 7);
+  const partnerHasData = weekOffset === 0 && partnerWeekSec > 0;
+  // For today (last day of current week): use partnerSec (todaySec from payload).
+  // For other days: use average (weekSec - todaySec) / 6 for past days of THIS week.
+  // This avoids double-counting today's time in the average.
+  const partnerTodaySec = pd?.todaySec || 0;
+  const partnerPastDaysAvg = partnerWeekSec > partnerTodaySec
+    ? Math.floor((partnerWeekSec - partnerTodaySec) / 6)
+    : Math.floor(partnerWeekSec / 7);
   const partnerDailySec = weekDates.map((_, i) => {
-    if (weekOffset === 0 && i === 6) return partnerSec;
-    return partnerDailyAvg;
+    if (!partnerHasData) return 0;
+    if (i === 6) return partnerTodaySec; // today
+    return partnerPastDaysAvg; // past days = average (clearly labeled in UI)
   });
   const maxDaily = Math.max(...myDailySec, ...partnerDailySec, 1);
-  const daysWon = myDailySec.filter((my, i) => my > partnerDailySec[i]).length;
+  // Only count "won" for days where we have actual partner data (this week only)
+  const daysWon = partnerHasData
+    ? myDailySec.filter((my, i) => my > partnerDailySec[i]).length
+    : 0;
   const myWeekTotal = myDailySec.reduce((a, b) => a + b, 0);
-  const partnerWeekTotal = partnerDailySec.reduce((a, b) => a + b, 0);
+  const partnerWeekTotal = partnerHasData ? partnerWeekSec : 0;
   const myWeekWasted = myDailyWasted.reduce((a, b) => a + b, 0);
 
   // Subject breakdown
@@ -243,11 +261,11 @@ export function PartnerComparisonSheet({ onClose }: Props) {
             </div>
             <div className="text-center">
               <div className="text-[9px] text-white/40 uppercase">Won</div>
-              <div className="text-sm font-bold tabular text-white/80">{daysWon}/7</div>
+              <div className="text-sm font-bold tabular text-white/80">{partnerHasData ? `${daysWon}/7` : '—'}</div>
             </div>
             <div className="text-center">
               <div className="text-[9px] text-violet-400 font-bold uppercase">Partner</div>
-              <div className="text-sm font-bold tabular text-violet-400">{formatHM(partnerWeekTotal)}</div>
+              <div className="text-sm font-bold tabular text-violet-400">{partnerHasData ? formatHM(partnerWeekTotal) : 'No data'}</div>
             </div>
           </div>
 
@@ -285,10 +303,19 @@ export function PartnerComparisonSheet({ onClose }: Props) {
                     {/* Partner bar */}
                     <div className="flex items-center gap-1">
                       <div className="flex-1 h-2.5 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${(pH/maxDaily)*100}%` }} />
+                        {partnerHasData ? (
+                          <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${(pH/maxDaily)*100}%` }} />
+                        ) : null}
                       </div>
-                      <span className={`tabular w-12 text-right font-mono ${!myWon ? 'text-violet-400 font-bold' : 'text-white/50'}`}>
-                        {formatHM(pH)}
+                      <span className={`tabular w-12 text-right font-mono ${!myWon && partnerHasData ? 'text-violet-400 font-bold' : 'text-white/50'}`}>
+                        {partnerHasData ? (
+                          <>
+                            {formatHM(pH)}
+                            {i < 6 && pH > 0 && <span className="text-[7px] text-white/30 ml-0.5">avg</span>}
+                          </>
+                        ) : (
+                          <span className="text-white/30 text-[9px]">—</span>
+                        )}
                       </span>
                     </div>
                   </div>
