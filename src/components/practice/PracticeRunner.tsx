@@ -50,6 +50,8 @@ export function PracticeRunner() {
   const setQuestionMode = usePractice((s) => s.setQuestionMode);
   const setSubAnswer = usePractice((s) => s.setSubAnswer);
   const setOptionCount = usePractice((s) => s.setOptionCount);
+  const setCurrentQuestionIndex = usePractice((s) => s.setCurrentQuestionIndex);
+  const renameActivePractice = usePractice((s) => s.renameActivePractice);
   const toggleMultiCorrectUserAnswer = usePractice((s) => s.toggleMultiCorrectUserAnswer);
   const toggleMultiCorrectAnswer = usePractice((s) => s.toggleMultiCorrectAnswer);
   const setSubCorrectAnswer = usePractice((s) => s.setSubCorrectAnswer);
@@ -325,12 +327,32 @@ export function PracticeRunner() {
     </button>
   );
 
-  // Question pills
+  // Question pills — CLICKABLE to navigate to any question
   const questionPills = (
     <div className="flex flex-wrap gap-1 justify-start">
       {visibleQuestions.map((q, i) => (
-        <div key={i} className={cn('w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold transition', i === currentIdx && 'ring-2 ring-white')}
-          style={{ background: q.status === 'answered' ? '#22c55e' : q.status === 'skipped' ? '#6b7280' : q.status === 'review-later' ? '#f59e0b' : 'rgba(255,255,255,0.3)', color: q.status === 'unanswered' ? 'rgba(255,255,255,0.6)' : '#000' }}>{q.number}</div>
+        <button
+          key={i}
+          onClick={() => {
+            if (haptics) vibrate(8);
+            // Save current question's elapsed time before jumping
+            const session = usePractice.getState().activePractice;
+            const idx = usePractice.getState().currentQuestionIndex;
+            if (session && i !== idx) {
+              const qElapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
+              const questions = [...session.questions];
+              while (questions.length <= idx) {
+                questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', userAnswer: null, correctAnswer: null, conceptNotes: '', formulaNotes: '' });
+              }
+              questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
+              usePractice.setState({ activePractice: { ...session, questions } });
+            }
+            setCurrentQuestionIndex(i);
+            questionStartRef.current = Date.now();
+          }}
+          className={cn('w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold transition active:scale-90', i === currentIdx && 'ring-2 ring-white')}
+          style={{ background: q.status === 'answered' ? '#22c55e' : q.status === 'skipped' ? '#6b7280' : q.status === 'review-later' ? '#f59e0b' : 'rgba(255,255,255,0.3)', color: q.status === 'unanswered' ? 'rgba(255,255,255,0.6)' : '#000' }}
+        >{q.number}</button>
       ))}
     </div>
   );
@@ -485,6 +507,7 @@ export function PracticeRunner() {
           }}
           onEnd={() => { setMenuOpen(false); setTimeout(() => handleEnd(), 100); }}
           onPause={() => { setMenuOpen(false); setTimeout(() => handlePause(), 100); }}
+          onRename={(name) => { if (haptics) vibrate(10); renameActivePractice(name); }}
           onCancel={() => {
             setMenuOpen(false);
             setTimeout(() => {
@@ -558,7 +581,7 @@ export function PracticeRunner() {
 /* ============ Hamburger menu — slides in from right ============ */
 function PracticeMenu({
   activePractice, currentIdx, currentMode, subCount, optionCount, haptics,
-  onClose, onSetMode, onAdjustSubCount, onAdjustOptionCount, onEnd, onPause, onCancel,
+  onClose, onSetMode, onAdjustSubCount, onAdjustOptionCount, onEnd, onPause, onCancel, onRename,
 }: {
   activePractice: PracticeSession;
   currentIdx: number;
@@ -573,6 +596,7 @@ function PracticeMenu({
   onEnd: () => void;
   onPause: () => void;
   onCancel: () => void;
+  onRename: (name: string) => void;
 }) {
   // All colors via inline style — BULLETPROOF against any theme override.
   // (Previous version used text-white Tailwind classes which got overridden
@@ -688,6 +712,8 @@ function PracticeMenu({
               Actions
             </div>
             <div className="space-y-1.5">
+              {/* Rename practice */}
+              <RenameButton currentName={activePractice.name} onRename={onRename} haptics={haptics} />
               <ActionButton icon={Pause} title="Pause Practice" desc="Save progress, resume later"
                 onClick={onPause} color="#f59e0b" />
               <ActionButton icon={Check} title="End Practice" desc="Finish + see report"
@@ -1169,5 +1195,67 @@ function EditPhase({ session, markCorrectAnswer, saveNotes, onBack, onClose, hap
         </button>
       </div>
     </motion.div>
+  );
+}
+
+/** RenameButton — inline rename input that toggles between display + edit mode. */
+function RenameButton({ currentName, onRename, haptics }: {
+  currentName: string;
+  onRename: (name: string) => void;
+  haptics: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(currentName);
+
+  if (editing) {
+    return (
+      <div className="w-full flex items-center gap-2 p-2.5 rounded-xl border"
+        style={{ background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.30)' }}>
+        <Edit size={16} style={{ color: '#3b82f6' }} />
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              if (haptics) vibrate(10);
+              onRename(draft);
+              setEditing(false);
+            } else if (e.key === 'Escape') {
+              setDraft(currentName);
+              setEditing(false);
+            }
+          }}
+          placeholder="Practice name…"
+          className="flex-1 bg-transparent text-white text-xs font-semibold outline-none border-b border-white/20 pb-1"
+          style={{ color: '#ffffff' }}
+        />
+        <button
+          onClick={() => {
+            if (haptics) vibrate(10);
+            onRename(draft);
+            setEditing(false);
+          }}
+          className="px-2 py-1 rounded-lg text-[10px] font-bold active:scale-95 transition"
+          style={{ background: 'rgba(34,197,94,0.20)', color: '#4ade80' }}
+        >
+          Save
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <ActionButton
+      icon={Edit}
+      title="Rename Practice"
+      desc={currentName}
+      onClick={() => {
+        if (haptics) vibrate(8);
+        setDraft(currentName);
+        setEditing(true);
+      }}
+      color="#3b82f6"
+    />
   );
 }

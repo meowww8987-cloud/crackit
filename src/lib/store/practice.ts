@@ -79,6 +79,10 @@ export interface PracticeSession {
 interface PracticeStore {
   activePractice: PracticeSession | null;
   currentQuestionIndex: number;
+  /** Jump to a specific question index (for navigating back to previous questions). */
+  setCurrentQuestionIndex: (idx: number) => void;
+  /** Rename the active practice session — updates the name everywhere. */
+  renameActivePractice: (name: string) => void;
   history: PracticeSession[];
   /** Practices that the user paused mid-way — can be resumed later. */
   pausedPractices: PracticeSession[];
@@ -281,6 +285,21 @@ export const usePractice = create<PracticeStore>()(
 
       cancelPractice: () => {
         set({ activePractice: null, currentQuestionIndex: 0 });
+      },
+
+      /** Jump to a specific question (for navigating back to previous questions). */
+      setCurrentQuestionIndex: (idx) => {
+        const session = get().activePractice;
+        if (!session) return;
+        if (idx < 0 || idx >= session.questions.length) return;
+        set({ currentQuestionIndex: idx });
+      },
+
+      /** Rename the active practice session. */
+      renameActivePractice: (name) => {
+        const session = get().activePractice;
+        if (!session || !name.trim()) return;
+        set({ activePractice: { ...session, name: name.trim() } });
       },
 
       /** Snapshot the current activePractice into pausedPractices, then
