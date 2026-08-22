@@ -1,14 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { X, Flame, Trophy, Target, BookOpen, TrendingUp, Clock, Zap } from 'lucide-react';
+import { X, Flame, Trophy, Target, BookOpen, TrendingUp, Clock, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePartner } from '@/lib/store/partner';
 import { useHistory } from '@/lib/store/history';
 import { useSession, getLiveStudySeconds } from '@/lib/store/session';
 import { useTargets } from '@/lib/store/targets';
 import { useTests } from '@/lib/store/tests';
-import { formatHM, todayKey } from '@/lib/utils';
+import { formatHM, todayKey, dateKey, addDays, vibrate } from '@/lib/utils';
 import type { Target as TargetType } from '@/lib/types';
 import { PartnerAvatar } from '@/components/partner/PartnerAvatar';
 import { PartnerProgressRing } from '@/components/partner/PartnerProgressRing';
@@ -19,21 +19,8 @@ interface Props {
   onClose: () => void;
 }
 
-/**
- * PartnerComparisonSheet — full-screen overlay with ALL comparison features.
- *
- * Modern design:
- * - Bento grid layout (varied card sizes)
- * - Avatars with status rings
- * - Concentric progress rings
- * - Monospace stats
- * - Real-time sync (3s push + fetch)
- * - Skeleton shimmer while loading
- */
 export function PartnerComparisonSheet({ onClose }: Props) {
   const partner = usePartner();
-  const syncData = usePartner((s) => s.syncData);
-  const fetchPartnerData = usePartner((s) => s.fetchPartnerData);
   const sessions = useHistory((s) => s.sessions);
   const myActiveSession = useSession((s) => s.active);
   const _byDate = useTargets((s) => s.byDate);
@@ -41,14 +28,31 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   const myTodayTargets = _byDate[_today] || EMPTY_TARGETS;
   const myTests = useTests.getState().tests;
 
-  // Real-time polling
   const [, setTick] = useState(0);
   useEffect(() => {
-    // REMOVED local syncInterval — global usePartnerSync (30s) handles push/fetch.
-    // Keep only a 5s tick for the "updated Xs ago" display.
     const tickInterval = setInterval(() => setTick(t => t + 1), 5000);
     return () => clearInterval(tickInterval);
   }, []);
+
+  // === Week navigation state ===
+  const [weekOffset, setWeekOffset] = useState(0);
+  const lbTouchStartX = useRef<number | null>(null);
+  const lbTouchStartY = useRef<number | null>(null);
+  const onLbTouchStart = (e: React.TouchEvent) => {
+    lbTouchStartX.current = e.touches[0].clientX;
+    lbTouchStartY.current = e.touches[0].clientY;
+  };
+  const onLbTouchEnd = (e: React.TouchEvent) => {
+    if (lbTouchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - lbTouchStartX.current;
+    const dy = e.changedTouches[0].clientY - (lbTouchStartY.current ?? 0);
+    lbTouchStartX.current = null;
+    lbTouchStartY.current = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    vibrate(8);
+    if (dx > 0) setWeekOffset(o => Math.max(0, o - 1));
+    else setWeekOffset(o => o + 1);
+  };
 
   // My stats
   const today = _today;
@@ -68,20 +72,30 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   const partnerTargetsTotal = pd?.targetsTotal || 0;
   const partnerLastTestScore = pd?.lastTestScore ?? null;
 
-  // Weekly leaderboard
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  // === Weekly leaderboard with weekOffset ===
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(new Date(), -((6 - i) + weekOffset * 7));
+    return dateKey(d);
   });
-  const myDailySec = last7Days.map(date =>
+  const weekDateObjs = weekDates.map(k => new Date(k + 'T00:00:00'));
+
+  const myDailySec = weekDates.map(date =>
     sessions.filter((s) => s.date === date).reduce((a, s) => a + s.studySeconds, 0)
+  );
+  const myDailyWasted = weekDates.map(date =>
+    sessions.filter((s) => s.date === date).reduce((a, s) => a + s.wastedSeconds, 0)
   );
   const partnerWeekSec = pd?.weekSec || 0;
   const partnerDailyAvg = Math.floor(partnerWeekSec / 7);
-  const partnerDailySec = last7Days.map((_, i) => i === 6 ? partnerSec : partnerDailyAvg);
+  const partnerDailySec = weekDates.map((_, i) => {
+    if (weekOffset === 0 && i === 6) return partnerSec;
+    return partnerDailyAvg;
+  });
   const maxDaily = Math.max(...myDailySec, ...partnerDailySec, 1);
   const daysWon = myDailySec.filter((my, i) => my > partnerDailySec[i]).length;
+  const myWeekTotal = myDailySec.reduce((a, b) => a + b, 0);
+  const partnerWeekTotal = partnerDailySec.reduce((a, b) => a + b, 0);
+  const myWeekWasted = myDailyWasted.reduce((a, b) => a + b, 0);
 
   // Subject breakdown
   const mySubjects: Record<string, number> = {};
@@ -188,36 +202,106 @@ export function PartnerComparisonSheet({ onClose }: Props) {
         </div>
 
         {/* === Bento Grid === */}
-        {/* Row 1: Weekly Leaderboard (full width) */}
-        <BentoCard className="col-span-2">
-          <BentoHeader icon={<TrendingUp size={14} />} title="Weekly Leaderboard" subtitle={`Won ${daysWon}/7 days`} />
-          <div className="space-y-1.5 mt-2">
-            {last7Days.map((date, i) => {
-              const dayLabel = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+        {/* Row 1: Weekly Leaderboard (full width) — swipeable */}
+        <BentoCard className="col-span-2" >
+          <div
+            data-card
+            onTouchStart={onLbTouchStart}
+            onTouchEnd={onLbTouchEnd}
+          >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <TrendingUp size={14} className="text-teal-400" />
+              <span className="text-xs font-bold uppercase tracking-wide text-white/70">Weekly Leaderboard</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => { vibrate(8); setWeekOffset(o => Math.max(0, o - 1)); }}
+                disabled={weekOffset === 0}
+                className="w-6 h-6 rounded bg-white/5 flex items-center justify-center text-white/60 disabled:opacity-30 transition active:scale-90"
+              >
+                <ChevronLeft size={12} />
+              </button>
+              <span className="text-[10px] font-bold text-white/80 min-w-[80px] text-center">
+                {weekOffset === 0 ? 'This Week' : `${weekOffset}w ago`}
+              </span>
+              <button
+                onClick={() => { vibrate(8); setWeekOffset(o => o + 1); }}
+                className="w-6 h-6 rounded bg-white/5 flex items-center justify-center text-white/60 transition active:scale-90"
+              >
+                <ChevronRight size={12} />
+              </button>
+            </div>
+          </div>
+
+          {/* Week total summary */}
+          <div className="flex items-center justify-between mb-3 px-1">
+            <div className="text-center">
+              <div className="text-[9px] text-teal-400 font-bold uppercase">You</div>
+              <div className="text-sm font-bold tabular text-teal-400">{formatHM(myWeekTotal)}</div>
+              {myWeekWasted > 0 && <div className="text-[8px] text-red-400/70 tabular">⚠ {formatHM(myWeekWasted)}</div>}
+            </div>
+            <div className="text-center">
+              <div className="text-[9px] text-white/40 uppercase">Won</div>
+              <div className="text-sm font-bold tabular text-white/80">{daysWon}/7</div>
+            </div>
+            <div className="text-center">
+              <div className="text-[9px] text-violet-400 font-bold uppercase">Partner</div>
+              <div className="text-sm font-bold tabular text-violet-400">{formatHM(partnerWeekTotal)}</div>
+            </div>
+          </div>
+
+          {/* Daily bars */}
+          <div className="space-y-1.5">
+            {weekDates.map((date, i) => {
+              const dayObj = weekDateObjs[i];
+              const dayLabel = dayObj.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2);
+              const dateLabel = dayObj.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
               const myH = myDailySec[i];
               const pH = partnerDailySec[i];
+              const myW = myDailyWasted[i];
               const myWon = myH >= pH;
+              const isToday = weekOffset === 0 && i === 6;
               return (
-                <div key={date} className="flex items-center gap-2 text-[10px]">
-                  <span className="w-8 text-t-muted font-semibold">{dayLabel}</span>
+                <div key={date} className={`flex items-center gap-2 text-[10px] ${isToday ? 'bg-teal-500/5 rounded-lg px-1 py-0.5' : ''}`}>
+                  <div className="w-10 shrink-0">
+                    <div className="font-semibold text-white/70">{dayLabel}</div>
+                    <div className="text-[8px] text-white/40">{dateLabel}</div>
+                  </div>
                   <div className="flex-1 space-y-0.5">
+                    {/* My bar */}
                     <div className="flex items-center gap-1">
-                      <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full bg-teal-500 rounded-full" style={{ width: `${(myH/maxDaily)*100}%` }} />
+                      <div className="flex-1 h-2.5 bg-white/5 rounded-full overflow-hidden relative">
+                        <div className="h-full bg-teal-500 rounded-full transition-all" style={{ width: `${(myH/maxDaily)*100}%` }} />
+                        {myW > 0 && (
+                          <div className="absolute top-0 right-0 h-full bg-red-500/40 rounded-full" style={{ width: `${Math.min(30, (myW/maxDaily)*100)}%` }} />
+                        )}
                       </div>
-                      <span className={`tabular w-10 text-right font-mono ${myWon ? 'text-teal-500 font-bold' : 'text-t-muted'}`}>{formatHM(myH)}</span>
+                      <span className={`tabular w-12 text-right font-mono ${myWon ? 'text-teal-400 font-bold' : 'text-white/50'}`}>
+                        {formatHM(myH)}
+                        {myW > 0 && <span className="text-red-400/60 text-[8px] ml-0.5">⚠{Math.round(myW/60)}m</span>}
+                      </span>
                     </div>
+                    {/* Partner bar */}
                     <div className="flex items-center gap-1">
-                      <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full bg-violet-500 rounded-full" style={{ width: `${(pH/maxDaily)*100}%` }} />
+                      <div className="flex-1 h-2.5 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${(pH/maxDaily)*100}%` }} />
                       </div>
-                      <span className={`tabular w-10 text-right font-mono ${!myWon ? 'text-violet-500 font-bold' : 'text-t-muted'}`}>{formatHM(pH)}</span>
+                      <span className={`tabular w-12 text-right font-mono ${!myWon ? 'text-violet-400 font-bold' : 'text-white/50'}`}>
+                        {formatHM(pH)}
+                      </span>
                     </div>
                   </div>
-                  {myWon && myH > 0 && <span className="text-[8px]">🏆</span>}
+                  {myWon && myH > 0 && <span className="text-[8px] shrink-0">🏆</span>}
                 </div>
               );
             })}
+          </div>
+          {weekOffset > 0 && (
+            <div className="text-center text-[8px] text-white/40 mt-2">
+              ← swipe right for previous week · left for next →
+            </div>
+          )}
           </div>
         </BentoCard>
 
