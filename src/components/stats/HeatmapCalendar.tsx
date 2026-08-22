@@ -28,6 +28,16 @@ export function HeatmapCalendar() {
 
   const todayKey = dateKey(new Date());
 
+  // Precompute a Map<dateKey, studySec> in O(N) instead of O(N × 365)
+  // MUST be declared before monthData + yearlyStats which use it.
+  const sessionMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of sessions) {
+      m.set(s.date, (m.get(s.date) || 0) + s.studySeconds);
+    }
+    return m;
+  }, [sessions]);
+
   // Build days for the current month
   const monthData = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -85,16 +95,7 @@ export function HeatmapCalendar() {
     'rgba(34,197,94,1)',
   ];
 
-  // Precompute a Map<dateKey, studySec> in O(N) instead of O(N × 365)
-  const sessionMap = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const s of sessions) {
-      m.set(s.date, (m.get(s.date) || 0) + s.studySeconds);
-    }
-    return m;
-  }, [sessions]);
-
-  // Stats for the full 365 days — uses precomputed map (O(365) lookups, not O(365×N))
+  // Stats for the full 365 days — uses precomputed sessionMap (O(365) lookups, not O(365×N))
   const yearlyStats = useMemo(() => {
     const today = new Date();
     let totalSec = 0;
