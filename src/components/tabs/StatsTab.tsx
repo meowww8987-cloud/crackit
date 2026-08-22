@@ -45,7 +45,24 @@ export function StatsTab() {
 
   const sleepReport = useMemo(() => buildWeeklySleepReport(sleepHistory), [sleepHistory]);
 
-  const weekly = useMemo(() => weeklyBarData(sessions), [sessions]);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekly = useMemo(() => weeklyBarData(sessions, weekOffset), [sessions, weekOffset]);
+  const weekTouchStartX = useRef<number | null>(null);
+  const weekTouchStartY = useRef<number | null>(null);
+  const onWeekTouchStart = (e: React.TouchEvent) => {
+    weekTouchStartX.current = e.touches[0].clientX;
+    weekTouchStartY.current = e.touches[0].clientY;
+  };
+  const onWeekTouchEnd = (e: React.TouchEvent) => {
+    if (weekTouchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - weekTouchStartX.current;
+    const dy = e.changedTouches[0].clientY - (weekTouchStartY.current ?? 0);
+    weekTouchStartX.current = null;
+    weekTouchStartY.current = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx > 0) setWeekOffset(o => Math.max(0, o - 1)); // swipe right = previous week
+    else setWeekOffset(o => o + 1); // swipe left = next week
+  };
   const distribution = useMemo(() => subjectDistribution(sessions), [sessions]);
   const trend = useMemo(() => trendData(sessions, 30), [sessions]);
   const moods = useMemo(() => moodDistribution(sessions), [sessions]);
@@ -83,8 +100,13 @@ export function StatsTab() {
         Stats
       </h1>
 
-      {/* Weekly bar chart */}
-      <ChartCard title="Weekly Study Time (last 7 days)">
+      {/* Weekly bar chart — swipe left/right to navigate weeks */}
+      <div
+        data-card
+        onTouchStart={onWeekTouchStart}
+        onTouchEnd={onWeekTouchEnd}
+      >
+      <ChartCard title={`Weekly Study Time${weekOffset > 0 ? ` (${weekOffset} week${weekOffset > 1 ? 's' : ''} ago)` : ' (this week)'}`}>
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={weekly} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
@@ -101,6 +123,12 @@ export function StatsTab() {
           </ResponsiveContainer>
         </div>
       </ChartCard>
+      {weekOffset > 0 && (
+        <div className="text-center text-[9px] text-white/50 mt-1">
+          ← swipe right for previous week · swipe left for next week →
+        </div>
+      )}
+      </div>
 
       {/* === Sleep Health Card — long-press for full report === */}
       {sleepHistory.length > 0 && (

@@ -5,11 +5,11 @@ import type { SavedSession, Subject, Mood } from './types';
 import { SUBJECTS, subjectColor } from './colors';
 import { dateKey, addDays, todayKey } from './utils';
 
-// ===== Weekly bar chart (last 7 days) =====
-export function weeklyBarData(sessions: SavedSession[]): { date: string; label: string; study: number; wasted: number }[] {
+// ===== Weekly bar chart (last 7 days, with optional week offset) =====
+export function weeklyBarData(sessions: SavedSession[], weekOffset = 0): { date: string; label: string; study: number; wasted: number }[] {
   const result: { date: string; label: string; study: number; wasted: number }[] = [];
   for (let i = 6; i >= 0; i--) {
-    const d = addDays(new Date(), -i);
+    const d = addDays(new Date(), -(i + weekOffset * 7));
     const key = dateKey(d);
     const daySessions = sessions.filter((s) => s.date === key);
     const study = daySessions.reduce((a, s) => a + s.studySeconds, 0);
