@@ -83,6 +83,8 @@ interface PracticeStore {
   setCurrentQuestionIndex: (idx: number) => void;
   /** Rename the active practice session — updates the name everywhere. */
   renameActivePractice: (name: string) => void;
+  /** Delete a question from the active practice by index. */
+  deleteQuestion: (questionIndex: number) => void;
   history: PracticeSession[];
   /** Practices that the user paused mid-way — can be resumed later. */
   pausedPractices: PracticeSession[];
@@ -300,6 +302,35 @@ export const usePractice = create<PracticeStore>()(
         const session = get().activePractice;
         if (!session || !name.trim()) return;
         set({ activePractice: { ...session, name: name.trim() } });
+      },
+
+      /** Delete a question from the active practice by index.
+       *  Removes the question, renumbers remaining questions, adjusts currentQuestionIndex. */
+      deleteQuestion: (questionIndex) => {
+        const session = get().activePractice;
+        if (!session) return;
+        if (questionIndex < 0 || questionIndex >= session.questions.length) return;
+        if (session.questions.length <= 1) return; // Don't delete the last question
+
+        const questions = session.questions.filter((_, i) => i !== questionIndex);
+        // Renumber remaining questions
+        questions.forEach((q, i) => { q.number = i + 1; });
+
+        // Adjust currentQuestionIndex
+        const currentIdx = get().currentQuestionIndex;
+        let newIdx = currentIdx;
+        if (questionIndex === currentIdx) {
+          // Deleted the current question → stay at same index (or last if was last)
+          newIdx = Math.min(currentIdx, questions.length - 1);
+        } else if (questionIndex < currentIdx) {
+          // Deleted a question before current → shift current down
+          newIdx = currentIdx - 1;
+        }
+
+        set({
+          activePractice: { ...session, questions, questionCount: questions.length },
+          currentQuestionIndex: newIdx,
+        });
       },
 
       /** Snapshot the current activePractice into pausedPractices, then
