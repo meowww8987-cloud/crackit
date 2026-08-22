@@ -67,6 +67,9 @@ export function PracticeRunner() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuOpenSinceRef = useRef<number | null>(null);
   const wakeLockRef = useRef<any>(null);
+  const [deleteMode, setDeleteMode] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
   const timerResetRef = useRef(false);
 
   const reviewSession = reviewSessionId ? history.find((s) => s.id === reviewSessionId) : null;
@@ -329,10 +332,6 @@ export function PracticeRunner() {
   );
 
   // Question pills — CLICKABLE to navigate + LONG-PRESS to delete
-  const [deleteMode, setDeleteMode] = useState(false);
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
-
   const questionPills = (
     <div className="flex flex-wrap gap-1 justify-start">
       {visibleQuestions.map((q, i) => (
