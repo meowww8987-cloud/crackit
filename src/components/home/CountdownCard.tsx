@@ -93,8 +93,6 @@ export function CountdownCard({
   // === 365-day prep ring ===
   // Ring shows how much of the 365-day period (before exam) has elapsed.
   // Start = examDate - 365 days. End = examDate.
-  // elapsedDays = days from start to today.
-  // ringPct = elapsedDays / 365 * 100 (capped at 100).
   const prep365Start = useMemo(() => {
     const d = new Date(examDate + 'T00:00:00');
     d.setDate(d.getDate() - 365);
@@ -121,21 +119,37 @@ export function CountdownCard({
   const circumference = 2 * Math.PI * radius;
   const ringOffset = circumference - (ringPct / 100) * circumference;
 
-  // Timeline milestones (based on 365-day period)
+  // === Prep Timeline — uses prepStart (user-set) → examDate ===
+  // Timeline start = prepStart (the date user set in settings).
+  // Timeline end = examDate.
+  // Timeline % = prepPct (how far through the prep period).
+  const timelineStart = useMemo(() => {
+    if (prepStart) return new Date(prepStart + 'T00:00:00');
+    return prep365Start; // fallback to 365-day start if no prepStart set
+  }, [prepStart, prep365Start]);
+
+  const timelineTotalDays = useMemo(() => {
+    const exam = new Date(examDate + 'T00:00:00');
+    return Math.max(1, Math.round((exam.getTime() - timelineStart.getTime()) / 86400000));
+  }, [timelineStart, examDate]);
+
+  const timelinePct = prepPct; // % through prepStart → examDate
+
+  // Timeline milestones (based on prepStart → examDate period)
   const milestones = useMemo(() => {
     return [25, 50, 75].map((pct) => {
-      const daysFromStart = Math.round((365 * pct) / 100);
-      const date = new Date(prep365Start);
+      const daysFromStart = Math.round((timelineTotalDays * pct) / 100);
+      const date = new Date(timelineStart);
       date.setDate(date.getDate() + daysFromStart);
       return {
         pct,
         date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        passed: ringPct >= pct,
+        passed: timelinePct >= pct,
       };
     });
-  }, [prep365Start, ringPct]);
+  }, [timelineStart, timelineTotalDays, timelinePct]);
 
-  const startDateStr = prep365Start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const startDateStr = timelineStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   return (
     <>
@@ -227,7 +241,7 @@ export function CountdownCard({
             {/* Progress portion */}
             <div
               className="absolute left-1 top-2 h-0.5"
-              style={{ width: `calc((100% - 8px) * ${ringPct / 100})`, background: urgency.color }}
+              style={{ width: `calc((100% - 8px) * ${timelinePct / 100})`, background: urgency.color }}
             />
             {/* Milestones */}
             <div className="relative flex justify-between">
@@ -243,7 +257,7 @@ export function CountdownCard({
                     className="w-3 h-3 rounded-full"
                     style={{
                       background: m.passed ? urgency.color : 'var(--muted)',
-                      border: ringPct >= m.pct - 3 && ringPct <= m.pct + 3 ? `1.5px solid ${urgency.color}` : 'none',
+                      border: timelinePct >= m.pct - 3 && timelinePct <= m.pct + 3 ? `1.5px solid ${urgency.color}` : 'none',
                     }}
                   />
                   <span className="text-[7px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{m.pct}%</span>
@@ -258,7 +272,7 @@ export function CountdownCard({
             {/* "You are here" marker */}
             <div
               className="absolute top-0"
-              style={{ left: `calc(4px + (100% - 8px) * ${ringPct / 100})`, transform: 'translateX(-50%)' }}
+              style={{ left: `calc(4px + (100% - 8px) * ${timelinePct / 100})`, transform: 'translateX(-50%)' }}
             >
               <div className="w-0 h-0 border-l-[3px] border-r-[3px] border-t-[5px] border-l-transparent border-r-transparent" style={{ borderTopColor: urgency.color }} />
             </div>
@@ -309,6 +323,8 @@ export function CountdownCard({
             ringPct={ringPct}
             milestones={milestones}
             startDateStr={startDateStr}
+            timelinePct={timelinePct}
+            timelineTotalDays={timelineTotalDays}
             onClose={() => setShowDetail(false)}
           />
         )}
@@ -343,6 +359,8 @@ function CountdownDetailSheet({
   ringPct,
   milestones,
   startDateStr,
+  timelinePct,
+  timelineTotalDays,
   onClose,
 }: {
   daysToExam: number;
@@ -366,6 +384,8 @@ function CountdownDetailSheet({
   ringPct: number;
   milestones: { pct: number; date: string; passed: boolean }[];
   startDateStr: string;
+  timelinePct: number;
+  timelineTotalDays: number;
   onClose: () => void;
 }) {
   // Insights
@@ -537,13 +557,13 @@ function CountdownDetailSheet({
         {/* Timeline */}
         <div className="mb-4">
           <div className="text-[9px] uppercase tracking-wide font-semibold mb-3" style={{ color: 'var(--muted-foreground)' }}>
-            365-Day Prep Timeline
+            Prep Timeline
           </div>
           <div className="relative px-2">
             <div className="absolute left-2 right-2 top-2 h-0.5" style={{ background: 'var(--muted)' }} />
             <div
               className="absolute left-2 top-2 h-0.5"
-              style={{ width: `calc((100% - 16px) * ${ringPct / 100})`, background: urgency.color }}
+              style={{ width: `calc((100% - 16px) * ${timelinePct / 100})`, background: urgency.color }}
             />
             <div className="relative flex justify-between">
               <div className="flex flex-col items-center" style={{ width: '20%' }}>
@@ -559,7 +579,7 @@ function CountdownDetailSheet({
                     className="w-4 h-4 rounded-full flex items-center justify-center"
                     style={{
                       background: m.passed ? urgency.color : 'var(--muted)',
-                      border: ringPct >= m.pct - 3 && ringPct <= m.pct + 3 ? `2px solid ${urgency.color}` : 'none',
+                      border: timelinePct >= m.pct - 3 && timelinePct <= m.pct + 3 ? `2px solid ${urgency.color}` : 'none',
                     }}
                   >
                     {m.passed && <CheckCircle2 size={10} className="text-white" />}
@@ -576,7 +596,7 @@ function CountdownDetailSheet({
             </div>
             <div
               className="absolute top-0"
-              style={{ left: `calc(8px + (100% - 16px) * ${ringPct / 100})`, transform: 'translateX(-50%)' }}
+              style={{ left: `calc(8px + (100% - 16px) * ${timelinePct / 100})`, transform: 'translateX(-50%)' }}
             >
               <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent" style={{ borderTopColor: urgency.color }} />
             </div>
