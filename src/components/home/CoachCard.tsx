@@ -26,22 +26,22 @@ export function CoachCard() {
   if (visible.length === 0) return null;
 
   const typeColors = {
-    warning: '#f59e0b',
-    positive: '#22c55e',
-    suggestion: '#3b82f6',
-    info: '#14b8a6',
+    warning: '#d97706',
+    positive: '#16a34a',
+    suggestion: '#2563eb',
+    info: '#0d9488',
   };
 
   return (
-    <div className="glass rounded-2xl p-3">
+    <div className="glass rounded-2xl p-3" style={{ border: '1px solid var(--border)' }}>
       <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center">
-          <Brain size={14} className="text-purple-400" />
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(124,58,237,0.15)' }}>
+          <Brain size={14} style={{ color: '#7c3aed' }} />
         </div>
-        <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+        <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>
           AI Coach
         </span>
-        <span className="text-[9px] text-white/30 ml-auto">{visible.length} insights</span>
+        <span className="text-[9px] ml-auto" style={{ color: 'var(--muted-foreground)' }}>{visible.length} insights</span>
       </div>
       <div className="space-y-2">
         <AnimatePresence>
@@ -60,7 +60,7 @@ export function CoachCard() {
                 <span className="text-lg leading-none mt-0.5">{insight.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-bold" style={{ color: c }}>{insight.title}</div>
-                  <div className="text-[10px] text-white/50 leading-snug mt-0.5">{insight.detail}</div>
+                  <div className="text-[10px] leading-snug mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{insight.detail}</div>
                   {insight.action && (
                     <button
                       onClick={() => setTab(insight.action!.tab as any)}
@@ -73,7 +73,8 @@ export function CoachCard() {
                 </div>
                 <button
                   onClick={() => setDismissed((prev) => new Set(prev).add(insight.id))}
-                  className="text-white/20 hover:text-white/50 shrink-0"
+                  className="shrink-0"
+                  style={{ color: 'var(--muted-foreground)' }}
                 >
                   <X size={12} />
                 </button>
@@ -118,7 +119,7 @@ export function WeeklyReportCard() {
 
   if (!show || !report) return null;
 
-  const trendColor = report.comparisonVsLastWeek > 0 ? '#22c55e' : report.comparisonVsLastWeek < 0 ? '#ef4444' : '#f59e0b';
+  const trendColor = report.comparisonVsLastWeek > 0 ? '#16a34a' : report.comparisonVsLastWeek < 0 ? '#dc2626' : '#d97706';
   const trendIcon = report.comparisonVsLastWeek > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />;
 
   return (
@@ -130,7 +131,7 @@ export function WeeklyReportCard() {
           exit={{ opacity: 0 }}
           onClick={() => setShow(false)}
           className="fixed inset-0 z-[9990] flex items-end justify-center"
-          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
+          style={{ background: 'rgba(0,0,0,0.7)' }}
         >
           <motion.div
             initial={{ y: '100%' }}
@@ -138,32 +139,33 @@ export function WeeklyReportCard() {
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 350, damping: 32 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md glass-strong rounded-t-3xl p-6 pb-8"
+            className="relative w-full max-w-md rounded-t-3xl p-6 pb-8"
+            style={{ background: 'var(--card)', border: '1px solid var(--border)', borderBottom: 'none' }}
           >
-            <div className="w-10 h-1 bg-white/30 rounded-full mx-auto mb-4" />
+            <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: 'var(--muted)' }} />
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="text-xl">📋</span>
-                <h2 className="text-lg font-bold">Weekly Report</h2>
+                <h2 className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>Weekly Report</h2>
               </div>
-              <button onClick={() => setShow(false)} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+              <button onClick={() => setShow(false)} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}>
                 <X size={16} />
               </button>
             </div>
 
             {/* Top insight */}
-            <div className="glass rounded-xl p-3 mb-4 text-center">
-              <div className="text-xs text-white/60">{report.topInsight}</div>
+            <div className="rounded-xl p-3 mb-4 text-center" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+              <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{report.topInsight}</div>
             </div>
 
             {/* Total time + comparison */}
             <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="glass rounded-xl p-3 text-center">
-                <div className="text-[10px] uppercase text-white/40 mb-1">Total Study</div>
-                <div className="text-2xl font-bold tabular text-green-400">{formatHM(report.totalStudySec)}</div>
+              <div className="rounded-xl p-3 text-center" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+                <div className="text-[10px] uppercase mb-1" style={{ color: 'var(--muted-foreground)' }}>Total Study</div>
+                <div className="text-2xl font-bold tabular" style={{ color: '#16a34a' }}>{formatHM(report.totalStudySec)}</div>
               </div>
-              <div className="glass rounded-xl p-3 text-center">
-                <div className="text-[10px] uppercase text-white/40 mb-1">vs Last Week</div>
+              <div className="rounded-xl p-3 text-center" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+                <div className="text-[10px] uppercase mb-1" style={{ color: 'var(--muted-foreground)' }}>vs Last Week</div>
                 <div className="text-2xl font-bold tabular flex items-center justify-center gap-1" style={{ color: trendColor }}>
                   {trendIcon}
                   {report.comparisonVsLastWeek > 0 ? '+' : ''}{report.comparisonVsLastWeek}%
@@ -173,22 +175,22 @@ export function WeeklyReportCard() {
 
             {/* Best / Worst day */}
             <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="glass rounded-xl p-2.5">
-                <div className="text-[9px] uppercase text-white/40">Best Day</div>
-                <div className="text-sm font-bold text-green-400">{formatHM(report.bestDay.sec)}</div>
-                <div className="text-[9px] text-white/40">{new Date(report.bestDay.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+              <div className="rounded-xl p-2.5" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+                <div className="text-[9px] uppercase" style={{ color: 'var(--muted-foreground)' }}>Best Day</div>
+                <div className="text-sm font-bold" style={{ color: '#16a34a' }}>{formatHM(report.bestDay.sec)}</div>
+                <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>{new Date(report.bestDay.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
               </div>
-              <div className="glass rounded-xl p-2.5">
-                <div className="text-[9px] uppercase text-white/40">Slowest Day</div>
-                <div className="text-sm font-bold text-amber-400">{formatHM(report.worstDay.sec)}</div>
-                <div className="text-[9px] text-white/40">{new Date(report.worstDay.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+              <div className="rounded-xl p-2.5" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+                <div className="text-[9px] uppercase" style={{ color: 'var(--muted-foreground)' }}>Slowest Day</div>
+                <div className="text-sm font-bold" style={{ color: '#d97706' }}>{formatHM(report.worstDay.sec)}</div>
+                <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>{new Date(report.worstDay.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
               </div>
             </div>
 
             {/* Subject breakdown */}
             {report.subjectBreakdown.length > 0 && (
               <div className="mb-4">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-white/40 mb-2">Subject Distribution</div>
+                <div className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: 'var(--muted-foreground)' }}>Subject Distribution</div>
                 <div className="space-y-1.5">
                   {report.subjectBreakdown.map((s) => {
                     const c = subjectColor(s.subject);
@@ -196,10 +198,10 @@ export function WeeklyReportCard() {
                     return (
                       <div key={s.subject} className="flex items-center gap-2 text-xs">
                         <span className="w-16 font-bold" style={{ color: c.hex }}>{s.subject}</span>
-                        <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                        <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
                           <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c.hex }} />
                         </div>
-                        <span className="text-white/60 tabular w-10 text-right">{pct}%</span>
+                        <span className="tabular w-10 text-right" style={{ color: 'var(--muted-foreground)' }}>{pct}%</span>
                       </div>
                     );
                   })}
@@ -209,10 +211,10 @@ export function WeeklyReportCard() {
 
             {/* Tests */}
             {report.testsTaken > 0 && (
-              <div className="glass rounded-xl p-3 mb-4 flex items-center justify-between">
+              <div className="rounded-xl p-3 mb-4 flex items-center justify-between" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
                 <div>
-                  <div className="text-xs text-white/60">Tests taken: {report.testsTaken}</div>
-                  <div className="text-[10px] text-white/40">Average score: {report.avgTestScore}/720</div>
+                  <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Tests taken: {report.testsTaken}</div>
+                  <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Average score: {report.avgTestScore}/720</div>
                 </div>
                 <span className="text-2xl">📝</span>
               </div>
@@ -220,7 +222,8 @@ export function WeeklyReportCard() {
 
             <button
               onClick={() => setShow(false)}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-500 to-green-500 text-black font-bold text-sm"
+              className="w-full py-3 rounded-xl font-bold text-sm text-white"
+              style={{ background: 'linear-gradient(90deg, #0d9488, #16a34a)' }}
             >
               Done
             </button>
