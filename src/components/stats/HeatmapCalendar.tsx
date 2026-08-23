@@ -192,10 +192,12 @@ export function HeatmapCalendar({ embedded = false }: { embedded?: boolean }) {
 
   // Touch handlers for swipe-to-navigate (doesn't bubble to AppShell)
   const onTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
   };
   const onTouchEnd = (e: React.TouchEvent) => {
+    e.stopPropagation();
     if (touchStartX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     const dy = e.changedTouches[0].clientY - (touchStartY.current ?? 0);

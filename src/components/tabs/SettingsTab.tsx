@@ -49,10 +49,14 @@ export function SettingsTab() {
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
+    // Stop propagation so AppShell's tab-swipe doesn't fire
+    e.stopPropagation();
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
   };
   const onTouchEnd = (e: React.TouchEvent) => {
+    // Stop propagation so AppShell's tab-swipe doesn't fire
+    e.stopPropagation();
     if (touchStartX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     const dy = e.changedTouches[0].clientY - (touchStartY.current ?? 0);
@@ -65,7 +69,7 @@ export function SettingsTab() {
   };
 
   return (
-    <div className="pt-2 pb-4 space-y-3">
+    <div className="pt-2 pb-4 space-y-3" data-card onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>Settings</h1>
         <div className="flex items-center gap-2">

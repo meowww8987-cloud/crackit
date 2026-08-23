@@ -47,10 +47,12 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   const lbTouchStartX = useRef<number | null>(null);
   const lbTouchStartY = useRef<number | null>(null);
   const onLbTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
     lbTouchStartX.current = e.touches[0].clientX;
     lbTouchStartY.current = e.touches[0].clientY;
   };
   const onLbTouchEnd = (e: React.TouchEvent) => {
+    e.stopPropagation();
     if (lbTouchStartX.current === null) return;
     const dx = e.changedTouches[0].clientX - lbTouchStartX.current;
     const dy = e.changedTouches[0].clientY - (lbTouchStartY.current ?? 0);
