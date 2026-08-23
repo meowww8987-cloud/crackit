@@ -16,16 +16,23 @@ import { cn, formatHM, vibrate } from '@/lib/utils';
  *
  *   2. CHALLENGE — math problem to prove the user is awake.
  *
- *   3. WAKING — transition animation. For night sleep → sunrise (dark→warm).
- *      For day naps → gentle brighten. Lasts ~2s.
+ *   3. WAKING — cinematic transition. For night sleep → sunrise (dark→warm).
+ *      Multi-stage: sky brightens → sun rises → light expands.
  *
- *   4. QUALITY — asks "How was your sleep?" with 5 emoji options
- *      (😣 terrible / 😕 poor / 😐 okay / 😊 good / 😍 great).
- *      On selection → wakeUp(quality). Skip button → wakeUp() without quality.
+ *   4. QUALITY — asks "How was your sleep?" with 5 emoji options.
+ *      Shows sleep calculation: duration, bedtime→wake time, cycles, score, stage.
+ *
+ *   5. CELEBRATING — brief confirmation animation before exit.
+ *      Sparkle expands, then entire screen exits with scale + blur.
  */
 
-type Phase = 'sleeping' | 'challenge' | 'waking' | 'quality';
+type Phase = 'sleeping' | 'challenge' | 'waking' | 'quality' | 'celebrating';
 type TimeOfDay = 'night' | 'dawn' | 'morning' | 'noon' | 'dusk' | 'evening';
+
+// Premium easing curves
+const EASE_SMOOTH = [0.4, 0, 0.2, 1] as const;
+const EASE_OUT_QUART = [0.25, 1, 0.5, 1] as const;
+const EASE_IN_OUT_QUINT = [0.83, 0, 0.17, 1] as const;
 
 function getTimeOfDay(hour: number): TimeOfDay {
   if (hour >= 22 || hour < 5) return 'night';
@@ -87,6 +94,35 @@ const SCENES: Record<TimeOfDay, {
   },
 };
 
+// ===== Sleep metrics calculation =====
+function calcSleepMetrics(elapsedSec: number) {
+  const hours = elapsedSec / 3600;
+  const sleepCycles = Math.floor(elapsedSec / (90 * 60)); // 90-min sleep cycles
+  const cycleRemainder = elapsedSec % (90 * 60);
+  const cycleProgress = cycleRemainder / (90 * 60);
+
+  // Sleep score based on duration (7-9h optimal)
+  let sleepScore: number;
+  if (hours >= 7 && hours <= 9) sleepScore = 100;
+  else if (hours >= 6 && hours < 7) sleepScore = 85;
+  else if (hours >= 9 && hours < 10) sleepScore = 82;
+  else if (hours >= 5 && hours < 6) sleepScore = 65;
+  else if (hours >= 10 && hours < 11) sleepScore = 72;
+  else if (hours >= 4 && hours < 5) sleepScore = 45;
+  else if (hours >= 11) sleepScore = 55;
+  else sleepScore = 30;
+
+  // Sleep stage label
+  let stageLabel: string;
+  if (elapsedSec < 900) stageLabel = 'Just fell asleep';
+  else if (elapsedSec < 2700) stageLabel = 'Light sleep';
+  else if (elapsedSec < 5400) stageLabel = 'Deep sleep';
+  else if (elapsedSec < 21600) stageLabel = 'REM cycle';
+  else stageLabel = 'Overslept';
+
+  return { hours, sleepCycles, cycleProgress, sleepScore, stageLabel };
+}
+
 export function SleepLockScreen() {
   const activeSleep = useSleep((s) => s.activeSleep);
   const wakeUp = useSleep((s) => s.wakeUp);
@@ -97,80 +133,127 @@ export function SleepLockScreen() {
   const [, setTick] = useState(0);
   const [tod, setTod] = useState<TimeOfDay>(() => getTimeOfDay(new Date().getHours()));
 
+  // Hold the last activeSleep so exit animations can play after wakeUp() is called.
+  // Without this, the component returns null immediately and AnimatePresence exit never runs.
+  const [visibleSleep, setVisibleSleep] = useState(activeSleep);
+  const [exiting, setExiting] = useState(false);
+
+  useEffect(() => {
+    if (activeSleep) {
+      setVisibleSleep(activeSleep);
+      setExiting(false);
+    } else if (visibleSleep && !exiting) {
+      setExiting(true);
+      const t = setTimeout(() => {
+        setVisibleSleep(null);
+        setExiting(false);
+      }, 1400);
+      return () => clearTimeout(t);
+    }
+  }, [activeSleep, visibleSleep, exiting]);
+
   // Live timer + time-of-day updater
   useEffect(() => {
-    if (!activeSleep) return;
+    if (!visibleSleep) return;
     const i = setInterval(() => {
       setTick((t) => t + 1);
       setTod(getTimeOfDay(new Date().getHours()));
     }, 1000);
     return () => clearInterval(i);
-  }, [activeSleep]);
+  }, [visibleSleep]);
 
-  // Reset to sleeping phase when challenge is dismissed
+  // Reset to sleeping phase when sleep is cleared
   useEffect(() => {
-    if (!activeSleep) setPhase('sleeping');
-  }, [activeSleep]);
+    if (!visibleSleep) setPhase('sleeping');
+  }, [visibleSleep]);
 
-  if (!activeSleep) return null;
+  if (!visibleSleep) return null;
 
-  const elapsedSec = Math.floor((Date.now() - activeSleep.bedTime) / 1000);
-  const bedTime = new Date(activeSleep.bedTime);
+  const elapsedSec = Math.floor((Date.now() - visibleSleep.bedTime) / 1000);
+  const bedTime = new Date(visibleSleep.bedTime);
   const bedTimeStr = bedTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   const scene = SCENES[tod];
 
-  // During waking phase, transition to the waking gradient
-  const bgGradient = phase === 'waking' || phase === 'quality'
-    ? scene.wakingGradient
-    : scene.gradient;
+  const isWakingPhase = phase === 'waking' || phase === 'quality' || phase === 'celebrating';
+  const bgGradient = isWakingPhase ? scene.wakingGradient : scene.gradient;
 
   return (
     <AnimatePresence>
       <motion.div
+        key="sleep-lock-screen"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 1.5, ease: 'easeInOut' }}
+        exit={{ opacity: 0, scale: 1.08, filter: 'blur(12px)' }}
+        transition={{ duration: 1.2, ease: EASE_SMOOTH }}
         className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui"
         style={{
           background: bgGradient,
-          transition: 'background 2s ease-in-out',
+          transition: 'background 1.8s ease-in-out',
         }}
       >
-        {/* === Time-of-day aware scenery === */}
-        {phase !== 'waking' && phase !== 'quality' && <TimeScenery tod={tod} />}
-        {(phase === 'waking' || phase === 'quality') && <WakingScenery tod={tod} />}
-
-        {/* === Top: sleep timer === */}
-        <div className="absolute top-0 left-0 right-0 pt-[env(safe-area-inset-top,0px)] pt-6 z-10">
-          <motion.div
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.8, duration: 0.8 }}
-            className="text-center"
-          >
-            <div className="text-[10px] uppercase tracking-[0.3em] text-white/60 font-semibold mb-1">
-              {scene.label} · since {bedTimeStr}
-            </div>
+        {/* === Scenery with crossfade between sleeping and waking === */}
+        <AnimatePresence mode="popLayout">
+          {!isWakingPhase && (
             <motion.div
-              animate={{ opacity: [0.85, 1, 0.85] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              className="text-5xl font-bold tabular text-white"
-              style={{ textShadow: `0 0 30px ${scene.textGlow}` }}
-            >
-              {formatHM(elapsedSec)}
-            </motion.div>
-            {/* Sleep stage indicator */}
-            <motion.div
+              key="time-scenery"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 1.5 }}
-              className="text-[9px] text-white/40 mt-1 uppercase tracking-wider"
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1, ease: EASE_SMOOTH }}
+              className="absolute inset-0"
             >
-              {elapsedSec < 1800 ? 'Falling asleep...' : elapsedSec < 5400 ? 'Deep sleep' : elapsedSec < 21600 ? 'Restful sleep' : 'Long sleep'}
+              <TimeScenery tod={tod} />
             </motion.div>
-          </motion.div>
-        </div>
+          )}
+          {isWakingPhase && (
+            <motion.div
+              key="waking-scenery"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1, ease: EASE_SMOOTH }}
+              className="absolute inset-0"
+            >
+              <WakingScenery tod={tod} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* === Top: sleep timer (only during sleeping phase) === */}
+        <AnimatePresence>
+          {phase === 'sleeping' && (
+            <motion.div
+              key="top-timer"
+              initial={{ y: -30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -30, opacity: 0 }}
+              transition={{ duration: 0.6, ease: EASE_OUT_QUART, delay: 0.3 }}
+              className="absolute top-0 left-0 right-0 pt-[env(safe-area-inset-top,0px)] pt-6 z-10"
+            >
+              <div className="text-center">
+                <div className="text-[10px] uppercase tracking-[0.3em] text-white/60 font-semibold mb-1">
+                  {scene.label} · since {bedTimeStr}
+                </div>
+                <motion.div
+                  animate={{ opacity: [0.85, 1, 0.85] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                  className="text-5xl font-bold tabular text-white"
+                  style={{ textShadow: `0 0 30px ${scene.textGlow}` }}
+                >
+                  {formatHM(elapsedSec)}
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1.5, duration: 0.8 }}
+                  className="text-[9px] text-white/40 mt-1 uppercase tracking-wider"
+                >
+                  {elapsedSec < 1800 ? 'Falling asleep...' : elapsedSec < 5400 ? 'Deep sleep' : elapsedSec < 21600 ? 'Restful sleep' : 'Long sleep'}
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* === Center content === */}
         <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -195,9 +278,8 @@ export function SleepLockScreen() {
                 key="challenge"
                 onSolve={() => {
                   if (haptics) vibrate([10, 30, 10, 30, 50]);
-                  // Start waking transition, THEN show quality picker
                   setPhase('waking');
-                  setTimeout(() => setPhase('quality'), 2200);
+                  setTimeout(() => setPhase('quality'), 2400);
                 }}
                 onFail={() => {
                   if (haptics) vibrate(8);
@@ -207,43 +289,27 @@ export function SleepLockScreen() {
               />
             )}
             {phase === 'waking' && (
-              <motion.div
-                key="waking"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="text-center"
-              >
-                <motion.div
-                  animate={{ scale: [1, 1.3, 1], y: [0, -30, 0] }}
-                  transition={{ duration: 2, ease: 'easeOut' }}
-                  className="text-7xl mb-4"
-                  style={{ filter: 'drop-shadow(0 0 40px rgba(255,200,100,0.8))' }}
-                >
-                  {tod === 'night' || tod === 'evening' ? '☀️' : scene.emoji}
-                </motion.div>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="text-lg font-light text-amber-50"
-                >
-                  {tod === 'night' || tod === 'evening' ? 'Good morning!' : 'Time to wake up!'}
-                </motion.p>
-              </motion.div>
+              <WakingPhase key="waking" tod={tod} scene={scene} />
             )}
             {phase === 'quality' && (
               <QualityPhase
                 key="quality"
                 elapsedSec={elapsedSec}
+                bedTimeDate={bedTime}
                 onSelect={(q) => {
                   if (haptics) vibrate([10, 30, 10, 30, 50]);
-                  wakeUp(q);
+                  setPhase('celebrating');
+                  setTimeout(() => wakeUp(q), 1000);
                 }}
                 onSkip={() => {
                   if (haptics) vibrate(10);
-                  wakeUp();
+                  setPhase('celebrating');
+                  setTimeout(() => wakeUp(), 800);
                 }}
               />
+            )}
+            {phase === 'celebrating' && (
+              <CelebratingPhase key="celebrating" />
             )}
           </AnimatePresence>
         </div>
@@ -276,10 +342,10 @@ function SleepingPhase({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.8, ease: 'easeOut' }}
+      exit={{ opacity: 0, scale: 0.92, filter: 'blur(8px)' }}
+      transition={{ duration: 0.7, ease: EASE_OUT_QUART }}
       className="flex flex-col items-center"
       onClick={handleTap}
     >
@@ -308,36 +374,41 @@ function SleepingPhase({
       />
 
       <motion.div
-        animate={{ opacity: [0.5, 0.9, 0.5] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: [0.5, 0.9, 0.5], y: 0 }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
         className="text-2xl font-light text-white/90 mb-2 tracking-wide"
       >
         {sceneLabel}
       </motion.div>
 
       <motion.div
+        initial={{ opacity: 0 }}
         animate={{ opacity: [0.3, 0.7, 0.3] }}
-        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
         className="text-sm text-white/60 font-medium mb-1"
       >
         Double-tap anywhere to wake up
       </motion.div>
 
-      {/* Breathing guide text */}
       <motion.div
+        initial={{ opacity: 0 }}
         animate={{ opacity: [0.2, 0.5, 0.2] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.9 }}
         className="text-[10px] text-white/30 uppercase tracking-widest"
       >
         Breathe with the rhythm
       </motion.div>
 
-      <button
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2, duration: 0.6 }}
         onClick={(e) => { e.stopPropagation(); onCancel(); }}
         className="absolute bottom-[env(safe-area-inset-bottom,0px)] bottom-8 text-[11px] text-white/40 hover:text-white/70 transition underline"
       >
         Cancel sleep
-      </button>
+      </motion.button>
     </motion.div>
   );
 }
@@ -375,7 +446,7 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
     const val = parseInt(input.trim(), 10);
     if (val === problem.answer) {
       setStatus('correct');
-      setTimeout(onSolve, 600);
+      setTimeout(onSolve, 700);
     } else {
       setStatus('wrong');
       onFail();
@@ -384,10 +455,10 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -30 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -30, scale: 0.95, filter: 'blur(6px)' }}
+      transition={{ duration: 0.5, ease: EASE_OUT_QUART }}
       className="flex flex-col items-center w-full max-w-xs px-6"
     >
       <motion.div
@@ -401,7 +472,11 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
       <h2 className="text-xl font-bold text-white mb-1">Good morning!</h2>
       <p className="text-sm text-white/70 mb-6 text-center">Solve this to prove you're awake</p>
 
-      <div className="w-full rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-5 mb-4 text-center">
+      <motion.div
+        animate={status === 'wrong' ? { x: [0, -10, 10, -8, 8, 0] } : {}}
+        transition={{ duration: 0.4 }}
+        className="w-full rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-5 mb-4 text-center"
+      >
         <div className="text-3xl font-bold tabular text-white mb-3">{problem.question} = ?</div>
         <input
           type="number"
@@ -426,7 +501,7 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
 
       <button onClick={handleSubmit} className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold text-sm active:scale-[0.98] transition mb-2">Unlock</button>
       <button onClick={onBack} className="text-xs text-white/50 hover:text-white/80 transition underline">Back to sleep</button>
@@ -434,16 +509,81 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
   );
 }
 
-// ===== Quality Phase — "How was your sleep?" 5 emoji picker =====
+// ===== Waking Phase — multi-stage cinematic sunrise =====
+function WakingPhase({ tod, scene }: { tod: TimeOfDay; scene: typeof SCENES[TimeOfDay] }) {
+  const isNight = tod === 'night' || tod === 'evening';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, scale: 1.05 }}
+      transition={{ duration: 0.6, ease: EASE_SMOOTH }}
+      className="text-center relative"
+    >
+      {/* Expanding light rings — radiate outward */}
+      {[0, 0.4, 0.8].map((delay, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full border border-amber-200/30"
+          style={{ width: 80, height: 80, top: '50%', left: '50%', marginLeft: -40, marginTop: -80 }}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: [0, 4], opacity: [0.6, 0] }}
+          transition={{ duration: 2, ease: EASE_OUT_QUART, delay, repeat: Infinity }}
+        />
+      ))}
+
+      {/* Rising sun emoji */}
+      <motion.div
+        initial={{ y: 100, opacity: 0, scale: 0.6 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ duration: 1.6, ease: EASE_OUT_QUART }}
+        className="text-7xl mb-4 relative z-10"
+        style={{ filter: 'drop-shadow(0 0 50px rgba(255,200,100,0.9))' }}
+      >
+        {isNight ? '☀️' : scene.emoji}
+      </motion.div>
+
+      {/* Greeting text */}
+      <motion.p
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7, duration: 0.8, ease: EASE_OUT_QUART }}
+        className="text-lg font-light text-amber-50"
+      >
+        {isNight ? 'Good morning!' : 'Time to wake up!'}
+      </motion.p>
+
+      {/* Subtle breathing glow under text */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0.3, 0.6, 0.3] }}
+        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        className="text-[10px] text-amber-100/50 uppercase tracking-widest mt-2"
+      >
+        Waking up...
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ===== Quality Phase — "How was your sleep?" with detailed calculation =====
 function QualityPhase({
   elapsedSec,
+  bedTimeDate,
   onSelect,
   onSkip,
 }: {
   elapsedSec: number;
+  bedTimeDate: Date;
   onSelect: (quality: number) => void;
   onSkip: () => void;
 }) {
+  const metrics = calcSleepMetrics(elapsedSec);
+  const wakeTime = new Date(bedTimeDate.getTime() + elapsedSec * 1000);
+  const wakeTimeStr = wakeTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const bedTimeStr = bedTimeDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
   const options = [
     { q: 1, emoji: '😣', label: 'Terrible', color: '#ef4444' },
     { q: 2, emoji: '😕', label: 'Poor', color: '#f97316' },
@@ -452,48 +592,124 @@ function QualityPhase({
     { q: 5, emoji: '😍', label: 'Great', color: '#22c55e' },
   ];
 
-  // Sleep quality context
-  const hours = elapsedSec / 3600;
   let sleepContext = '';
-  if (hours < 4) sleepContext = 'Short sleep — you may feel tired';
-  else if (hours < 6) sleepContext = 'Below recommended — take it easy';
-  else if (hours < 9) sleepContext = 'Optimal sleep duration! 💤';
-  else if (hours < 12) sleepContext = 'Long sleep — stay hydrated';
+  if (metrics.hours < 4) sleepContext = 'Short sleep — you may feel tired';
+  else if (metrics.hours < 6) sleepContext = 'Below recommended — take it easy';
+  else if (metrics.hours < 9) sleepContext = 'Optimal sleep duration! 💤';
+  else if (metrics.hours < 12) sleepContext = 'Long sleep — stay hydrated';
   else sleepContext = 'Very long sleep — check your energy';
+
+  const scoreColor = metrics.sleepScore >= 80 ? '#22c55e' : metrics.sleepScore >= 60 ? '#eab308' : '#f97316';
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30, scale: 0.9 }}
+      initial={{ opacity: 0, y: 30, scale: 0.92 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      exit={{ opacity: 0, y: -20, scale: 0.95, filter: 'blur(6px)' }}
+      transition={{ type: 'spring', stiffness: 280, damping: 26 }}
       className="w-full max-w-sm px-6"
     >
-      <div className="text-center mb-5">
+      {/* Header */}
+      <div className="text-center mb-4">
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.2 }}
-          className="text-5xl mb-3"
+          transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.1 }}
+          className="text-5xl mb-2"
           style={{ filter: 'drop-shadow(0 0 30px rgba(255,200,100,0.6))' }}
         >
           ☀️
         </motion.div>
-        <h2 className="text-xl font-bold text-white mb-1">You slept {formatHM(elapsedSec)}</h2>
-        <p className="text-sm text-white/70 mb-1">How was your sleep quality?</p>
-        <p className="text-[10px] text-amber-200/60">{sleepContext}</p>
+        <motion.h2
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.5, ease: EASE_OUT_QUART }}
+          className="text-xl font-bold text-white mb-1"
+        >
+          You slept {formatHM(elapsedSec)}
+        </motion.h2>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35, duration: 0.5 }}
+          className="text-sm text-white/70 mb-1"
+        >
+          How was your sleep quality?
+        </motion.p>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.45, duration: 0.5 }}
+          className="text-[10px] text-amber-200/60"
+        >
+          {sleepContext}
+        </motion.p>
       </div>
 
+      {/* Sleep calculation card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.6, ease: EASE_OUT_QUART }}
+        className="rounded-2xl bg-white/8 backdrop-blur-md border border-white/15 p-3 mb-4"
+      >
+        {/* Time range: bed → wake */}
+        <div className="flex items-center justify-between mb-2.5 text-[11px]">
+          <div className="flex items-center gap-1.5">
+            <span className="text-white/40">🌙</span>
+            <span className="text-white/70 font-medium tabular">{bedTimeStr}</span>
+          </div>
+          <div className="flex-1 mx-2 h-px bg-gradient-to-r from-white/20 via-white/40 to-white/20 relative">
+            <motion.div
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ delay: 0.7, duration: 0.8, ease: EASE_OUT_QUART }}
+              className="absolute inset-0 bg-gradient-to-r from-indigo-300/40 via-amber-200/60 to-amber-300/40 origin-left"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-white/70 font-medium tabular">{wakeTimeStr}</span>
+            <span className="text-white/40">☀️</span>
+          </div>
+        </div>
+
+        {/* Metrics: cycles / score / stage */}
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <div className="text-[8px] uppercase tracking-wider text-white/40 mb-0.5">Cycles</div>
+            <div className="text-sm font-bold text-white tabular">{metrics.sleepCycles}</div>
+          </div>
+          <div className="border-x border-white/10">
+            <div className="text-[8px] uppercase tracking-wider text-white/40 mb-0.5">Score</div>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.8, type: 'spring', stiffness: 400, damping: 20 }}
+              className="text-sm font-bold tabular"
+              style={{ color: scoreColor }}
+            >
+              {metrics.sleepScore}
+            </motion.div>
+          </div>
+          <div>
+            <div className="text-[8px] uppercase tracking-wider text-white/40 mb-0.5">Stage</div>
+            <div className="text-[10px] font-semibold text-white/90 leading-tight pt-0.5">{metrics.stageLabel}</div>
+          </div>
+        </div>
+      </motion.div>
+
       {/* 5 emoji buttons — horizontal row */}
-      <div className="flex gap-1.5 mb-4">
+      <div className="flex gap-1.5 mb-3">
         {options.map((opt, i) => (
           <motion.button
             key={opt.q}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 + i * 0.08, type: 'spring', stiffness: 400, damping: 20 }}
+            initial={{ opacity: 0, y: 20, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ delay: 0.6 + i * 0.07, type: 'spring', stiffness: 400, damping: 20 }}
+            whileHover={{ scale: 1.08, y: -4 }}
+            whileTap={{ scale: 0.92 }}
             onClick={() => onSelect(opt.q)}
-            className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 hover:bg-white/20 active:scale-95 transition"
+            className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 hover:bg-white/20 transition"
             style={{ borderBottom: `3px solid ${opt.color}` }}
           >
             <span className="text-2xl">{opt.emoji}</span>
@@ -502,12 +718,60 @@ function QualityPhase({
         ))}
       </div>
 
-      <button
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1, duration: 0.5 }}
         onClick={onSkip}
         className="w-full py-2.5 rounded-xl bg-white/5 text-white/50 text-xs font-medium hover:bg-white/10 transition"
       >
         Skip rating
-      </button>
+      </motion.button>
+    </motion.div>
+  );
+}
+
+// ===== Celebrating Phase — brief confirmation before exit =====
+function CelebratingPhase() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.1, filter: 'blur(8px)' }}
+      transition={{ duration: 0.5, ease: EASE_OUT_QUART }}
+      className="text-center"
+    >
+      {/* Expanding sparkle */}
+      <motion.div
+        initial={{ scale: 0, rotate: -90 }}
+        animate={{ scale: [0, 1.2, 1], rotate: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 18 }}
+        className="text-6xl mb-3"
+        style={{ filter: 'drop-shadow(0 0 40px rgba(255,255,255,0.8))' }}
+      >
+        ✨
+      </motion.div>
+
+      {/* Radiating rings */}
+      {[0, 0.2, 0.4].map((delay, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full border border-white/20"
+          style={{ width: 60, height: 60, top: '50%', left: '50%', marginLeft: -30, marginTop: -60 }}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: [0, 3], opacity: [0.5, 0] }}
+          transition={{ duration: 1.2, ease: EASE_OUT_QUART, delay, repeat: Infinity }}
+        />
+      ))}
+
+      <motion.p
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+        className="text-lg font-light text-white"
+      >
+        Have a great day!
+      </motion.p>
     </motion.div>
   );
 }
@@ -732,7 +996,7 @@ function DuskScenery() {
 function WakingScenery({ tod }: { tod: TimeOfDay }) {
   return (
     <div className="absolute inset-0 pointer-events-none">
-      {/* Rising sun glow */}
+      {/* Rising sun glow — animates upward */}
       <motion.div
         className="absolute rounded-full"
         style={{ left: '50%', bottom: '20%', width: 140, height: 140, marginLeft: -70,
@@ -741,7 +1005,7 @@ function WakingScenery({ tod }: { tod: TimeOfDay }) {
         }}
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 2, ease: 'easeOut' }}
+        transition={{ duration: 2, ease: EASE_OUT_QUART }}
       />
       {/* Warm horizon glow */}
       <motion.div
@@ -751,6 +1015,19 @@ function WakingScenery({ tod }: { tod: TimeOfDay }) {
         animate={{ opacity: 1 }}
         transition={{ duration: 2 }}
       />
+
+      {/* Soft particle drift for daytime waking */}
+      {(tod === 'morning' || tod === 'noon') && (
+        <motion.div
+          className="absolute inset-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.5, delay: 0.5 }}
+          style={{
+            background: 'radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.15) 0%, transparent 60%)',
+          }}
+        />
+      )}
     </div>
   );
 }
