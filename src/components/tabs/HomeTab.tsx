@@ -418,14 +418,14 @@ export function HomeTab() {
         <motion.div {...cardEntrance} className="glass rounded-2xl p-3 minimal-hide">
           <div className="flex items-center gap-2 mb-2">
             <Calendar size={14} className="text-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-wide text-white/60">Today's Schedule</span>
+            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Today's Schedule</span>
           </div>
           <div className="space-y-1">
             {todaySlots.map((slot) => (
               <div key={slot.id} className="flex items-center gap-2 text-xs">
-                <Clock size={12} className="text-white/40" />
-                <span className="tabular text-white/60">{slot.startHour}:00 - {slot.endHour}:00</span>
-                <span className="text-white/80">{slot.subject}</span>
+                <Clock size={12} style={{ color: 'var(--muted-foreground)' }} />
+                <span className="tabular" style={{ color: 'var(--muted-foreground)' }}>{slot.startHour}:00 - {slot.endHour}:00</span>
+                <span style={{ color: 'var(--foreground)' }}>{slot.subject}</span>
               </div>
             ))}
           </div>
@@ -458,7 +458,7 @@ export function HomeTab() {
       {/* Sessions count */}
       <motion.div {...cardEntrance} className="glass rounded-2xl p-4 flex items-center justify-between minimal-hide">
         <div>
-          <div className="text-xs text-white/50 mb-1">Total Sessions</div>
+          <div className="text-xs mb-1" style={{ color: 'var(--muted-foreground)' }}>Total Sessions</div>
           <NumberMorph
             key={sessions.length}
             value={sessions.length}
@@ -483,7 +483,7 @@ function RingComparison({
 
   return (
     <div className="glass rounded-2xl p-3 flex flex-col items-center">
-      <div className="text-[10px] uppercase tracking-widest text-white/40 mb-2 text-center">{title}</div>
+      <div className="text-[10px] uppercase tracking-widest mb-2 text-center" style={{ color: 'var(--muted-foreground)' }}>{title}</div>
       <div className="relative w-24 h-24">
         <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
           <circle cx="48" cy="48" r="42" fill="none" stroke="var(--ring-track)" strokeWidth="4" />
@@ -500,14 +500,14 @@ function RingComparison({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-[9px] text-white/40">{label}</div>
+          <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>{label}</div>
           <div className="text-sm font-bold tabular">{formatHM(innerSec)}</div>
         </div>
       </div>
       <div className={`text-xs font-semibold mt-2 tabular ${trendColor}`}>
         {trendArrow} {trend > 0 ? '+' : ''}{trend}%
       </div>
-      <div className="text-[10px] text-white/40 mt-0.5">{sublabel}</div>
+      <div className="text-[10px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{sublabel}</div>
     </div>
   );
 }
@@ -668,36 +668,58 @@ function SubjectHealthCard() {
   }, [lectures, chapters, subjects, sessions, tests]);
 
   const weakest = healthScores.filter(h => h.score > 0).sort((a, b) => a.score - b.score)[0];
+  const strongest = healthScores.filter(h => h.score > 0).sort((a, b) => b.score - a.score)[0];
 
   return (
-    <div className="glass rounded-2xl p-3">
+    <div className="glass rounded-2xl p-3" style={{ border: '1px solid var(--border)' }}>
       <div className="flex items-center gap-2 mb-3">
         <span className="text-sm">🏥</span>
-        <span className="text-xs font-bold text-white/70">Subject Health</span>
+        <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Subject Health</span>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {healthScores.filter(h => h.score > 0 || lectures.some(l => {
           const ch = chapters.find(c => c.id === l.chapterId);
           const subj = subjects.find(s => s.id === ch?.subjectId);
           return subj?.name === h.subject;
-        })).map((h, i) => (
-          <div key={h.subject} className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold text-white/60 w-16 shrink-0">{h.subject}</span>
-            <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: h.color }}
-                initial={{ width: 0 }}
-                animate={{ width: `${h.score}%` }}
-                transition={{ duration: 0.6, delay: i * 0.1 }}
-              />
+        })).map((h, i) => {
+          const isWeakest = weakest?.subject === h.subject && h.score > 0 && h.score < 40;
+          const isStrongest = strongest?.subject === h.subject && h.score >= 70;
+          return (
+            <div key={h.subject} className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold w-16 shrink-0" style={{ color: 'var(--foreground)' }}>{h.subject}</span>
+              <div className="flex-1 h-2.5 rounded-full overflow-hidden relative" style={{ background: 'var(--muted)' }}>
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{
+                    background: `linear-gradient(90deg, ${h.color}, ${h.color}cc)`,
+                    boxShadow: h.score > 0 ? `0 0 4px ${h.color}80` : 'none',
+                  }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${h.score}%` }}
+                  transition={{ duration: 0.6, delay: i * 0.1 }}
+                />
+                {/* Glow overlay for strong subjects */}
+                {isStrongest && (
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{ background: `linear-gradient(90deg, transparent, ${h.color}20)`, width: `${h.score}%` }}
+                  />
+                )}
+              </div>
+              <span className="text-[10px] font-bold tabular w-7 text-right" style={{ color: h.color }}>
+                {h.score}
+              </span>
+              {isWeakest && <span className="text-[9px]">⚠</span>}
+              {isStrongest && <span className="text-[9px]">👑</span>}
             </div>
-            <span className="text-[10px] font-bold tabular w-7 text-right" style={{ color: h.color }}>{h.score}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {weakest && weakest.score < 40 && (
-        <p className="text-[10px] text-red-400 mt-2">⚠ {weakest.subject} needs urgent attention</p>
+        <p className="text-[10px] mt-2" style={{ color: '#dc2626' }}>⚠ {weakest.subject} needs urgent attention</p>
+      )}
+      {strongest && strongest.score >= 70 && (
+        <p className="text-[10px] mt-1" style={{ color: '#16a34a' }}>👑 {strongest.subject} is your strongest subject</p>
       )}
     </div>
   );
