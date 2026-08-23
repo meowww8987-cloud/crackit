@@ -286,6 +286,173 @@ export function formatSleepDuration(sec: number): string {
   return formatHM(sec);
 }
 
+// ===== Last 7 Days Sleep — ALL calendar days (reported + unreported + naps) =====
+
+export interface DaySleepEntry {
+  /** Calendar date key (YYYY-MM-DD) — the WAKE date. */
+  date: string;
+  /** 3-letter day name: Mon, Tue, Wed... */
+  dayName: string;
+  /** Date number: 12, 13, 14... */
+  dateNum: number;
+  /** True if this is today. */
+  isToday: boolean;
+  /** True if user is currently sleeping (activeSleep) and this is today. */
+  isSleepingNow: boolean;
+  /** Night sleep entry (≥4h), or null if not reported. */
+  night: SleepNightEntry | null;
+  /** All naps (< 4h) on this day. */
+  naps: SleepNightEntry[];
+  /** Total sleep seconds (night + all naps). 0 if nothing reported. */
+  totalSleepSec: number;
+  /** True if ANY sleep was reported (night or nap). */
+  hasAnySleep: boolean;
+  /** True if user forgot to log (no sleep at all). */
+  notReported: boolean;
+  /** Sleep score for the night (0-100), or null if no night sleep. */
+  score: number | null;
+  /** Verdict for color coding, or null. */
+  verdict: 'excellent' | 'good' | 'fair' | 'poor' | null;
+  /** Total quality rating (1-5) if rated, else null. */
+  quality: number | null;
+}
+
+export interface Last7DaysSleep {
+  days: DaySleepEntry[]; // 7 entries, oldest → newest
+  reportedCount: number; // how many of 7 days have any sleep logged
+  notReportedCount: number; // how many days user forgot
+  totalSleepSec: number; // total across 7 days
+  avgPerDaySec: number; // totalSleepSec / 7
+  avgPerReportedDaySec: number; // totalSleepSec / reportedCount
+  bestDay: DaySleepEntry | null;
+  /** Currently active sleep session, or null. */
+  activeSleepDurationSec: number; // 0 if not sleeping now
+}
+
+/**
+ * Build a 7-calendar-day sleep log showing ALL days — reported nights,
+ * naps, AND days the user forgot to log (shown as "Not reported").
+ *
+ * This fixes the issue where the old card only showed REPORTED nights.
+ * If a user forgot to log sleep 3 days, those 3 days simply weren't shown,
+ * making it look like they only slept 4 nights that week. Now all 7 days
+ * are visible, with unreported days showing a "tap to add" prompt.
+ */
+export function sleepLast7Days(history: SleepEntry[], activeSleep: SleepEntry | null): Last7DaysSleep {
+  // Group all sleep entries by their date (wake date)
+  const byDate: Record<string, SleepEntry[]> = {};
+  for (const e of history) {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  }
+  // Sort each day's entries by bedTime asc (oldest first)
+  for (const date of Object.keys(byDate)) {
+    byDate[date].sort((a, b) => a.bedTime - b.bedTime);
+  }
+
+  const days: DaySleepEntry[] = [];
+  const today = new Date();
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const dayEntries = byDate[dateKey] || [];
+
+    // Separate night sleep (≥4h) from naps (<4h)
+    const nightEntries = dayEntries.filter((e) => (e.durationSec || 0) >= 4 * 3600);
+    const napEntries = dayEntries.filter((e) => (e.durationSec || 0) < 4 * 3600);
+
+    // Use the longest night entry as "the night" (in case of splits)
+    let night: SleepNightEntry | null = null;
+    if (nightEntries.length > 0) {
+      const longest = nightEntries.reduce((max, e) =>
+        (e.durationSec || 0) > (max.durationSec || 0) ? e : max
+      );
+      const analysis = classifySleep(longest.bedTime, longest.durationSec || 0);
+      night = {
+        date: longest.date,
+        bedTime: longest.bedTime,
+        wakeTime: longest.wakeTime,
+        durationSec: longest.durationSec || 0,
+        type: analysis.type,
+        label: analysis.label,
+        emoji: analysis.emoji,
+        quality: longest.quality,
+        score: analysis.score,
+      };
+    }
+
+    // Build nap entries
+    const naps: SleepNightEntry[] = napEntries.map((e) => {
+      const analysis = classifySleep(e.bedTime, e.durationSec || 0);
+      return {
+        date: e.date,
+        bedTime: e.bedTime,
+        wakeTime: e.wakeTime,
+        durationSec: e.durationSec || 0,
+        type: analysis.type,
+        label: analysis.label,
+        emoji: analysis.emoji,
+        quality: e.quality,
+        score: analysis.score,
+      };
+    });
+
+    const totalSleepSec = dayEntries.reduce((a, e) => a + (e.durationSec || 0), 0);
+    const hasAnySleep = dayEntries.length > 0;
+    const isToday = i === 0;
+    const isSleepingNow = isToday && !!activeSleep && activeSleep.wakeTime === null;
+
+    // If currently sleeping, add the ongoing duration to today's total
+    const liveDurationSec = isSleepingNow && activeSleep
+      ? Math.floor((Date.now() - activeSleep.bedTime) / 1000)
+      : 0;
+
+    days.push({
+      date: dateKey,
+      dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+      dateNum: d.getDate(),
+      isToday,
+      isSleepingNow,
+      night,
+      naps,
+      totalSleepSec: totalSleepSec + liveDurationSec,
+      hasAnySleep: hasAnySleep || isSleepingNow,
+      notReported: !hasAnySleep && !isSleepingNow,
+      score: night?.score ?? null,
+      verdict: night ? (night.score >= 85 ? 'excellent' : night.score >= 65 ? 'good' : night.score >= 45 ? 'fair' : 'poor') : null,
+      quality: night?.quality ?? null,
+    });
+  }
+
+  const reportedCount = days.filter((d) => d.hasAnySleep).length;
+  const notReportedCount = 7 - reportedCount;
+  const totalSleepSec = days.reduce((a, d) => a + d.totalSleepSec, 0);
+  const avgPerDaySec = Math.round(totalSleepSec / 7);
+  const avgPerReportedDaySec = reportedCount > 0 ? Math.round(totalSleepSec / reportedCount) : 0;
+
+  const reportedDays = days.filter((d) => d.hasAnySleep && d.night);
+  const bestDay = reportedDays.length > 0
+    ? reportedDays.reduce((max, d) => ((d.score ?? 0) > (max.score ?? 0) ? d : max))
+    : null;
+
+  const activeSleepDurationSec = activeSleep && activeSleep.wakeTime === null
+    ? Math.floor((Date.now() - activeSleep.bedTime) / 1000)
+    : 0;
+
+  return {
+    days,
+    reportedCount,
+    notReportedCount,
+    totalSleepSec,
+    avgPerDaySec,
+    avgPerReportedDaySec,
+    bestDay,
+    activeSleepDurationSec,
+  };
+}
+
 // ===== Study-Sleep Correlation =====
 
 export interface StudySleepCorrelation {

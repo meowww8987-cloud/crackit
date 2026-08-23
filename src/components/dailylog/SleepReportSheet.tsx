@@ -96,7 +96,7 @@ export function SleepReportSheet({ open, onClose }: SleepReportSheetProps) {
                 </div>
               </div>
               {/* Progress bar */}
-              <div className="h-2 rounded-full bg-black/30 overflow-hidden">
+              <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${report.healthScore}%` }}

@@ -1,13 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Moon, TrendingUp, TrendingDown, Star, Clock, ChevronRight } from 'lucide-react';
+import { Moon, TrendingUp, TrendingDown, Star, Clock, ChevronRight, Plus, Bed } from 'lucide-react';
 import { useSleep } from '@/lib/store/sleep';
 import {
   buildWeeklySleepReport,
+  sleepLast7Days,
   verdictColor,
-  verdictLabel,
   formatHour,
 } from '@/lib/sleepHealth';
 import { formatHM, vibrate } from '@/lib/utils';
@@ -16,24 +16,38 @@ import { formatHM, vibrate } from '@/lib/utils';
  * SleepHealthCard — modernized sleep health summary card for Stats tab.
  *
  * Shows:
- *  - Circular sleep score ring (color-coded by verdict)
- *  - Last night summary (duration, bedtime→wake, quality stars)
- *  - 7-night mini bar chart (each bar = 1 night, height = hours)
- *  - Trend badge (vs previous week)
- *  - One-line summary (avg hours + consistency)
- *  - Tap (not long-press) to open full SleepReportSheet
- *
- * Empty state: friendly CTA when no sleep data.
+ *  - Sleep score ring (color-coded by verdict) — from reported nights
+ *  - Last night summary OR "Sleeping now" (if active) OR "Not reported" CTA
+ *  - 7-day strip showing ALL calendar days:
+ *      • Reported nights: day name, hours, color bar, quality dots
+ *      • Naps: small nap icon (☀️ noon, 🌆 evening, 💤 short) under the bar
+ *      • Unreported days: "—" + "Tap to add" prompt
+ *      • Today: highlighted
+ *      • Currently sleeping: live duration + animated moon
+ *  - Trend badge (vs previous 7 nights)
+ *  - "X/7 days reported" counter — nudges user to log forgotten days
+ *  - Tap card → open full SleepReportSheet
  *
  * THEME COMPLIANCE: all colors use CSS variables, no hardcoded whites.
  */
 
 export function SleepHealthCard({ onTap }: { onTap: () => void }) {
   const history = useSleep((s) => s.history);
+  const activeSleep = useSleep((s) => s.activeSleep);
   const report = useMemo(() => buildWeeklySleepReport(history), [history]);
+  const last7 = useMemo(() => sleepLast7Days(history, activeSleep), [history, activeSleep]);
 
-  // Empty state
-  if (report.nights.length === 0) {
+  // Live tick — update every 1s while sleeping, every 30s otherwise
+  const [, setTick] = useState(0);
+  const isSleepingNow = last7.activeSleepDurationSec > 0;
+  useEffect(() => {
+    const interval = isSleepingNow ? 1000 : 30000;
+    const t = setInterval(() => setTick((x) => x + 1), interval);
+    return () => clearInterval(t);
+  }, [isSleepingNow]);
+
+  // === Empty state: no sleep data at all ===
+  if (report.nights.length === 0 && !activeSleep) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -66,11 +80,14 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
   }
 
   const scoreColor = verdictColor(report.verdict);
-  const lastNight = report.nights[report.nights.length - 1];
+  const todayEntry = last7.days[6]; // last entry = today
+  const reportedCount = last7.reportedCount;
+  const notReportedCount = last7.notReportedCount;
 
-  // Compute trend (vs previous 7 nights)
+  // Trend calc (sorted history)
   const prevNights = history
     .filter((e) => (e.durationSec || 0) >= 4 * 3600)
+    .sort((a, b) => b.bedTime - a.bedTime)
     .slice(7, 14);
   const prevAvg = prevNights.length > 0
     ? prevNights.reduce((a, e) => a + (e.durationSec || 0), 0) / prevNights.length / 3600
@@ -109,7 +126,7 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
         )}
       </div>
 
-      {/* Score ring + Last night card */}
+      {/* Score ring + Last night / Sleeping now / Not reported */}
       <div className="flex items-center gap-3 mb-4">
         {/* Score ring */}
         <div className="relative w-20 h-20 shrink-0">
@@ -139,73 +156,129 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
               {report.healthScore}
             </span>
             <span className="text-[8px] uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
-              {verdictLabel(report.verdict)}
+              {report.verdict === 'excellent' ? 'Great' : report.verdict === 'good' ? 'Good' : report.verdict === 'fair' ? 'Fair' : 'Poor'}
             </span>
           </div>
         </div>
 
-        {/* Last night card */}
-        {lastNight && (
-          <div
-            className="flex-1 rounded-xl p-2.5"
-            style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
-          >
-            <div className="text-[9px] uppercase tracking-wide font-semibold mb-1" style={{ color: 'var(--muted-foreground)' }}>
-              Last Night
-            </div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="text-sm font-bold tabular" style={{ color: 'var(--foreground)' }}>
-                {(lastNight.durationSec / 3600).toFixed(1)}h
-              </span>
-              <span className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
-                {lastNight.emoji}
-              </span>
-            </div>
-            <div className="text-[9px] tabular" style={{ color: 'var(--muted-foreground)' }}>
-              {formatHour(new Date(lastNight.bedTime).getHours() + new Date(lastNight.bedTime).getMinutes() / 60)} →{' '}
-              {lastNight.wakeTime
-                ? formatHour(new Date(lastNight.wakeTime).getHours() + new Date(lastNight.wakeTime).getMinutes() / 60)
-                : '—'}
-            </div>
-            {lastNight.quality != null && (
-              <div className="flex items-center gap-0.5 mt-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    size={8}
-                    className={star <= (lastNight.quality ?? 0) ? 'text-amber-400 fill-amber-400' : ''}
-                    style={{ color: star <= (lastNight.quality ?? 0) ? '#fbbf24' : 'var(--muted)' }}
-                  />
-                ))}
+        {/* Right side: last night OR sleeping now OR not reported */}
+        <div className="flex-1 min-w-0">
+          {todayEntry.isSleepingNow ? (
+            // === Currently sleeping ===
+            <div
+              className="rounded-xl p-2.5"
+              style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)' }}
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <motion.div
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <Bed size={12} style={{ color: '#818cf8' }} />
+                </motion.div>
+                <span className="text-[9px] uppercase tracking-wide font-bold" style={{ color: '#818cf8' }}>
+                  Sleeping now
+                </span>
               </div>
-            )}
-          </div>
-        )}
+              <div className="text-sm font-bold tabular" style={{ color: 'var(--foreground)' }}>
+                {formatHM(last7.activeSleepDurationSec)}
+              </div>
+              <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>
+                Since {formatHour(new Date(activeSleep!.bedTime).getHours() + new Date(activeSleep!.bedTime).getMinutes() / 60)}
+              </div>
+            </div>
+          ) : todayEntry.night ? (
+            // === Last night reported ===
+            <div
+              className="rounded-xl p-2.5"
+              style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
+            >
+              <div className="text-[9px] uppercase tracking-wide font-semibold mb-1" style={{ color: 'var(--muted-foreground)' }}>
+                Last Night
+              </div>
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-sm font-bold tabular" style={{ color: 'var(--foreground)' }}>
+                  {(todayEntry.night.durationSec / 3600).toFixed(1)}h
+                </span>
+                <span className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
+                  {todayEntry.night.emoji}
+                </span>
+              </div>
+              <div className="text-[9px] tabular" style={{ color: 'var(--muted-foreground)' }}>
+                {formatHour(new Date(todayEntry.night.bedTime).getHours() + new Date(todayEntry.night.bedTime).getMinutes() / 60)} →{' '}
+                {todayEntry.night.wakeTime
+                  ? formatHour(new Date(todayEntry.night.wakeTime).getHours() + new Date(todayEntry.night.wakeTime).getMinutes() / 60)
+                  : '—'}
+              </div>
+              {todayEntry.quality != null && (
+                <div className="flex items-center gap-0.5 mt-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      size={8}
+                      className={star <= (todayEntry.quality ?? 0) ? 'text-amber-400 fill-amber-400' : ''}
+                      style={{ color: star <= (todayEntry.quality ?? 0) ? '#fbbf24' : 'var(--muted)' }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            // === Today not reported ===
+            <button
+              onClick={(e) => { e.stopPropagation(); vibrate(8); onTap(); }}
+              className="w-full rounded-xl p-2.5 text-left transition active:scale-[0.98]"
+              style={{
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1px dashed rgba(245, 158, 11, 0.4)',
+              }}
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <Plus size={12} style={{ color: '#f59e0b' }} />
+                <span className="text-[9px] uppercase tracking-wide font-bold" style={{ color: '#f59e0b' }}>
+                  Not reported
+                </span>
+              </div>
+              <div className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
+                Tap to log last night
+              </div>
+              <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>
+                You forgot to mark sleep
+              </div>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* 7-night strip — clean day names + hours + color-coded bars */}
+      {/* 7-day strip — ALL days (reported + unreported + naps) */}
       <div className="mb-3">
-        <div className="text-[9px] uppercase tracking-wide font-semibold mb-2" style={{ color: 'var(--muted-foreground)' }}>
-          Last {report.nights.length} Nights
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[9px] uppercase tracking-wide font-semibold" style={{ color: 'var(--muted-foreground)' }}>
+            Last 7 Days
+          </span>
+          <span className="text-[9px] font-bold tabular" style={{ color: notReportedCount > 0 ? '#f59e0b' : '#22c55e' }}>
+            {reportedCount}/7 reported
+          </span>
         </div>
         <div className="flex items-end justify-between gap-1">
-          {report.nights.map((night, i) => {
-            const hours = night.durationSec / 3600;
-            const isLastNight = i === report.nights.length - 1;
-            // Bar height: scale to max 48px (h-12), min 8px so tiny nights are still visible
-            const barHeight = Math.max(8, Math.min(48, (hours / 10) * 48));
-            const nightColor = night.score >= 85 ? '#22c55e'
-              : night.score >= 65 ? '#84cc16'
-              : night.score >= 45 ? '#f59e0b'
-              : '#ef4444';
-            // 3-letter day name (Mon, Tue, Wed...) — NOT single letter (ambiguous S/T)
-            const dayName = new Date(night.bedTime).toLocaleDateString('en-US', { weekday: 'short' });
+          {last7.days.map((day, i) => {
+            const hours = day.totalSleepSec / 3600;
+            const isLastNight = i === 6;
+            // Bar height: scale 0-10h to 8-48px
+            const barHeight = day.hasAnySleep
+              ? Math.max(8, Math.min(48, (hours / 10) * 48))
+              : 4; // tiny stub for unreported
+            const dayColor = day.verdict === 'excellent' ? '#22c55e'
+              : day.verdict === 'good' ? '#84cc16'
+              : day.verdict === 'fair' ? '#f59e0b'
+              : day.verdict === 'poor' ? '#ef4444'
+              : 'var(--muted)'; // no night sleep (maybe nap only or unreported)
+
             return (
               <div
                 key={i}
                 className="flex-1 flex flex-col items-center gap-1"
                 style={{
-                  // Highlight last night with a subtle background
                   background: isLastNight ? 'rgba(99,102,241,0.08)' : 'transparent',
                   borderRadius: 6,
                   padding: '2px 0',
@@ -216,43 +289,83 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
                   className="text-[8px] font-bold uppercase"
                   style={{ color: isLastNight ? '#818cf8' : 'var(--muted-foreground)' }}
                 >
-                  {dayName}
+                  {day.dayName}
                 </span>
-                {/* Hours */}
+                {/* Hours or — */}
                 <span className="text-[9px] font-bold tabular" style={{ color: 'var(--foreground)' }}>
-                  {hours.toFixed(1)}h
+                  {day.hasAnySleep ? `${hours.toFixed(1)}h` : '—'}
                 </span>
-                {/* Color-coded bar */}
+                {/* Color bar */}
                 <div
-                  className="w-full rounded-t-sm"
+                  className="w-full rounded-t-sm relative"
                   style={{
                     height: barHeight,
-                    background: nightColor,
+                    background: dayColor,
                     minHeight: 4,
-                    opacity: isLastNight ? 1 : 0.85,
-                    boxShadow: isLastNight ? `0 0 6px ${nightColor}80` : 'none',
+                    opacity: day.notReported ? 0.3 : (isLastNight ? 1 : 0.85),
+                    boxShadow: isLastNight && day.hasAnySleep ? `0 0 6px ${dayColor}80` : 'none',
                   }}
-                />
-                {/* Quality dots (1-5) */}
-                <div className="flex gap-0.5">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <span
-                      key={star}
-                      className="w-1 h-1 rounded-full"
-                      style={{
-                        background: night.quality != null && star <= night.quality
-                          ? '#fbbf24'
-                          : 'var(--muted)',
-                      }}
+                >
+                  {/* Sleeping now indicator */}
+                  {day.isSleepingNow && (
+                    <motion.div
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
+                      style={{ background: '#818cf8' }}
                     />
-                  ))}
+                  )}
                 </div>
+                {/* Quality dots OR nap icons OR "add" prompt */}
+                {day.notReported ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); vibrate(8); onTap(); }}
+                    className="text-[7px] font-bold uppercase"
+                    style={{ color: '#f59e0b' }}
+                  >
+                    Add
+                  </button>
+                ) : (
+                  <>
+                    {/* Quality dots (only if night sleep + rated) */}
+                    {day.quality != null ? (
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            className="w-1 h-1 rounded-full"
+                            style={{
+                              background: star <= (day.quality ?? 0) ? '#fbbf24' : 'var(--muted)',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="h-[4px]" /> /* spacer for unrated */
+                    )}
+                    {/* Nap icons */}
+                    {day.naps.length > 0 && (
+                      <div className="flex gap-0.5">
+                        {day.naps.slice(0, 2).map((nap, ni) => (
+                          <span key={ni} className="text-[8px]" title={`${nap.label}: ${(nap.durationSec/60).toFixed(0)}m`}>
+                            {nap.emoji}
+                          </span>
+                        ))}
+                        {day.naps.length > 2 && (
+                          <span className="text-[7px]" style={{ color: 'var(--muted-foreground)' }}>
+                            +{day.naps.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             );
           })}
         </div>
         {/* Legend */}
-        <div className="flex items-center justify-center gap-3 mt-2 text-[8px]" style={{ color: 'var(--muted-foreground)' }}>
+        <div className="flex items-center justify-center gap-2 mt-2 text-[8px] flex-wrap" style={{ color: 'var(--muted-foreground)' }}>
           <span className="flex items-center gap-0.5">
             <span className="w-2 h-2 rounded-sm" style={{ background: '#22c55e' }} /> 85+
           </span>
@@ -263,8 +376,9 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
             <span className="w-2 h-2 rounded-sm" style={{ background: '#ef4444' }} /> &lt;45
           </span>
           <span className="flex items-center gap-0.5">
-            <span className="w-2 h-2 rounded-sm" style={{ background: '#818cf8', opacity: 0.4 }} /> Last night
+            <span className="w-2 h-2 rounded-sm" style={{ background: 'var(--muted)', opacity: 0.4 }} /> N/A
           </span>
+          <span className="flex items-center gap-0.5">☀️ Nap</span>
         </div>
       </div>
 
@@ -272,7 +386,7 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
       <div className="flex items-center justify-between text-[10px] pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-2">
           <span style={{ color: 'var(--muted-foreground)' }}>
-            Avg: <span className="font-bold tabular" style={{ color: 'var(--foreground)' }}>{report.avgNightHours.toFixed(1)}h</span>
+            Avg: <span className="font-bold tabular" style={{ color: 'var(--foreground)' }}>{(last7.avgPerDaySec / 3600).toFixed(1)}h/day</span>
           </span>
           <span style={{ color: 'var(--muted-foreground)' }}>·</span>
           <span style={{ color: 'var(--muted-foreground)' }}>
@@ -285,6 +399,19 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
           <ChevronRight size={10} />
         </div>
       </div>
+
+      {/* Nudge: if user forgot days, show a gentle reminder */}
+      {notReportedCount > 0 && (
+        <div
+          className="mt-2 rounded-lg px-2.5 py-1.5 text-[10px] flex items-center gap-1.5"
+          style={{ background: 'rgba(245,158,11,0.08)', color: '#f59e0b' }}
+        >
+          <span>💡</span>
+          <span>
+            You forgot to log <strong>{notReportedCount} day{notReportedCount > 1 ? 's' : ''}</strong> this week. Tap any &ldquo;Add&rdquo; above to backfill.
+          </span>
+        </div>
+      )}
     </motion.div>
   );
 }
