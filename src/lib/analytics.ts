@@ -24,6 +24,146 @@ export function weeklyBarData(sessions: SavedSession[], weekOffset = 0): { date:
   return result;
 }
 
+// ===== Week Story v2 — rich per-day data for the redesigned weekly card =====
+
+export interface WeekDaySubject {
+  name: Subject;
+  minutes: number;
+  color: string;
+}
+
+export interface WeekDayData {
+  date: string; // YYYY-MM-DD
+  dayLetter: string; // "M", "T", "W"...
+  dateNum: number; // 12, 13, 14...
+  studyMinutes: number;
+  wastedMinutes: number;
+  sessionCount: number;
+  subjects: WeekDaySubject[];
+  isToday: boolean;
+  hitGoal: boolean;
+  /** 0-4 intensity for tile color (0=none, 4=high) */
+  intensity: number;
+}
+
+export interface WeekStoryData {
+  days: WeekDayData[]; // 7 entries (oldest → newest)
+  totalStudyMin: number;
+  totalWastedMin: number;
+  dailyGoalMin: number;
+  weeklyGoalMin: number;
+  goalPct: number; // totalStudyMin / weeklyGoalMin * 100
+  daysActive: number; // days with study > 0
+  daysHitGoal: number;
+  dailyAvgMin: number;
+  bestDay: WeekDayData | null;
+  worstDay: WeekDayData | null; // worst among active days
+  trendPct: number; // vs previous week (positive = improvement)
+  weekOffset: number;
+  weekLabel: string; // "This Week" / "1 Week Ago" / etc.
+}
+
+export function weekStoryData(
+  sessions: SavedSession[],
+  weekOffset: number,
+  dailyGoalHours: number
+): WeekStoryData {
+  const today = todayKey();
+  const dailyGoalMin = Math.round(dailyGoalHours * 60);
+  const weeklyGoalMin = dailyGoalMin * 7;
+
+  const days: WeekDayData[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = addDays(new Date(), -(i + weekOffset * 7));
+    const key = dateKey(d);
+    const daySessions = sessions.filter((s) => s.date === key);
+    const studySec = daySessions.reduce((a, s) => a + s.studySeconds, 0);
+    const wastedSec = daySessions.reduce((a, s) => a + s.wastedSeconds, 0);
+    const studyMin = Math.round(studySec / 60);
+    const wastedMin = Math.round(wastedSec / 60);
+
+    // Per-day subject breakdown
+    const subjMap: Record<string, number> = {};
+    for (const s of daySessions) {
+      subjMap[s.subject] = (subjMap[s.subject] || 0) + s.studySeconds;
+    }
+    const subjects: WeekDaySubject[] = SUBJECTS
+      .map((subj) => ({
+        name: subj,
+        minutes: Math.round((subjMap[subj] || 0) / 60),
+        color: subjectColor(subj).hex,
+      }))
+      .filter((s) => s.minutes > 0)
+      .sort((a, b) => b.minutes - a.minutes);
+
+    const hours = studySec / 3600;
+    const intensity = hours >= 7 ? 4 : hours >= 4 ? 3 : hours >= 2 ? 2 : hours > 0 ? 1 : 0;
+
+    days.push({
+      date: key,
+      dayLetter: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
+      dateNum: d.getDate(),
+      studyMinutes: studyMin,
+      wastedMinutes: wastedMin,
+      sessionCount: daySessions.length,
+      subjects,
+      isToday: key === today,
+      hitGoal: studyMin >= dailyGoalMin,
+      intensity,
+    });
+  }
+
+  const totalStudyMin = days.reduce((a, d) => a + d.studyMinutes, 0);
+  const totalWastedMin = days.reduce((a, d) => a + d.wastedMinutes, 0);
+  const daysActive = days.filter((d) => d.studyMinutes > 0).length;
+  const daysHitGoal = days.filter((d) => d.hitGoal).length;
+  const dailyAvgMin = daysActive > 0 ? Math.round(totalStudyMin / 7) : 0;
+  const goalPct = weeklyGoalMin > 0 ? Math.round((totalStudyMin / weeklyGoalMin) * 100) : 0;
+
+  const activeDays = days.filter((d) => d.studyMinutes > 0);
+  const bestDay = activeDays.length > 0
+    ? activeDays.reduce((max, d) => (d.studyMinutes > max.studyMinutes ? d : max))
+    : null;
+  const worstDay = activeDays.length > 0
+    ? activeDays.reduce((min, d) => (d.studyMinutes < min.studyMinutes ? d : min))
+    : null;
+
+  // Trend: compare this week's total to previous week's total
+  let prevWeekMin = 0;
+  for (let i = 13; i >= 7; i--) {
+    const d = addDays(new Date(), -(i + weekOffset * 7));
+    const key = dateKey(d);
+    prevWeekMin += Math.round(sessions
+      .filter((s) => s.date === key)
+      .reduce((a, s) => a + s.studySeconds, 0) / 60);
+  }
+  const trendPct = prevWeekMin > 0
+    ? Math.round(((totalStudyMin - prevWeekMin) / prevWeekMin) * 100)
+    : totalStudyMin > 0 ? 100 : 0;
+
+  let weekLabel: string;
+  if (weekOffset === 0) weekLabel = 'This Week';
+  else if (weekOffset === 1) weekLabel = 'Last Week';
+  else weekLabel = `${weekOffset} Weeks Ago`;
+
+  return {
+    days,
+    totalStudyMin,
+    totalWastedMin,
+    dailyGoalMin,
+    weeklyGoalMin,
+    goalPct,
+    daysActive,
+    daysHitGoal,
+    dailyAvgMin,
+    bestDay,
+    worstDay,
+    trendPct,
+    weekOffset,
+    weekLabel,
+  };
+}
+
 // ===== Subject distribution donut =====
 export function subjectDistribution(sessions: SavedSession[]): { name: Subject; value: number; color: string }[] {
   const totals: Record<string, number> = {};

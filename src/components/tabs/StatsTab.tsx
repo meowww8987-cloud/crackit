@@ -20,10 +20,10 @@ import { SubjectWeeklyBreakdown } from '@/components/stats/SubjectWeeklyBreakdow
 import { HeatmapCalendar } from '@/components/stats/HeatmapCalendar';
 import { SubjectSunburst } from '@/components/stats/SubjectSunburst';
 import { PeakStudyTime } from '@/components/stats/PeakStudyTime';
+import { WeekStory } from '@/components/stats/WeekStory';
 import { SleepReportSheet } from '@/components/dailylog/SleepReportSheet';
 import { buildWeeklySleepReport, verdictColor, verdictLabel } from '@/lib/sleepHealth';
 import {
-  weeklyBarData,
   subjectDistribution,
   trendData,
   moodDistribution,
@@ -45,24 +45,6 @@ export function StatsTab() {
 
   const sleepReport = useMemo(() => buildWeeklySleepReport(sleepHistory), [sleepHistory]);
 
-  const [weekOffset, setWeekOffset] = useState(0);
-  const weekly = useMemo(() => weeklyBarData(sessions, weekOffset), [sessions, weekOffset]);
-  const weekTouchStartX = useRef<number | null>(null);
-  const weekTouchStartY = useRef<number | null>(null);
-  const onWeekTouchStart = (e: React.TouchEvent) => {
-    weekTouchStartX.current = e.touches[0].clientX;
-    weekTouchStartY.current = e.touches[0].clientY;
-  };
-  const onWeekTouchEnd = (e: React.TouchEvent) => {
-    if (weekTouchStartX.current === null) return;
-    const dx = e.changedTouches[0].clientX - weekTouchStartX.current;
-    const dy = e.changedTouches[0].clientY - (weekTouchStartY.current ?? 0);
-    weekTouchStartX.current = null;
-    weekTouchStartY.current = null;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx > 0) setWeekOffset(o => Math.max(0, o - 1)); // swipe right = previous week
-    else setWeekOffset(o => o + 1); // swipe left = next week
-  };
   const distribution = useMemo(() => subjectDistribution(sessions), [sessions]);
   const trend = useMemo(() => trendData(sessions, 30), [sessions]);
   const moods = useMemo(() => moodDistribution(sessions), [sessions]);
@@ -99,35 +81,8 @@ export function StatsTab() {
         Stats
       </h1>
 
-      {/* Weekly bar chart — swipe left/right to navigate weeks */}
-      <div
-        data-card
-        onTouchStart={onWeekTouchStart}
-        onTouchEnd={onWeekTouchEnd}
-      >
-      <ChartCard title={`Weekly Study Time${weekOffset > 0 ? ` (${weekOffset} week${weekOffset > 1 ? 's' : ''} ago)` : ' (this week)'}`}>
-        <div className="h-44">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={weekly} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
-                labelStyle={{ color: 'var(--foreground)' }}
-              />
-              <Bar dataKey="study" radius={[4, 4, 0, 0]} fill="#14b8a6" name="Study (min)" />
-              <Bar dataKey="wasted" radius={[4, 4, 0, 0]} fill="#ef4444" name="Wasted (min)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartCard>
-      {weekOffset > 0 && (
-        <div className="text-center text-[9px] text-white/50 mt-1">
-          ← swipe right for previous week · swipe left for next week →
-        </div>
-      )}
-      </div>
+      {/* Weekly Study Time — 3-level Week Story card */}
+      <WeekStory />
 
       {/* === Sleep Health Card — long-press for full report === */}
       {sleepHistory.length > 0 && (
