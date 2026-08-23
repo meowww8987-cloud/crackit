@@ -2,9 +2,11 @@
 
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, ChevronLeft, ChevronRight, X, Clock, BookOpen, FileText, Brain } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, X, Clock, BookOpen, FileText, Brain, TrendingUp, AlertCircle } from 'lucide-react';
 import { useHistory } from '@/lib/store/history';
+import { subjectColor, SUBJECTS } from '@/lib/colors';
 import { dateKey, formatHM, cn, vibrate } from '@/lib/utils';
+import type { SavedSession } from '@/lib/types';
 
 /**
  * HeatmapCalendar — Monthly study heatmap with date numbers + month navigation.
@@ -255,82 +257,202 @@ export function HeatmapCalendar() {
         </div>
       </div>
 
-      {/* Selected day detail sheet */}
+      {/* Day detail popup — full screen overlay */}
       <AnimatePresence>
         {selectedDayData && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="mt-3 pt-3 border-t border-white/10">
-              {/* Date header */}
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <div className="text-sm font-bold">
-                    {selectedDayData.date!.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-                  </div>
-                  <div className="text-[10px] text-white/50">
-                    {selectedDayData.hours > 0
-                      ? `${formatHM(selectedDayData.studySec)} studied`
-                      : 'No study this day'}
-                    {selectedDayData.wastedSec > 0 && (
-                      <span className="text-red-400/70 ml-2">⚠ {formatHM(selectedDayData.wastedSec)} wasted</span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelectedDate(null)}
-                  className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-white"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-
-              {/* Session list */}
-              {selectedDaySessions.length > 0 ? (
-                <div className="space-y-1.5 max-h-[220px] overflow-y-auto">
-                  {selectedDaySessions.map((s, i) => {
-                    const isPractice = s.topic?.includes('·') && s.mode === 'free';
-                    const isTest = s.lecture?.toLowerCase().includes('test');
-                    const Icon = isPractice ? Brain : isTest ? FileText : BookOpen;
-                    const iconColor = isPractice ? '#3b82f6' : isTest ? '#a855f7' : '#22c55e';
-                    return (
-                      <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${iconColor}20` }}>
-                          <Icon size={14} style={{ color: iconColor }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[11px] font-semibold truncate">
-                            {s.subject}{s.chapter && s.chapter !== 'All' ? ` · ${s.chapter}` : ''}
-                          </div>
-                          <div className="text-[9px] text-white/60 truncate">
-                            {s.lecture || s.topic || ''}
-                            {s.mood && ` · ${s.mood}`}
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-[11px] font-bold tabular" style={{ color: iconColor }}>
-                            {formatHM(s.studySeconds)}
-                          </div>
-                          {s.wastedSeconds > 0 && (
-                            <div className="text-[9px] text-red-400/70 tabular">⚠ {formatHM(s.wastedSeconds)}</div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-3">
-                  <p className="text-[10px] text-white/50">No sessions recorded this day.</p>
-                </div>
-              )}
-            </div>
-          </motion.div>
+          <DayDetailPopup
+            date={selectedDayData.date!}
+            sessions={selectedDaySessions}
+            totalStudySec={selectedDayData.studySec}
+            totalWastedSec={selectedDayData.wastedSec}
+            onClose={() => setSelectedDate(null)}
+          />
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+/* ============ Day Detail Popup — full screen, horizontal scroll subjects ============ */
+
+function DayDetailPopup({
+  date,
+  sessions,
+  totalStudySec,
+  totalWastedSec,
+  onClose,
+}: {
+  date: Date;
+  sessions: SavedSession[];
+  totalStudySec: number;
+  totalWastedSec: number;
+  onClose: () => void;
+}) {
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+
+  // Group sessions by subject
+  const subjectData = useMemo(() => {
+    const map: Record<string, { study: number; wasted: number; sessions: SavedSession[] }> = {};
+    for (const s of sessions) {
+      const subj = s.subject || 'Other';
+      if (!map[subj]) map[subj] = { study: 0, wasted: 0, sessions: [] };
+      map[subj].study += s.studySeconds;
+      map[subj].wasted += s.wastedSeconds;
+      map[subj].sessions.push(s);
+    }
+    return map;
+  }, [sessions]);
+
+  const subjectList = Object.keys(subjectData).sort((a, b) => subjectData[b].study - subjectData[a].study);
+
+  // Filtered sessions based on selected subject
+  const displaySessions = selectedSubject
+    ? subjectData[selectedSubject]?.sessions || []
+    : sessions;
+
+  const dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      onClick={onClose}
+      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-sm max-h-[85vh] flex flex-col rounded-3xl overflow-hidden glass-strong"
+        data-card
+      >
+        {/* Cross button — top right, high contrast */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-30 w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90"
+          style={{
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: '#ef4444',
+          }}
+          aria-label="Close"
+        >
+          <X size={16} />
+        </button>
+
+        {/* === Header: Date + Total Study + Total Wasted === */}
+        <div className="shrink-0 px-4 pt-5 pb-3 border-b border-white/10">
+          <div className="text-sm font-bold text-white pr-8">{dateStr}</div>
+          <div className="flex items-center gap-4 mt-2">
+            <div className="flex items-center gap-1.5">
+              <TrendingUp size={13} className="text-green-400" />
+              <span className="text-lg font-bold tabular text-green-400">{formatHM(totalStudySec)}</span>
+              <span className="text-[9px] text-white/40 uppercase">studied</span>
+            </div>
+            {totalWastedSec > 0 && (
+              <div className="flex items-center gap-1.5">
+                <AlertCircle size={13} className="text-red-400" />
+                <span className="text-sm font-bold tabular text-red-400">{formatHM(totalWastedSec)}</span>
+                <span className="text-[9px] text-white/40 uppercase">wasted</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* === Subject chips — horizontal scroll === */}
+        <div className="shrink-0 py-2 px-4">
+          <div
+            className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1"
+            data-card
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            {/* "All" chip */}
+            <button
+              onClick={() => { vibrate(6); setSelectedSubject(null); }}
+              className={cn(
+                'shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold transition active:scale-95',
+                selectedSubject === null
+                  ? 'bg-white/15 text-white'
+                  : 'bg-white/5 text-white/50'
+              )}
+            >
+              All ({sessions.length})
+            </button>
+            {/* Per-subject chips */}
+            {subjectList.map((subj) => {
+              const data = subjectData[subj];
+              const sc = subjectColor(subj as any);
+              const isActive = selectedSubject === subj;
+              return (
+                <button
+                  key={subj}
+                  onClick={() => { vibrate(6); setSelectedSubject(isActive ? null : subj); }}
+                  className={cn(
+                    'shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold transition active:scale-95 flex items-center gap-1.5',
+                  )}
+                  style={isActive
+                    ? { background: `${sc.hex}25`, color: sc.hex, border: `1px solid ${sc.hex}40` }
+                    : { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.5)' }
+                  }
+                >
+                  <div className="w-2 h-2 rounded-full" style={{ background: sc.hex }} />
+                  {subj} · {formatHM(data.study)}
+                  {data.wasted > 0 && <span className="text-red-400/60">⚠{Math.round(data.wasted / 60)}m</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* === Session list — scrollable === */}
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          {displaySessions.length > 0 ? (
+            <div className="space-y-1.5">
+              {displaySessions.map((s, i) => {
+                const isPractice = s.topic?.includes('·') && s.mode === 'free';
+                const isTest = s.lecture?.toLowerCase().includes('test');
+                const Icon = isPractice ? Brain : isTest ? FileText : BookOpen;
+                const iconColor = isPractice ? '#3b82f6' : isTest ? '#a855f7' : '#22c55e';
+                const sc = subjectColor(s.subject as any);
+                return (
+                  <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5"
+                    style={{ borderLeft: `3px solid ${sc.hex}` }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: `${iconColor}20` }}>
+                      <Icon size={14} style={{ color: iconColor }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] font-semibold text-white truncate">
+                        {s.subject}{s.chapter && s.chapter !== 'All' ? ` · ${s.chapter}` : ''}
+                      </div>
+                      <div className="text-[9px] text-white/60 truncate">
+                        {s.lecture || s.topic || ''}
+                        {s.mood && ` · ${s.mood}`}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-[11px] font-bold tabular" style={{ color: iconColor }}>
+                        {formatHM(s.studySeconds)}
+                      </div>
+                      {s.wastedSeconds > 0 && (
+                        <div className="text-[9px] text-red-400/70 tabular">⚠ {formatHM(s.wastedSeconds)}</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-[10px] text-white/50">No sessions recorded this day.</p>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
