@@ -110,6 +110,14 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   const partnerWeekTotal = partnerHasData ? partnerDailySec.reduce((a, b) => a + b, 0) : 0;
   const myWeekWasted = myDailyWasted.reduce((a, b) => a + b, 0);
 
+  // Partner per-day wasted from dailyWastedHistory (NEW — synced in payload)
+  const partnerDailyWastedHistory: number[] = pd?.dailyWastedHistory || [];
+  const partnerDailyWasted = weekDates.map((_, i) => {
+    if (partnerHasData && partnerDailyWastedHistory.length === 7) return partnerDailyWastedHistory[i] || 0;
+    return 0;
+  });
+  const partnerWeekWasted = partnerHasData ? partnerDailyWasted.reduce((a, b) => a + b, 0) : 0;
+
   // Subject breakdown
   const mySubjects: Record<string, number> = {};
   sessions.filter((s) => s.date === today).forEach((s) => {
@@ -228,47 +236,6 @@ export function PartnerComparisonSheet({ onClose }: Props) {
           )}
         </div>
 
-        {/* === Today's Comparison — combined card === */}
-        <div className="rounded-2xl p-4 mb-3" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
-          <div className="flex items-center gap-1.5 mb-3">
-            <Clock size={14} style={{ color: YOU_COLOR }} />
-            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Today Together</span>
-          </div>
-
-          {/* Combined total */}
-          <div className="text-center mb-3 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
-            <div className="text-3xl font-bold tabular" style={{ color: GOLD_COLOR }}>
-              {formatHM(combinedToday)}
-            </div>
-            <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>combined study time</div>
-            {combinedWasted > 60 && (
-              <div className="text-[10px] mt-1" style={{ color: WASTED_COLOR }}>
-                ⚠ {formatHM(combinedWasted)} wasted together
-              </div>
-            )}
-          </div>
-
-          {/* Side by side comparison */}
-          <div className="grid grid-cols-2 gap-3">
-            {/* YOU */}
-            <div className="text-center">
-              <div className="text-[9px] font-bold uppercase" style={{ color: YOU_COLOR }}>You</div>
-              <div className="text-lg font-bold tabular" style={{ color: 'var(--foreground)' }}>{formatHM(myTodaySec)}</div>
-              {myTodayWasted > 60 && (
-                <div className="text-[9px] tabular" style={{ color: WASTED_COLOR }}>⚠ {formatHM(myTodayWasted)}</div>
-              )}
-            </div>
-            {/* PARTNER */}
-            <div className="text-center">
-              <div className="text-[9px] font-bold uppercase" style={{ color: PARTNER_COLOR }}>{partner.partnerName || 'Partner'}</div>
-              <div className="text-lg font-bold tabular" style={{ color: 'var(--foreground)' }}>{formatHM(partnerSec)}</div>
-              {partnerWasted > 60 && (
-                <div className="text-[9px] tabular" style={{ color: WASTED_COLOR }}>⚠ {formatHM(partnerWasted)}</div>
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* === Weekly Leaderboard — modernized with wasted time === */}
         <div className="rounded-2xl p-4 mb-3" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
           <div
@@ -325,8 +292,12 @@ export function PartnerComparisonSheet({ onClose }: Props) {
                 </div>
                 <div className="text-lg font-bold tabular" style={{ color: 'var(--foreground)' }}>{partnerHasData ? formatHM(partnerWeekTotal) : '—'}</div>
                 <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>7-day study</div>
-                <div className="text-[9px] tabular mt-0.5" style={{ color: GOLD_COLOR }}>
-                  {partnerHasData ? `${daysWon}/7 days won` : 'No data'}
+                <div className="flex items-center justify-between mt-0.5">
+                  {partnerHasData && partnerWeekWasted > 60 ? (
+                    <span className="text-[9px] tabular" style={{ color: WASTED_COLOR }}>⚠ {formatHM(partnerWeekWasted)}</span>
+                  ) : (
+                    <span className="text-[9px]" style={{ color: GOLD_COLOR }}>{partnerHasData ? `${daysWon}/7 won` : 'No data'}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -425,11 +396,26 @@ export function PartnerComparisonSheet({ onClose }: Props) {
                               }}
                             />
                           )}
+                          {/* Partner wasted overlay */}
+                          {partnerHasData && partnerDailyWasted[i] > 0 && (
+                            <div
+                              className="absolute top-0 h-full rounded-full"
+                              style={{
+                                left: `${(pH/maxDaily)*100}%`,
+                                width: `${Math.min(20, (partnerDailyWasted[i]/maxDaily)*100)}%`,
+                                background: `${WASTED_COLOR}80`,
+                                border: `0.5px solid ${WASTED_COLOR}`,
+                              }}
+                            />
+                          )}
                         </div>
                         <div className="flex flex-col items-end shrink-0 w-14">
                           <span className="tabular font-bold text-[9px]" style={{ color: !myWon && partnerHasData && pH > 0 ? PARTNER_COLOR : 'var(--muted-foreground)' }}>
                             {partnerHasData && pH > 0 ? formatHM(pH) : '—'}
                           </span>
+                          {partnerHasData && partnerDailyWasted[i] > 60 && (
+                            <span className="tabular text-[7px]" style={{ color: WASTED_COLOR }}>⚠{formatHM(partnerDailyWasted[i])}</span>
+                          )}
                         </div>
                       </div>
                     </div>

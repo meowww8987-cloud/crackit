@@ -24,6 +24,9 @@ export interface PartnerSyncPayload {
   /** Per-day study seconds for the last 7 days (index 0 = 6 days ago, 6 = today).
    *  Enables accurate weekly leaderboard comparison without fabricating averages. */
   dailyHistory: number[];
+  /** Per-day WASTED seconds for the last 7 days (index 0 = 6 days ago, 6 = today).
+   *  Lets the partner card show wasted time per day in the weekly leaderboard. */
+  dailyWastedHistory: number[];
 
   // === Current activity (live) ===
   /** Subject of the most recent or active session. */
@@ -319,21 +322,27 @@ export const usePartner = create<PartnerStore>()(
         // === Per-day study seconds for last 7 days ===
         // Build a map of dateKey → studySeconds for O(N) lookup
         const dailyMap: Record<string, number> = {};
+        const dailyWastedMap: Record<string, number> = {};
         for (const s of sessions) {
           dailyMap[s.date] = (dailyMap[s.date] || 0) + s.studySeconds;
+          dailyWastedMap[s.date] = (dailyWastedMap[s.date] || 0) + s.wastedSeconds;
         }
         // Array: [6 days ago, 5 days ago, ..., yesterday, today]
         const dailyHistory: number[] = [];
+        const dailyWastedHistory: number[] = [];
         for (let i = 6; i >= 0; i--) {
           const d = new Date();
           d.setDate(d.getDate() - i);
           const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
           let daySec = dailyMap[key] || 0;
+          let dayWastedSec = dailyWastedMap[key] || 0;
           // Add live time to today's entry (index 6 = today when i=0)
           if (i === 0) {
             daySec += (hasFocus ? liveSec : 0) + (hasPractice ? livePracticeSec : 0);
+            dayWastedSec += (hasFocus ? liveWastedSec : 0);
           }
           dailyHistory.push(daySec);
+          dailyWastedHistory.push(dayWastedSec);
         }
 
         const payload: PartnerSyncPayload = {
@@ -344,6 +353,7 @@ export const usePartner = create<PartnerStore>()(
             + (hasPractice ? livePracticeSec : 0),
           streak,
           dailyHistory,
+          dailyWastedHistory,
           lastSubject,
           lastChapter,
           lastLecture,
