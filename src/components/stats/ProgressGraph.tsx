@@ -111,8 +111,15 @@ export function ProgressGraph() {
   // Goal line Y position
   const goalY = padding.top + plotHeight - (goalHours / maxHours) * plotHeight;
 
-  // X-axis labels (every 5th day)
-  const xLabels = data.filter((_, i) => i % 5 === 0 || i === data.length - 1);
+  // X-axis: 4 clean week markers instead of raw dates
+  // Shows: "3w ago" | "2w ago" | "1w ago" | "Today"
+  const weekMarkers = [
+    { index: 0, label: '3w ago' },       // 30 days ago
+    { index: 7, label: '2w ago' },       // 23 days ago
+    { index: 14, label: '1w ago' },      // 16 days ago
+    { index: 22, label: 'This week' },   // 8 days ago
+    { index: 29, label: 'Today' },       // today
+  ];
 
   return (
     <>
@@ -263,11 +270,27 @@ export function ProgressGraph() {
             ))}
           </svg>
 
-          {/* X-axis labels */}
-          <div className="flex justify-between text-[7px] mt-1 px-1" style={{ color: 'var(--muted-foreground)' }}>
-            {xLabels.map((d, i) => (
-              <span key={i}>{d.label}</span>
-            ))}
+          {/* X-axis: positioned week markers */}
+          <div className="relative h-4 mt-1.5">
+            {weekMarkers.map((m, i) => {
+              const x = padding.left + (m.index / (data.length - 1)) * plotWidth;
+              const pct = (x / chartWidth) * 100;
+              const isToday = m.label === 'Today';
+              const isLast = i === weekMarkers.length - 1;
+              return (
+                <span
+                  key={i}
+                  className="absolute text-[9px] font-semibold tabular"
+                  style={{
+                    left: `${pct}%`,
+                    transform: isLast ? 'translateX(-100%)' : 'translateX(-50%)',
+                    color: isToday ? '#14b8a6' : 'var(--muted-foreground)',
+                  }}
+                >
+                  {m.label}
+                </span>
+              );
+            })}
           </div>
         </div>
 

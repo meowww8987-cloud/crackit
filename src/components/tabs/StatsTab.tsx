@@ -92,17 +92,19 @@ export function StatsTab() {
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
+                      contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11, color: 'var(--foreground)' }}
+                      labelStyle={{ color: 'var(--foreground)' }}
+                      itemStyle={{ color: 'var(--foreground)' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="space-y-1 flex-1">
+              <div className="space-y-1.5 flex-1">
                 {moods.map((m) => (
                   <div key={m.name} className="flex items-center gap-2 text-xs">
-                    <span>{m.emoji}</span>
+                    <span className="text-base">{m.emoji}</span>
                     <span className="flex-1" style={{ color: 'var(--muted-foreground)' }}>{m.name}</span>
-                    <span className="tabular font-semibold" style={{ color: 'var(--foreground)' }}>{m.value}</span>
+                    <span className="tabular font-bold" style={{ color: 'var(--foreground)' }}>{m.value}</span>
                   </div>
                 ))}
               </div>
@@ -124,9 +126,11 @@ export function StatsTab() {
                 <XAxis dataKey="date" tick={{ fill: 'var(--muted-foreground)', fontSize: 8 }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
+                  contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11, color: 'var(--foreground)' }}
+                  labelStyle={{ color: 'var(--foreground)' }}
+                  itemStyle={{ color: 'var(--foreground)' }}
                 />
-                <Line type="monotone" dataKey="score" stroke="#a855f7" strokeWidth={2} dot={{ r: 3 }} name="Retention %" />
+                <Line type="monotone" dataKey="score" stroke="#a855f7" strokeWidth={2} dot={{ r: 3, fill: '#a855f7' }} name="Retention %" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -145,16 +149,16 @@ export function StatsTab() {
             <div key={r.label} className="glass rounded-xl p-2.5 text-center">
               <div className="text-base mb-0.5">{r.icon}</div>
               <CountUp value={r.done} duration={900} animateOnChange className="text-lg font-bold tabular" style={{ color: r.color }} />
-              <div className="text-[8px] text-white/60">{r.label}</div>
-              <div className="text-[8px] text-white/50 tabular">/ {lectures.length}</div>
+              <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>{r.label}</div>
+              <div className="text-[8px] tabular" style={{ color: 'var(--muted-foreground)' }}>/ {lectures.length}</div>
             </div>
           ))}
         </div>
         {lectures.length > 0 && (
-          <div className="mt-3 pt-2 border-t border-white/5">
-            <div className="flex justify-between text-[10px] text-white/60 mb-1">
-              <span>Overall completion</span>
-              <span className="tabular font-bold text-teal-400">
+          <div className="mt-3 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="flex justify-between text-[10px] mb-1">
+              <span style={{ color: 'var(--muted-foreground)' }}>Overall completion</span>
+              <span className="tabular font-bold" style={{ color: '#14b8a6' }}>
                 {Math.round(
                   ((lectures.filter(l => l.done).length +
                     lectures.filter(l => l.dppDone).length +
@@ -164,7 +168,7 @@ export function StatsTab() {
                 )}%
               </span>
             </div>
-            <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
               <div
                 className="h-full bg-gradient-to-r from-teal-500 to-green-500"
                 style={{
@@ -186,16 +190,16 @@ export function StatsTab() {
       <ChartCard title="Spaced Repetition Status">
         <div className="grid grid-cols-3 gap-2">
           <div className="glass rounded-xl p-2.5 text-center">
-            <div className="text-xl font-bold tabular text-green-400">{lectures.filter(l => l.done && l.revisionStage >= 0 && !isRevisionOverdue(l.nextRevisionAt)).length}</div>
-            <div className="text-[9px] text-white/60">On track</div>
+            <div className="text-xl font-bold tabular" style={{ color: '#22c55e' }}>{lectures.filter(l => l.done && l.revisionStage >= 0 && !isRevisionOverdue(l.nextRevisionAt)).length}</div>
+            <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>On track</div>
           </div>
           <div className="glass rounded-xl p-2.5 text-center">
-            <div className="text-xl font-bold tabular text-amber-400">{overdueRevisions.length}</div>
-            <div className="text-[9px] text-white/60">Overdue</div>
+            <div className="text-xl font-bold tabular" style={{ color: '#f59e0b' }}>{overdueRevisions.length}</div>
+            <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>Overdue</div>
           </div>
           <div className="glass rounded-xl p-2.5 text-center">
-            <div className="text-xl font-bold tabular text-white/60">{dueRevisions.length}</div>
-            <div className="text-[9px] text-white/60">Total due</div>
+            <div className="text-xl font-bold tabular" style={{ color: 'var(--foreground)' }}>{dueRevisions.length}</div>
+            <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>Total due</div>
           </div>
         </div>
       </ChartCard>
@@ -204,7 +208,7 @@ export function StatsTab() {
       <ProgressTimelineSection />
 
       {prefer2D && (
-        <p className="text-center text-[10px] text-white/50">2D graph mode enabled in settings</p>
+        <p className="text-center text-[10px]" style={{ color: 'var(--muted-foreground)' }}>2D graph mode enabled in settings</p>
       )}
     </div>
   );
@@ -224,19 +228,20 @@ function ProgressTimelineSection() {
   return (
     <div className="glass rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-bold text-white/70 flex items-center gap-1.5">
-          <TrendingUp size={12} /> Progress Timeline
+        <h3 className="text-xs font-bold flex items-center gap-1.5" style={{ color: 'var(--foreground)' }}>
+          <TrendingUp size={12} style={{ color: '#14b8a6' }} /> Progress Timeline
         </h3>
         <button
           onClick={() => triggerTimeline()}
-          className="text-[10px] px-2 py-1 rounded-full bg-teal-500/20 text-teal-400 font-semibold"
+          className="text-[10px] px-2 py-1 rounded-full font-semibold"
+          style={{ background: 'rgba(20,184,166,0.15)', color: '#14b8a6' }}
         >
           View All →
         </button>
       </div>
 
       {recentEvents.length === 0 ? (
-        <p className="text-xs text-white/60 text-center py-3">
+        <p className="text-xs text-center py-3" style={{ color: 'var(--muted-foreground)' }}>
           No progress yet. Mark lectures done to see your timeline.
         </p>
       ) : (
@@ -246,18 +251,18 @@ function ProgressTimelineSection() {
             const time = new Date(e.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             return (
               <div key={e.id} className="flex items-center gap-2 text-xs">
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: color.hex }} />
-                <span className="text-white/70 truncate flex-1">{e.topic}</span>
-                <span className="text-[10px] text-white/50 tabular">{time}</span>
+                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color.hex }} />
+                <span className="truncate flex-1" style={{ color: 'var(--foreground)' }}>{e.topic}</span>
+                <span className="text-[10px] tabular" style={{ color: 'var(--muted-foreground)' }}>{time}</span>
               </div>
             );
           })}
         </div>
       )}
 
-      <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
-        <span className="text-white/60">Total lectures done</span>
-        <span className="font-bold tabular text-green-400">{totalDone}</span>
+      <div className="mt-3 pt-2 flex items-center justify-between text-[10px]" style={{ borderTop: '1px solid var(--border)' }}>
+        <span style={{ color: 'var(--muted-foreground)' }}>Total lectures done</span>
+        <span className="font-bold tabular" style={{ color: '#22c55e' }}>{totalDone}</span>
       </div>
     </div>
   );
@@ -272,7 +277,7 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className="glass rounded-2xl p-4"
     >
-      <h3 className="text-xs font-bold text-white/70 mb-3">{title}</h3>
+      <h3 className="text-xs font-bold mb-3" style={{ color: 'var(--foreground)' }}>{title}</h3>
       {children}
     </motion.div>
   );
