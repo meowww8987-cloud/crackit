@@ -66,46 +66,52 @@ export function StreakFlame({ streak, className }: Props) {
   // Flame level config
   const level = streak >= 100 ? 'golden' : streak >= 30 ? 'epic' : streak >= 14 ? 'fire' : streak >= 7 ? 'blaze' : 'spark';
 
+  // Flame level config — vibrant colors with dark outline for light-theme visibility
   const config = {
     spark:  {
-      size: 16,
-      glow: 'rgba(251,146,60,0.3)',
-      borderColor: 'rgba(251,146,60,0.3)',
+      size: 22,
+      glow: 'rgba(251,146,60,0.25)',
+      borderColor: 'rgba(251,146,60,0.4)',
       gradientId: 'flame-spark',
-      gradient: ['#fde047', '#fb923c'],
-      glowColor: 'rgba(251,146,60,0.5)',
+      gradient: ['#fde047', '#f97316', '#ea580c'],
+      glowColor: 'rgba(251,146,60,0.6)',
+      numberColor: '#ea580c',
     },
     blaze:  {
-      size: 18,
-      glow: 'rgba(251,146,60,0.4)',
-      borderColor: 'rgba(251,146,60,0.4)',
+      size: 24,
+      glow: 'rgba(249,115,22,0.3)',
+      borderColor: 'rgba(249,115,22,0.4)',
       gradientId: 'flame-blaze',
-      gradient: ['#fbbf24', '#f97316'],
-      glowColor: 'rgba(251,146,60,0.6)',
+      gradient: ['#fbbf24', '#f97316', '#dc2626'],
+      glowColor: 'rgba(249,115,22,0.7)',
+      numberColor: '#dc2626',
     },
     fire:   {
-      size: 20,
-      glow: 'rgba(239,68,68,0.4)',
-      borderColor: 'rgba(239,68,68,0.4)',
+      size: 26,
+      glow: 'rgba(239,68,68,0.35)',
+      borderColor: 'rgba(239,68,68,0.45)',
       gradientId: 'flame-fire',
-      gradient: ['#fbbf24', '#ef4444'],
-      glowColor: 'rgba(239,68,68,0.6)',
+      gradient: ['#fbbf24', '#ef4444', '#b91c1c'],
+      glowColor: 'rgba(239,68,68,0.7)',
+      numberColor: '#dc2626',
     },
     epic:   {
-      size: 22,
-      glow: 'rgba(239,68,68,0.5)',
-      borderColor: 'rgba(239,68,68,0.5)',
+      size: 28,
+      glow: 'rgba(220,38,38,0.4)',
+      borderColor: 'rgba(220,38,38,0.5)',
       gradientId: 'flame-epic',
-      gradient: ['#f97316', '#dc2626'],
-      glowColor: 'rgba(239,68,68,0.7)',
+      gradient: ['#f97316', '#dc2626', '#7f1d1d'],
+      glowColor: 'rgba(220,38,38,0.8)',
+      numberColor: '#b91c1c',
     },
     golden: {
-      size: 24,
-      glow: 'rgba(251,191,36,0.6)',
-      borderColor: 'rgba(251,191,36,0.5)',
+      size: 30,
+      glow: 'rgba(251,191,36,0.5)',
+      borderColor: 'rgba(251,191,36,0.55)',
       gradientId: 'flame-golden',
-      gradient: ['#fef08a', '#fbbf24'],
-      glowColor: 'rgba(251,191,36,0.8)',
+      gradient: ['#fef08a', '#fbbf24', '#d97706'],
+      glowColor: 'rgba(251,191,36,0.9)',
+      numberColor: '#d97706',
     },
   };
 
@@ -113,16 +119,17 @@ export function StreakFlame({ streak, className }: Props) {
   if (atRisk) {
     config[level] = {
       ...config[level],
-      glow: 'rgba(59,130,246,0.3)',
+      glow: 'rgba(59,130,246,0.25)',
       borderColor: 'rgba(239,68,68,0.5)',
       gradientId: 'flame-cold',
-      gradient: ['#93c5fd', '#3b82f6'],
-      glowColor: 'rgba(59,130,246,0.4)',
+      gradient: ['#bfdbfe', '#3b82f6', '#1d4ed8'],
+      glowColor: 'rgba(59,130,246,0.5)',
+      numberColor: '#1d4ed8',
     };
   }
 
   const c = config[level];
-  const numberColor = atRisk ? '#3b82f6' : (level === 'golden' ? '#fbbf24' : level === 'epic' ? '#ef4444' : '#fb923c');
+  const numberColor = atRisk ? '#1d4ed8' : c.numberColor;
 
   return (
     <>
@@ -156,60 +163,76 @@ export function StreakFlame({ streak, className }: Props) {
         }
         onClick={() => setShowHistory(true)}
       >
-        {/* SVG Flame */}
+        {/* SVG Flame — with dark outline for light-theme visibility */}
         <motion.div
           animate={
             atRisk
               ? {
-                  scale: [1, 0.9, 1.1, 0.95, 1],
-                  rotate: [-2, 1, 2, -1, -2],
+                  // Cold/dying — weak flicker
+                  scale: [1, 0.92, 1.05, 0.95, 1],
+                  rotate: [-1, 1, -1, 1, -1],
                 }
               : {
-                  scale: [1, 1.12, 0.95, 1.08, 1],
-                  rotate: [-2, 1, 2, -1, -2],
+                  // Realistic fire flicker — multiple micro-movements
+                  scale: [1, 1.15, 0.92, 1.1, 0.96, 1.08, 1],
+                  rotate: [-3, 2, -1, 3, -2, 1, -3],
+                  skewX: [0, 2, -1, 1, 0],
                 }
           }
           transition={{
-            duration: atRisk ? 1.5 : 1.2,
+            duration: atRisk ? 2 : 0.8,
             repeat: Infinity,
             ease: 'easeInOut',
           }}
-          style={{ width: c.size, height: c.size, position: 'relative' }}
+          style={{
+            width: c.size,
+            height: c.size,
+            position: 'relative',
+            filter: `drop-shadow(0 0 4px ${c.glowColor}) drop-shadow(0 1px 2px rgba(0,0,0,0.2))`,
+          }}
         >
-          {/* Glow halo */}
+          {/* Glow halo — stronger */}
           <div
             style={{
               position: 'absolute',
-              inset: -4,
+              inset: -6,
               borderRadius: '50%',
-              background: c.glowColor,
-              filter: 'blur(6px)',
-              opacity: 0.6,
+              background: `radial-gradient(circle, ${c.glowColor} 0%, transparent 70%)`,
+              opacity: 0.7,
             }}
           />
-          {/* Flame SVG */}
+          {/* Flame SVG — bigger, with dark outline */}
           <svg
             viewBox="0 0 24 24"
             fill="none"
             style={{ width: '100%', height: '100%', position: 'relative', zIndex: 1 }}
           >
             <defs>
-              <linearGradient id={c.gradientId} x1="0" y1="1" x2="0" y2="0">
-                <stop offset="0%" stopColor={c.gradient[1]} />
+              <linearGradient id={c.gradientId} x1="0.5" y1="1" x2="0.5" y2="0">
+                <stop offset="0%" stopColor={c.gradient[2]} />
+                <stop offset="50%" stopColor={c.gradient[1]} />
                 <stop offset="100%" stopColor={c.gradient[0]} />
               </linearGradient>
+              <radialGradient id={`${c.gradientId}-inner`} cx="0.5" cy="0.7" r="0.5">
+                <stop offset="0%" stopColor={c.gradient[0]} stopOpacity="0.9" />
+                <stop offset="100%" stopColor={c.gradient[1]} stopOpacity="0" />
+              </radialGradient>
             </defs>
-            {/* Flame shape — teardrop with wavy edges */}
+            {/* Outer flame — with dark outline for visibility on light bg */}
             <path
-              d="M12 2 C 10 6, 7 8, 7 13 C 7 17, 9 21, 12 22 C 15 21, 17 17, 17 13 C 17 10, 15 8, 14 6 C 13.5 7, 13 7.5, 12 8 C 12 6, 12 4, 12 2 Z"
+              d="M12 1.5 C 9.5 5, 6 7.5, 6 13 C 6 17.5, 8.5 22, 12 22.5 C 15.5 22, 18 17.5, 18 13 C 18 9.5, 15.5 7, 14 4.5 C 13.5 5.5, 13 6.5, 12 7 C 12.5 5, 12.5 3, 12 1.5 Z"
               fill={`url(#${c.gradientId})`}
+              stroke="rgba(0,0,0,0.25)"
+              strokeWidth="0.5"
+              strokeLinejoin="round"
             />
-            {/* Inner flame highlight */}
+            {/* Inner flame — bright core */}
             <path
-              d="M12 8 C 11 10, 10 11, 10 14 C 10 16, 11 18, 12 19 C 13 18, 14 16, 14 14 C 14 12, 13 11, 12.5 10 C 12.3 10.5, 12 11, 12 11 Z"
-              fill={c.gradient[0]}
-              opacity="0.6"
+              d="M12 7 C 10.5 9.5, 9 11.5, 9 14.5 C 9 17, 10.5 19.5, 12 20 C 13.5 19.5, 15 17, 15 14.5 C 15 12, 13.5 10.5, 12.5 9 C 12.3 9.8, 12 10.5, 12 10.5 Z"
+              fill={`url(#${c.gradientId}-inner)`}
             />
+            {/* Hot tip — brightest point */}
+            <ellipse cx="12" cy="9" rx="1.5" ry="2.5" fill={c.gradient[0]} opacity="0.7" />
           </svg>
         </motion.div>
 
