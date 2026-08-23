@@ -130,7 +130,7 @@ export function SleepLockScreen() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 1.2 }}
+        transition={{ duration: 1.5, ease: 'easeInOut' }}
         className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui"
         style={{
           background: bgGradient,
@@ -146,7 +146,7 @@ export function SleepLockScreen() {
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.8, duration: 0.8 }}
             className="text-center"
           >
             <div className="text-[10px] uppercase tracking-[0.3em] text-white/60 font-semibold mb-1">
@@ -159,6 +159,15 @@ export function SleepLockScreen() {
               style={{ textShadow: `0 0 30px ${scene.textGlow}` }}
             >
               {formatHM(elapsedSec)}
+            </motion.div>
+            {/* Sleep stage indicator */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.5 }}
+              className="text-[9px] text-white/40 mt-1 uppercase tracking-wider"
+            >
+              {elapsedSec < 1800 ? 'Falling asleep...' : elapsedSec < 5400 ? 'Deep sleep' : elapsedSec < 21600 ? 'Restful sleep' : 'Long sleep'}
             </motion.div>
           </motion.div>
         </div>
@@ -270,22 +279,33 @@ function SleepingPhase({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.8, ease: 'easeOut' }}
       className="flex flex-col items-center"
       onClick={handleTap}
     >
       {/* Breathing celestial body — 4-second breathing cycle */}
       <motion.div
         animate={{
-          scale: [1, 1.08, 1],
-          filter: ['brightness(1)', 'brightness(1.3)', 'brightness(1)'],
+          scale: [1, 1.12, 1],
+          filter: ['brightness(1)', 'brightness(1.4)', 'brightness(1)'],
         }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
         className="text-8xl mb-6"
-        style={{ filter: 'drop-shadow(0 0 40px rgba(165,180,252,0.6))' }}
+        style={{ filter: 'drop-shadow(0 0 50px rgba(165,180,252,0.7))' }}
       >
         {sceneEmoji}
       </motion.div>
+
+      {/* Breathing guide ring */}
+      <motion.div
+        animate={{
+          scale: [1, 1.5, 1],
+          opacity: [0.3, 0, 0.3],
+        }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        className="absolute rounded-full border-2 border-white/20"
+        style={{ width: 120, height: 120, top: '35%' }}
+      />
 
       <motion.div
         animate={{ opacity: [0.5, 0.9, 0.5] }}
@@ -298,9 +318,18 @@ function SleepingPhase({
       <motion.div
         animate={{ opacity: [0.3, 0.7, 0.3] }}
         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-        className="text-sm text-white/60 font-medium"
+        className="text-sm text-white/60 font-medium mb-1"
       >
         Double-tap anywhere to wake up
+      </motion.div>
+
+      {/* Breathing guide text */}
+      <motion.div
+        animate={{ opacity: [0.2, 0.5, 0.2] }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        className="text-[10px] text-white/30 uppercase tracking-widest"
+      >
+        Breathe with the rhythm
       </motion.div>
 
       <button
@@ -423,6 +452,15 @@ function QualityPhase({
     { q: 5, emoji: '😍', label: 'Great', color: '#22c55e' },
   ];
 
+  // Sleep quality context
+  const hours = elapsedSec / 3600;
+  let sleepContext = '';
+  if (hours < 4) sleepContext = 'Short sleep — you may feel tired';
+  else if (hours < 6) sleepContext = 'Below recommended — take it easy';
+  else if (hours < 9) sleepContext = 'Optimal sleep duration! 💤';
+  else if (hours < 12) sleepContext = 'Long sleep — stay hydrated';
+  else sleepContext = 'Very long sleep — check your energy';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30, scale: 0.9 }}
@@ -433,8 +471,8 @@ function QualityPhase({
     >
       <div className="text-center mb-5">
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
           transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.2 }}
           className="text-5xl mb-3"
           style={{ filter: 'drop-shadow(0 0 30px rgba(255,200,100,0.6))' }}
@@ -442,7 +480,8 @@ function QualityPhase({
           ☀️
         </motion.div>
         <h2 className="text-xl font-bold text-white mb-1">You slept {formatHM(elapsedSec)}</h2>
-        <p className="text-sm text-white/70">How was your sleep quality?</p>
+        <p className="text-sm text-white/70 mb-1">How was your sleep quality?</p>
+        <p className="text-[10px] text-amber-200/60">{sleepContext}</p>
       </div>
 
       {/* 5 emoji buttons — horizontal row */}
@@ -467,7 +506,7 @@ function QualityPhase({
         onClick={onSkip}
         className="w-full py-2.5 rounded-xl bg-white/5 text-white/50 text-xs font-medium hover:bg-white/10 transition"
       >
-        Skip
+        Skip rating
       </button>
     </motion.div>
   );
