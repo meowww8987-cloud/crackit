@@ -29,6 +29,7 @@ import { MiniHeatmap } from '@/components/home/MiniHeatmap';
 import { CoachCard } from '@/components/home/CoachCard';
 import { PartnerCard } from '@/components/home/PartnerCard';
 import { NextTestCard, TestDayMode } from '@/components/home/NextTestCard';
+import { CountdownCard } from '@/components/home/CountdownCard';
 import { useMounted } from '@/lib/hooks/useMounted';
 import { CountUp } from '@/components/shared/CountUp';
 import { NumberMorph } from '@/components/shared/NumberMorph';
@@ -353,70 +354,18 @@ export function HomeTab() {
         {mounted && <StreakFlame streak={streak} />}
       </motion.div>
 
-      {/* Countdown Card */}
-      <motion.div
-        {...cardEntrance}
-        whileTap={cardTap}
-        className="glass rounded-2xl p-4 bg-gradient-to-br from-teal-500/10 to-green-500/5"
-      >
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-white/40">
-              {prepStart ? `Prep Day ${prepDay}` : 'Days to NEET'}
-            </div>
-            <CountUp
-              value={daysToExam}
-              duration={1200}
-              className="text-4xl font-bold tabular bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent"
-            />
-            <div className="text-xs text-white/50">days left</div>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-white/60">
-              EXAM {new Date(examDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </div>
-            {prepStart && (
-              <div className="text-[10px] text-white/40 mt-0.5">
-                Since {new Date(prepStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="mb-2">
-          <div className="flex justify-between text-[10px] text-white/40 mb-1 tabular">
-            <span>Day {prepDay} of {prepTotal}</span>
-            <span>{prepPct}% elapsed</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-            <motion.div
-              animate={{ width: `${prepPct}%` }}
-              transition={{ duration: 0.6, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-teal-500 to-green-500"
-            />
-          </div>
-        </div>
-        <div>
-          <div className="flex justify-between text-[10px] text-white/40 mb-1">
-            <span>Syllabus</span>
-            <span className="tabular">
-              {syllabusPct}% done
-              {syllabusWeightedPct !== syllabusPct && (
-                <span className="text-amber-400/70 ml-1">· {syllabusWeightedPct}% weighted</span>
-              )}
-            </span>
-          </div>
-          <div className="h-1 rounded-full bg-white/5 overflow-hidden">
-            <div className="h-full bg-green-500" style={{ width: `${syllabusPct}%` }} />
-          </div>
-          {syllabusWeightedPct !== syllabusPct && (
-            <div className="text-[8px] text-amber-400/50 mt-0.5">
-              {syllabusWeightedPct < syllabusPct
-                ? `Focus on high-weightage chapters — you're ${syllabusPct - syllabusWeightedPct}% ahead on easy ones`
-                : `Great — high-weightage chapters are ahead (${syllabusWeightedPct - syllabusPct}% ahead)`}
-            </div>
-          )}
-        </div>
-      </motion.div>
+      {/* Countdown Card — modern ring + urgency colors */}
+      <CountdownCard
+        daysToExam={daysToExam}
+        examDate={examDate}
+        prepStart={prepStart}
+        prepDay={prepDay}
+        prepTotal={prepTotal}
+        prepPct={prepPct}
+        syllabusPct={syllabusPct}
+        syllabusWeightedPct={syllabusWeightedPct}
+        daysStudied={streak}
+      />
 
       {/* Test Day Mode — only renders when today is a test day. Replaces
           the regular "Next Test" card (which returns null in this case) with
