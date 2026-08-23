@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { X, Flame, Trophy, Target, BookOpen, TrendingUp, Clock, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Flame, Trophy, Target, BookOpen, TrendingUp, Clock, Zap, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { usePartner } from '@/lib/store/partner';
 import { useHistory } from '@/lib/store/history';
 import { useSession, getLiveStudySeconds } from '@/lib/store/session';
@@ -14,6 +14,14 @@ import { PartnerAvatar } from '@/components/partner/PartnerAvatar';
 import { PartnerProgressRing } from '@/components/partner/PartnerProgressRing';
 
 const EMPTY_TARGETS: TargetType[] = [];
+
+// Theme-aware colors — darker for light theme visibility
+const YOU_COLOR = '#0d9488';       // dark teal
+const PARTNER_COLOR = '#7c3aed';   // dark violet
+const YOU_LIGHT = '#14b8a6';
+const PARTNER_LIGHT = '#a78bfa';
+const WASTED_COLOR = '#dc2626';    // dark red
+const GOLD_COLOR = '#d97706';      // dark gold
 
 interface Props {
   onClose: () => void;
@@ -58,6 +66,7 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   const today = _today;
   const myLiveSec = getLiveStudySeconds(myActiveSession);
   const myTodaySec = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.studySeconds, 0) + (myActiveSession ? myLiveSec : 0);
+  const myTodayWasted = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.wastedSeconds, 0);
   const myStreak = useHistory.getState().getStreak();
   const myTargetsDone = myTodayTargets.filter((t) => t.done).length;
   const myTargetsTotal = myTodayTargets.length;
@@ -67,16 +76,13 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   // Partner stats
   const pd = partner.partnerLastData;
   const partnerSec = pd?.todaySec || 0;
+  const partnerWasted = pd?.todayWastedSec || 0;
   const partnerStreak = pd?.streak || 0;
   const partnerTargetsDone = pd?.targetsDone || 0;
   const partnerTargetsTotal = pd?.targetsTotal || 0;
   const partnerLastTestScore = pd?.lastTestScore ?? null;
 
-  // === Weekly leaderboard with weekOffset ===
-  // Both YOU and PARTNER now have per-day data:
-  //   - YOUR data: from local sessions (per-day accurate)
-  //   - PARTNER data: from pd.dailyHistory (per-day array sent in sync payload)
-  // Past weeks: partner has no historical data (only current 7 days are sent).
+  // === Weekly leaderboard ===
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(new Date(), -((6 - i) + weekOffset * 7));
     return dateKey(d);
@@ -90,8 +96,6 @@ export function PartnerComparisonSheet({ onClose }: Props) {
     sessions.filter((s) => s.date === date).reduce((a, s) => a + s.wastedSeconds, 0)
   );
 
-  // Partner per-day from dailyHistory array (index 0 = 6 days ago, 6 = today)
-  // Only available for THIS week (weekOffset === 0). Past weeks = no data.
   const partnerDailyHistory: number[] = pd?.dailyHistory || [];
   const partnerHasData = weekOffset === 0 && partnerDailyHistory.length === 7;
   const partnerDailySec = weekDates.map((_, i) => {
@@ -120,7 +124,6 @@ export function PartnerComparisonSheet({ onClose }: Props) {
        : myActiveSession.paused ? 'paused'
        : 'studying')
     : 'online';
-  // For partner, infer from their pushed data + freshness
   const partnerStatus: 'studying' | 'paused' | 'wasting' | 'offline' | 'online' =
     partnerAge === null || partnerAge > 120_000 ? 'offline'
     : pd?.isStudying ? 'studying'
@@ -128,12 +131,17 @@ export function PartnerComparisonSheet({ onClose }: Props) {
     : pd?.isPaused ? 'paused'
     : 'online';
 
+  // Combined stats
+  const combinedToday = myTodaySec + partnerSec;
+  const combinedWasted = myTodayWasted + partnerWasted;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-[100] overflow-y-auto"
+      style={{ background: 'rgba(0,0,0,0.7)' }}
       onClick={onClose}
     >
       <motion.div
@@ -142,15 +150,20 @@ export function PartnerComparisonSheet({ onClose }: Props) {
         exit={{ y: '100%' }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
-        className="max-w-md mx-auto min-h-screen glass-strong rounded-t-3xl mt-8 p-5 pb-12"
+        className="max-w-md mx-auto min-h-screen rounded-t-3xl mt-8 p-5 pb-12"
+        style={{ background: 'var(--card)', border: '1px solid var(--border)', borderBottom: 'none' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <Trophy size={20} className="text-violet-600 dark:text-violet-400" />
-            <h2 className="text-lg font-bold">Study with Friend</h2>
+            <Users size={20} style={{ color: PARTNER_COLOR }} />
+            <h2 className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>Study Together</h2>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-t-secondary hover:bg-white/10">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}
+          >
             <X size={16} />
           </button>
         </div>
@@ -160,18 +173,18 @@ export function PartnerComparisonSheet({ onClose }: Props) {
           <div className="flex flex-col items-center gap-2">
             <PartnerAvatar
               initials={(partner.name || 'Y').slice(0, 2)}
-              accentColor="#14b8a6"
+              accentColor={YOU_COLOR}
               status={myStatus}
               size={64}
             />
-            <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">YOU</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: YOU_COLOR }}>YOU</div>
           </div>
 
           <PartnerProgressRing
             mySec={myTodaySec}
             partnerSec={partnerSec}
-            myColor="#14b8a6"
-            partnerColor="#8b5cf6"
+            myColor={YOU_COLOR}
+            partnerColor={PARTNER_COLOR}
             size={120}
             centerLabel={formatHM(Math.max(myTodaySec, partnerSec))}
             centerSublabel="today"
@@ -180,11 +193,11 @@ export function PartnerComparisonSheet({ onClose }: Props) {
           <div className="flex flex-col items-center gap-2">
             <PartnerAvatar
               initials={(partner.partnerName || 'P').slice(0, 2)}
-              accentColor="#8b5cf6"
+              accentColor={PARTNER_COLOR}
               status={partnerStatus}
               size={64}
             />
-            <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider truncate max-w-[70px]">
+            <div className="text-[10px] font-bold uppercase tracking-wider truncate max-w-[70px]" style={{ color: PARTNER_COLOR }}>
               {(partner.partnerName || 'PARTNER').slice(0, 10)}
             </div>
           </div>
@@ -193,272 +206,354 @@ export function PartnerComparisonSheet({ onClose }: Props) {
         {/* Live status badge */}
         <div className="flex items-center justify-center mb-5">
           {partnerAge !== null && partnerAge < 20_000 ? (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">Live · {Math.floor(partnerAge/1000)}s</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.3)' }}>
+              <motion.span
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="inline-block w-1.5 h-1.5 rounded-full"
+                style={{ background: '#16a34a' }}
+              />
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#16a34a' }}>Live · {Math.floor(partnerAge/1000)}s</span>
             </div>
           ) : partnerAge !== null && partnerAge < 120_000 ? (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500" />
-              <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">Last seen {Math.floor(partnerAge/1000)}s ago</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.3)' }}>
+              <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#d97706' }} />
+              <span className="text-[10px] font-semibold" style={{ color: '#d97706' }}>Last seen {Math.floor(partnerAge/1000)}s ago</span>
             </div>
           ) : (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500" />
-              <span className="text-[10px] font-semibold text-red-600 dark:text-red-400">Offline</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)' }}>
+              <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#dc2626' }} />
+              <span className="text-[10px] font-semibold" style={{ color: '#dc2626' }}>Offline</span>
             </div>
           )}
         </div>
 
-        {/* === Bento Grid === */}
-        {/* Row 1: Weekly Leaderboard (full width) — swipeable */}
-        <BentoCard className="col-span-2" >
+        {/* === Today's Comparison — combined card === */}
+        <div className="rounded-2xl p-4 mb-3" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-1.5 mb-3">
+            <Clock size={14} style={{ color: YOU_COLOR }} />
+            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Today Together</span>
+          </div>
+
+          {/* Combined total */}
+          <div className="text-center mb-3 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div className="text-3xl font-bold tabular" style={{ color: GOLD_COLOR }}>
+              {formatHM(combinedToday)}
+            </div>
+            <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>combined study time</div>
+            {combinedWasted > 60 && (
+              <div className="text-[10px] mt-1" style={{ color: WASTED_COLOR }}>
+                ⚠ {formatHM(combinedWasted)} wasted together
+              </div>
+            )}
+          </div>
+
+          {/* Side by side comparison */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* YOU */}
+            <div className="text-center">
+              <div className="text-[9px] font-bold uppercase" style={{ color: YOU_COLOR }}>You</div>
+              <div className="text-lg font-bold tabular" style={{ color: 'var(--foreground)' }}>{formatHM(myTodaySec)}</div>
+              {myTodayWasted > 60 && (
+                <div className="text-[9px] tabular" style={{ color: WASTED_COLOR }}>⚠ {formatHM(myTodayWasted)}</div>
+              )}
+            </div>
+            {/* PARTNER */}
+            <div className="text-center">
+              <div className="text-[9px] font-bold uppercase" style={{ color: PARTNER_COLOR }}>{partner.partnerName || 'Partner'}</div>
+              <div className="text-lg font-bold tabular" style={{ color: 'var(--foreground)' }}>{formatHM(partnerSec)}</div>
+              {partnerWasted > 60 && (
+                <div className="text-[9px] tabular" style={{ color: WASTED_COLOR }}>⚠ {formatHM(partnerWasted)}</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* === Weekly Leaderboard (full width) === */}
+        <div className="rounded-2xl p-4 mb-3" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
           <div
             data-card
             onTouchStart={onLbTouchStart}
             onTouchEnd={onLbTouchEnd}
           >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <TrendingUp size={14} className="text-teal-400" />
-              <span className="text-xs font-bold uppercase tracking-wide text-white/70">Weekly Leaderboard</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => { vibrate(8); setWeekOffset(o => Math.max(0, o - 1)); }}
-                disabled={weekOffset === 0}
-                className="w-6 h-6 rounded bg-white/5 flex items-center justify-center text-white/60 disabled:opacity-30 transition active:scale-90"
-              >
-                <ChevronLeft size={12} />
-              </button>
-              <span className="text-[10px] font-bold text-white/80 min-w-[80px] text-center">
-                {weekOffset === 0 ? 'This Week' : `${weekOffset}w ago`}
-              </span>
-              <button
-                onClick={() => { vibrate(8); setWeekOffset(o => o + 1); }}
-                className="w-6 h-6 rounded bg-white/5 flex items-center justify-center text-white/60 transition active:scale-90"
-              >
-                <ChevronRight size={12} />
-              </button>
-            </div>
-          </div>
-
-          {/* Week total summary */}
-          <div className="flex items-center justify-between mb-3 px-1">
-            <div className="text-center">
-              <div className="text-[9px] text-teal-400 font-bold uppercase">You</div>
-              <div className="text-sm font-bold tabular text-teal-400">{formatHM(myWeekTotal)}</div>
-              {myWeekWasted > 0 && <div className="text-[8px] text-red-400/70 tabular">⚠ {formatHM(myWeekWasted)}</div>}
-            </div>
-            <div className="text-center">
-              <div className="text-[9px] text-white/40 uppercase">Won</div>
-              <div className="text-sm font-bold tabular text-white/80">
-                {partnerHasData ? `${daysWon}/7` : '—'}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-1.5">
+                <TrendingUp size={14} style={{ color: YOU_COLOR }} />
+                <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Weekly Leaderboard</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => { vibrate(8); setWeekOffset(o => Math.max(0, o - 1)); }}
+                  disabled={weekOffset === 0}
+                  className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-30 transition active:scale-90"
+                  style={{ background: 'var(--border)', color: 'var(--muted-foreground)' }}
+                >
+                  <ChevronLeft size={12} />
+                </button>
+                <span className="text-[10px] font-bold min-w-[80px] text-center" style={{ color: 'var(--foreground)' }}>
+                  {weekOffset === 0 ? 'This Week' : `${weekOffset}w ago`}
+                </span>
+                <button
+                  onClick={() => { vibrate(8); setWeekOffset(o => o + 1); }}
+                  className="w-6 h-6 rounded flex items-center justify-center transition active:scale-90"
+                  style={{ background: 'var(--border)', color: 'var(--muted-foreground)' }}
+                >
+                  <ChevronRight size={12} />
+                </button>
               </div>
             </div>
-            <div className="text-center">
-              <div className="text-[9px] text-violet-400 font-bold uppercase">Partner</div>
-              <div className="text-sm font-bold tabular text-violet-400">{partnerHasData ? formatHM(partnerWeekTotal) : 'No data'}</div>
-              {partnerHasData && <div className="text-[8px] text-white/40">7-day total</div>}
-            </div>
-          </div>
 
-          {/* Daily bars */}
-          <div className="space-y-1.5">
-            {weekDates.map((date, i) => {
-              const dayObj = weekDateObjs[i];
-              const dayLabel = dayObj.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2);
-              const dateLabel = dayObj.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
-              const myH = myDailySec[i];
-              const pH = partnerDailySec[i];
-              const myW = myDailyWasted[i];
-              const myWon = myH >= pH;
-              const isToday = weekOffset === 0 && i === 6;
-              return (
-                <div key={date} className={`flex items-center gap-2 text-[10px] ${isToday ? 'bg-teal-500/5 rounded-lg px-1 py-0.5' : ''}`}>
-                  <div className="w-10 shrink-0">
-                    <div className="font-semibold text-white/70">{dayLabel}</div>
-                    <div className="text-[8px] text-white/40">{dateLabel}</div>
-                  </div>
-                  <div className="flex-1 space-y-0.5">
-                    {/* My bar */}
-                    <div className="flex items-center gap-1">
-                      <div className="flex-1 h-2.5 bg-white/5 rounded-full overflow-hidden relative">
-                        <div className="h-full bg-teal-500 rounded-full transition-all" style={{ width: `${(myH/maxDaily)*100}%` }} />
-                        {myW > 0 && (
-                          <div className="absolute top-0 right-0 h-full bg-red-500/40 rounded-full" style={{ width: `${Math.min(30, (myW/maxDaily)*100)}%` }} />
-                        )}
-                      </div>
-                      <span className={`tabular w-12 text-right font-mono ${myWon ? 'text-teal-400 font-bold' : 'text-white/50'}`}>
-                        {formatHM(myH)}
-                        {myW > 0 && <span className="text-red-400/60 text-[8px] ml-0.5">⚠{Math.round(myW/60)}m</span>}
-                      </span>
-                    </div>
-                    {/* Partner bar — real per-day data from dailyHistory */}
-                    <div className="flex items-center gap-1">
-                      <div className="flex-1 h-2.5 bg-white/5 rounded-full overflow-hidden">
-                        {partnerHasData && pH > 0 ? (
-                          <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${(pH/maxDaily)*100}%` }} />
-                        ) : null}
-                      </div>
-                      <span className={`tabular w-12 text-right font-mono ${!myWon && partnerHasData && pH > 0 ? 'text-violet-400 font-bold' : 'text-white/50'}`}>
-                        {partnerHasData && pH > 0 ? (
-                          formatHM(pH)
-                        ) : (
-                          <span className="text-white/30 text-[9px]">—</span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  {myWon && myH > 0 && <span className="text-[8px] shrink-0">🏆</span>}
+            {/* Week total summary */}
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="text-center rounded-lg p-2" style={{ background: `${YOU_COLOR}10` }}>
+                <div className="text-[9px] font-bold uppercase" style={{ color: YOU_COLOR }}>You</div>
+                <div className="text-sm font-bold tabular" style={{ color: YOU_COLOR }}>{formatHM(myWeekTotal)}</div>
+                {myWeekWasted > 0 && <div className="text-[8px] tabular" style={{ color: WASTED_COLOR, opacity: 0.7 }}>⚠ {formatHM(myWeekWasted)}</div>}
+              </div>
+              <div className="text-center rounded-lg p-2" style={{ background: `${GOLD_COLOR}10` }}>
+                <div className="text-[9px] font-bold uppercase" style={{ color: GOLD_COLOR }}>Days Won</div>
+                <div className="text-sm font-bold tabular" style={{ color: GOLD_COLOR }}>
+                  {partnerHasData ? `${daysWon}/7` : '—'}
                 </div>
-              );
-            })}
-          </div>
-          {weekOffset > 0 && (
-            <div className="text-center text-[8px] text-white/40 mt-2">
-              ← swipe right for previous week · left for next →
+                <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>this week</div>
+              </div>
+              <div className="text-center rounded-lg p-2" style={{ background: `${PARTNER_COLOR}10` }}>
+                <div className="text-[9px] font-bold uppercase" style={{ color: PARTNER_COLOR }}>Partner</div>
+                <div className="text-sm font-bold tabular" style={{ color: PARTNER_COLOR }}>{partnerHasData ? formatHM(partnerWeekTotal) : '—'}</div>
+                <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>7-day total</div>
+              </div>
             </div>
-          )}
-          </div>
-        </BentoCard>
 
-        {/* Row 2: Streak + Targets (side by side) */}
-        <BentoCard>
-          <BentoHeader icon={<Flame size={14} />} title="Streak" />
-          <div className="text-center py-2">
-            <div className="text-3xl mb-1">🔥</div>
-            <div className="text-xl font-bold tabular font-mono">
-              <span className="text-teal-500 dark:text-teal-400">{myStreak}</span>
-              <span className="text-t-muted/40 mx-0.5 text-sm">vs</span>
-              <span className="text-violet-500 dark:text-violet-400">{partnerStreak}</span>
+            {/* Daily bars — modern with gradient + glow */}
+            <div className="space-y-2">
+              {weekDates.map((date, i) => {
+                const dayObj = weekDateObjs[i];
+                const dayLabel = dayObj.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3);
+                const dateLabel = dayObj.getDate();
+                const myH = myDailySec[i];
+                const pH = partnerDailySec[i];
+                const myW = myDailyWasted[i];
+                const myWon = myH >= pH;
+                const isToday = weekOffset === 0 && i === 6;
+                return (
+                  <div
+                    key={date}
+                    className="flex items-center gap-2 text-[10px] rounded-lg p-1.5"
+                    style={{
+                      background: isToday ? `${YOU_COLOR}08` : 'transparent',
+                      border: isToday ? `1px solid ${YOU_COLOR}30` : '1px solid transparent',
+                    }}
+                  >
+                    <div className="w-9 shrink-0 text-center">
+                      <div className="font-bold" style={{ color: isToday ? YOU_COLOR : 'var(--foreground)' }}>{dayLabel}</div>
+                      <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>{dateLabel}</div>
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      {/* My bar — gradient + glow */}
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1 h-2.5 rounded-full overflow-hidden relative" style={{ background: 'var(--border)' }}>
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(myH/maxDaily)*100}%` }}
+                            transition={{ duration: 0.5, delay: i * 0.05 }}
+                            className="h-full rounded-full"
+                            style={{
+                              background: `linear-gradient(90deg, ${YOU_COLOR}, ${YOU_LIGHT})`,
+                              boxShadow: myH > 0 ? `0 0 4px ${YOU_COLOR}80` : 'none',
+                            }}
+                          />
+                          {myW > 0 && (
+                            <div className="absolute top-0 right-0 h-full rounded-full" style={{ width: `${Math.min(30, (myW/maxDaily)*100)}%`, background: `${WASTED_COLOR}60` }} />
+                          )}
+                        </div>
+                        <span className="tabular w-12 text-right font-bold" style={{ color: myWon && myH > 0 ? YOU_COLOR : 'var(--muted-foreground)' }}>
+                          {formatHM(myH)}
+                        </span>
+                      </div>
+                      {/* Partner bar — gradient + glow */}
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                          {partnerHasData && pH > 0 && (
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${(pH/maxDaily)*100}%` }}
+                              transition={{ duration: 0.5, delay: i * 0.05 + 0.1 }}
+                              className="h-full rounded-full"
+                              style={{
+                                background: `linear-gradient(90deg, ${PARTNER_COLOR}, ${PARTNER_LIGHT})`,
+                                boxShadow: `0 0 4px ${PARTNER_COLOR}80`,
+                              }}
+                            />
+                          )}
+                        </div>
+                        <span className="tabular w-12 text-right font-bold" style={{ color: !myWon && partnerHasData && pH > 0 ? PARTNER_COLOR : 'var(--muted-foreground)' }}>
+                          {partnerHasData && pH > 0 ? formatHM(pH) : '—'}
+                        </span>
+                      </div>
+                    </div>
+                    {myWon && myH > 0 && <span className="text-[10px] shrink-0">🏆</span>}
+                  </div>
+                );
+              })}
             </div>
-            <div className="text-[9px] text-t-muted mt-0.5">days</div>
+            {weekOffset > 0 && (
+              <div className="text-center text-[8px] mt-2" style={{ color: 'var(--muted-foreground)' }}>
+                ← swipe right for previous week · left for next →
+              </div>
+            )}
           </div>
-        </BentoCard>
+        </div>
 
-        <BentoCard>
-          <BentoHeader icon={<Target size={14} />} title="Targets" />
-          <div className="text-center py-2">
-            <div className="text-xl font-bold tabular font-mono">
-              <span className="text-teal-500 dark:text-teal-400">{myTargetsDone}/{myTargetsTotal}</span>
-              <span className="text-t-muted/40 mx-0.5 text-sm">·</span>
-              <span className="text-violet-500 dark:text-violet-400">{partnerTargetsDone}/{partnerTargetsTotal}</span>
-            </div>
-            <div className="text-[9px] text-t-muted mt-0.5">done today</div>
-            <div className="h-1 bg-white/5 rounded-full overflow-hidden mt-2">
-              <div className="h-full bg-teal-500 rounded-full" style={{ width: `${myTargetsTotal > 0 ? (myTargetsDone/myTargetsTotal*100) : 0}%` }} />
-            </div>
+        {/* === 4 Stat Cards in 2x2 Grid === */}
+        <div className="grid grid-cols-2 gap-2.5 mb-3">
+          {/* Streak */}
+          <StatCard
+            icon={<Flame size={14} style={{ color: GOLD_COLOR }} />}
+            label="Streak"
+            myValue={`${myStreak}`}
+            partnerValue={`${partnerStreak}`}
+            unit="days"
+          />
+          {/* Targets */}
+          <StatCard
+            icon={<Target size={14} style={{ color: YOU_COLOR }} />}
+            label="Targets"
+            myValue={`${myTargetsDone}/${myTargetsTotal}`}
+            partnerValue={`${partnerTargetsDone}/${partnerTargetsTotal}`}
+            unit="done today"
+          />
+          {/* Last Test */}
+          <StatCard
+            icon={<Trophy size={14} style={{ color: GOLD_COLOR }} />}
+            label="Last Test"
+            myValue={myLastTestScore ?? '—'}
+            partnerValue={partnerLastTestScore ?? '—'}
+            unit="/ 720"
+          />
+          {/* Today's Study */}
+          <StatCard
+            icon={<Clock size={14} style={{ color: YOU_COLOR }} />}
+            label="Today"
+            myValue={formatHM(myTodaySec)}
+            partnerValue={formatHM(partnerSec)}
+            unit="study time"
+          />
+        </div>
+
+        {/* === Subject Comparison === */}
+        <div className="rounded-2xl p-4 mb-3" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-1.5 mb-3">
+            <BookOpen size={14} style={{ color: YOU_COLOR }} />
+            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Subjects Today</span>
           </div>
-        </BentoCard>
-
-        {/* Row 3: Test Score + Study Time */}
-        <BentoCard>
-          <BentoHeader icon={<Trophy size={14} />} title="Last Test" />
-          <div className="text-center py-2">
-            <div className="text-xl font-bold tabular font-mono">
-              <span className="text-teal-500 dark:text-teal-400">{myLastTestScore ?? '—'}</span>
-              <span className="text-t-muted/40 mx-0.5 text-sm">·</span>
-              <span className="text-violet-500 dark:text-violet-400">{partnerLastTestScore ?? '—'}</span>
-            </div>
-            <div className="text-[9px] text-t-muted mt-0.5">/ 720</div>
-          </div>
-        </BentoCard>
-
-        <BentoCard>
-          <BentoHeader icon={<Clock size={14} />} title="Study Time" />
-          <div className="text-center py-2">
-            <div className="text-sm font-bold tabular font-mono">
-              <span className="text-teal-500 dark:text-teal-400">{formatHM(myTodaySec)}</span>
-            </div>
-            <div className="text-[9px] text-t-muted">you · today</div>
-            <div className="text-sm font-bold tabular font-mono mt-1">
-              <span className="text-violet-500 dark:text-violet-400">{formatHM(partnerSec)}</span>
-            </div>
-            <div className="text-[9px] text-t-muted">partner · today</div>
-          </div>
-        </BentoCard>
-
-        {/* Row 4: Subject Comparison (full width) */}
-        <BentoCard className="col-span-2">
-          <BentoHeader icon={<BookOpen size={14} />} title="Subject Comparison · Today" />
-          <div className="grid grid-cols-2 gap-3 mt-2">
+          <div className="grid grid-cols-2 gap-3">
+            {/* YOUR subjects */}
             <div>
-              <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400 mb-1.5">YOUR SUBJECTS</div>
+              <div className="text-[10px] font-bold mb-2" style={{ color: YOU_COLOR }}>YOUR SUBJECTS</div>
               {Object.entries(mySubjects).length === 0 ? (
-                <div className="text-[10px] text-t-muted italic">No study yet</div>
+                <div className="text-[10px] italic" style={{ color: 'var(--muted-foreground)' }}>No study yet</div>
               ) : (
                 Object.entries(mySubjects).sort((a,b) => b[1]-a[1]).map(([subj, sec]) => (
-                  <div key={subj} className="flex items-center gap-1.5 text-[10px] mb-1">
-                    <span className="w-14 text-t-secondary truncate">{subj}</span>
-                    <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full bg-teal-500 rounded-full" style={{ width: `${(sec/Math.max(...Object.values(mySubjects),1))*100}%` }} />
+                  <div key={subj} className="flex items-center gap-1.5 text-[10px] mb-1.5">
+                    <span className="w-14 truncate" style={{ color: 'var(--muted-foreground)' }}>{subj}</span>
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${(sec/Math.max(...Object.values(mySubjects),1))*100}%`,
+                          background: `linear-gradient(90deg, ${YOU_COLOR}, ${YOU_LIGHT})`,
+                        }}
+                      />
                     </div>
-                    <span className="tabular text-t-muted w-8 text-right font-mono">{formatHM(sec)}</span>
+                    <span className="tabular w-8 text-right font-bold" style={{ color: 'var(--foreground)' }}>{formatHM(sec)}</span>
                   </div>
                 ))
               )}
             </div>
+            {/* PARTNER */}
             <div>
-              <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 mb-1.5">PARTNER</div>
+              <div className="text-[10px] font-bold mb-2" style={{ color: PARTNER_COLOR }}>PARTNER</div>
               {pd?.lastSubject ? (
-                <div className="flex items-center gap-1.5 text-[10px] mb-1">
-                  <span className="w-14 text-t-secondary truncate">{pd.lastSubject}</span>
-                  <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-violet-500 rounded-full" style={{ width: '100%' }} />
+                <>
+                  <div className="flex items-center gap-1.5 text-[10px] mb-1.5">
+                    <span className="w-14 truncate" style={{ color: 'var(--muted-foreground)' }}>{pd.lastSubject}</span>
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: '100%', background: `linear-gradient(90deg, ${PARTNER_COLOR}, ${PARTNER_LIGHT})` }}
+                      />
+                    </div>
+                    <span className="tabular w-8 text-right font-bold" style={{ color: 'var(--foreground)' }}>{formatHM(partnerSec)}</span>
                   </div>
-                  <span className="tabular text-t-muted w-8 text-right font-mono">{formatHM(partnerSec)}</span>
-                </div>
+                  {pd?.lastChapter && <div className="text-[9px] mt-1" style={{ color: 'var(--muted-foreground)' }}>📖 {pd.lastChapter}</div>}
+                  {pd?.lastLecture && <div className="text-[9px]" style={{ color: PARTNER_COLOR }}>📄 {pd.lastLecture}</div>}
+                </>
               ) : (
-                <div className="text-[10px] text-t-muted italic">No data</div>
+                <div className="text-[10px] italic" style={{ color: 'var(--muted-foreground)' }}>No data</div>
               )}
-              {pd?.lastChapter && <div className="text-[9px] text-t-muted mt-1">📖 {pd.lastChapter}</div>}
-              {pd?.lastLecture && <div className="text-[9px] text-violet-500 dark:text-violet-400">📄 {pd.lastLecture}</div>}
             </div>
           </div>
-        </BentoCard>
+        </div>
 
-        {/* Row 5: Quick Stats (3 columns) */}
-        <div className="grid grid-cols-3 gap-2 mt-2">
-          <div className="glass rounded-xl p-2 text-center">
-            <div className="text-[9px] text-t-muted uppercase">Sessions</div>
-            <div className="text-sm font-bold tabular font-mono text-teal-500 dark:text-teal-400">{sessions.length}</div>
+        {/* === Quick Stats Row === */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-xl p-2 text-center" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+            <div className="text-[9px] uppercase" style={{ color: 'var(--muted-foreground)' }}>Sessions</div>
+            <div className="text-sm font-bold tabular" style={{ color: YOU_COLOR }}>{sessions.length}</div>
           </div>
-          <div className="glass rounded-xl p-2 text-center">
-            <div className="text-[9px] text-t-muted uppercase">P-Tests</div>
-            <div className="text-sm font-bold tabular font-mono text-violet-500 dark:text-violet-400">{pd?.weekTestCount || 0}</div>
+          <div className="rounded-xl p-2 text-center" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+            <div className="text-[9px] uppercase" style={{ color: 'var(--muted-foreground)' }}>P-Tests</div>
+            <div className="text-sm font-bold tabular" style={{ color: PARTNER_COLOR }}>{pd?.weekTestCount || 0}</div>
           </div>
-          <div className="glass rounded-xl p-2 text-center">
-            <div className="text-[9px] text-t-muted uppercase">Days Won</div>
-            <div className="text-sm font-bold tabular font-mono text-amber-500 dark:text-amber-400">{daysWon}/7</div>
+          <div className="rounded-xl p-2 text-center" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+            <div className="text-[9px] uppercase" style={{ color: 'var(--muted-foreground)' }}>Days Won</div>
+            <div className="text-sm font-bold tabular" style={{ color: GOLD_COLOR }}>{daysWon}/7</div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="text-[9px] text-t-muted text-center mt-5">
-          Real-time · Sync every 3s · Last: {partner.lastSyncAt ? new Date(partner.lastSyncAt).toLocaleTimeString() : 'never'}
+        <div className="text-[9px] text-center mt-5" style={{ color: 'var(--muted-foreground)' }}>
+          Real-time sync · Last: {partner.lastSyncAt ? new Date(partner.lastSyncAt).toLocaleTimeString() : 'never'}
         </div>
       </motion.div>
     </motion.div>
   );
 }
 
-/** Bento card wrapper — varied sizes via col-span. */
-function BentoCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`glass rounded-2xl p-3.5 ${className}`}>
-      {children}
-    </div>
-  );
-}
+// =====================================================
+// Stat Card — 2x2 grid card with YOU vs PARTNER
+// =====================================================
 
-/** Bento card header with icon + title + optional subtitle. */
-function BentoHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
+function StatCard({
+  icon,
+  label,
+  myValue,
+  partnerValue,
+  unit,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  myValue: string | number;
+  partnerValue: string | number;
+  unit: string;
+}) {
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-t-secondary">{icon}</span>
-      <span className="text-xs font-bold text-t-secondary uppercase tracking-wide">{title}</span>
-      {subtitle && <span className="text-[10px] text-t-muted ml-auto">{subtitle}</span>}
+    <div className="rounded-2xl p-3" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+      <div className="flex items-center gap-1.5 mb-2">
+        {icon}
+        <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>{label}</span>
+      </div>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[9px] font-bold uppercase" style={{ color: YOU_COLOR }}>You</span>
+          <span className="text-sm font-bold tabular" style={{ color: 'var(--foreground)' }}>{myValue}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[9px] font-bold uppercase" style={{ color: PARTNER_COLOR }}>Partner</span>
+          <span className="text-sm font-bold tabular" style={{ color: 'var(--foreground)' }}>{partnerValue}</span>
+        </div>
+      </div>
+      <div className="text-[8px] mt-1.5 text-center" style={{ color: 'var(--muted-foreground)' }}>{unit}</div>
     </div>
   );
 }
