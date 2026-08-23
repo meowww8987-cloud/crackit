@@ -53,7 +53,7 @@ export function SleepReportSheet({ open, onClose }: SleepReportSheetProps) {
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md max-h-[88vh] overflow-y-auto glass-strong rounded-t-3xl p-5 pb-8 force-dark-ui"
+            className="relative w-full max-w-md max-h-[88vh] overflow-y-auto glass-strong rounded-t-3xl p-5 pb-8"
           >
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
             <button

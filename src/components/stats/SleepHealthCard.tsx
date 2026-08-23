@@ -67,7 +67,6 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
 
   const scoreColor = verdictColor(report.verdict);
   const lastNight = report.nights[report.nights.length - 1];
-  const maxHours = Math.max(...report.nights.map((n) => n.durationSec / 3600), 9);
 
   // Compute trend (vs previous 7 nights)
   const prevNights = history
@@ -184,37 +183,88 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
         )}
       </div>
 
-      {/* 7-night mini bars */}
+      {/* 7-night strip — clean day names + hours + color-coded bars */}
       <div className="mb-3">
-        <div className="text-[9px] uppercase tracking-wide font-semibold mb-1.5" style={{ color: 'var(--muted-foreground)' }}>
+        <div className="text-[9px] uppercase tracking-wide font-semibold mb-2" style={{ color: 'var(--muted-foreground)' }}>
           Last {report.nights.length} Nights
         </div>
-        <div className="flex items-end justify-between gap-1 h-12">
+        <div className="flex items-end justify-between gap-1">
           {report.nights.map((night, i) => {
             const hours = night.durationSec / 3600;
-            const heightPct = Math.max((hours / maxHours) * 100, 8);
-            const nightColor = night.score >= 85 ? '#22c55e' : night.score >= 65 ? '#84cc16' : night.score >= 45 ? '#f59e0b' : '#ef4444';
+            const isLastNight = i === report.nights.length - 1;
+            // Bar height: scale to max 48px (h-12), min 8px so tiny nights are still visible
+            const barHeight = Math.max(8, Math.min(48, (hours / 10) * 48));
+            const nightColor = night.score >= 85 ? '#22c55e'
+              : night.score >= 65 ? '#84cc16'
+              : night.score >= 45 ? '#f59e0b'
+              : '#ef4444';
+            // 3-letter day name (Mon, Tue, Wed...) — NOT single letter (ambiguous S/T)
+            const dayName = new Date(night.bedTime).toLocaleDateString('en-US', { weekday: 'short' });
             return (
-              <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-                <div className="w-full h-full flex items-end">
-                  <motion.div
-                    initial={{ height: 0 }}
-                    whileInView={{ height: `${heightPct}%` }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: i * 0.05, ease: 'easeOut' }}
-                    className="w-full rounded-t-sm"
-                    style={{
-                      background: nightColor,
-                      minHeight: 4,
-                    }}
-                  />
-                </div>
-                <span className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>
-                  {new Date(night.bedTime).toLocaleDateString('en-US', { weekday: 'narrow' })}
+              <div
+                key={i}
+                className="flex-1 flex flex-col items-center gap-1"
+                style={{
+                  // Highlight last night with a subtle background
+                  background: isLastNight ? 'rgba(99,102,241,0.08)' : 'transparent',
+                  borderRadius: 6,
+                  padding: '2px 0',
+                }}
+              >
+                {/* Day name (3 letters) */}
+                <span
+                  className="text-[8px] font-bold uppercase"
+                  style={{ color: isLastNight ? '#818cf8' : 'var(--muted-foreground)' }}
+                >
+                  {dayName}
                 </span>
+                {/* Hours */}
+                <span className="text-[9px] font-bold tabular" style={{ color: 'var(--foreground)' }}>
+                  {hours.toFixed(1)}h
+                </span>
+                {/* Color-coded bar */}
+                <div
+                  className="w-full rounded-t-sm"
+                  style={{
+                    height: barHeight,
+                    background: nightColor,
+                    minHeight: 4,
+                    opacity: isLastNight ? 1 : 0.85,
+                    boxShadow: isLastNight ? `0 0 6px ${nightColor}80` : 'none',
+                  }}
+                />
+                {/* Quality dots (1-5) */}
+                <div className="flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span
+                      key={star}
+                      className="w-1 h-1 rounded-full"
+                      style={{
+                        background: night.quality != null && star <= night.quality
+                          ? '#fbbf24'
+                          : 'var(--muted)',
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
             );
           })}
+        </div>
+        {/* Legend */}
+        <div className="flex items-center justify-center gap-3 mt-2 text-[8px]" style={{ color: 'var(--muted-foreground)' }}>
+          <span className="flex items-center gap-0.5">
+            <span className="w-2 h-2 rounded-sm" style={{ background: '#22c55e' }} /> 85+
+          </span>
+          <span className="flex items-center gap-0.5">
+            <span className="w-2 h-2 rounded-sm" style={{ background: '#f59e0b' }} /> 45-84
+          </span>
+          <span className="flex items-center gap-0.5">
+            <span className="w-2 h-2 rounded-sm" style={{ background: '#ef4444' }} /> &lt;45
+          </span>
+          <span className="flex items-center gap-0.5">
+            <span className="w-2 h-2 rounded-sm" style={{ background: '#818cf8', opacity: 0.4 }} /> Last night
+          </span>
         </div>
       </div>
 
