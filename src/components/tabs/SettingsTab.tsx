@@ -441,159 +441,205 @@ function GoalsSection({ s, update }: { s: Settings; update: <K extends keyof Set
 }
 
 function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
- // Pomodoro visualization: TWO CONCENTRIC FULL-CIRCLE SLIDERS.
- // Outer ring = Work duration (teal) — LARGE radius (the main focus)
- // Inner ring = Break duration (amber) — SMALL radius (clearly nested inside)
- // Both are full 360° circles (no gap, no chopped arcs). The big size
- // difference (Work 60, Break 36 — gap = 24px) makes it instantly obvious
- // which ring is which without reading the label.
- const WORK_COLOR = '#14b8a6'; // teal — focus
- const BREAK_COLOR = '#f59e0b'; // amber — rest
+  const WORK_COLOR = '#0d9488';   // dark teal — visible on light
+  const BREAK_COLOR = '#d97706';  // dark amber — visible on light
+  const OUTER_R = 65;
+  const INNER_R = 30;
+  const STROKE = 8;
+  const CANVAS = (OUTER_R + STROKE / 2 + 8) * 2;
 
- // Ring geometry — BIG Work ring (radius 65), SMALL Break ring (radius 30).
- // Gap = 35px (was 24px) so the two rings NEVER overlap and their thumbs can
- // be grabbed independently even when both arcs end in the same quadrant.
- // Stroke 8, canvas = (65 + 4 + 8) * 2 = 154.
- const OUTER_R = 65;
- const INNER_R = 30;
- const STROKE = 8;
- const CANVAS = (OUTER_R + STROKE / 2 + 8) * 2; // = 154
+  const workPresets = [25, 45, 50, 60, 90];
+  const breakPresets = [5, 10, 15, 20, 30];
+  const dimDelayPresets = [5, 10, 15, 20, 30];
 
- return (
- <>
- {/* === Pomodoro Cycle — vertical layout, ring on top, legend below === */}
- <div>
- <div className="flex items-center gap-2 mb-2">
- <span className="inline-block w-1 h-3.5 rounded-full" style={{ background: 'linear-gradient(180deg, #0d9488, #14b8a6)' }} />
- <label className="text-xs font-bold uppercase tracking-wide">Pomodoro Cycle</label>
- </div>
- <div className="rounded-2xl border p-3 flex flex-col items-center gap-2">
- {/* Single ConcentricRings component — both rings in ONE SVG.
- No more pointer-event layering issues: hit-testing is done
- manually in onPointerDown (distance from center → which ring). */}
- <ConcentricRings
- outer={{
- value: s.pomodoroWork,
- min: 15,
- max: 90,
- step: 5,
- radius: OUTER_R,
- strokeWidth: STROKE,
- color: WORK_COLOR,
- ariaLabel: 'Work duration',
- onChange: (v) => update('pomodoroWork', v),
- }}
- inner={{
- value: s.pomodoroBreak,
- min: 5,
- max: 30,
- step: 5,
- radius: INNER_R,
- strokeWidth: STROKE,
- color: BREAK_COLOR,
- ariaLabel: 'Break duration',
- onChange: (v) => update('pomodoroBreak', v),
- }}
- centerLabel={
- <>
- <div className="text-lg font-bold tabular leading-none">
- <span style={{ color: WORK_COLOR }}>{s.pomodoroWork}</span>
- <span className="mx-0.5 text-sm">/</span>
- <span style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}</span>
- </div>
- <div className="text-[8px] leading-none mt-1 uppercase tracking-widest">min</div>
- </>
- }
- />
+  return (
+    <>
+      {/* === Pomodoro Cycle === */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="inline-block w-1 h-3.5 rounded-full" style={{ background: 'linear-gradient(180deg, #0d9488, #14b8a6)' }} />
+          <label className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Pomodoro Cycle</label>
+        </div>
+        <div className="rounded-2xl p-3 flex flex-col items-center gap-2" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+          <ConcentricRings
+            outer={{
+              value: s.pomodoroWork,
+              min: 15,
+              max: 90,
+              step: 5,
+              radius: OUTER_R,
+              strokeWidth: STROKE,
+              color: WORK_COLOR,
+              ariaLabel: 'Work duration',
+              onChange: (v) => update('pomodoroWork', v),
+            }}
+            inner={{
+              value: s.pomodoroBreak,
+              min: 5,
+              max: 30,
+              step: 5,
+              radius: INNER_R,
+              strokeWidth: STROKE,
+              color: BREAK_COLOR,
+              ariaLabel: 'Break duration',
+              onChange: (v) => update('pomodoroBreak', v),
+            }}
+            centerLabel={
+              <>
+                <div className="text-lg font-bold tabular leading-none">
+                  <span style={{ color: WORK_COLOR }}>{s.pomodoroWork}</span>
+                  <span className="mx-0.5 text-sm" style={{ color: 'var(--muted-foreground)' }}>/</span>
+                  <span style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}</span>
+                </div>
+                <div className="text-[8px] leading-none mt-1 uppercase tracking-widest" style={{ color: 'var(--muted-foreground)' }}>min</div>
+              </>
+            }
+          />
+          <div className="flex items-center justify-center gap-4 w-full">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: WORK_COLOR }} />
+              <span className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: 'var(--muted-foreground)' }}>Work</span>
+              <span className="text-[11px] font-bold tabular" style={{ color: WORK_COLOR }}>{s.pomodoroWork}m</span>
+            </div>
+            <div className="w-px h-3" style={{ background: 'var(--border)' }} />
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: BREAK_COLOR }} />
+              <span className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: 'var(--muted-foreground)' }}>Break</span>
+              <span className="text-[11px] font-bold tabular" style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}m</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
- {/* Compact legend — single horizontal row below the ring */}
- <div className="flex items-center justify-center gap-4 w-full">
- <div className="flex items-center gap-1.5">
- <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: WORK_COLOR }} />
- <span className="text-[10px] uppercase tracking-wide font-semibold">Work</span>
- <span className="text-[11px] font-bold tabular" style={{ color: WORK_COLOR }}>{s.pomodoroWork}m</span>
- </div>
- <div className="w-px h-3 " />
- <div className="flex items-center gap-1.5">
- <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: BREAK_COLOR }} />
- <span className="text-[10px] uppercase tracking-wide font-semibold">Break</span>
- <span className="text-[11px] font-bold tabular" style={{ color: BREAK_COLOR }}>{s.pomodoroBreak}m</span>
- </div>
- </div>
- </div>
- </div>
+      {/* Work presets */}
+      <div className="flex gap-1.5 -mt-1">
+        {workPresets.map((p) => (
+          <button
+            key={p}
+            onClick={() => { vibrate(8); update('pomodoroWork', p); }}
+            className="flex-1 py-1 rounded-lg text-[10px] font-bold tabular transition active:scale-95"
+            style={{
+              background: s.pomodoroWork === p ? WORK_COLOR : 'var(--muted)',
+              color: s.pomodoroWork === p ? '#ffffff' : 'var(--muted-foreground)',
+              border: s.pomodoroWork === p ? 'none' : '1px solid var(--border)',
+            }}
+          >
+            {p}m
+          </button>
+        ))}
+      </div>
 
- {/* === Screen Burn Protection (master toggle) === */}
- <Row label="Screen Burn Protection">
- <div className="flex items-center justify-between">
- <span className="text-sm font-medium">Dim UI when idle</span>
- <Toggle value={s.burnProtection} onChange={(v) => update('burnProtection', v)} />
- </div>
- </Row>
+      {/* Break presets */}
+      <div className="flex gap-1.5">
+        {breakPresets.map((p) => (
+          <button
+            key={p}
+            onClick={() => { vibrate(8); update('pomodoroBreak', p); }}
+            className="flex-1 py-1 rounded-lg text-[10px] font-bold tabular transition active:scale-95"
+            style={{
+              background: s.pomodoroBreak === p ? BREAK_COLOR : 'var(--muted)',
+              color: s.pomodoroBreak === p ? '#ffffff' : 'var(--muted-foreground)',
+              border: s.pomodoroBreak === p ? 'none' : '1px solid var(--border)',
+            }}
+          >
+            {p}m
+          </button>
+        ))}
+      </div>
 
- {/* === When to dim + Timer visibility when dimmed — side by side === */}
- {s.burnProtection && (
- <div className="grid grid-cols-2 gap-3">
- <div>
- <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block">When to dim</label>
- <div className="rounded-xl border p-2.5">
- <div className="flex items-center justify-between mb-1">
- <span className="text-[10px] ">Idle delay</span>
- <span className="text-xs tabular font-bold ">{s.dimDelay}s</span>
- </div>
- <ScrollAwareSlider>
- <input
- type="range" min={3} max={30} step={1} value={s.dimDelay}
- onChange={(e) => update('dimDelay', Number(e.target.value))}
- className="w-full"
- style={{ accentColor: '#f59e0b' }}
- />
- </ScrollAwareSlider>
- <div className="flex justify-between text-[8px] mt-0.5">
- <span>3s</span><span>30s</span>
- </div>
- </div>
- </div>
- <div>
- <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block">Timer visibility</label>
- <div className="rounded-xl border p-2.5">
- <div className="flex items-center justify-between mb-1">
- <span className="text-[10px] ">When dimmed</span>
- <span className="text-xs tabular font-bold ">{s.screenDimOpacity}%</span>
- </div>
- <ScrollAwareSlider>
- <input
- type="range" min={5} max={100} step={5} value={s.screenDimOpacity}
- onChange={(e) => update('screenDimOpacity', Number(e.target.value))}
- className="w-full"
- style={{ accentColor: '#14b8a6' }}
- />
- </ScrollAwareSlider>
- <div className="flex justify-between text-[8px] mt-0.5">
- <span>5%</span><span>100%</span>
- </div>
- </div>
- </div>
- </div>
- )}
+      {/* === Screen Burn Protection === */}
+      <Row label="Screen Burn Protection">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Dim UI when idle</span>
+          <Toggle value={s.burnProtection} onChange={(v) => update('burnProtection', v)} />
+        </div>
+      </Row>
 
- <Row label="Distraction Taunt Interval">
- <Slider value={s.distractionTauntInterval} min={0} max={15} step={1} onChange={(v) => update('distractionTauntInterval', v)} format={(v) => v === 0 ? 'Off' : `${v} min`} />
- </Row>
- <Row label="Auto-detect Wasted Time">
- <div className="flex items-center justify-between">
- <span className="text-sm font-medium">Detect tab switches as wasted</span>
- <Toggle value={s.autoDetectWasted} onChange={(v) => update('autoDetectWasted', v)} />
- </div>
- </Row>
- <Row label="Landscape Rotation">
- <div className="flex items-center justify-between">
- <span className="text-sm font-medium">Allow rotation in full-screen timer</span>
- <Toggle value={s.allowLandscape} onChange={(v) => update('allowLandscape', v)} />
- </div>
- </Row>
- </>
- );
+      {/* Dim settings — using modern Slider */}
+      {s.burnProtection && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block" style={{ color: 'var(--muted-foreground)' }}>Idle Delay</label>
+            <div className="rounded-xl p-2.5" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+              <div className="mb-1">
+                <span className="text-sm font-bold tabular" style={{ color: BREAK_COLOR }}>{s.dimDelay}s</span>
+              </div>
+              <ScrollAwareSlider>
+                <input
+                  type="range" min={3} max={30} step={1} value={s.dimDelay}
+                  onChange={(e) => update('dimDelay', Number(e.target.value))}
+                  className="w-full modern-slider"
+                  style={{
+                    '--slider-pct': `${((s.dimDelay - 3) / 27) * 100}%`,
+                    '--slider-fill': `linear-gradient(90deg, ${BREAK_COLOR}, #f59e0b)`,
+                    '--slider-track': 'var(--border)',
+                  } as React.CSSProperties}
+                />
+              </ScrollAwareSlider>
+              <div className="flex justify-between text-[8px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+                <span>3s</span><span>30s</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block" style={{ color: 'var(--muted-foreground)' }}>Dim Opacity</label>
+            <div className="rounded-xl p-2.5" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+              <div className="mb-1">
+                <span className="text-sm font-bold tabular" style={{ color: WORK_COLOR }}>{s.screenDimOpacity}%</span>
+              </div>
+              <ScrollAwareSlider>
+                <input
+                  type="range" min={5} max={100} step={5} value={s.screenDimOpacity}
+                  onChange={(e) => update('screenDimOpacity', Number(e.target.value))}
+                  className="w-full modern-slider"
+                  style={{
+                    '--slider-pct': `${((s.screenDimOpacity - 5) / 95) * 100}%`,
+                    '--slider-fill': `linear-gradient(90deg, ${WORK_COLOR}, #14b8a6)`,
+                    '--slider-track': 'var(--border)',
+                  } as React.CSSProperties}
+                />
+              </ScrollAwareSlider>
+              <div className="flex justify-between text-[8px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+                <span>5%</span><span>100%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Distraction taunt — using modern Slider */}
+      <Row label="Distraction Taunt Interval">
+        <Slider
+          value={s.distractionTauntInterval}
+          min={0}
+          max={15}
+          step={1}
+          onChange={(v) => update('distractionTauntInterval', v)}
+          format={(v) => v === 0 ? 'Off' : `${v} min`}
+          labels={[
+            { value: 0, text: 'Off' },
+            { value: 5, text: '5m' },
+            { value: 10, text: '10m' },
+            { value: 15, text: '15m' },
+          ]}
+        />
+      </Row>
+
+      <Row label="Auto-detect Wasted Time">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Detect tab switches as wasted</span>
+          <Toggle value={s.autoDetectWasted} onChange={(v) => update('autoDetectWasted', v)} />
+        </div>
+      </Row>
+
+      <Row label="Landscape Rotation">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Allow rotation in full-screen timer</span>
+          <Toggle value={s.allowLandscape} onChange={(v) => update('allowLandscape', v)} />
+        </div>
+      </Row>
+    </>
+  );
 }
 
 function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
