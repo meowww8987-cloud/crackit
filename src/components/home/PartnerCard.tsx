@@ -55,6 +55,12 @@ export function PartnerCard() {
   // Reactive active session — MUST be declared BEFORE any early return so
   // the hook count is consistent across all renders (Rules of Hooks).
   const myActiveSession = useSession((s) => s.active);
+  // CRITICAL FIX: activePractice MUST also be declared BEFORE the early return.
+  // Previously this was on line 195 (after `if (!partner.code) return`),
+  // which violates Rules of Hooks — when partner.code goes from empty → set,
+  // the hook count changes and React silently fails to subscribe to practice
+  // updates. This is why practice time wasn't showing on the partner card.
+  const activePractice = usePractice((s) => s.activePractice);
   // Reactive targets — select byDate (stable object reference) instead of
   // `byDate[today] || []` which creates a NEW array every render and causes
   // "getSnapshot should be cached" infinite loop. We derive the array below.
@@ -190,7 +196,8 @@ export function PartnerCard() {
   const savedTodayWastedSec = sessions.filter((s) => s.date === today).reduce((a, s) => a + s.wastedSeconds, 0);
 
   // Live practice time also counts toward myTodaySec — practice is study time.
-  const activePractice = usePractice((s) => s.activePractice);
+  // (activePractice is now declared at the top of the component, before the
+  //  early return, to comply with Rules of Hooks.)
   const livePracticeSec = activePractice
     ? Math.floor((Date.now() - activePractice.startedAt) / 1000)
     : 0;
@@ -479,6 +486,17 @@ export function PartnerCard() {
                   </div>
                   <div className="flex items-center gap-2 text-[9px] mt-0.5">
                     <span style={{ color: myStatusColor }} className="font-bold">{myStatusText}</span>
+                    {/* Live practice/focus timer badge — ticks every second */}
+                    {myIsPracticing && livePracticeSec > 0 && (
+                      <span className="tabular font-bold px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                        {formatHM(livePracticeSec)}
+                      </span>
+                    )}
+                    {!myIsPracticing && myIsStudying && liveSec > 0 && (
+                      <span className="tabular font-bold px-1.5 py-0.5 rounded-md bg-green-500/15 text-green-600 dark:text-green-400">
+                        {formatHM(liveSec)}
+                      </span>
+                    )}
                     {myTodayWastedSec > 0 && (
                       <span className="text-red-500 dark:text-red-400 tabular">⚠ {formatHM(myTodayWastedSec)}</span>
                     )}
