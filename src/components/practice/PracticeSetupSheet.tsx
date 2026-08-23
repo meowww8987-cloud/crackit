@@ -92,7 +92,7 @@ export function PracticeSetupSheet({ open, onClose }: Props) {
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md max-h-[85vh] overflow-y-auto glass-strong rounded-3xl p-5 pb-8 force-dark-ui"
+            className="relative w-full max-w-md max-h-[85vh] overflow-y-auto glass-strong rounded-3xl p-5 pb-8"
           >
             {/* Top bar: Back + Close */}
             <div className="flex items-center justify-between mb-4">
