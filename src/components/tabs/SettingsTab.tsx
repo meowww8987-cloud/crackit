@@ -626,222 +626,262 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
 }
 
 function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
- const THEMES = [
- { v: 'dark', label: 'Dark', emoji: '🌙', desc: 'Deep navy', color: '#0a0b15' },
- { v: 'light', label: 'Light', emoji: '☀️', desc: 'Bright white', color: '#f0f2f5' },
- { v: 'warm', label: 'Warm', emoji: '🔥', desc: 'Sepia cream', color: '#faf3e8' },
- { v: 'ocean', label: 'Ocean', emoji: '🌊', desc: 'Deep blue', color: '#0c1929' },
- { v: 'forest', label: 'Forest', emoji: '🌿', desc: 'Deep green', color: '#0a1410' },
- { v: 'rose', label: 'Rose Quartz', emoji: '🌸', desc: 'Rosy pink', color: '#FFD6E8' },
- { v: 'sage', label: 'Sage Mist', emoji: '🌿', desc: 'Eye comfort', color: '#E8EBE4' },
- { v: 'gold', label: 'Gold', emoji: '✨', desc: 'Black + gold', color: '#000000' },
- ] as const;
+  const THEMES = [
+    { v: 'dark', label: 'Dark', emoji: '🌙', desc: 'Deep navy', color: '#0a0b15' },
+    { v: 'light', label: 'Light', emoji: '☀️', desc: 'Bright white', color: '#f0f2f5' },
+    { v: 'warm', label: 'Warm', emoji: '🔥', desc: 'Sepia cream', color: '#faf3e8' },
+    { v: 'ocean', label: 'Ocean', emoji: '🌊', desc: 'Deep blue', color: '#0c1929' },
+    { v: 'forest', label: 'Forest', emoji: '🌲', desc: 'Deep green', color: '#0a1410' },
+    { v: 'rose', label: 'Rose', emoji: '🌸', desc: 'Rosy pink', color: '#FFD6E8' },
+    { v: 'sage', label: 'Sage', emoji: '🌿', desc: 'Eye comfort', color: '#E8EBE4' },
+    { v: 'gold', label: 'Gold', emoji: '✨', desc: 'Black + gold', color: '#000000' },
+  ] as const;
 
- return (
- <>
- <Row label="App Theme">
- <div className="grid grid-cols-2 gap-2">
- {THEMES.map((t) => (
- <button
- key={t.v}
- onClick={() => update('appTheme', t.v)}
- className="py-2.5 rounded-xl text-sm font-semibold flex flex-col items-center gap-0.5 transition"
- style={{
- border: s.appTheme === t.v ? '2px solid #0d9488' : '2px solid var(--border)',
- background: s.appTheme === t.v ? 'rgba(13,148,136,0.1)' : 'var(--muted)',
- }}
- >
- <span className="text-lg">{t.emoji}</span>
- <span style={{ color: s.appTheme === t.v ? '#0d9488' : 'var(--foreground)' }}>{t.label}</span>
- <span className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>{t.desc}</span>
- </button>
- ))}
- </div>
- </Row>
- <Row label="OLED Black (Battery Saver)">
- <div className="flex items-center justify-between">
- <span className="text-sm font-medium">Pure black backgrounds in dark mode</span>
- <Toggle value={s.oledBlack} onChange={(v) => update('oledBlack', v)} />
- </div>
- </Row>
- <Row label="3D Background">
- <div className="space-y-2">
- <p className="text-[10px] leading-snug">
- Subject-aware 3D scene behind the app. Auto mode picks based on what
- you're studying (Physics→atoms, Zoology→DNA, Botany→cells, Chemistry→molecules).
- Object count auto-scales to your device tier.
- </p>
- <div className="grid grid-cols-3 gap-1.5">
- {([
- { v: 'auto', label: 'Auto', emoji: '✨', tag: 'Recommended' },
- { v: 'atoms', label: 'Atoms', emoji: '⚛️', tag: 'Physics' },
- { v: 'dna', label: 'DNA', emoji: '🧬', tag: 'Zoology' },
- { v: 'molecules', label: 'Molecules', emoji: '🔬', tag: 'Chemistry' },
- { v: 'cells', label: 'Cells', emoji: '🌿', tag: 'Botany' },
- { v: 'hybrid', label: 'Hybrid', emoji: '🌌', tag: 'All subjects' },
- { v: 'off', label: 'Off', emoji: '⚫', tag: 'Aurora only' },
- ] as const).map((opt) => (
- <button
- key={opt.v}
- onClick={() => { update('bg3DMode', opt.v); vibrate(8); }}
- className={cn(
- 'py-2 px-2 rounded-xl text-xs font-semibold flex flex-col items-center gap-0.5 transition relative',
- s.bg3DMode === opt.v
- ? 'bg-teal-500 text-white'
- : ' hover:'
- )}
- >
- <span className="text-base leading-none">{opt.emoji}</span>
- <span className="leading-tight">{opt.label}</span>
- {opt.v === 'auto' && s.bg3DMode !== 'auto' && (
- <span className="text-[8px] absolute -top-1 -right-1 px-1 rounded">
- ★
- </span>
- )}
- </button>
- ))}
- </div>
- {s.bg3DMode === 'auto' && (
- <p className="text-[10px] /80 flex items-center gap-1">
- <Sparkles size={10} /> Auto mode active — scene changes with your study subject
- </p>
- )}
- </div>
- </Row>
- <Row label="Animations">
- <div className="space-y-3">
- <div className="flex items-center justify-between">
- <div className="flex-1 min-w-0 pr-3">
- <div className="text-sm font-semibold">Reduce animations</div>
- <div className="text-[11px] leading-snug mt-0.5">
- Disables spring bounces, confetti, particle bursts. Use if motion
- bothers you or the app feels laggy on your device.
- </div>
- </div>
- <Toggle value={s.reduceAnimations} onChange={(v) => update('reduceAnimations', v)} />
- </div>
- {!s.reduceAnimations && (
- <div>
- <div className="flex items-center justify-between mb-1">
- <span className="text-xs font-semibold">Animation intensity</span>
- <span className="text-xs tabular font-bold">{s.animationIntensity}</span>
- </div>
- <ScrollAwareSlider>
- <input
- type="range"
- min={0}
- max={100}
- value={s.animationIntensity}
- onChange={(e) => update('animationIntensity', Number(e.target.value))}
- className="w-full"
- />
- </ScrollAwareSlider>
- <div className="flex justify-between text-[9px] mt-0.5">
- <span>Subtle</span>
- <span>Normal</span>
- <span>Lively</span>
- </div>
- </div>
- )}
- {s.reduceAnimations && (
- <p className="text-[10px] /80 flex items-center gap-1">
- <Sparkles size={10} /> Animations reduced — transitions are instant
- </p>
- )}
- </div>
- </Row>
- {/* Old Tutorial Mode section removed — tutorial toggle is now in the
- header (just left of the Minimal Mode toggle). Long-press any tab
- to access the ? tutorial button. */}
- <Row label="Text Size">
- <div className="grid grid-cols-4 gap-2">
- {(['S', 'M', 'L', 'XL'] as const).map((t) => (
- <button
- key={t}
- onClick={() => update('textSize', t)}
- className={cn(
- 'py-2 rounded-xl text-sm font-bold',
- s.textSize === t ? 'bg-teal-500 text-white' : ' '
- )}
- >
- {t}
- </button>
- ))}
- </div>
- </Row>
- <Row label="Prefer 2D Graphs">
- <div className="flex items-center justify-between">
- <span className="text-sm font-medium">Flat bars over 3D for readability</span>
- <Toggle value={s.prefer2D} onChange={(v) => update('prefer2D', v)} />
- </div>
- </Row>
- <Row label="Haptic Feedback">
- <div className="flex items-center justify-between">
- <span className="text-sm font-medium flex items-center gap-1.5"><Vibrate size={14} /> Vibration on actions</span>
- <div className="flex items-center gap-2">
- {s.haptics && (
- <button onClick={() => vibrate([10, 30, 10])} className="text-xs hover:underline" style={{ color: "#0d9488" }}>
- Test
- </button>
- )}
- <Toggle value={s.haptics} onChange={(v) => update('haptics', v)} />
- </div>
- </div>
- </Row>
- <Row label="Confetti Effects">
- <div className="flex items-center justify-between">
- <span className="text-sm font-medium">Celebration confetti on milestones</span>
- <div className="flex items-center gap-2">
- {s.confettiEnabled && (
- <button
- onClick={() => { import('@/components/shared/Effects').then(({ triggerConfetti }) => triggerConfetti('big')); }}
- className="text-xs hover:underline" style={{ color: "#0d9488" }}
- >
- Test
- </button>
- )}
- <Toggle value={s.confettiEnabled} onChange={(v) => update('confettiEnabled', v)} />
- </div>
- </div>
- </Row>
- <Row label="Sound Effects">
- <div className="flex items-center justify-between">
- <span className="text-sm font-medium">Chimes on achievements</span>
- <div className="flex items-center gap-2">
- {s.soundEnabled && (
- <button
- onClick={() => { import('@/components/shared/Effects').then(({ playSound }) => playSound('success')); }}
- className="text-xs hover:underline" style={{ color: "#0d9488" }}
- >
- Test
- </button>
- )}
- <Toggle value={s.soundEnabled} onChange={(v) => update('soundEnabled', v)} />
- </div>
- </div>
- </Row>
- {s.soundEnabled && (
- <Row label="Sound Volume">
- <div className="flex items-center justify-between mb-1">
- <span className="text-[11px] font-medium">Volume</span>
- <span className="text-sm font-bold tabular ">{s.soundVolume}%</span>
- </div>
- <ScrollAwareSlider>
- <input
- type="range"
- min={0}
- max={100}
- step={5}
- value={s.soundVolume}
- onChange={(e) => update('soundVolume', Number(e.target.value))}
- className="w-full"
- style={{ accentColor: '#14b8a6' }}
- />
- </ScrollAwareSlider>
- </Row>
- )}
- </>
- );
+  return (
+    <div className="space-y-4">
+      {/* === GROUP 1: Theme === */}
+      <div className="rounded-2xl p-4" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-base">🎨</span>
+          <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>App Theme</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {THEMES.map((t) => (
+            <button
+              key={t.v}
+              onClick={() => { vibrate(8); update('appTheme', t.v); }}
+              className="py-2.5 rounded-xl text-sm font-semibold flex flex-col items-center gap-0.5 transition active:scale-95"
+              style={{
+                border: s.appTheme === t.v ? '2px solid #0d9488' : '1px solid var(--border)',
+                background: s.appTheme === t.v ? 'rgba(13,148,136,0.1)' : 'var(--card)',
+                boxShadow: s.appTheme === t.v ? '0 0 8px rgba(13,148,136,0.2)' : 'none',
+              }}
+            >
+              <span className="text-lg">{t.emoji}</span>
+              <span style={{ color: s.appTheme === t.v ? '#0d9488' : 'var(--foreground)' }}>{t.label}</span>
+              <span className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>{t.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* === GROUP 2: Display === */}
+      <div className="rounded-2xl p-4" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-base">🖥️</span>
+          <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Display</span>
+        </div>
+
+        {/* OLED Black */}
+        <div className="flex items-center justify-between py-1.5">
+          <div>
+            <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>OLED Black</span>
+            <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Pure black backgrounds (battery saver)</div>
+          </div>
+          <Toggle value={s.oledBlack} onChange={(v) => update('oledBlack', v)} />
+        </div>
+
+        <div className="h-px my-1" style={{ background: 'var(--border)' }} />
+
+        {/* Text Size */}
+        <div className="py-1.5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Text Size</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {(['S', 'M', 'L', 'XL'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => { vibrate(8); update('textSize', t); }}
+                className="py-2 rounded-xl text-sm font-bold transition active:scale-95"
+                style={{
+                  background: s.textSize === t ? '#0d9488' : 'var(--card)',
+                  color: s.textSize === t ? '#ffffff' : 'var(--muted-foreground)',
+                  border: s.textSize === t ? 'none' : '1px solid var(--border)',
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="h-px my-1" style={{ background: 'var(--border)' }} />
+
+        {/* Prefer 2D */}
+        <div className="flex items-center justify-between py-1.5">
+          <div>
+            <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>2D Graphs</span>
+            <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Flat bars over 3D for readability</div>
+          </div>
+          <Toggle value={s.prefer2D} onChange={(v) => update('prefer2D', v)} />
+        </div>
+      </div>
+
+      {/* === GROUP 3: 3D Background === */}
+      <div className="rounded-2xl p-4" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-base">🌌</span>
+          <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>3D Background</span>
+        </div>
+        <p className="text-[10px] leading-snug mb-3" style={{ color: 'var(--muted-foreground)' }}>
+          Subject-aware 3D scene. Auto picks based on what you're studying.
+        </p>
+        <div className="grid grid-cols-4 gap-1.5">
+          {([
+            { v: 'auto', label: 'Auto', emoji: '✨' },
+            { v: 'atoms', label: 'Atoms', emoji: '⚛️' },
+            { v: 'dna', label: 'DNA', emoji: '🧬' },
+            { v: 'molecules', label: 'Mols', emoji: '🔬' },
+            { v: 'cells', label: 'Cells', emoji: '🌿' },
+            { v: 'hybrid', label: 'Hybrid', emoji: '🌌' },
+            { v: 'off', label: 'Off', emoji: '⚫' },
+          ] as const).map((opt) => (
+            <button
+              key={opt.v}
+              onClick={() => { vibrate(8); update('bg3DMode', opt.v); }}
+              className="py-2 px-1 rounded-xl text-[10px] font-bold flex flex-col items-center gap-0.5 transition active:scale-95 relative"
+              style={{
+                background: s.bg3DMode === opt.v ? '#0d9488' : 'var(--card)',
+                color: s.bg3DMode === opt.v ? '#ffffff' : 'var(--muted-foreground)',
+                border: s.bg3DMode === opt.v ? 'none' : '1px solid var(--border)',
+              }}
+            >
+              <span className="text-base leading-none">{opt.emoji}</span>
+              <span className="leading-tight">{opt.label}</span>
+              {opt.v === 'auto' && s.bg3DMode !== 'auto' && (
+                <span className="text-[7px] absolute -top-1 -right-1 px-1 rounded" style={{ background: 'rgba(13,148,136,0.2)', color: '#0d9488' }}>★</span>
+              )}
+            </button>
+          ))}
+        </div>
+        {s.bg3DMode === 'auto' && (
+          <p className="text-[10px] mt-2 flex items-center gap-1" style={{ color: '#0d9488' }}>
+            <Sparkles size={10} /> Auto active — scene changes with subject
+          </p>
+        )}
+      </div>
+
+      {/* === GROUP 4: Animations === */}
+      <div className="rounded-2xl p-4" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-base">✨</span>
+          <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Animations</span>
+        </div>
+
+        <div className="flex items-center justify-between py-1.5">
+          <div>
+            <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Reduce animations</span>
+            <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Disable bounces, confetti, particles</div>
+          </div>
+          <Toggle value={s.reduceAnimations} onChange={(v) => update('reduceAnimations', v)} />
+        </div>
+
+        {!s.reduceAnimations && (
+          <div className="mt-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-medium" style={{ color: 'var(--muted-foreground)' }}>Intensity</span>
+              <span className="text-sm font-bold tabular" style={{ color: '#0d9488' }}>{s.animationIntensity}</span>
+            </div>
+            <ScrollAwareSlider>
+              <input
+                type="range" min={0} max={100} value={s.animationIntensity}
+                onChange={(e) => update('animationIntensity', Number(e.target.value))}
+                className="w-full modern-slider"
+                style={{
+                  '--slider-pct': `${s.animationIntensity}%`,
+                  '--slider-fill': 'linear-gradient(90deg, #0d9488, #14b8a6)',
+                  '--slider-track': 'var(--border)',
+                } as React.CSSProperties}
+              />
+            </ScrollAwareSlider>
+            <div className="flex justify-between text-[8px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              <span>Subtle</span><span>Normal</span><span>Lively</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* === GROUP 5: Feedback === */}
+      <div className="rounded-2xl p-4" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-base">📳</span>
+          <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Feedback</span>
+        </div>
+
+        {/* Haptics */}
+        <div className="flex items-center justify-between py-1.5">
+          <div className="flex items-center gap-1.5">
+            <Vibrate size={14} style={{ color: 'var(--muted-foreground)' }} />
+            <div>
+              <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Haptic feedback</span>
+              <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Vibration on actions</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {s.haptics && (
+              <button onClick={() => vibrate([10, 30, 10])} className="text-xs hover:underline" style={{ color: '#0d9488' }}>Test</button>
+            )}
+            <Toggle value={s.haptics} onChange={(v) => update('haptics', v)} />
+          </div>
+        </div>
+
+        <div className="h-px my-1" style={{ background: 'var(--border)' }} />
+
+        {/* Confetti */}
+        <div className="flex items-center justify-between py-1.5">
+          <div>
+            <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Confetti</span>
+            <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Celebration on milestones</div>
+          </div>
+          <div className="flex items-center gap-2">
+            {s.confettiEnabled && (
+              <button onClick={() => { import('@/components/shared/Effects').then(({ triggerConfetti }) => triggerConfetti('big')); }} className="text-xs hover:underline" style={{ color: '#0d9488' }}>Test</button>
+            )}
+            <Toggle value={s.confettiEnabled} onChange={(v) => update('confettiEnabled', v)} />
+          </div>
+        </div>
+
+        <div className="h-px my-1" style={{ background: 'var(--border)' }} />
+
+        {/* Sound */}
+        <div className="flex items-center justify-between py-1.5">
+          <div>
+            <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Sound effects</span>
+            <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Chimes on achievements</div>
+          </div>
+          <div className="flex items-center gap-2">
+            {s.soundEnabled && (
+              <button onClick={() => { import('@/components/shared/Effects').then(({ playSound }) => playSound('success')); }} className="text-xs hover:underline" style={{ color: '#0d9488' }}>Test</button>
+            )}
+            <Toggle value={s.soundEnabled} onChange={(v) => update('soundEnabled', v)} />
+          </div>
+        </div>
+
+        {/* Volume */}
+        {s.soundEnabled && (
+          <div className="mt-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-medium" style={{ color: 'var(--muted-foreground)' }}>Volume</span>
+              <span className="text-sm font-bold tabular" style={{ color: '#0d9488' }}>{s.soundVolume}%</span>
+            </div>
+            <ScrollAwareSlider>
+              <input
+                type="range" min={0} max={100} step={5} value={s.soundVolume}
+                onChange={(e) => update('soundVolume', Number(e.target.value))}
+                className="w-full modern-slider"
+                style={{
+                  '--slider-pct': `${s.soundVolume}%`,
+                  '--slider-fill': 'linear-gradient(90deg, #0d9488, #14b8a6)',
+                  '--slider-track': 'var(--border)',
+                } as React.CSSProperties}
+              />
+            </ScrollAwareSlider>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function NotificationsSection({ s, update }: { s: Settings; update: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
