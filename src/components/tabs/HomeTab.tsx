@@ -234,42 +234,124 @@ export function HomeTab() {
       <SleepReportSheet open={showSleepReport} onClose={() => setShowSleepReport(false)} />
       <SleepPlanSheet open={showSleepPlan} onClose={() => setShowSleepPlan(false)} />
 
-      {/* Mission Control Header */}
+      {/* Mission Control Header — modernized */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex items-center justify-between">
-        {/* NEET logo + title — TAPPING THE LOGO starts sleep mode.
-            The logo is the universal sleep trigger (no extra banner needed).
-            Long-press the logo to open the manual sleep log sheet. */}
-        <button
-          onClick={() => {
-            if (activeSleep) return; // already sleeping — lock screen handles it
-            if (haptics) vibrate(12);
-            // Request notification permission if not granted
-            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-              Notification.requestPermission();
+        {/* Left: Greeting + Logo + Title + Date */}
+        <div className="flex flex-col gap-0.5">
+          {/* Time-based greeting */}
+          {(() => {
+            const hour = new Date().getHours();
+            let greeting: string;
+            let icon: string;
+            let iconColor: string;
+            if (hour >= 5 && hour < 12) {
+              greeting = 'Good morning';
+              icon = '☀️';
+              iconColor = '#fbbf24';
+            } else if (hour >= 12 && hour < 17) {
+              greeting = 'Good afternoon';
+              icon = '🌤️';
+              iconColor = '#14b8a6';
+            } else if (hour >= 17 && hour < 21) {
+              greeting = 'Good evening';
+              icon = '🌙';
+              iconColor = '#818cf8';
+            } else {
+              greeting = 'Studying late?';
+              icon = '🌃';
+              iconColor = '#a78bfa';
             }
-            startSleep();
-          }}
-          className="flex items-center gap-2 group active:scale-[0.97] transition"
-          title="Tap to start sleep mode"
-          aria-label="Tap logo to start sleep mode"
-        >
-          <motion.img
-            src="/logo.svg"
-            alt=""
-            className="w-7 h-7"
-            whileTap={haptics ? { scale: 0.92, rotate: -3 } : {}}
-            whileHover={{ scale: 1.1 }}
-            transition={{ duration: 0.25 }}
-          />
-          <h1 className="text-xl font-bold">NEET 2027</h1>
-        </button>
-        {/* StreakFlame is gated behind `mounted` because `streak` is derived
-            from persisted Zustand state (sessions) — 0 on server, real value
-            on client after rehydration. Rendering conditionally without this
-            guard causes a hydration mismatch. */}
+            return (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="flex items-center gap-1 text-[11px] font-semibold"
+                style={{ color: 'var(--muted-foreground)' }}
+                suppressHydrationWarning
+              >
+                <span style={{ filter: `drop-shadow(0 0 3px ${iconColor}80)` }}>{icon}</span>
+                <span>{greeting}</span>
+              </motion.div>
+            );
+          })()}
+
+          {/* Logo + Title row */}
+          <button
+            onClick={() => {
+              if (activeSleep) return;
+              if (haptics) vibrate(12);
+              if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+              }
+              startSleep();
+            }}
+            className="flex items-center gap-2 group active:scale-[0.97] transition"
+            title="Tap to start sleep mode"
+            aria-label="Tap logo to start sleep mode"
+          >
+            {/* Logo with glowing ring */}
+            <div className="relative">
+              {/* Glowing ring */}
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'radial-gradient(circle, rgba(20,184,166,0.3) 0%, transparent 70%)',
+                }}
+                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <motion.img
+                src="/logo.svg"
+                alt=""
+                className="w-9 h-9 relative z-10"
+                whileTap={haptics ? { scale: 0.92, rotate: -3 } : {}}
+                whileHover={{ scale: 1.1 }}
+                transition={{ duration: 0.25 }}
+              />
+              {/* Sleep mode indicator */}
+              {activeSleep && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                  style={{ background: '#818cf8', border: '1.5px solid var(--card)' }}
+                >
+                  <span className="text-[7px]">💤</span>
+                </motion.div>
+              )}
+            </div>
+            {/* Gradient title */}
+            <h1
+              className="text-2xl font-bold tracking-tight"
+              style={{
+                background: 'linear-gradient(135deg, #14b8a6, #22c55e)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              NEET 2027
+            </h1>
+          </button>
+
+          {/* Date text — theme-aware */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-[11px] flex items-center gap-1"
+            style={{ color: 'var(--muted-foreground)' }}
+            suppressHydrationWarning
+          >
+            <span>📅</span>
+            <span>{dateText}</span>
+          </motion.p>
+        </div>
+
+        {/* Right: Streak Flame */}
         {mounted && <StreakFlame streak={streak} />}
       </motion.div>
-      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-sm text-white/50 -mt-2" suppressHydrationWarning>{dateText}</motion.p>
 
       {/* Countdown Card */}
       <motion.div
