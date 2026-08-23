@@ -36,6 +36,7 @@ import { useRef, useEffect, type ReactNode } from 'react';
 export function ScrollAwareSlider({ children }: { children: ReactNode }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
   const decidedRef = useRef<'none' | 'slider' | 'scroll'>('none');
 
   useEffect(() => {
@@ -55,24 +56,50 @@ export function ScrollAwareSlider({ children }: { children: ReactNode }) {
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      if (!startRef.current || decidedRef.current !== 'none') return;
+      if (!startRef.current) return;
 
       const dx = Math.abs(e.clientX - startRef.current.x);
       const dy = Math.abs(e.clientY - startRef.current.y);
       const totalDist = dx + dy;
 
-      // Need at least 12px of movement to decide (was 8px — too sensitive)
+      // === CANCEL slider if user starts scrolling vertically AFTER starting slider drag ===
+      // Even if we already decided 'slider', if the user then moves mostly vertical,
+      // cancel the slider and let the page scroll. This prevents the "stuck slider"
+      // where the user starts on the track but wants to scroll up/down.
+      if (decidedRef.current === 'slider') {
+        // Check recent vertical movement (from last tracked position)
+        if (!lastPosRef.current) lastPosRef.current = { x: e.clientX, y: e.clientY };
+        const recentDy = Math.abs(e.clientY - lastPosRef.current.y);
+        const recentDx = Math.abs(e.clientX - lastPosRef.current.x);
+        lastPosRef.current = { x: e.clientX, y: e.clientY };
+
+        // If vertical movement is dominant AND exceeds 15px, cancel slider → scroll
+        if (recentDy > 15 && recentDy > recentDx * 2) {
+          decidedRef.current = 'scroll';
+          const slider = findSlider();
+          if (slider) {
+            try {
+              slider.blur();
+              slider.style.touchAction = 'pan-y';
+            } catch {}
+          }
+          el.style.touchAction = 'pan-y';
+          try { el.releasePointerCapture(e.pointerId); } catch {}
+          return;
+        }
+        // Still in slider mode — let it continue
+        return;
+      }
+
+      // Already decided scroll — no need to check further
+      if (decidedRef.current === 'scroll') return;
+
+      // === Initial decision (decidedRef === 'none') ===
+      // Need at least 12px of movement to decide
       if (totalDist < 12) return;
 
-      // Compute angle from horizontal (0° = pure horizontal, 90° = pure vertical)
       const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
 
-      // Stricter thresholds (was 60/30, now 50/20):
-      // - angle > 50° → definitely scrolling (was 60°)
-      // - angle < 20° → definitely dragging slider (was 30°)
-      // - 20-50° = ambiguous, keep tracking until clearer movement
-      // This means the user has to drag MORE horizontally to activate the slider,
-      // preventing accidental changes when scrolling slightly diagonally.
       if (angle > 50) {
         // Mostly vertical → user is scrolling. Cancel the slider drag.
         decidedRef.current = 'scroll';
@@ -83,12 +110,12 @@ export function ScrollAwareSlider({ children }: { children: ReactNode }) {
             slider.style.touchAction = 'pan-y';
           } catch {}
         }
-        // Wrapper allows vertical scroll
         el.style.touchAction = 'pan-y';
         try { el.releasePointerCapture(e.pointerId); } catch {}
       } else if (angle < 20) {
         // Mostly horizontal → user is dragging the slider.
         decidedRef.current = 'slider';
+        lastPosRef.current = { x: e.clientX, y: e.clientY };
         const slider = findSlider();
         if (slider) {
           slider.style.touchAction = 'none';
@@ -100,6 +127,7 @@ export function ScrollAwareSlider({ children }: { children: ReactNode }) {
 
     const onPointerUp = (e: PointerEvent) => {
       startRef.current = null;
+      lastPosRef.current = null;
       decidedRef.current = 'none';
       // Reset touch-action to default (let next gesture decide fresh)
       const slider = findSlider();
