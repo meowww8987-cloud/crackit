@@ -30,8 +30,8 @@ import { formatHM, vibrate, cn, todayKey, dateKey, addDays } from '@/lib/utils';
 type AppTheme = 'dark' | 'light' | 'warm' | 'rose' | 'sage' | 'ocean' | 'forest' | 'gold';
 
 interface ThemeColors {
-  teal: { primary: string; secondary: string; glow: string; outline: string };
-  green: { primary: string; secondary: string; glow: string; outline: string };
+  teal: { primary: string; secondary: string; glow: string; outline: string; outerRing: string };
+  green: { primary: string; secondary: string; glow: string; outline: string; outerRing: string };
   goalHit: string;
   below25: string;
   live: string;
@@ -41,8 +41,8 @@ interface ThemeColors {
 
 const THEME_COLORS: Record<AppTheme, ThemeColors> = {
   dark: {
-    teal: { primary: '#2dd4bf', secondary: '#14b8a6', glow: 'rgba(45,212,191,0.7)', outline: 'rgba(255,255,255,0.25)' },
-    green: { primary: '#4ade80', secondary: '#22c55e', glow: 'rgba(74,222,128,0.7)', outline: 'rgba(255,255,255,0.25)' },
+    teal: { primary: '#2dd4bf', secondary: '#14b8a6', glow: 'rgba(45,212,191,0.7)', outline: 'rgba(255,255,255,0.4)', outerRing: '#5eead4' },
+    green: { primary: '#4ade80', secondary: '#22c55e', glow: 'rgba(74,222,128,0.7)', outline: 'rgba(255,255,255,0.4)', outerRing: '#86efac' },
     goalHit: '#4ade80',
     below25: '#fbbf24',
     live: '#4ade80',
@@ -50,8 +50,8 @@ const THEME_COLORS: Record<AppTheme, ThemeColors> = {
     particle: ['#fbbf24', '#4ade80', '#2dd4bf', '#60a5fa'],
   },
   light: {
-    teal: { primary: '#0d9488', secondary: '#14b8a6', glow: 'rgba(13,148,136,0.35)', outline: 'rgba(0,0,0,0.3)' },
-    green: { primary: '#16a34a', secondary: '#22c55e', glow: 'rgba(22,163,74,0.35)', outline: 'rgba(0,0,0,0.3)' },
+    teal: { primary: '#0d9488', secondary: '#14b8a6', glow: 'rgba(13,148,136,0.55)', outline: 'rgba(0,0,0,0.5)', outerRing: '#0f766e' },
+    green: { primary: '#16a34a', secondary: '#22c55e', glow: 'rgba(22,163,74,0.55)', outline: 'rgba(0,0,0,0.5)', outerRing: '#15803d' },
     goalHit: '#16a34a',
     below25: '#c2410c',
     live: '#16a34a',
@@ -59,8 +59,8 @@ const THEME_COLORS: Record<AppTheme, ThemeColors> = {
     particle: ['#d97706', '#16a34a', '#0d9488', '#2563eb'],
   },
   warm: {
-    teal: { primary: '#0f766e', secondary: '#14b8a6', glow: 'rgba(15,118,110,0.4)', outline: 'rgba(60,40,20,0.35)' },
-    green: { primary: '#15803d', secondary: '#22c55e', glow: 'rgba(21,128,61,0.4)', outline: 'rgba(60,40,20,0.35)' },
+    teal: { primary: '#0f766e', secondary: '#14b8a6', glow: 'rgba(15,118,110,0.55)', outline: 'rgba(60,40,20,0.6)', outerRing: '#115e59' },
+    green: { primary: '#15803d', secondary: '#22c55e', glow: 'rgba(21,128,61,0.55)', outline: 'rgba(60,40,20,0.6)', outerRing: '#166534' },
     goalHit: '#15803d',
     below25: '#b45309',
     live: '#15803d',
@@ -68,8 +68,8 @@ const THEME_COLORS: Record<AppTheme, ThemeColors> = {
     particle: ['#b45309', '#15803d', '#0f766e', '#92400e'],
   },
   rose: {
-    teal: { primary: '#0d9488', secondary: '#14b8a6', glow: 'rgba(13,148,136,0.35)', outline: 'rgba(139,47,76,0.3)' },
-    green: { primary: '#16a34a', secondary: '#22c55e', glow: 'rgba(22,163,74,0.35)', outline: 'rgba(139,47,76,0.3)' },
+    teal: { primary: '#0d9488', secondary: '#14b8a6', glow: 'rgba(13,148,136,0.55)', outline: 'rgba(139,47,76,0.5)', outerRing: '#0f766e' },
+    green: { primary: '#16a34a', secondary: '#22c55e', glow: 'rgba(22,163,74,0.55)', outline: 'rgba(139,47,76,0.5)', outerRing: '#15803d' },
     goalHit: '#16a34a',
     below25: '#c2410c',
     live: '#16a34a',
@@ -77,8 +77,8 @@ const THEME_COLORS: Record<AppTheme, ThemeColors> = {
     particle: ['#d97706', '#16a34a', '#0d9488', '#9333ea'],
   },
   sage: {
-    teal: { primary: '#0f766e', secondary: '#14b8a6', glow: 'rgba(15,118,110,0.4)', outline: 'rgba(50,70,50,0.35)' },
-    green: { primary: '#166534', secondary: '#22c55e', glow: 'rgba(22,101,52,0.4)', outline: 'rgba(50,70,50,0.35)' },
+    teal: { primary: '#0f766e', secondary: '#14b8a6', glow: 'rgba(15,118,110,0.55)', outline: 'rgba(50,70,50,0.6)', outerRing: '#115e59' },
+    green: { primary: '#166534', secondary: '#22c55e', glow: 'rgba(22,101,52,0.55)', outline: 'rgba(50,70,50,0.6)', outerRing: '#14532d' },
     goalHit: '#166534',
     below25: '#a16207',
     live: '#166534',
@@ -86,8 +86,8 @@ const THEME_COLORS: Record<AppTheme, ThemeColors> = {
     particle: ['#a16207', '#166534', '#0f766e', '#854d0e'],
   },
   ocean: {
-    teal: { primary: '#06b6d4', secondary: '#22d3ee', glow: 'rgba(6,182,212,0.7)', outline: 'rgba(255,255,255,0.2)' },
-    green: { primary: '#10b981', secondary: '#34d399', glow: 'rgba(16,185,129,0.7)', outline: 'rgba(255,255,255,0.2)' },
+    teal: { primary: '#06b6d4', secondary: '#22d3ee', glow: 'rgba(6,182,212,0.7)', outline: 'rgba(255,255,255,0.35)', outerRing: '#67e8f9' },
+    green: { primary: '#10b981', secondary: '#34d399', glow: 'rgba(16,185,129,0.7)', outline: 'rgba(255,255,255,0.35)', outerRing: '#6ee7b7' },
     goalHit: '#34d399',
     below25: '#fbbf24',
     live: '#34d399',
@@ -95,8 +95,8 @@ const THEME_COLORS: Record<AppTheme, ThemeColors> = {
     particle: ['#fbbf24', '#34d399', '#22d3ee', '#60a5fa'],
   },
   forest: {
-    teal: { primary: '#14b8a6', secondary: '#2dd4bf', glow: 'rgba(20,184,166,0.6)', outline: 'rgba(255,255,255,0.2)' },
-    green: { primary: '#4ade80', secondary: '#86efac', glow: 'rgba(74,222,128,0.7)', outline: 'rgba(255,255,255,0.2)' },
+    teal: { primary: '#14b8a6', secondary: '#2dd4bf', glow: 'rgba(20,184,166,0.65)', outline: 'rgba(255,255,255,0.35)', outerRing: '#5eead4' },
+    green: { primary: '#4ade80', secondary: '#86efac', glow: 'rgba(74,222,128,0.7)', outline: 'rgba(255,255,255,0.35)', outerRing: '#bbf7d0' },
     goalHit: '#86efac',
     below25: '#fde047',
     live: '#86efac',
@@ -104,8 +104,8 @@ const THEME_COLORS: Record<AppTheme, ThemeColors> = {
     particle: ['#fde047', '#86efac', '#2dd4bf', '#a3e635'],
   },
   gold: {
-    teal: { primary: '#0d9488', secondary: '#14b8a6', glow: 'rgba(13,148,136,0.4)', outline: 'rgba(80,50,10,0.35)' },
-    green: { primary: '#16a34a', secondary: '#22c55e', glow: 'rgba(22,163,74,0.4)', outline: 'rgba(80,50,10,0.35)' },
+    teal: { primary: '#0d9488', secondary: '#14b8a6', glow: 'rgba(13,148,136,0.55)', outline: 'rgba(80,50,10,0.6)', outerRing: '#0f766e' },
+    green: { primary: '#16a34a', secondary: '#22c55e', glow: 'rgba(22,163,74,0.55)', outline: 'rgba(80,50,10,0.6)', outerRing: '#15803d' },
     goalHit: '#16a34a',
     below25: '#b45309',
     live: '#16a34a',
@@ -392,6 +392,7 @@ function AdvancedRing({
     secondary: schemeColors.secondary,
     glow: schemeColors.glow,
     outline: schemeColors.outline,
+    outerRing: schemeColors.outerRing,
     gradId: colorScheme === 'teal' ? 'grad-teal' : 'grad-green',
   };
 
@@ -437,28 +438,43 @@ function AdvancedRing({
           </filter>
         </defs>
 
-        {/* Outer ring track (yesterday/last week) — with theme outline */}
+        {/* Outer ring track (yesterday/last week) */}
         <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="var(--muted)" strokeWidth={strokeWidth - 1} />
-        {/* Outer ring progress (faded comparison) — with outline for visibility */}
+        {/* Outer ring progress — DISTINCT visible color (not faint outline) */}
+        <motion.circle
+          cx={center}
+          cy={center}
+          r={outerRadius}
+          fill="none"
+          stroke={colors.outerRing}
+          strokeWidth={strokeWidth - 1}
+          strokeLinecap="round"
+          opacity="0.75"
+          strokeDasharray={outerCircumference}
+          initial={{ strokeDashoffset: outerCircumference }}
+          animate={{ strokeDashoffset: outerCircumference - (outerPct / 100) * outerCircumference }}
+          transition={{ duration: 1, ease: 'easeOut' }}
+        />
+        {/* Outer ring outline for extra contrast */}
         <motion.circle
           cx={center}
           cy={center}
           r={outerRadius}
           fill="none"
           stroke={colors.outline}
-          strokeWidth={strokeWidth - 1}
+          strokeWidth="0.75"
           strokeLinecap="round"
-          opacity="0.5"
+          opacity="0.6"
           strokeDasharray={outerCircumference}
           initial={{ strokeDashoffset: outerCircumference }}
           animate={{ strokeDashoffset: outerCircumference - (outerPct / 100) * outerCircumference }}
           transition={{ duration: 1, ease: 'easeOut' }}
         />
 
-        {/* Inner ring track — with theme outline */}
+        {/* Inner ring track */}
         <circle cx={center} cy={center} r={innerRadius} fill="none" stroke="var(--muted)" strokeWidth={strokeWidth} />
         {/* Inner ring track outline (for contrast) */}
-        <circle cx={center} cy={center} r={innerRadius} fill="none" stroke={colors.outline} strokeWidth="0.5" opacity="0.5" />
+        <circle cx={center} cy={center} r={innerRadius} fill="none" stroke={colors.outline} strokeWidth="1" opacity="0.6" />
         {/* Inner ring progress (animated gradient + STRONG glow + outline) */}
         <motion.circle
           cx={center}
@@ -484,9 +500,9 @@ function AdvancedRing({
           r={innerRadius}
           fill="none"
           stroke={colors.outline}
-          strokeWidth="0.5"
+          strokeWidth="1"
           strokeLinecap="round"
-          opacity="0.4"
+          opacity="0.7"
           strokeDasharray={innerCircumference}
           initial={{ strokeDashoffset: innerCircumference }}
           animate={{ strokeDashoffset: innerCircumference - (innerPct / 100) * innerCircumference }}
