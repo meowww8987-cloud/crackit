@@ -48,6 +48,8 @@ export function ScrollAwareSlider({ children }: { children: ReactNode }) {
     };
 
     const onPointerDown = (e: PointerEvent) => {
+      // Stop propagation so Settings category swipe doesn't fire
+      e.stopPropagation();
       // Record start position. Don't decide yet — wait for movement.
       startRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
       decidedRef.current = 'none';
@@ -57,6 +59,8 @@ export function ScrollAwareSlider({ children }: { children: ReactNode }) {
 
     const onPointerMove = (e: PointerEvent) => {
       if (!startRef.current) return;
+      // Stop propagation if we've decided it's a slider drag
+      if (decidedRef.current === 'slider') e.stopPropagation();
 
       const dx = Math.abs(e.clientX - startRef.current.x);
       const dy = Math.abs(e.clientY - startRef.current.y);
@@ -152,7 +156,14 @@ export function ScrollAwareSlider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div ref={wrapRef} className="scroll-aware-slider" style={{ touchAction: 'pan-y' }}>
+    <div
+      ref={wrapRef}
+      className="scroll-aware-slider"
+      style={{ touchAction: 'pan-y' }}
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
+      onTouchMove={(e) => { if (decidedRef.current === 'slider') e.stopPropagation(); }}
+    >
       {children}
     </div>
   );
