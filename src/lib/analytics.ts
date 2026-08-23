@@ -83,7 +83,7 @@ export function wastedRatio(sessions: SavedSession[]): { studyMin: number; waste
   return { studyMin, wastedMin, ratio };
 }
 
-// ===== Best study hour (24-hour bar) =====
+// ===== Best study hour (24-hour bar) — legacy, kept for backwards compat =====
 export function bestHourData(sessions: SavedSession[]): { hour: string; minutes: number }[] {
   const buckets: number[] = new Array(24).fill(0);
   for (const s of sessions) {
@@ -94,6 +94,188 @@ export function bestHourData(sessions: SavedSession[]): { hour: string; minutes:
     hour: `${hour}:00`,
     minutes: Math.round(sec / 60),
   }));
+}
+
+// ===== Peak Study Time v2 — splits sessions across all hours they span =====
+
+export interface HourStat {
+  hour: number; // 0-23
+  label: string; // "9 PM"
+  shortLabel: string; // "9p"
+  totalMinutes: number; // total study minutes at this hour (across all sessions)
+  wastedMinutes: number;
+  sessionCount: number; // total sessions that touched this hour
+  dayCount: number; // unique days user studied at this hour
+  avgMinutes: number; // totalMinutes / dayCount (avg per day, not per session)
+  avgWasted: number;
+  efficiency: number; // study / (study + wasted) * 100, 0 if no data
+}
+
+export interface TimeBlockStat {
+  id: 'dawn' | 'morning' | 'noon' | 'evening' | 'night' | 'late';
+  name: string;
+  icon: string; // emoji
+  range: string; // "5–8 AM"
+  hours: number[];
+  totalMinutes: number;
+  wastedMinutes: number;
+  dayCount: number;
+  avgMinutes: number;
+}
+
+export interface BestHourAnalysis {
+  hours: HourStat[]; // 24 entries
+  blocks: TimeBlockStat[]; // 6 entries
+  peakHour: HourStat | null; // hour with highest avgMinutes (requires sessionCount > 0)
+  peakBlock: TimeBlockStat | null; // block with highest totalMinutes
+  worstWastedHour: HourStat | null; // hour with most wasted minutes
+  totalDaysTracked: number; // unique dates in all sessions
+}
+
+/** Format hour 0-23 → "12 AM", "1 AM", ..., "11 PM" */
+function formatHourLabel(hour: number): string {
+  const period = hour < 12 ? 'AM' : 'PM';
+  const display = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${display} ${period}`;
+}
+
+/** Format hour 0-23 → "12a", "1a", ..., "11p" (compact for chart axis) */
+function formatHourShort(hour: number): string {
+  const period = hour < 12 ? 'a' : 'p';
+  const display = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${display}${period}`;
+}
+
+/** Distribute a single session's study/wasted seconds across all the hours it spans.
+ *  Uses proportional split based on real elapsed time per hour bucket.
+ *  Fixes the legacy bug where only the start hour got credit. */
+function distributeSessionAcrossHours(session: SavedSession): { hour: number; studySec: number; wastedSec: number }[] {
+  const start = session.startedAt;
+  const end = session.endedAt;
+  const elapsedSec = (end - start) / 1000;
+  if (elapsedSec <= 0) {
+    return [{ hour: new Date(start).getHours(), studySec: session.studySeconds, wastedSec: session.wastedSeconds }];
+  }
+  // Rates: study/wasted seconds per real second
+  const studyRate = session.studySeconds / elapsedSec;
+  const wastedRate = session.wastedSeconds / elapsedSec;
+  const result: { hour: number; studySec: number; wastedSec: number }[] = [];
+  let cursor = start;
+  while (cursor < end) {
+    // Find end of the current clock-hour bucket (e.g. 9:00 → 10:00)
+    const bucketDate = new Date(cursor);
+    bucketDate.setMinutes(0, 0, 0);
+    const bucketEnd = bucketDate.getTime() + 3600000;
+    const segEnd = Math.min(end, bucketEnd);
+    const segSec = (segEnd - cursor) / 1000;
+    result.push({
+      hour: new Date(cursor).getHours(),
+      studySec: segSec * studyRate,
+      wastedSec: segSec * wastedRate,
+    });
+    cursor = segEnd;
+  }
+  return result;
+}
+
+export function bestHourDataV2(sessions: SavedSession[]): BestHourAnalysis {
+  const hourBuckets: {
+    totalStudySec: number;
+    totalWastedSec: number;
+    sessionCount: number;
+    daysSet: Set<string>;
+  }[] = Array.from({ length: 24 }, () => ({
+    totalStudySec: 0,
+    totalWastedSec: 0,
+    sessionCount: 0,
+    daysSet: new Set<string>(),
+  }));
+
+  const allDays = new Set<string>();
+
+  for (const s of sessions) {
+    allDays.add(s.date);
+    const segments = distributeSessionAcrossHours(s);
+    const hoursTouched = new Set<number>();
+    for (const seg of segments) {
+      hourBuckets[seg.hour].totalStudySec += seg.studySec;
+      hourBuckets[seg.hour].totalWastedSec += seg.wastedSec;
+      hoursTouched.add(seg.hour);
+    }
+    // count session once per distinct hour it touched
+    for (const h of hoursTouched) {
+      hourBuckets[h].sessionCount += 1;
+      hourBuckets[h].daysSet.add(s.date);
+    }
+  }
+
+  const hours: HourStat[] = hourBuckets.map((b, hour) => {
+    const totalMinutes = Math.round(b.totalStudySec / 60);
+    const wastedMinutes = Math.round(b.totalWastedSec / 60);
+    const dayCount = b.daysSet.size;
+    const avgMinutes = dayCount > 0 ? Math.round((b.totalStudySec / 60) / dayCount) : 0;
+    const avgWasted = dayCount > 0 ? Math.round((b.totalWastedSec / 60) / dayCount) : 0;
+    const totalAll = totalMinutes + wastedMinutes;
+    const efficiency = totalAll > 0 ? Math.round((totalMinutes / totalAll) * 100) : 0;
+    return {
+      hour,
+      label: formatHourLabel(hour),
+      shortLabel: formatHourShort(hour),
+      totalMinutes,
+      wastedMinutes,
+      sessionCount: b.sessionCount,
+      dayCount,
+      avgMinutes,
+      avgWasted,
+      efficiency,
+    };
+  });
+
+  const blockDefs: { id: TimeBlockStat['id']; name: string; icon: string; range: string; hours: number[] }[] = [
+    { id: 'dawn', name: 'Dawn', icon: '🌅', range: '5–8 AM', hours: [5, 6, 7] },
+    { id: 'morning', name: 'Morning', icon: '🌞', range: '8 AM–12 PM', hours: [8, 9, 10, 11] },
+    { id: 'noon', name: 'Noon', icon: '☀️', range: '12–4 PM', hours: [12, 13, 14, 15] },
+    { id: 'evening', name: 'Evening', icon: '🌆', range: '4–8 PM', hours: [16, 17, 18, 19] },
+    { id: 'night', name: 'Night', icon: '🌙', range: '8 PM–12 AM', hours: [20, 21, 22, 23] },
+    { id: 'late', name: 'Late Night', icon: '🦉', range: '12–5 AM', hours: [0, 1, 2, 3, 4] },
+  ];
+
+  const blocks: TimeBlockStat[] = blockDefs.map((def) => {
+    const sub = def.hours.map((h) => hours[h]);
+    const totalMinutes = sub.reduce((a, h) => a + h.totalMinutes, 0);
+    const wastedMinutes = sub.reduce((a, h) => a + h.wastedMinutes, 0);
+    const daySet = new Set<string>();
+    for (const h of def.hours) {
+      for (const d of hourBuckets[h].daysSet) daySet.add(d);
+    }
+    const dayCount = daySet.size;
+    const avgMinutes = dayCount > 0 ? Math.round(totalMinutes / dayCount) : 0;
+    return { ...def, totalMinutes, wastedMinutes, dayCount, avgMinutes };
+  });
+
+  const hoursWithData = hours.filter((h) => h.sessionCount > 0);
+  const peakHour = hoursWithData.length > 0
+    ? hoursWithData.reduce((max, h) => (h.avgMinutes > max.avgMinutes ? h : max))
+    : null;
+
+  const blocksWithData = blocks.filter((b) => b.totalMinutes > 0);
+  const peakBlock = blocksWithData.length > 0
+    ? blocksWithData.reduce((max, b) => (b.totalMinutes > max.totalMinutes ? b : max))
+    : null;
+
+  const hoursWithWasted = hours.filter((h) => h.wastedMinutes > 0);
+  const worstWastedHour = hoursWithWasted.length > 0
+    ? hoursWithWasted.reduce((max, h) => (h.wastedMinutes > max.wastedMinutes ? h : max))
+    : null;
+
+  return {
+    hours,
+    blocks,
+    peakHour,
+    peakBlock,
+    worstWastedHour,
+    totalDaysTracked: allDays.size,
+  };
 }
 
 // ===== Weekly comparison (this week vs last week) =====

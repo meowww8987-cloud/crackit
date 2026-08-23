@@ -19,6 +19,7 @@ import { triggerTimeline } from '@/components/app/AppShell';
 import { SubjectWeeklyBreakdown } from '@/components/stats/SubjectWeeklyBreakdown';
 import { HeatmapCalendar } from '@/components/stats/HeatmapCalendar';
 import { SubjectSunburst } from '@/components/stats/SubjectSunburst';
+import { PeakStudyTime } from '@/components/stats/PeakStudyTime';
 import { SleepReportSheet } from '@/components/dailylog/SleepReportSheet';
 import { buildWeeklySleepReport, verdictColor, verdictLabel } from '@/lib/sleepHealth';
 import {
@@ -27,7 +28,6 @@ import {
   trendData,
   moodDistribution,
   wastedRatio,
-  bestHourData,
   weeklyComparison,
   neglectedSubjects,
 } from '@/lib/analytics';
@@ -67,7 +67,6 @@ export function StatsTab() {
   const trend = useMemo(() => trendData(sessions, 30), [sessions]);
   const moods = useMemo(() => moodDistribution(sessions), [sessions]);
   const wasted = useMemo(() => wastedRatio(sessions), [sessions]);
-  const bestHour = useMemo(() => bestHourData(sessions), [sessions]);
   const comparison = useMemo(() => weeklyComparison(sessions), [sessions]);
   const neglected = useMemo(() => neglectedSubjects(sessions), [sessions]);
   const retentionData = useMemo(
@@ -335,22 +334,8 @@ export function StatsTab() {
         </div>
       </ChartCard>
 
-      {/* Best study hour */}
-      <ChartCard title="Best Study Hour">
-        <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={bestHour} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="hour" tick={{ fill: 'var(--muted-foreground)', fontSize: 8 }} axisLine={false} tickLine={false} interval={3} />
-              <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
-              />
-              <Bar dataKey="minutes" radius={[2, 2, 0, 0]} fill="#14b8a6" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartCard>
+      {/* Best study hour — 3-level Peak Study Time card */}
+      <PeakStudyTime />
 
       {/* Neglected subjects */}
       {neglected.length > 0 && (
