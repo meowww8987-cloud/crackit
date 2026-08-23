@@ -3,11 +3,10 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
-  RadialBarChart, RadialBar,
 } from 'recharts';
-import { BarChart3, TrendingUp, TrendingDown, Clock, AlertTriangle } from 'lucide-react';
+import { BarChart3, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
 import { useHistory } from '@/lib/store/history';
 import { useRecall } from '@/lib/store/recall';
 import { useSyllabus } from '@/lib/store/syllabus';
@@ -19,12 +18,10 @@ import { PeakStudyTime } from '@/components/stats/PeakStudyTime';
 import { ActivityCard } from '@/components/stats/ActivityCard';
 import { SleepHealthCard } from '@/components/stats/SleepHealthCard';
 import { SubjectBreakdown } from '@/components/stats/SubjectBreakdown';
+import { MonthStory } from '@/components/stats/MonthStory';
 import { SleepReportSheet } from '@/components/dailylog/SleepReportSheet';
 import {
-  trendData,
   moodDistribution,
-  wastedRatio,
-  weeklyComparison,
 } from '@/lib/analytics';
 import { formatHM, isRevisionOverdue } from '@/lib/utils';
 import { CountUp } from '@/components/shared/CountUp';
@@ -36,10 +33,7 @@ export function StatsTab() {
   const prefer2D = useSettings((s) => s.prefer2D);
   const [showSleepReport, setShowSleepReport] = useState(false);
 
-  const trend = useMemo(() => trendData(sessions, 30), [sessions]);
   const moods = useMemo(() => moodDistribution(sessions), [sessions]);
-  const wasted = useMemo(() => wastedRatio(sessions), [sessions]);
-  const comparison = useMemo(() => weeklyComparison(sessions), [sessions]);
   const retentionData = useMemo(
     () => retentionTrend.filter((c) => c.completedAt > 0).map((c) => ({ date: c.date, score: c.retentionScore })),
     [retentionTrend]
@@ -81,101 +75,41 @@ export function StatsTab() {
       {/* Subject Breakdown — 3-level card (replaces stacked bars + sunburst + donut + neglected) */}
       <SubjectBreakdown />
 
-      {/* 30-day trend */}
-      <ChartCard title="Study Time Trend (30 days)">
-        <div className="h-36">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={trend} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }} axisLine={false} tickLine={false} interval={5} />
-              <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
-              />
-              <Line type="monotone" dataKey="minutes" stroke="#22c55e" strokeWidth={2} dot={false} name="Study (min)" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartCard>
+      {/* Month Story — 3-level 30-day trend (replaces line chart + weekly comparison + wasted ratio) */}
+      <MonthStory />
 
-      {/* Mood distribution + Wasted ratio */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Mood distribution */}
+      <div className="grid grid-cols-1 gap-3">
         {moods.length > 0 && (
           <ChartCard title="Mood Distribution">
-            <div className="h-28">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={moods} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40}>
-                    {moods.map((d, i) => (
-                      <Cell key={i} fill={d.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {moods.map((m) => (
-                <span key={m.name} className="text-[9px] flex items-center gap-0.5">
-                  <span>{m.emoji}</span>
-                  <span className="text-white/50">{m.value}</span>
-                </span>
-              ))}
+            <div className="flex items-center gap-3">
+              <div className="h-28 flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={moods} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40}>
+                      {moods.map((d, i) => (
+                        <Cell key={i} fill={d.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-1 flex-1">
+                {moods.map((m) => (
+                  <div key={m.name} className="flex items-center gap-2 text-xs">
+                    <span>{m.emoji}</span>
+                    <span className="flex-1" style={{ color: 'var(--muted-foreground)' }}>{m.name}</span>
+                    <span className="tabular font-semibold" style={{ color: 'var(--foreground)' }}>{m.value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </ChartCard>
         )}
-
-        <ChartCard title="Wasted Ratio">
-          <div className="h-28 relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadialBarChart
-                innerRadius="65%"
-                outerRadius="100%"
-                data={[{ name: 'wasted', value: wasted.ratio, fill: '#ef4444' }]}
-                startAngle={90}
-                endAngle={-270}
-              >
-                <RadialBar background={{ fill: 'var(--border)' }} dataKey="value" cornerRadius={10} />
-              </RadialBarChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-xl font-bold tabular text-red-400">{wasted.ratio}%</span>
-              <span className="text-[9px] text-white/60">wasted</span>
-            </div>
-          </div>
-          <div className="text-[10px] text-white/60 mt-1 text-center tabular">
-            {formatHM(wasted.studyMin * 60)} study · {formatHM(wasted.wastedMin * 60)} wasted
-          </div>
-        </ChartCard>
       </div>
-
-      {/* Weekly comparison */}
-      <ChartCard title="Weekly Comparison">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="text-[10px] text-white/60 mb-1">This Week</div>
-            <div className="text-lg font-bold tabular text-teal-400">{formatHM(comparison.thisWeekStudy * 60)}</div>
-            <div className="text-[10px] text-red-400 tabular">⚠ {formatHM(comparison.thisWeekWasted * 60)}</div>
-          </div>
-          <div>
-            <div className="text-[10px] text-white/60 mb-1">Last Week</div>
-            <div className="text-lg font-bold tabular text-white/60">{formatHM(comparison.lastWeekStudy * 60)}</div>
-            <div className="text-[10px] text-white/60 tabular">⚠ {formatHM(comparison.lastWeekWasted * 60)}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 mt-3">
-          <div className={`flex items-center gap-1 text-xs font-semibold ${comparison.studyTrend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {comparison.studyTrend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-            {comparison.studyTrend > 0 ? '+' : ''}{comparison.studyTrend}% study
-          </div>
-          <div className={`flex items-center gap-1 text-xs font-semibold ${comparison.wastedTrend <= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {comparison.wastedTrend <= 0 ? <TrendingDown size={12} /> : <TrendingUp size={12} />}
-            {comparison.wastedTrend > 0 ? '+' : ''}{comparison.wastedTrend}% wasted
-          </div>
-        </div>
-      </ChartCard>
 
       {/* Best study hour — 3-level Peak Study Time card */}
       <PeakStudyTime />

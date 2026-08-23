@@ -320,6 +320,150 @@ export function trendData(sessions: SavedSession[], days: number = 30): { date: 
   return result;
 }
 
+// ===== Month Story v2 — 30-day tiles + streak + weekly groups =====
+
+export interface MonthDayData {
+  date: string; // YYYY-MM-DD
+  dayNum: number;
+  studySec: number;
+  wastedSec: number;
+  sessionCount: number;
+  isToday: boolean;
+  hasStudy: boolean;
+  /** 0-4 intensity for tile color */
+  intensity: number;
+}
+
+export interface MonthWeekData {
+  weekNum: number; // 1-5
+  label: string; // "Week 1" / "Week 2"...
+  dateRange: string; // "Jul 28 - Aug 3"
+  days: MonthDayData[]; // 7 entries (or fewer for partial weeks)
+  totalStudySec: number;
+  isCurrent: boolean;
+}
+
+export interface MonthStoryData {
+  days: MonthDayData[]; // 30 entries, oldest → newest
+  weeks: MonthWeekData[]; // ~4-5 weeks
+  totalStudySec: number;
+  totalWastedSec: number;
+  dailyGoalSec: number;
+  monthlyGoalSec: number;
+  goalPct: number;
+  daysStudied: number; // days with study > 0
+  currentStreak: number; // consecutive days with study up to today
+  bestDay: MonthDayData | null;
+  dailyAvgSec: number; // totalStudySec / 30
+  trendPct: number; // vs previous 30 days
+  monthLabel: string; // "Last 30 Days"
+}
+
+export function monthStoryData(sessions: SavedSession[], dailyGoalHours: number): MonthStoryData {
+  const today = todayKey();
+  const dailyGoalSec = Math.round(dailyGoalHours * 3600);
+  const monthlyGoalSec = dailyGoalSec * 30;
+
+  // Build 30 days
+  const days: MonthDayData[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = addDays(new Date(), -i);
+    const key = dateKey(d);
+    const daySessions = sessions.filter((s) => s.date === key);
+    const studySec = daySessions.reduce((a, s) => a + s.studySeconds, 0);
+    const wastedSec = daySessions.reduce((a, s) => a + s.wastedSeconds, 0);
+    const hours = studySec / 3600;
+    const intensity = hours >= 6 ? 4 : hours >= 4 ? 3 : hours >= 2 ? 2 : hours > 0 ? 1 : 0;
+
+    days.push({
+      date: key,
+      dayNum: d.getDate(),
+      studySec,
+      wastedSec,
+      sessionCount: daySessions.length,
+      isToday: key === today,
+      hasStudy: studySec > 0,
+      intensity,
+    });
+  }
+
+  // Group into weeks (starting from the oldest day in the range)
+  const weeks: MonthWeekData[] = [];
+  const startDate = addDays(new Date(), -29);
+  for (let w = 0; w < 5; w++) {
+    const weekDays: MonthDayData[] = [];
+    for (let d = 0; d < 7; d++) {
+      const idx = w * 7 + d;
+      if (idx >= days.length) break;
+      weekDays.push(days[idx]);
+    }
+    if (weekDays.length === 0) continue;
+
+    const weekStart = addDays(startDate, w * 7);
+    const weekEnd = addDays(weekStart, 6);
+    const dateRange = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    const totalStudySec = weekDays.reduce((a, d) => a + d.studySec, 0);
+    const isCurrent = weekDays.some((d) => d.isToday);
+
+    weeks.push({
+      weekNum: w + 1,
+      label: `Week ${w + 1}`,
+      dateRange,
+      days: weekDays,
+      totalStudySec,
+      isCurrent,
+    });
+  }
+
+  const totalStudySec = days.reduce((a, d) => a + d.studySec, 0);
+  const totalWastedSec = days.reduce((a, d) => a + d.wastedSec, 0);
+  const daysStudied = days.filter((d) => d.hasStudy).length;
+  const goalPct = monthlyGoalSec > 0 ? Math.round((totalStudySec / monthlyGoalSec) * 100) : 0;
+  const dailyAvgSec = Math.round(totalStudySec / 30);
+
+  // Current streak (consecutive days with study, ending today)
+  let currentStreak = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    if (days[i].hasStudy) currentStreak++;
+    else break;
+  }
+
+  // Best day
+  const studiedDays = days.filter((d) => d.hasStudy);
+  const bestDay = studiedDays.length > 0
+    ? studiedDays.reduce((max, d) => (d.studySec > max.studySec ? d : max))
+    : null;
+
+  // Trend: compare this 30 days to previous 30 days
+  let prevStudySec = 0;
+  for (let i = 59; i >= 30; i--) {
+    const d = addDays(new Date(), -i);
+    const key = dateKey(d);
+    prevStudySec += sessions
+      .filter((s) => s.date === key)
+      .reduce((a, s) => a + s.studySeconds, 0);
+  }
+  const trendPct = prevStudySec > 0
+    ? Math.round(((totalStudySec - prevStudySec) / prevStudySec) * 100)
+    : totalStudySec > 0 ? 100 : 0;
+
+  return {
+    days,
+    weeks,
+    totalStudySec,
+    totalWastedSec,
+    dailyGoalSec,
+    monthlyGoalSec,
+    goalPct,
+    daysStudied,
+    currentStreak,
+    bestDay,
+    dailyAvgSec,
+    trendPct,
+    monthLabel: 'Last 30 Days',
+  };
+}
+
 // ===== Mood distribution =====
 export function moodDistribution(sessions: SavedSession[]): { name: string; value: number; color: string; emoji: string }[] {
   const moods: { key: Mood | 'none'; name: string; color: string; emoji: string }[] = [
