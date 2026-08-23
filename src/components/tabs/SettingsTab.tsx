@@ -247,9 +247,27 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 function Slider({ value, min, max, step = 1, onChange, format }: {
  value: number; min: number; max: number; step?: number; onChange: (v: number) => void; format?: (v: number) => string;
 }) {
+ const pct = ((value - min) / (max - min)) * 100;
  return (
  <div>
- {format && <div className="text-sm font-bold mb-1 tabular" style={{ color: '#0d9488' }}>{format(value)}</div>}
+ {format && (
+ <div className="flex items-center justify-between mb-1.5">
+ <span className="text-sm font-bold tabular" style={{ color: '#0d9488' }}>{format(value)}</span>
+ <span className="text-[9px] tabular" style={{ color: 'var(--muted-foreground)' }}>{Math.round(pct)}%</span>
+ </div>
+ )}
+ <div className="relative">
+ {/* Track background */}
+ <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-2 rounded-full" style={{ background: 'var(--muted)' }} />
+ {/* Filled portion */}
+ <div
+ className="absolute top-1/2 -translate-y-1/2 left-0 h-2 rounded-full"
+ style={{
+ width: `${pct}%`,
+ background: 'linear-gradient(90deg, #0d9488, #14b8a6)',
+ boxShadow: '0 0 4px rgba(13,148,136,0.4)',
+ }}
+ />
  <ScrollAwareSlider>
  <input
  type="range"
@@ -258,9 +276,21 @@ function Slider({ value, min, max, step = 1, onChange, format }: {
  step={step}
  value={value}
  onChange={(e) => onChange(Number(e.target.value))}
- className="w-full"
+ className="w-full relative z-10"
+ style={{
+ appearance: 'none',
+ WebkitAppearance: 'none',
+ background: 'transparent',
+ height: '24px',
+ cursor: 'pointer',
+ }}
  />
  </ScrollAwareSlider>
+ </div>
+ <div className="flex justify-between text-[8px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+ <span>{min}</span>
+ <span>{max}</span>
+ </div>
  </div>
  );
 }
@@ -307,34 +337,37 @@ function GoalsSection({ s, update }: { s: Settings; update: <K extends keyof Set
  format={(v) => `${v} / 720`}
  />
  </Row>
- {/* Exam Target Date + Prep Start Date — compact, side-by-side to save vertical space */}
+ {/* Exam Target Date + Prep Start Date — compact, side-by-side */}
  <div className="grid grid-cols-2 gap-3">
  <div>
- <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block">Exam Target Date</label>
+ <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block" style={{ color: 'var(--muted-foreground)' }}>Exam Target Date</label>
  <input
  type="date"
  value={s.examDate}
  onChange={(e) => update('examDate', e.target.value)}
- className="w-full border rounded-xl px-2 py-1.5 text-xs focus:outline-none focus:border-teal-400/50"
+ className="w-full rounded-xl px-2 py-1.5 text-xs focus:outline-none"
+ style={{ background: 'var(--muted)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
  />
  </div>
  <div>
- <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block">Prep Start Date</label>
+ <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block" style={{ color: 'var(--muted-foreground)' }}>Prep Start Date</label>
  <input
  type="date"
  value={s.prepStartDate || ''}
  onChange={(e) => update('prepStartDate', e.target.value || null)}
- className="w-full border rounded-xl px-2 py-1.5 text-xs focus:outline-none focus:border-teal-400/50"
+ className="w-full rounded-xl px-2 py-1.5 text-xs focus:outline-none"
+ style={{ background: 'var(--muted)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
  />
  </div>
  </div>
  <div className="flex items-center justify-between -mt-1">
  {!s.prepStartDate ? (
- <p className="text-[10px] ">Auto-detected from first study session</p>
+ <p className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Auto-detected from first study session</p>
  ) : (
  <button
  onClick={() => update('prepStartDate', null)}
- className="text-[10px] hover:underline" style={{ color: "#0d9488" }}
+ className="text-[10px] hover:underline"
+ style={{ color: '#0d9488' }}
  >
  ↻ Reset prep date to auto-detect
  </button>
