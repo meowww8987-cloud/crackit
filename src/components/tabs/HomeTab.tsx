@@ -137,6 +137,11 @@ export function HomeTab() {
     return st;
   }, [sessions]);
 
+  // Total study hours (for study-based pace calculation)
+  const totalStudyHours = useMemo(() => {
+    return sessions.reduce((a, s) => a + s.studySeconds, 0) / 3600;
+  }, [sessions]);
+
   const syllabusPct = useMemo(() => {
     const total = syllabusLectures.length;
     if (total === 0) return 0;
@@ -219,6 +224,12 @@ export function HomeTab() {
   const prepDay = prepStart ? diffDays(prepStart, todayKey()) + 1 : (sessions.length > 0 ? 1 : 0);
   const prepTotal = prepStart ? diffDays(prepStart, examDate) : 326;
   const prepPct = prepTotal > 0 ? Math.min(100, Math.round((prepDay / prepTotal) * 100)) : 0;
+
+  // Average study hours per day (for pace calculation)
+  const avgStudyHours = useMemo(() => {
+    const daysElapsed = prepStart ? Math.max(1, prepDay) : Math.max(1, Math.ceil((Date.now() - (sessions[0]?.startedAt || Date.now())) / 86400000));
+    return totalStudyHours / daysElapsed;
+  }, [totalStudyHours, prepStart, prepDay, sessions]);
 
   // === Lifted sheet state (rendered OUTSIDE motion.div wrappers to avoid
   //     the CSS transform → position:fixed containing block issue) ===
@@ -354,7 +365,7 @@ export function HomeTab() {
         {mounted && <StreakFlame streak={streak} />}
       </motion.div>
 
-      {/* Countdown Card — modern ring + urgency colors */}
+      {/* Countdown Card — modern ring + urgency colors + study-based pace */}
       <CountdownCard
         daysToExam={daysToExam}
         examDate={examDate}
@@ -365,6 +376,9 @@ export function HomeTab() {
         syllabusPct={syllabusPct}
         syllabusWeightedPct={syllabusWeightedPct}
         daysStudied={streak}
+        dailyGoalHours={dailyGoal}
+        avgStudyHours={avgStudyHours}
+        totalStudyHours={totalStudyHours}
       />
 
       {/* Test Day Mode — only renders when today is a test day. Replaces

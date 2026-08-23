@@ -2,30 +2,40 @@
 
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Calendar, X, Clock, TrendingUp, TrendingDown, CheckCircle2 } from 'lucide-react';
+import { Target, Calendar, X, Clock, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { CountUp } from '@/components/shared/CountUp';
 import { vibrate, cn } from '@/lib/utils';
 
 /**
  * CountdownCard — modern NEET countdown card with circular progress ring.
  *
- * Card shows ONLY essential info (clean, modern):
- *  - Circular ring (prep % elapsed, urgency-colored)
- *  - Big days-left number (urgency-colored, animated count-up)
- *  - Exam date with 📅 icon
- *  - "Day X of Y" + "% elapsed"
- *  - Syllabus % bar with weighted marker
- *  - Pace indicator (on track / behind)
- *  - Tap → detail sheet (everything else)
+ * RING = 365-day prep countdown
+ *  - Ring shows how much of the 365-day prep period (before exam) has elapsed
+ *  - Calculated from (examDate - 365 days) to today
+ *  - E.g. if 146 days passed out of 365 → ring is 40% filled
  *
- * Urgency color system:
- *  - 200+ days: teal (calm)
- *  - 100-199: green (on track)
- *  - 50-99: amber (focus up)
- *  - 30-49: orange (serious)
- *  - <30: red (crunch time!)
+ * PACE = study-time based (NOT syllabus based)
+ *  - avgStudyHours = total study hours / days since prep start
+ *  - ratio = avgStudyHours / dailyGoalHours
+ *  - ratio ≥ 1.0 → Excellent (green)
+ *  - ratio 0.75-0.99 → On track (green)
+ *  - ratio 0.50-0.74 → Slightly behind (amber)
+ *  - ratio 0.25-0.49 → Behind (orange)
+ *  - ratio < 0.25 → Very poor (red)
  *
- * THEME COMPLIANCE: all text uses CSS variables.
+ * CARD shows:
+ *  - Ring (365-day elapsed %)
+ *  - Big days-left number (urgency-colored)
+ *  - Exam date
+ *  - Day X of Y + urgency label
+ *  - Prep Timeline (compact, with "You are here" marker)
+ *  - Pace indicator (study-based) + days studied
+ *
+ * DETAIL SHEET shows:
+ *  - Big countdown
+ *  - 4 stat cards (Prep Day / Pace / Syllabus % / Weighted %)
+ *  - Full timeline with dates
+ *  - Smart insights (including study pace analysis)
  */
 
 interface Props {
@@ -38,6 +48,9 @@ interface Props {
   syllabusPct: number;
   syllabusWeightedPct: number;
   daysStudied: number;
+  dailyGoalHours: number;
+  avgStudyHours: number; // total study hours / prep days
+  totalStudyHours: number;
 }
 
 function getUrgencyColor(days: number): { color: string; label: string; ringColor: string } {
@@ -46,6 +59,14 @@ function getUrgencyColor(days: number): { color: string; label: string; ringColo
   if (days >= 50) return { color: '#f59e0b', label: 'Focus up', ringColor: '#f59e0b' };
   if (days >= 30) return { color: '#f97316', label: 'Getting serious', ringColor: '#f97316' };
   return { color: '#ef4444', label: 'Crunch time!', ringColor: '#ef4444' };
+}
+
+function getPaceInfo(ratio: number): { label: string; color: string; key: string } {
+  if (ratio >= 1.0) return { label: 'Excellent', color: '#22c55e', key: 'excellent' };
+  if (ratio >= 0.75) return { label: 'On track', color: '#22c55e', key: 'on-track' };
+  if (ratio >= 0.50) return { label: 'Slightly behind', color: '#f59e0b', key: 'slightly-behind' };
+  if (ratio >= 0.25) return { label: 'Behind', color: '#f97316', key: 'behind' };
+  return { label: 'Very poor', color: '#ef4444', key: 'very-poor' };
 }
 
 export function CountdownCard({
@@ -58,6 +79,9 @@ export function CountdownCard({
   syllabusPct,
   syllabusWeightedPct,
   daysStudied,
+  dailyGoalHours,
+  avgStudyHours,
+  totalStudyHours,
 }: Props) {
   const [showDetail, setShowDetail] = useState(false);
 
@@ -66,18 +90,52 @@ export function CountdownCard({
   const examDateStr = examDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const examWeekday = examDateObj.toLocaleDateString('en-US', { weekday: 'long' });
 
-  // Pace: is syllabus % keeping up with prep %?
-  const paceDiff = syllabusPct - prepPct;
-  const pace = paceDiff >= -5 ? 'on-track' : paceDiff >= -15 ? 'behind' : 'critical';
-  const paceLabel = pace === 'on-track' ? 'On track' : pace === 'behind' ? 'Slightly behind' : 'Behind schedule';
-  const paceColor = pace === 'on-track' ? '#22c55e' : pace === 'behind' ? '#f59e0b' : '#ef4444';
+  // === 365-day prep ring ===
+  // Ring shows how much of the 365-day period (before exam) has elapsed.
+  // Start = examDate - 365 days. End = examDate.
+  // elapsedDays = days from start to today.
+  // ringPct = elapsedDays / 365 * 100 (capped at 100).
+  const prep365Start = useMemo(() => {
+    const d = new Date(examDate + 'T00:00:00');
+    d.setDate(d.getDate() - 365);
+    return d;
+  }, [examDate]);
+
+  const elapsed365Days = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffMs = today.getTime() - prep365Start.getTime();
+    return Math.max(0, Math.min(365, Math.floor(diffMs / 86400000)));
+  }, [prep365Start]);
+
+  const ringPct = Math.min(100, Math.round((elapsed365Days / 365) * 100));
+
+  // === Study-based pace ===
+  const paceRatio = dailyGoalHours > 0 ? avgStudyHours / dailyGoalHours : 0;
+  const paceInfo = getPaceInfo(paceRatio);
 
   // Ring dimensions
   const ringSize = 72;
   const strokeWidth = 6;
   const radius = (ringSize - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const ringOffset = circumference - (prepPct / 100) * circumference;
+  const ringOffset = circumference - (ringPct / 100) * circumference;
+
+  // Timeline milestones (based on 365-day period)
+  const milestones = useMemo(() => {
+    return [25, 50, 75].map((pct) => {
+      const daysFromStart = Math.round((365 * pct) / 100);
+      const date = new Date(prep365Start);
+      date.setDate(date.getDate() + daysFromStart);
+      return {
+        pct,
+        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        passed: ringPct >= pct,
+      };
+    });
+  }, [prep365Start, ringPct]);
+
+  const startDateStr = prep365Start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   return (
     <>
@@ -95,10 +153,9 @@ export function CountdownCard({
       >
         {/* Top row: Ring + Big number */}
         <div className="flex items-center gap-4 mb-3">
-          {/* Circular progress ring */}
+          {/* Circular progress ring — 365-day elapsed */}
           <div className="relative shrink-0" style={{ width: ringSize, height: ringSize }}>
             <svg width={ringSize} height={ringSize} className="-rotate-90">
-              {/* Background circle */}
               <circle
                 cx={ringSize / 2}
                 cy={ringSize / 2}
@@ -107,7 +164,6 @@ export function CountdownCard({
                 stroke="var(--muted)"
                 strokeWidth={strokeWidth}
               />
-              {/* Progress circle */}
               <motion.circle
                 cx={ringSize / 2}
                 cy={ringSize / 2}
@@ -124,13 +180,12 @@ export function CountdownCard({
                 style={{ filter: `drop-shadow(0 0 3px ${urgency.ringColor}80)` }}
               />
             </svg>
-            {/* Center text */}
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-sm font-bold tabular" style={{ color: urgency.color }}>
-                {prepPct}%
+                {ringPct}%
               </span>
               <span className="text-[7px] uppercase" style={{ color: 'var(--muted-foreground)' }}>
-                elapsed
+                of 365d
               </span>
             </div>
           </div>
@@ -153,61 +208,78 @@ export function CountdownCard({
           </div>
         </div>
 
-        {/* Prep day info */}
-        {prepStart && (
-          <div className="flex items-center justify-between text-[10px] mb-3" style={{ color: 'var(--muted-foreground)' }}>
-            <span>Day {prepDay} of {prepTotal}</span>
-            <span className="font-semibold" style={{ color: urgency.color }}>
-              {urgency.label}
-            </span>
-          </div>
-        )}
+        {/* Elapsed info */}
+        <div className="flex items-center justify-between text-[10px] mb-3" style={{ color: 'var(--muted-foreground)' }}>
+          <span>{elapsed365Days}/365 days elapsed</span>
+          <span className="font-semibold" style={{ color: urgency.color }}>
+            {urgency.label}
+          </span>
+        </div>
 
-        {/* Syllabus progress — single bar with weighted marker */}
-        <div className="mb-2">
-          <div className="flex justify-between text-[10px] mb-1">
-            <span style={{ color: 'var(--muted-foreground)' }}>📚 Syllabus</span>
-            <span className="tabular font-semibold" style={{ color: 'var(--foreground)' }}>
-              {syllabusPct}%
-              {syllabusWeightedPct !== syllabusPct && (
-                <span style={{ color: '#f59e0b' }}> · {syllabusWeightedPct}%⚡</span>
-              )}
-            </span>
+        {/* Compact Prep Timeline */}
+        <div className="mb-3">
+          <div className="text-[9px] uppercase tracking-wide font-semibold mb-2" style={{ color: 'var(--muted-foreground)' }}>
+            Prep Timeline
           </div>
-          <div className="relative h-2 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
-            <motion.div
-              initial={{ width: 0 }}
-              whileInView={{ width: `${syllabusPct}%` }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="h-full rounded-full"
-              style={{ background: 'linear-gradient(90deg, #14b8a6, #22c55e)' }}
+          <div className="relative px-1">
+            {/* Timeline line */}
+            <div className="absolute left-1 right-1 top-2 h-0.5" style={{ background: 'var(--muted)' }} />
+            {/* Progress portion */}
+            <div
+              className="absolute left-1 top-2 h-0.5"
+              style={{ width: `calc((100% - 8px) * ${ringPct / 100})`, background: urgency.color }}
             />
-            {/* Weighted marker */}
-            {syllabusWeightedPct !== syllabusPct && (
-              <div
-                className="absolute top-0 bottom-0 w-0.5"
-                style={{ left: `${syllabusWeightedPct}%`, background: '#f59e0b' }}
-              />
-            )}
+            {/* Milestones */}
+            <div className="relative flex justify-between">
+              {/* Start */}
+              <div className="flex flex-col items-center" style={{ width: '20%' }}>
+                <div className="w-3 h-3 rounded-full" style={{ background: urgency.color }} />
+                <span className="text-[7px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{startDateStr}</span>
+              </div>
+              {/* 25/50/75 milestones */}
+              {milestones.map((m) => (
+                <div key={m.pct} className="flex flex-col items-center" style={{ width: '20%' }}>
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{
+                      background: m.passed ? urgency.color : 'var(--muted)',
+                      border: ringPct >= m.pct - 3 && ringPct <= m.pct + 3 ? `1.5px solid ${urgency.color}` : 'none',
+                    }}
+                  />
+                  <span className="text-[7px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{m.pct}%</span>
+                </div>
+              ))}
+              {/* Exam */}
+              <div className="flex flex-col items-center" style={{ width: '20%' }}>
+                <div className="w-3 h-3 rounded-full" style={{ border: `1.5px solid var(--muted-foreground)` }} />
+                <span className="text-[7px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{examDateStr}</span>
+              </div>
+            </div>
+            {/* "You are here" marker */}
+            <div
+              className="absolute top-0"
+              style={{ left: `calc(4px + (100% - 8px) * ${ringPct / 100})`, transform: 'translateX(-50%)' }}
+            >
+              <div className="w-0 h-0 border-l-[3px] border-r-[3px] border-t-[5px] border-l-transparent border-r-transparent" style={{ borderTopColor: urgency.color }} />
+            </div>
           </div>
         </div>
 
-        {/* Pace indicator */}
+        {/* Pace indicator (study-based) */}
         <div
           className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-[10px]"
-          style={{ background: `${paceColor}15` }}
+          style={{ background: `${paceInfo.color}15` }}
         >
           <div className="flex items-center gap-1">
-            {pace === 'on-track' ? (
-              <CheckCircle2 size={11} style={{ color: paceColor }} />
+            {paceInfo.key === 'excellent' || paceInfo.key === 'on-track' ? (
+              <CheckCircle2 size={11} style={{ color: paceInfo.color }} />
             ) : (
-              <TrendingDown size={11} style={{ color: paceColor }} />
+              <AlertTriangle size={11} style={{ color: paceInfo.color }} />
             )}
-            <span className="font-bold" style={{ color: paceColor }}>{paceLabel}</span>
+            <span className="font-bold" style={{ color: paceInfo.color }}>{paceInfo.label}</span>
           </div>
           <span style={{ color: 'var(--muted-foreground)' }}>
-            {daysStudied} days studied
+            {avgStudyHours.toFixed(1)}h/{dailyGoalHours}h avg
           </span>
         </div>
       </motion.div>
@@ -228,9 +300,15 @@ export function CountdownCard({
             syllabusWeightedPct={syllabusWeightedPct}
             daysStudied={daysStudied}
             urgency={urgency}
-            pace={pace}
-            paceLabel={paceLabel}
-            paceColor={paceColor}
+            paceInfo={paceInfo}
+            paceRatio={paceRatio}
+            dailyGoalHours={dailyGoalHours}
+            avgStudyHours={avgStudyHours}
+            totalStudyHours={totalStudyHours}
+            elapsed365Days={elapsed365Days}
+            ringPct={ringPct}
+            milestones={milestones}
+            startDateStr={startDateStr}
             onClose={() => setShowDetail(false)}
           />
         )}
@@ -256,9 +334,15 @@ function CountdownDetailSheet({
   syllabusWeightedPct,
   daysStudied,
   urgency,
-  pace,
-  paceLabel,
-  paceColor,
+  paceInfo,
+  paceRatio,
+  dailyGoalHours,
+  avgStudyHours,
+  totalStudyHours,
+  elapsed365Days,
+  ringPct,
+  milestones,
+  startDateStr,
   onClose,
 }: {
   daysToExam: number;
@@ -273,58 +357,56 @@ function CountdownDetailSheet({
   syllabusWeightedPct: number;
   daysStudied: number;
   urgency: { color: string; label: string; ringColor: string };
-  pace: string;
-  paceLabel: string;
-  paceColor: string;
+  paceInfo: { label: string; color: string; key: string };
+  paceRatio: number;
+  dailyGoalHours: number;
+  avgStudyHours: number;
+  totalStudyHours: number;
+  elapsed365Days: number;
+  ringPct: number;
+  milestones: { pct: number; date: string; passed: boolean }[];
+  startDateStr: string;
   onClose: () => void;
 }) {
-  // Timeline milestones
-  const milestones = useMemo(() => {
-    if (!prepStart) return [];
-    const startDate = new Date(prepStart + 'T00:00:00');
-    const endDate = new Date(examDate + 'T00:00:00');
-    const totalMs = endDate.getTime() - startDate.getTime();
-    return [25, 50, 75].map((pct) => {
-      const date = new Date(startDate.getTime() + (totalMs * pct) / 100);
-      return {
-        pct,
-        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        passed: prepPct >= pct,
-      };
-    });
-  }, [prepStart, examDate, prepPct]);
-
   // Insights
   const insights = useMemo(() => {
     const list: string[] = [];
-    list.push(`You're ${prepPct}% through your prep time.`);
+    list.push(`${elapsed365Days} of 365 prep days elapsed (${ringPct}%).`);
 
-    if (pace === 'on-track') {
-      list.push(`Syllabus is ${syllabusPct}% done — you're on track! ✓`);
-    } else if (pace === 'behind') {
-      list.push(`Syllabus is ${syllabusPct}% done — ${prepPct - syllabusPct}% behind schedule.`);
+    // Study pace insight
+    if (paceRatio >= 1.0) {
+      list.push(`Averaging ${avgStudyHours.toFixed(1)}h/day vs ${dailyGoalHours}h goal — excellent! 🎉`);
+    } else if (paceRatio >= 0.75) {
+      list.push(`Averaging ${avgStudyHours.toFixed(1)}h/day vs ${dailyGoalHours}h goal — on track!`);
+    } else if (paceRatio >= 0.50) {
+      list.push(`Averaging ${avgStudyHours.toFixed(1)}h/day vs ${dailyGoalHours}h goal — slightly behind.`);
+    } else if (paceRatio >= 0.25) {
+      list.push(`Averaging ${avgStudyHours.toFixed(1)}h/day vs ${dailyGoalHours}h goal — behind schedule.`);
     } else {
-      list.push(`Syllabus is ${syllabusPct}% done — ${prepPct - syllabusPct}% behind. Focus on high-weightage chapters!`);
+      list.push(`Averaging ${avgStudyHours.toFixed(1)}h/day vs ${dailyGoalHours}h goal — very poor. Need to study more!`);
     }
 
+    // Catch-up calculation
+    if (paceRatio < 1.0 && daysToExam > 0) {
+      const neededAvg = (dailyGoalHours * 365 - totalStudyHours) / daysToExam;
+      if (neededAvg > dailyGoalHours) {
+        list.push(`To hit your goal, study ${neededAvg.toFixed(1)}h/day for remaining ${daysToExam} days.`);
+      }
+    }
+
+    // Syllabus insight
+    if (syllabusPct > 0) {
+      list.push(`Syllabus: ${syllabusPct}% done${syllabusWeightedPct !== syllabusPct ? ` · ${syllabusWeightedPct}% weighted` : ''}.`);
+    }
+
+    // Next milestone
     const nextMilestone = milestones.find((m) => !m.passed);
     if (nextMilestone) {
       list.push(`Next milestone: ${nextMilestone.pct}% (${nextMilestone.date}).`);
     }
 
-    // Pace projection
-    if (syllabusPct > 0 && prepPct > 0) {
-      const rate = syllabusPct / prepPct;
-      const projected = Math.round(rate * 100);
-      if (projected >= 100) {
-        list.push(`At current pace, you'll finish syllabus before exam! 🎉`);
-      } else {
-        list.push(`At current pace, you'll reach ${projected}% by exam day.`);
-      }
-    }
-
     return list;
-  }, [prepPct, syllabusPct, pace, milestones]);
+  }, [elapsed365Days, ringPct, paceRatio, avgStudyHours, dailyGoalHours, daysToExam, totalStudyHours, syllabusPct, syllabusWeightedPct, milestones]);
 
   return (
     <motion.div
@@ -389,15 +471,15 @@ function CountdownDetailSheet({
         <div className="grid grid-cols-2 gap-2.5 mb-4">
           <StatCard
             icon={<Clock size={12} style={{ color: '#14b8a6' }} />}
-            label="Prep Day"
-            value={`${prepDay}/${prepTotal}`}
+            label="365d Elapsed"
+            value={`${elapsed365Days}/365`}
             color="#14b8a6"
           />
           <StatCard
-            icon={<CheckCircle2 size={12} style={{ color: paceColor }} />}
-            label="Pace"
-            value={paceLabel}
-            color={paceColor}
+            icon={paceInfo.key === 'excellent' || paceInfo.key === 'on-track' ? <CheckCircle2 size={12} style={{ color: paceInfo.color }} /> : <AlertTriangle size={12} style={{ color: paceInfo.color }} />}
+            label="Study Pace"
+            value={paceInfo.label}
+            color={paceInfo.color}
           />
           <StatCard
             icon={<TrendingUp size={12} style={{ color: '#22c55e' }} />}
@@ -413,68 +495,93 @@ function CountdownDetailSheet({
           />
         </div>
 
-        {/* Timeline */}
-        {prepStart && milestones.length > 0 && (
-          <div className="mb-4">
-            <div className="text-[9px] uppercase tracking-wide font-semibold mb-3" style={{ color: 'var(--muted-foreground)' }}>
-              Prep Timeline
+        {/* Study pace detail */}
+        <div
+          className="rounded-xl p-3 mb-4"
+          style={{ background: `${paceInfo.color}10`, border: `1px solid ${paceInfo.color}30` }}
+        >
+          <div className="text-[9px] uppercase tracking-wide font-semibold mb-2" style={{ color: 'var(--muted-foreground)' }}>
+            Study Pace Analysis
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div className="text-sm font-bold tabular" style={{ color: 'var(--foreground)' }}>
+                {avgStudyHours.toFixed(1)}h
+              </div>
+              <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>Your avg/day</div>
             </div>
-            <div className="relative px-2">
-              {/* Timeline line */}
-              <div
-                className="absolute left-2 right-2 top-2 h-0.5"
-                style={{ background: 'var(--muted)' }}
-              />
-              {/* Progress portion */}
-              <div
-                className="absolute left-2 top-2 h-0.5"
-                style={{ width: `calc((100% - 16px) * ${prepPct / 100})`, background: urgency.color }}
-              />
-              {/* Milestones */}
-              <div className="relative flex justify-between">
-                {/* Start */}
-                <div className="flex flex-col items-center" style={{ width: '20%' }}>
-                  <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: urgency.color }}>
-                    <CheckCircle2 size={10} className="text-white" />
-                  </div>
-                  <span className="text-[8px] mt-1 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Start</span>
-                  <span className="text-[7px]" style={{ color: 'var(--muted-foreground)' }}>
-                    {new Date(prepStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                </div>
-                {/* Milestones */}
-                {milestones.map((m) => (
-                  <div key={m.pct} className="flex flex-col items-center" style={{ width: '20%' }}>
-                    <div
-                      className="w-4 h-4 rounded-full flex items-center justify-center"
-                      style={{
-                        background: m.passed ? urgency.color : 'var(--muted)',
-                        border: prepPct >= m.pct - 5 && prepPct <= m.pct + 5 ? `2px solid ${urgency.color}` : 'none',
-                      }}
-                    >
-                      {m.passed && <CheckCircle2 size={10} className="text-white" />}
-                    </div>
-                    <span className="text-[8px] mt-1 font-semibold" style={{ color: 'var(--muted-foreground)' }}>{m.pct}%</span>
-                    <span className="text-[7px]" style={{ color: 'var(--muted-foreground)' }}>{m.date}</span>
-                  </div>
-                ))}
-                {/* Exam */}
-                <div className="flex flex-col items-center" style={{ width: '20%' }}>
-                  <div className="w-4 h-4 rounded-full" style={{ border: `2px solid var(--muted-foreground)` }} />
-                  <span className="text-[8px] mt-1 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Exam</span>
-                  <span className="text-[7px]" style={{ color: 'var(--muted-foreground)' }}>{examDateStr}</span>
-                </div>
+            <div>
+              <div className="text-sm font-bold tabular" style={{ color: 'var(--foreground)' }}>
+                {dailyGoalHours}h
               </div>
-              {/* "You are here" marker */}
-              <div
-                className="absolute top-0"
-                style={{ left: `calc(8px + (100% - 16px) * ${prepPct / 100})`, transform: 'translateX(-50%)' }}
-              >
-                <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent" style={{ borderTopColor: urgency.color }} />
+              <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>Daily goal</div>
+            </div>
+            <div>
+              <div className="text-sm font-bold tabular" style={{ color: paceInfo.color }}>
+                {Math.round(paceRatio * 100)}%
               </div>
+              <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>Of goal</div>
             </div>
           </div>
-        )}
+          <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${Math.min(100, paceRatio * 100)}%`, background: paceInfo.color }}
+            />
+          </div>
+          <div className="text-[9px] mt-1 text-center" style={{ color: 'var(--muted-foreground)' }}>
+            Total: {totalStudyHours.toFixed(1)}h studied · {daysStudied} active days
+          </div>
+        </div>
+
+        {/* Timeline */}
+        <div className="mb-4">
+          <div className="text-[9px] uppercase tracking-wide font-semibold mb-3" style={{ color: 'var(--muted-foreground)' }}>
+            365-Day Prep Timeline
+          </div>
+          <div className="relative px-2">
+            <div className="absolute left-2 right-2 top-2 h-0.5" style={{ background: 'var(--muted)' }} />
+            <div
+              className="absolute left-2 top-2 h-0.5"
+              style={{ width: `calc((100% - 16px) * ${ringPct / 100})`, background: urgency.color }}
+            />
+            <div className="relative flex justify-between">
+              <div className="flex flex-col items-center" style={{ width: '20%' }}>
+                <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: urgency.color }}>
+                  <CheckCircle2 size={10} className="text-white" />
+                </div>
+                <span className="text-[8px] mt-1 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Start</span>
+                <span className="text-[7px]" style={{ color: 'var(--muted-foreground)' }}>{startDateStr}</span>
+              </div>
+              {milestones.map((m) => (
+                <div key={m.pct} className="flex flex-col items-center" style={{ width: '20%' }}>
+                  <div
+                    className="w-4 h-4 rounded-full flex items-center justify-center"
+                    style={{
+                      background: m.passed ? urgency.color : 'var(--muted)',
+                      border: ringPct >= m.pct - 3 && ringPct <= m.pct + 3 ? `2px solid ${urgency.color}` : 'none',
+                    }}
+                  >
+                    {m.passed && <CheckCircle2 size={10} className="text-white" />}
+                  </div>
+                  <span className="text-[8px] mt-1 font-semibold" style={{ color: 'var(--muted-foreground)' }}>{m.pct}%</span>
+                  <span className="text-[7px]" style={{ color: 'var(--muted-foreground)' }}>{m.date}</span>
+                </div>
+              ))}
+              <div className="flex flex-col items-center" style={{ width: '20%' }}>
+                <div className="w-4 h-4 rounded-full" style={{ border: `2px solid var(--muted-foreground)` }} />
+                <span className="text-[8px] mt-1 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Exam</span>
+                <span className="text-[7px]" style={{ color: 'var(--muted-foreground)' }}>{examDateStr}</span>
+              </div>
+            </div>
+            <div
+              className="absolute top-0"
+              style={{ left: `calc(8px + (100% - 16px) * ${ringPct / 100})`, transform: 'translateX(-50%)' }}
+            >
+              <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent" style={{ borderTopColor: urgency.color }} />
+            </div>
+          </div>
+        </div>
 
         {/* Insights */}
         <div className="mb-2">
