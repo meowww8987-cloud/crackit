@@ -7,7 +7,117 @@ import { NumberMorph } from '@/components/shared/NumberMorph';
 import { useHistory } from '@/lib/store/history';
 import { useSession, getLiveStudySeconds } from '@/lib/store/session';
 import { usePractice } from '@/lib/store/practice';
+import { useSettings } from '@/lib/store/settings';
 import { formatHM, vibrate, cn, todayKey, dateKey, addDays } from '@/lib/utils';
+
+/**
+ * Theme-aware color system for Progress Rings.
+ *
+ * Each theme gets DIFFERENT ring colors + glow + outline optimized for
+ * that theme's background:
+ *
+ * DARK themes (dark, forest, ocean):
+ *  - BRIGHT/VIBRANT ring colors (pop on dark bg)
+ *  - STRONG glow (halo visible)
+ *  - LIGHT outline (rgba(255,255,255,0.25))
+ *
+ * LIGHT themes (light, warm, rose, sage, gold):
+ *  - DARK/SATURATED ring colors (visible on light bg)
+ *  - SUBTLE glow (dark glow looks odd on light)
+ *  - DARK outline (rgba(0,0,0,0.3)) for contrast
+ */
+
+type AppTheme = 'dark' | 'light' | 'warm' | 'rose' | 'sage' | 'ocean' | 'forest' | 'gold';
+
+interface ThemeColors {
+  teal: { primary: string; secondary: string; glow: string; outline: string };
+  green: { primary: string; secondary: string; glow: string; outline: string };
+  goalHit: string;
+  below25: string;
+  live: string;
+  today: string;
+  particle: string[];
+}
+
+const THEME_COLORS: Record<AppTheme, ThemeColors> = {
+  dark: {
+    teal: { primary: '#2dd4bf', secondary: '#14b8a6', glow: 'rgba(45,212,191,0.7)', outline: 'rgba(255,255,255,0.25)' },
+    green: { primary: '#4ade80', secondary: '#22c55e', glow: 'rgba(74,222,128,0.7)', outline: 'rgba(255,255,255,0.25)' },
+    goalHit: '#4ade80',
+    below25: '#fbbf24',
+    live: '#4ade80',
+    today: '#fbbf24',
+    particle: ['#fbbf24', '#4ade80', '#2dd4bf', '#60a5fa'],
+  },
+  light: {
+    teal: { primary: '#0d9488', secondary: '#14b8a6', glow: 'rgba(13,148,136,0.35)', outline: 'rgba(0,0,0,0.3)' },
+    green: { primary: '#16a34a', secondary: '#22c55e', glow: 'rgba(22,163,74,0.35)', outline: 'rgba(0,0,0,0.3)' },
+    goalHit: '#16a34a',
+    below25: '#c2410c',
+    live: '#16a34a',
+    today: '#d97706',
+    particle: ['#d97706', '#16a34a', '#0d9488', '#2563eb'],
+  },
+  warm: {
+    teal: { primary: '#0f766e', secondary: '#14b8a6', glow: 'rgba(15,118,110,0.4)', outline: 'rgba(60,40,20,0.35)' },
+    green: { primary: '#15803d', secondary: '#22c55e', glow: 'rgba(21,128,61,0.4)', outline: 'rgba(60,40,20,0.35)' },
+    goalHit: '#15803d',
+    below25: '#b45309',
+    live: '#15803d',
+    today: '#b45309',
+    particle: ['#b45309', '#15803d', '#0f766e', '#92400e'],
+  },
+  rose: {
+    teal: { primary: '#0d9488', secondary: '#14b8a6', glow: 'rgba(13,148,136,0.35)', outline: 'rgba(139,47,76,0.3)' },
+    green: { primary: '#16a34a', secondary: '#22c55e', glow: 'rgba(22,163,74,0.35)', outline: 'rgba(139,47,76,0.3)' },
+    goalHit: '#16a34a',
+    below25: '#c2410c',
+    live: '#16a34a',
+    today: '#d97706',
+    particle: ['#d97706', '#16a34a', '#0d9488', '#9333ea'],
+  },
+  sage: {
+    teal: { primary: '#0f766e', secondary: '#14b8a6', glow: 'rgba(15,118,110,0.4)', outline: 'rgba(50,70,50,0.35)' },
+    green: { primary: '#166534', secondary: '#22c55e', glow: 'rgba(22,101,52,0.4)', outline: 'rgba(50,70,50,0.35)' },
+    goalHit: '#166534',
+    below25: '#a16207',
+    live: '#166534',
+    today: '#a16207',
+    particle: ['#a16207', '#166534', '#0f766e', '#854d0e'],
+  },
+  ocean: {
+    teal: { primary: '#06b6d4', secondary: '#22d3ee', glow: 'rgba(6,182,212,0.7)', outline: 'rgba(255,255,255,0.2)' },
+    green: { primary: '#10b981', secondary: '#34d399', glow: 'rgba(16,185,129,0.7)', outline: 'rgba(255,255,255,0.2)' },
+    goalHit: '#34d399',
+    below25: '#fbbf24',
+    live: '#34d399',
+    today: '#fbbf24',
+    particle: ['#fbbf24', '#34d399', '#22d3ee', '#60a5fa'],
+  },
+  forest: {
+    teal: { primary: '#14b8a6', secondary: '#2dd4bf', glow: 'rgba(20,184,166,0.6)', outline: 'rgba(255,255,255,0.2)' },
+    green: { primary: '#4ade80', secondary: '#86efac', glow: 'rgba(74,222,128,0.7)', outline: 'rgba(255,255,255,0.2)' },
+    goalHit: '#86efac',
+    below25: '#fde047',
+    live: '#86efac',
+    today: '#fde047',
+    particle: ['#fde047', '#86efac', '#2dd4bf', '#a3e635'],
+  },
+  gold: {
+    teal: { primary: '#0d9488', secondary: '#14b8a6', glow: 'rgba(13,148,136,0.4)', outline: 'rgba(80,50,10,0.35)' },
+    green: { primary: '#16a34a', secondary: '#22c55e', glow: 'rgba(22,163,74,0.4)', outline: 'rgba(80,50,10,0.35)' },
+    goalHit: '#16a34a',
+    below25: '#b45309',
+    live: '#16a34a',
+    today: '#b45309',
+    particle: ['#b45309', '#16a34a', '#0d9488', '#92400e'],
+  },
+};
+
+function useThemeColors(): ThemeColors {
+  const appTheme = useSettings((s) => s.appTheme);
+  return THEME_COLORS[appTheme as AppTheme] || THEME_COLORS.dark;
+}
 
 /**
  * ProgressRings — ADVANCED animated dual-ring progress card.
@@ -62,6 +172,7 @@ export function ProgressRings({
   const [celebrateToday, setCelebrateToday] = useState(false);
   const [celebrateWeek, setCelebrateWeek] = useState(false);
   const prevTodayPctRef = useRef(todayPct);
+  const themeColors = useThemeColors();
   const prevWeekPctRef = useRef(weekPct);
 
   // Live studying check
@@ -106,11 +217,11 @@ export function ProgressRings({
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="glass rounded-2xl p-4 relative overflow-hidden"
       >
-        {/* Animated background gradient */}
+        {/* Animated background gradient — theme-aware */}
         <motion.div
           className="absolute inset-0 opacity-30"
           style={{
-            background: 'radial-gradient(circle at 30% 50%, rgba(20,184,166,0.15), transparent 50%), radial-gradient(circle at 70% 50%, rgba(34,197,94,0.15), transparent 50%)',
+            background: `radial-gradient(circle at 30% 50%, ${themeColors.teal.glow}, transparent 50%), radial-gradient(circle at 70% 50%, ${themeColors.green.glow}, transparent 50%)`,
           }}
           animate={{
             backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'],
@@ -125,7 +236,7 @@ export function ProgressRings({
               animate={isLive ? { rotate: 360 } : {}}
               transition={isLive ? { duration: 3, repeat: Infinity, ease: 'linear' } : {}}
             >
-              <Activity size={16} style={{ color: isLive ? '#16a34a' : '#0d9488' }} />
+              <Activity size={16} style={{ color: isLive ? themeColors.live : themeColors.teal.primary }} />
             </motion.div>
             <h3 className="text-xs font-bold" style={{ color: 'var(--foreground)' }}>
               Progress
@@ -140,15 +251,15 @@ export function ProgressRings({
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
                 className="flex items-center gap-1.5 px-2 py-0.5 rounded-full"
-                style={{ background: 'rgba(22,163,74,0.15)', border: '1px solid rgba(22,163,74,0.4)' }}
+                style={{ background: `${themeColors.live}25`, border: `1px solid ${themeColors.live}60` }}
               >
                 <motion.div
                   animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                   className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: '#16a34a', boxShadow: '0 0 6px rgba(22,163,74,0.6)' }}
+                  style={{ background: themeColors.live, boxShadow: `0 0 6px ${themeColors.live}` }}
                 />
-                <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: '#16a34a' }}>
+                <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: themeColors.live }}>
                   Live
                 </span>
               </motion.div>
@@ -173,9 +284,10 @@ export function ProgressRings({
               isLive={isLive}
               celebrate={celebrateToday}
               colorScheme="teal"
+              themeColors={themeColors}
             />
             {/* Trend badge */}
-            <TrendBadge trend={trendToday} />
+            <TrendBadge trend={trendToday} themeColors={themeColors} />
             <div className="text-[9px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
               Yesterday: {formatHM(yestSec)}
             </div>
@@ -196,9 +308,10 @@ export function ProgressRings({
               isLive={isLive}
               celebrate={celebrateWeek}
               colorScheme="green"
+              themeColors={themeColors}
             />
             {/* Trend badge */}
-            <TrendBadge trend={trendWeek} />
+            <TrendBadge trend={trendWeek} themeColors={themeColors} />
             <div className="text-[9px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
               Last: {formatHM(lastWeek)}
             </div>
@@ -252,6 +365,7 @@ function AdvancedRing({
   isLive,
   celebrate,
   colorScheme,
+  themeColors,
 }: {
   innerPct: number;
   outerPct: number;
@@ -261,35 +375,41 @@ function AdvancedRing({
   isLive: boolean;
   celebrate: boolean;
   colorScheme: 'teal' | 'green';
+  themeColors: ThemeColors;
 }) {
   const size = 110;
   const center = size / 2;
   const outerRadius = 48;
   const innerRadius = 36;
-  const strokeWidth = 6;
+  const strokeWidth = 7; // thicker for better visibility
   const outerCircumference = 2 * Math.PI * outerRadius;
   const innerCircumference = 2 * Math.PI * innerRadius;
 
-  // Darker colors for visibility on BOTH dark and light themes
-  const colors = colorScheme === 'teal'
-    ? { primary: '#0d9488', secondary: '#14b8a6', glow: 'rgba(13,148,136,0.5)', gradId: 'grad-teal' }
-    : { primary: '#16a34a', secondary: '#22c55e', glow: 'rgba(22,163,74,0.5)', gradId: 'grad-green' };
+  // Theme-aware colors — different per theme for optimal visibility
+  const schemeColors = colorScheme === 'teal' ? themeColors.teal : themeColors.green;
+  const colors = {
+    primary: schemeColors.primary,
+    secondary: schemeColors.secondary,
+    glow: schemeColors.glow,
+    outline: schemeColors.outline,
+    gradId: colorScheme === 'teal' ? 'grad-teal' : 'grad-green',
+  };
 
-  // Goal-based color (darker for light-theme visibility)
-  const ringColor = goalPct >= 100 ? '#16a34a' : goalPct >= 75 ? colors.secondary : goalPct >= 25 ? colors.primary : '#c2410c';
+  // Goal-based color (theme-aware)
+  const ringColor = goalPct >= 100 ? themeColors.goalHit : goalPct >= 75 ? colors.secondary : goalPct >= 25 ? colors.primary : themeColors.below25;
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      {/* Glow halo */}
+      {/* Glow halo — STRONGER for visibility */}
       <motion.div
         className="absolute inset-0 rounded-full"
         style={{
           background: `radial-gradient(circle, ${colors.glow} 0%, transparent 70%)`,
-          filter: 'blur(8px)',
+          filter: 'blur(10px)',
         }}
         animate={{
-          opacity: isLive ? [0.4, 0.7, 0.4] : [0.3, 0.5, 0.3],
-          scale: isLive ? [1, 1.05, 1] : [1, 1.02, 1],
+          opacity: isLive ? [0.5, 0.8, 0.5] : [0.4, 0.6, 0.4],
+          scale: isLive ? [1, 1.08, 1] : [1, 1.03, 1],
         }}
         transition={{ duration: isLive ? 1.5 : 3, repeat: Infinity, ease: 'easeInOut' }}
       />
@@ -306,37 +426,40 @@ function AdvancedRing({
               <animate attributeName="stop-color" values={`${colors.secondary};${colors.primary};${colors.secondary}`} dur="3s" repeatCount="indefinite" />
             </stop>
           </linearGradient>
-          {/* Glow filter */}
-          <filter id={`glow-${colors.gradId}`}>
-            <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+          {/* STRONGER glow filter */}
+          <filter id={`glow-${colors.gradId}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3.5" result="coloredBlur" />
             <feMerge>
+              <feMergeNode in="coloredBlur" />
               <feMergeNode in="coloredBlur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
         </defs>
 
-        {/* Outer ring track (yesterday/last week) */}
-        <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="var(--muted)" strokeWidth={strokeWidth - 1} opacity="0.5" />
-        {/* Outer ring progress (faded comparison) */}
+        {/* Outer ring track (yesterday/last week) — with theme outline */}
+        <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="var(--muted)" strokeWidth={strokeWidth - 1} />
+        {/* Outer ring progress (faded comparison) — with outline for visibility */}
         <motion.circle
           cx={center}
           cy={center}
           r={outerRadius}
           fill="none"
-          stroke="var(--muted-foreground)"
+          stroke={colors.outline}
           strokeWidth={strokeWidth - 1}
           strokeLinecap="round"
-          opacity="0.4"
+          opacity="0.5"
           strokeDasharray={outerCircumference}
           initial={{ strokeDashoffset: outerCircumference }}
           animate={{ strokeDashoffset: outerCircumference - (outerPct / 100) * outerCircumference }}
           transition={{ duration: 1, ease: 'easeOut' }}
         />
 
-        {/* Inner ring track */}
+        {/* Inner ring track — with theme outline */}
         <circle cx={center} cy={center} r={innerRadius} fill="none" stroke="var(--muted)" strokeWidth={strokeWidth} />
-        {/* Inner ring progress (animated gradient) */}
+        {/* Inner ring track outline (for contrast) */}
+        <circle cx={center} cy={center} r={innerRadius} fill="none" stroke={colors.outline} strokeWidth="0.5" opacity="0.5" />
+        {/* Inner ring progress (animated gradient + STRONG glow + outline) */}
         <motion.circle
           cx={center}
           cy={center}
@@ -354,9 +477,24 @@ function AdvancedRing({
           transition={{ duration: 1.2, ease: 'easeOut' }}
           filter={`url(#glow-${colors.gradId})`}
         />
+        {/* Inner ring outline (dark/light for contrast on any theme) */}
+        <motion.circle
+          cx={center}
+          cy={center}
+          r={innerRadius}
+          fill="none"
+          stroke={colors.outline}
+          strokeWidth="0.5"
+          strokeLinecap="round"
+          opacity="0.4"
+          strokeDasharray={innerCircumference}
+          initial={{ strokeDashoffset: innerCircumference }}
+          animate={{ strokeDashoffset: innerCircumference - (innerPct / 100) * innerCircumference }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+        />
 
         {/* Goal marker at 100% */}
-        <circle cx={center} cy={center - innerRadius} r="2" fill={ringColor} opacity={goalPct >= 100 ? 1 : 0.3} />
+        <circle cx={center} cy={center - innerRadius} r="2.5" fill={ringColor} stroke={colors.outline} strokeWidth="0.5" opacity={goalPct >= 100 ? 1 : 0.4} />
       </svg>
 
       {/* Center content */}
@@ -367,7 +505,7 @@ function AdvancedRing({
         <div className="text-sm font-bold tabular" style={{ color: ringColor }}>
           {formatHM(timeSec)}
         </div>
-        <div className="text-[8px] tabular" style={{ color: goalPct >= 100 ? '#16a34a' : 'var(--muted-foreground)' }}>
+        <div className="text-[8px] tabular" style={{ color: goalPct >= 100 ? themeColors.goalHit : 'var(--muted-foreground)' }}>
           {Math.round(goalPct)}%
         </div>
       </div>
@@ -384,7 +522,7 @@ function AdvancedRing({
                   width: 4,
                   height: 4,
                   borderRadius: '50%',
-                  background: ['#d97706', '#16a34a', '#0d9488', '#2563eb'][i % 4],
+                  background: themeColors.particle[i % 4],
                 }}
                 initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
                 animate={{
@@ -420,10 +558,10 @@ function AdvancedRing({
 // Trend Badge
 // =====================================================
 
-function TrendBadge({ trend }: { trend: number }) {
+function TrendBadge({ trend, themeColors }: { trend: number; themeColors: ThemeColors }) {
   const isUp = trend >= 5;
   const isDown = trend <= -5;
-  const color = isUp ? '#16a34a' : isDown ? '#dc2626' : '#c2410c';
+  const color = isUp ? themeColors.goalHit : isDown ? '#dc2626' : themeColors.below25;
   const Icon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
 
   return (
