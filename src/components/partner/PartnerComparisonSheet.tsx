@@ -73,13 +73,10 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   const partnerLastTestScore = pd?.lastTestScore ?? null;
 
   // === Weekly leaderboard with weekOffset ===
-  // YOUR data is accurate per-day (from local sessions).
-  // PARTNER only sends todaySec (today's total) + weekSec (7-day total).
-  // No per-day breakdown available. Show ONLY real data:
-  //   - Today (this week): show partner's actual todaySec
-  //   - Past days: show "—" (no data available)
-  //   - Past weeks: show "—" for all days
-  //   - Week total: show partner's actual weekSec (not sum of per-day)
+  // Both YOU and PARTNER now have per-day data:
+  //   - YOUR data: from local sessions (per-day accurate)
+  //   - PARTNER data: from pd.dailyHistory (per-day array sent in sync payload)
+  // Past weeks: partner has no historical data (only current 7 days are sent).
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(new Date(), -((6 - i) + weekOffset * 7));
     return dateKey(d);
@@ -92,19 +89,21 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   const myDailyWasted = weekDates.map(date =>
     sessions.filter((s) => s.date === date).reduce((a, s) => a + s.wastedSeconds, 0)
   );
-  const partnerWeekSec = pd?.weekSec || 0;
-  const partnerTodaySec = pd?.todaySec || 0;
-  const partnerHasData = weekOffset === 0 && partnerWeekSec > 0;
-  // Partner per-day: ONLY today has real data. Past days = 0 (shown as "—").
+
+  // Partner per-day from dailyHistory array (index 0 = 6 days ago, 6 = today)
+  // Only available for THIS week (weekOffset === 0). Past weeks = no data.
+  const partnerDailyHistory: number[] = pd?.dailyHistory || [];
+  const partnerHasData = weekOffset === 0 && partnerDailyHistory.length === 7;
   const partnerDailySec = weekDates.map((_, i) => {
-    if (weekOffset === 0 && i === 6) return partnerTodaySec; // today = real data
-    return 0; // past days = no data
+    if (partnerHasData) return partnerDailyHistory[i] || 0;
+    return 0;
   });
-  const maxDaily = Math.max(...myDailySec, partnerTodaySec, 1);
-  // Only count "won" for today (the only day with real partner data)
-  const daysWon = partnerHasData && myDailySec[6] > partnerTodaySec ? 1 : 0;
+  const maxDaily = Math.max(...myDailySec, ...partnerDailySec, 1);
+  const daysWon = partnerHasData
+    ? myDailySec.filter((my, i) => my > partnerDailySec[i]).length
+    : 0;
   const myWeekTotal = myDailySec.reduce((a, b) => a + b, 0);
-  const partnerWeekTotal = partnerHasData ? partnerWeekSec : 0;
+  const partnerWeekTotal = partnerHasData ? partnerDailySec.reduce((a, b) => a + b, 0) : 0;
   const myWeekWasted = myDailyWasted.reduce((a, b) => a + b, 0);
 
   // Subject breakdown
@@ -252,11 +251,9 @@ export function PartnerComparisonSheet({ onClose }: Props) {
               {myWeekWasted > 0 && <div className="text-[8px] text-red-400/70 tabular">⚠ {formatHM(myWeekWasted)}</div>}
             </div>
             <div className="text-center">
-              <div className="text-[9px] text-white/40 uppercase">Today</div>
+              <div className="text-[9px] text-white/40 uppercase">Won</div>
               <div className="text-sm font-bold tabular text-white/80">
-                {partnerHasData ? (
-                  myDailySec[6] > partnerTodaySec ? 'You ✅' : myDailySec[6] < partnerTodaySec ? 'Partner ✅' : 'Tie'
-                ) : '—'}
+                {partnerHasData ? `${daysWon}/7` : '—'}
               </div>
             </div>
             <div className="text-center">
@@ -297,7 +294,7 @@ export function PartnerComparisonSheet({ onClose }: Props) {
                         {myW > 0 && <span className="text-red-400/60 text-[8px] ml-0.5">⚠{Math.round(myW/60)}m</span>}
                       </span>
                     </div>
-                    {/* Partner bar — only today has real data */}
+                    {/* Partner bar — real per-day data from dailyHistory */}
                     <div className="flex items-center gap-1">
                       <div className="flex-1 h-2.5 bg-white/5 rounded-full overflow-hidden">
                         {partnerHasData && pH > 0 ? (

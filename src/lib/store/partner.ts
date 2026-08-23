@@ -21,6 +21,9 @@ export interface PartnerSyncPayload {
   weekSec: number;
   /** Current streak in days. */
   streak: number;
+  /** Per-day study seconds for the last 7 days (index 0 = 6 days ago, 6 = today).
+   *  Enables accurate weekly leaderboard comparison without fabricating averages. */
+  dailyHistory: number[];
 
   // === Current activity (live) ===
   /** Subject of the most recent or active session. */
@@ -191,6 +194,8 @@ export const usePartner = create<PartnerStore>()(
           .reduce((a, s) => a + s.studySeconds, 0);
         const streak = useHistory.getState().getStreak();
 
+        // === Per-day study seconds for last 7 days (computed after live time below) ===
+
         // === LIVE active session (focus timer) ===
         // CRITICAL: include the currently-running session's time so the
         // partner sees real-time progress. Previously only saved sessions
@@ -303,6 +308,26 @@ export const usePartner = create<PartnerStore>()(
           return tDate >= weekAgo;
         }).length;
 
+        // === Per-day study seconds for last 7 days ===
+        // Build a map of dateKey → studySeconds for O(N) lookup
+        const dailyMap: Record<string, number> = {};
+        for (const s of sessions) {
+          dailyMap[s.date] = (dailyMap[s.date] || 0) + s.studySeconds;
+        }
+        // Array: [6 days ago, 5 days ago, ..., yesterday, today]
+        const dailyHistory: number[] = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          let daySec = dailyMap[key] || 0;
+          // Add live time to today's entry (index 6 = today when i=0)
+          if (i === 0) {
+            daySec += (hasFocus ? liveSec : 0) + (hasPractice ? livePracticeSec : 0);
+          }
+          dailyHistory.push(daySec);
+        }
+
         const payload: PartnerSyncPayload = {
           todaySec,
           todayWastedSec,
@@ -310,6 +335,7 @@ export const usePartner = create<PartnerStore>()(
             + (hasFocus ? liveSec : 0)
             + (hasPractice ? livePracticeSec : 0),
           streak,
+          dailyHistory,
           lastSubject,
           lastChapter,
           lastLecture,
