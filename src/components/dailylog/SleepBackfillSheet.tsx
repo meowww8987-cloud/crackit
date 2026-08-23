@@ -214,8 +214,14 @@ export function SleepBackfillSheet({ open, onClose, defaultDate }: Props) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[120] flex items-end justify-center"
-          style={{ background: 'rgba(0,0,0,0.6)' }}
+          className="fixed inset-0 z-[120] flex items-end justify-center select-none"
+          style={{
+            background: 'rgba(0,0,0,0.6)',
+            touchAction: 'none', // prevent long-press / scroll / context menu on backdrop
+            WebkitUserSelect: 'none',
+            userSelect: 'none',
+            WebkitTouchCallout: 'none',
+          }}
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
           onTouchStart={handleBackdropTouchStart}
           onTouchEnd={handleBackdropTouchEnd}
@@ -233,6 +239,7 @@ export function SleepBackfillSheet({ open, onClose, defaultDate }: Props) {
               border: '1px solid var(--border)',
               borderBottom: 'none',
               WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-y', // sheet itself allows vertical scroll
             }}
           >
             <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: 'var(--muted)' }} />

@@ -235,26 +235,20 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
               )}
             </div>
           ) : (
-            // === Today not reported ===
+            // === Today not reported — compact CTA ===
             <button
               onClick={(e) => { e.stopPropagation(); openBackfill(todayEntry.date); }}
-              className="w-full rounded-xl p-2.5 text-left transition active:scale-[0.98]"
+              className="rounded-lg px-2.5 py-1.5 text-left"
               style={{
                 background: 'rgba(245, 158, 11, 0.08)',
                 border: '1px dashed rgba(245, 158, 11, 0.4)',
               }}
             >
-              <div className="flex items-center gap-1.5 mb-1">
-                <Plus size={12} style={{ color: '#f59e0b' }} />
-                <span className="text-[9px] uppercase tracking-wide font-bold" style={{ color: '#f59e0b' }}>
-                  Not reported
+              <div className="flex items-center gap-1">
+                <Plus size={11} style={{ color: '#f59e0b' }} />
+                <span className="text-[10px] font-bold" style={{ color: '#f59e0b' }}>
+                  Log sleep
                 </span>
-              </div>
-              <div className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
-                Tap to log last night
-              </div>
-              <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>
-                You forgot to mark sleep
               </div>
             </button>
           )}

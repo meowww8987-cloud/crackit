@@ -18,7 +18,6 @@ import { PeakStudyTime } from '@/components/stats/PeakStudyTime';
 import { ActivityCard } from '@/components/stats/ActivityCard';
 import { SleepHealthCard } from '@/components/stats/SleepHealthCard';
 import { SubjectBreakdown } from '@/components/stats/SubjectBreakdown';
-import { MonthStory } from '@/components/stats/MonthStory';
 import { SleepReportSheet } from '@/components/dailylog/SleepReportSheet';
 import {
   moodDistribution,
@@ -74,9 +73,6 @@ export function StatsTab() {
 
       {/* Subject Breakdown — 3-level card (replaces stacked bars + sunburst + donut + neglected) */}
       <SubjectBreakdown />
-
-      {/* Month Story — 3-level 30-day trend (replaces line chart + weekly comparison + wasted ratio) */}
-      <MonthStory />
 
       {/* Mood distribution */}
       <div className="grid grid-cols-1 gap-3">
