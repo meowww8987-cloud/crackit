@@ -244,16 +244,16 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
  );
 }
 
-function Slider({ value, min, max, step = 1, onChange, format }: {
+function Slider({ value, min, max, step = 1, onChange, format, labels }: {
   value: number; min: number; max: number; step?: number; onChange: (v: number) => void; format?: (v: number) => string;
+  labels?: { value: number; text: string }[];
 }) {
   const pct = ((value - min) / (max - min)) * 100;
   return (
     <div>
       {format && (
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-bold tabular" style={{ color: '#0d9488' }}>{format(value)}</span>
-          <span className="text-[9px] tabular" style={{ color: 'var(--muted-foreground)' }}>{Math.round(pct)}%</span>
+        <div className="mb-2">
+          <span className="text-xl font-bold tabular" style={{ color: '#0d9488' }}>{format(value)}</span>
         </div>
       )}
       <ScrollAwareSlider>
@@ -266,18 +266,28 @@ function Slider({ value, min, max, step = 1, onChange, format }: {
           onChange={(e) => onChange(Number(e.target.value))}
           className="w-full modern-slider"
           style={{
-            // Use CSS custom properties for the fill — the thumb/track are
-            // styled entirely in globals.css (.modern-slider)
             '--slider-pct': `${pct}%`,
             '--slider-fill': 'linear-gradient(90deg, #0d9488, #14b8a6)',
             '--slider-track': 'var(--border)',
           } as React.CSSProperties}
         />
       </ScrollAwareSlider>
-      <div className="flex justify-between text-[8px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
-        <span>{min}</span>
-        <span>{max}</span>
-      </div>
+      {labels && labels.length > 0 && (
+        <div className="flex justify-between mt-1.5">
+          {labels.map((label, i) => (
+            <span
+              key={i}
+              className="text-[8px] font-semibold uppercase tracking-wide"
+              style={{
+                color: value >= label.value ? '#0d9488' : 'var(--muted-foreground)',
+                opacity: value >= label.value ? 1 : 0.5,
+              }}
+            >
+              {label.text}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -302,66 +312,132 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 }
 
 function GoalsSection({ s, update }: { s: Settings; update: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
- return (
- <>
- <Row label="Daily Study Goal">
- <Slider
- value={s.dailyGoalHours}
- min={2}
- max={16}
- step={1}
- onChange={(v) => update('dailyGoalHours', v)}
- format={(v) => `${v} hours`}
- />
- </Row>
- <Row label="Target NEET Score">
- <Slider
- value={s.targetScore}
- min={400}
- max={720}
- step={5}
- onChange={(v) => update('targetScore', v)}
- format={(v) => `${v} / 720`}
- />
- </Row>
- {/* Exam Target Date + Prep Start Date — compact, side-by-side */}
- <div className="grid grid-cols-2 gap-3">
- <div>
- <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block" style={{ color: 'var(--muted-foreground)' }}>Exam Target Date</label>
- <input
- type="date"
- value={s.examDate}
- onChange={(e) => update('examDate', e.target.value)}
- className="w-full rounded-xl px-2 py-1.5 text-xs focus:outline-none"
- style={{ background: 'var(--muted)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
- />
- </div>
- <div>
- <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block" style={{ color: 'var(--muted-foreground)' }}>Prep Start Date</label>
- <input
- type="date"
- value={s.prepStartDate || ''}
- onChange={(e) => update('prepStartDate', e.target.value || null)}
- className="w-full rounded-xl px-2 py-1.5 text-xs focus:outline-none"
- style={{ background: 'var(--muted)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
- />
- </div>
- </div>
- <div className="flex items-center justify-between -mt-1">
- {!s.prepStartDate ? (
- <p className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Auto-detected from first study session</p>
- ) : (
- <button
- onClick={() => update('prepStartDate', null)}
- className="text-[10px] hover:underline"
- style={{ color: '#0d9488' }}
- >
- ↻ Reset prep date to auto-detect
- </button>
- )}
- </div>
- </>
- );
+  const goalPresets = [4, 6, 8, 10, 12];
+  const scorePresets = [450, 550, 600, 650, 700];
+  const examDateObj = s.examDate ? new Date(s.examDate + 'T00:00:00') : null;
+  const prepDateObj = s.prepStartDate ? new Date(s.prepStartDate + 'T00:00:00') : null;
+
+  return (
+    <>
+      <Row label="Daily Study Goal">
+        <Slider
+          value={s.dailyGoalHours}
+          min={2}
+          max={16}
+          step={1}
+          onChange={(v) => update('dailyGoalHours', v)}
+          format={(v) => `${v}h / day`}
+          labels={[
+            { value: 2, text: 'Light' },
+            { value: 6, text: 'Moderate' },
+            { value: 8, text: 'Recommended' },
+            { value: 12, text: 'Intense' },
+            { value: 16, text: 'Max' },
+          ]}
+        />
+        <div className="flex gap-1.5 mt-2.5">
+          {goalPresets.map((p) => (
+            <button
+              key={p}
+              onClick={() => { vibrate(8); update('dailyGoalHours', p); }}
+              className="flex-1 py-1.5 rounded-lg text-[11px] font-bold tabular transition active:scale-95"
+              style={{
+                background: s.dailyGoalHours === p ? '#0d9488' : 'var(--muted)',
+                color: s.dailyGoalHours === p ? '#ffffff' : 'var(--muted-foreground)',
+                border: s.dailyGoalHours === p ? 'none' : '1px solid var(--border)',
+              }}
+            >
+              {p}h
+            </button>
+          ))}
+        </div>
+      </Row>
+
+      <Row label="Target NEET Score">
+        <Slider
+          value={s.targetScore}
+          min={400}
+          max={720}
+          step={5}
+          onChange={(v) => update('targetScore', v)}
+          format={(v) => `${v} / 720`}
+          labels={[
+            { value: 400, text: 'Pass' },
+            { value: 550, text: 'Good' },
+            { value: 650, text: 'Great' },
+            { value: 720, text: 'Perfect' },
+          ]}
+        />
+        <div className="flex gap-1.5 mt-2.5">
+          {scorePresets.map((p) => (
+            <button
+              key={p}
+              onClick={() => { vibrate(8); update('targetScore', p); }}
+              className="flex-1 py-1.5 rounded-lg text-[11px] font-bold tabular transition active:scale-95"
+              style={{
+                background: s.targetScore === p ? '#0d9488' : 'var(--muted)',
+                color: s.targetScore === p ? '#ffffff' : 'var(--muted-foreground)',
+                border: s.targetScore === p ? 'none' : '1px solid var(--border)',
+              }}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </Row>
+
+      {/* Exam + Prep dates — modern with readable format */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block" style={{ color: 'var(--muted-foreground)' }}>Exam Date</label>
+          <div className="relative">
+            <input
+              type="date"
+              value={s.examDate}
+              onChange={(e) => update('examDate', e.target.value)}
+              className="w-full rounded-xl px-2 py-2 text-xs focus:outline-none"
+              style={{ background: 'var(--muted)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+            />
+            {examDateObj && (
+              <div className="text-[9px] mt-1 tabular" style={{ color: '#0d9488' }}>
+                {examDateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            )}
+          </div>
+        </div>
+        <div>
+          <label className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 block" style={{ color: 'var(--muted-foreground)' }}>Prep Start</label>
+          <div className="relative">
+            <input
+              type="date"
+              value={s.prepStartDate || ''}
+              onChange={(e) => update('prepStartDate', e.target.value || null)}
+              className="w-full rounded-xl px-2 py-2 text-xs focus:outline-none"
+              style={{ background: 'var(--muted)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+            />
+            {prepDateObj && (
+              <div className="text-[9px] mt-1 tabular" style={{ color: '#0d9488' }}>
+                {prepDateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-between -mt-1">
+        {!s.prepStartDate ? (
+          <p className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Auto-detected from first study session</p>
+        ) : (
+          <button
+            onClick={() => update('prepStartDate', null)}
+            className="text-[10px] hover:underline"
+            style={{ color: '#0d9488' }}
+          >
+            ↻ Reset to auto-detect
+          </button>
+        )}
+      </div>
+    </>
+  );
 }
 
 function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
