@@ -169,14 +169,15 @@ export function PartnerCard() {
       <>
         <button
           onClick={() => { setShowSetup(true); vibrate(10); }}
-          className="w-full glass rounded-2xl p-3 flex items-center gap-3 hover:bg-white/[0.07] transition border border-indigo-500/30 dark:border-indigo-500/20"
+          className="w-full glass rounded-2xl p-3 flex items-center gap-3 transition"
+          style={{ border: '1px solid var(--border)' }}
         >
-          <div className="w-9 h-9 rounded-lg bg-indigo-500/15 dark:bg-indigo-500/20 flex items-center justify-center shrink-0">
-            <Users size={18} className="text-indigo-600 dark:text-indigo-400" />
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(124,58,237,0.15)' }}>
+            <Users size={18} style={{ color: '#7c3aed' }} />
           </div>
           <div className="flex-1 text-left">
-            <div className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Study with Friend</div>
-            <div className="text-[10px] text-t-muted">Compare study time · stay motivated together</div>
+            <div className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Study Together</div>
+            <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Study with a friend · stay motivated together</div>
           </div>
         </button>
         <AnimatePresence>
@@ -335,21 +336,23 @@ export function PartnerCard() {
 
   return (
     <>
-      <div className="glass rounded-2xl p-3 border border-indigo-500/30 dark:border-indigo-500/20">
+      <div className="glass rounded-2xl p-3" style={{ border: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2 mb-3">
-          <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
-          <span className="text-xs font-bold uppercase tracking-wide text-t-secondary">Study with Friend</span>
+          <Users size={14} style={{ color: '#7c3aed' }} />
+          <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Study Together</span>
           {/* Minimal header actions — chevron for full comparison, ⋮ for manage */}
           <button
             onClick={() => { vibrate(8); setShowComparison(true); }}
-            className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-t-muted hover:text-t-primary hover:bg-white/5 transition"
+            className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center transition"
+            style={{ color: 'var(--muted-foreground)' }}
             aria-label="Full comparison"
           >
             <ChevronRight size={16} />
           </button>
           <button
             onClick={() => { vibrate(8); setShowSetup(true); }}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-t-muted hover:text-t-primary hover:bg-white/5 transition"
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition"
+            style={{ color: 'var(--muted-foreground)' }}
             aria-label="Manage"
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
@@ -363,17 +366,18 @@ export function PartnerCard() {
               /* Pair code doesn't exist on server — DB was reset, or the code
                  was never actually created. Offer a clean reset. */
               <div className="space-y-3">
-                <div className="text-xs text-red-500 dark:text-red-400 font-semibold">
+                <div className="text-xs font-semibold" style={{ color: '#dc2626' }}>
                   This pairing code is no longer valid.
                 </div>
-                <div className="text-[10px] text-t-muted">
+                <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
                   The code <span className="font-mono font-bold">{partner.code}</span> doesn't
                   exist on the server anymore (it may have been reset).
                   Create a new pair to start fresh.
                 </div>
                 <button
                   onClick={() => { vibrate(10); disconnect(); }}
-                  className="w-full py-2.5 rounded-xl bg-indigo-500 text-white font-semibold text-sm"
+                  className="w-full py-2.5 rounded-xl font-semibold text-sm text-white"
+                  style={{ background: '#7c3aed' }}
                 >
                   Reset & Create New Pair
                 </button>
@@ -381,16 +385,17 @@ export function PartnerCard() {
             ) : syncError === 'error' ? (
               /* Network or server error — show retry. */
               <div className="space-y-3">
-                <div className="text-xs text-amber-500 dark:text-amber-400 font-semibold">
+                <div className="text-xs font-semibold" style={{ color: '#d97706' }}>
                   Couldn't reach the server.
                 </div>
-                <div className="text-[10px] text-t-muted">
+                <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
                   Check your internet connection and try again.
                 </div>
                 <button
                   onClick={handleManualRefresh}
                   disabled={checking}
-                  className="w-full py-2.5 rounded-xl bg-indigo-500/15 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold text-sm border border-indigo-500/30"
+                  className="w-full py-2.5 rounded-xl font-semibold text-sm"
+                  style={{ background: 'rgba(124,58,237,0.15)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.3)' }}
                 >
                   <RefreshCw size={12} className={checking ? 'animate-spin inline mr-1' : 'inline mr-1'} />
                   {checking ? 'Retrying...' : 'Retry now'}
@@ -399,7 +404,7 @@ export function PartnerCard() {
             ) : (
               /* Normal waiting state — code is valid, polling for partner. */
               <>
-                <div className="text-xs text-t-secondary mb-2">Share your code with a friend:</div>
+                <div className="text-xs mb-2" style={{ color: 'var(--muted-foreground)' }}>Share your code with a friend:</div>
                 <button
                   onClick={() => {
                     navigator.clipboard?.writeText(partner.code);
@@ -407,18 +412,24 @@ export function PartnerCard() {
                     vibrate(10);
                     setTimeout(() => setCopied(false), 2000);
                   }}
-                  className="flex items-center gap-2 mx-auto px-4 py-2 rounded-xl bg-indigo-500/15 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-bold text-lg tracking-widest border border-indigo-500/30 dark:border-indigo-500/25"
+                  className="flex items-center gap-2 mx-auto px-4 py-2 rounded-xl font-bold text-lg tracking-widest"
+                  style={{ background: 'rgba(124,58,237,0.15)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.3)' }}
                 >
                   {partner.code}
                   {copied ? <Check size={14} /> : <Copy size={14} />}
                 </button>
-                <div className="text-[10px] text-t-muted mt-2 flex items-center justify-center gap-2">
+                <div className="text-[10px] mt-2 flex items-center justify-center gap-2" style={{ color: 'var(--muted-foreground)' }}>
                   <span className="inline-flex items-center gap-1">
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <motion.span
+                      animate={{ opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="inline-block w-1.5 h-1.5 rounded-full"
+                      style={{ background: '#16a34a' }}
+                    />
                     Checking every 8s
                   </span>
                   {lastChecked && (
-                    <span className="text-t-muted/70">
+                    <span style={{ opacity: 0.7 }}>
                       · last check {Math.max(0, Math.floor((Date.now() - lastChecked) / 1000))}s ago
                     </span>
                   )}
@@ -426,7 +437,8 @@ export function PartnerCard() {
                 <button
                   onClick={handleManualRefresh}
                   disabled={checking}
-                  className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-700 dark:text-indigo-400 hover:underline disabled:opacity-50"
+                  className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold disabled:opacity-50"
+                  style={{ color: '#7c3aed' }}
                 >
                   <RefreshCw size={11} className={checking ? 'animate-spin' : ''} />
                   {checking ? 'Checking...' : 'Check now'}
@@ -441,67 +453,92 @@ export function PartnerCard() {
                 This is RARE — only happens if the server database was completely reset.
                 Pairs are permanent by design and never auto-delete. */}
             {syncError === 'notfound' && (
-              <div className="space-y-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                <div className="text-xs text-amber-500 dark:text-amber-400 font-bold">
+              <div className="space-y-2 p-3 rounded-xl" style={{ background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.3)' }}>
+                <div className="text-xs font-bold" style={{ color: '#d97706' }}>
                   ⚠ Server was reset
                 </div>
-                <div className="text-[10px] text-t-muted">
+                <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
                   Your pair <span className="font-mono font-bold">{partner.code}</span> was removed
                   because the server database was reset. This is rare and won't happen again.
                   Create a new pair with your partner — it will be permanent.
                 </div>
                 <button
                   onClick={() => { vibrate(10); disconnect(); }}
-                  className="w-full py-2 rounded-xl bg-amber-500 text-white font-semibold text-xs"
+                  className="w-full py-2 rounded-xl font-semibold text-xs text-white"
+                  style={{ background: '#d97706' }}
                 >
                   Reset & Create New Pair
                 </button>
               </div>
             )}
 
-            {/* === Two progress bars: YOU and PARTNER, each vs their daily goal === */}
+            {/* === Two progress bars: YOU and PARTNER — modernized === */}
             {syncError !== 'notfound' && (
-            <div className="space-y-3">
+            <div
+              className="space-y-3 cursor-pointer active:scale-[0.99] transition-transform"
+              onClick={() => { vibrate(8); setShowComparison(true); }}
+            >
               {/* YOU bar */}
               <div className="flex items-center gap-2.5">
                 <PartnerAvatar
                   initials={(partner.name || 'Y').charAt(0).toUpperCase()}
-                  accentColor="#14b8a6"
+                  accentColor="#0d9488"
                   status={myIsStudying ? 'studying' : myIsWasting ? 'wasting' : myIsPaused ? 'paused' : 'online'}
                   size={40}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between text-[10px] mb-0.5">
-                    <span className="font-bold text-teal-600 dark:text-teal-400 uppercase">YOU · {partner.name || 'You'}</span>
-                    <span className="tabular text-t-secondary font-semibold">
-                      {formatHM(myTodaySec)} <span className="text-t-muted font-normal">/ {dailyGoalHours}h</span>
+                  <div className="flex items-center justify-between text-[10px] mb-1">
+                    <span className="font-bold uppercase" style={{ color: '#0d9488' }}>YOU · {partner.name || 'You'}</span>
+                    <span className="tabular font-semibold" style={{ color: 'var(--foreground)' }}>
+                      {formatHM(myTodaySec)} <span style={{ color: 'var(--muted-foreground)' }}>/ {dailyGoalHours}h</span>
                     </span>
                   </div>
-                  <div className="h-2.5 rounded-full bg-white/5 overflow-hidden">
+                  {/* Modern progress bar — gradient + glow + goal % */}
+                  <div className="relative h-3 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
                     <motion.div
                       animate={{ width: `${Math.min(100, (myTodaySec / (dailyGoalHours * 3600)) * 100)}%` }}
-                      transition={{ duration: 0.5 }}
-                      className="h-full rounded-full bg-gradient-to-r from-teal-500 to-green-500"
-                    />
+                      transition={{ duration: 0.5, ease: 'easeOut' }}
+                      className="h-full rounded-full relative"
+                      style={{
+                        background: 'linear-gradient(90deg, #0d9488, #14b8a6)',
+                        boxShadow: myTodaySec > 0 ? '0 0 6px rgba(13,148,136,0.5)' : 'none',
+                      }}
+                    >
+                      {/* Shimmer effect */}
+                      <motion.div
+                        className="absolute inset-0"
+                        style={{
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                        }}
+                        animate={{ x: ['-100%', '200%'] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                      />
+                    </motion.div>
+                    {/* Goal % marker */}
+                    <div className="absolute top-0 bottom-0 flex items-center" style={{ left: 'calc(100% - 0px)', transform: 'translateX(-100%)' }}>
+                      <span className="text-[8px] font-bold px-1" style={{ color: 'var(--muted-foreground)' }}>
+                        {Math.round((myTodaySec / (dailyGoalHours * 3600)) * 100)}%
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-[9px] mt-0.5">
+                  <div className="flex items-center gap-2 text-[9px] mt-1">
                     <span style={{ color: myStatusColor }} className="font-bold">{myStatusText}</span>
-                    {/* Live practice/focus timer badge — ticks every second */}
+                    {/* Live practice/focus timer badge */}
                     {myIsPracticing && livePracticeSec > 0 && (
-                      <span className="tabular font-bold px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                      <span className="tabular font-bold px-1.5 py-0.5 rounded-md" style={{ background: 'rgba(37,99,235,0.15)', color: '#2563eb' }}>
                         {formatHM(livePracticeSec)}
                       </span>
                     )}
                     {!myIsPracticing && myIsStudying && liveSec > 0 && (
-                      <span className="tabular font-bold px-1.5 py-0.5 rounded-md bg-green-500/15 text-green-600 dark:text-green-400">
+                      <span className="tabular font-bold px-1.5 py-0.5 rounded-md" style={{ background: 'rgba(22,163,74,0.15)', color: '#16a34a' }}>
                         {formatHM(liveSec)}
                       </span>
                     )}
                     {myTodayWastedSec > 0 && (
-                      <span className="text-red-500 dark:text-red-400 tabular">⚠ {formatHM(myTodayWastedSec)}</span>
+                      <span className="tabular" style={{ color: '#dc2626' }}>⚠ {formatHM(myTodayWastedSec)}</span>
                     )}
                     {myCurrentSubject && (
-                      <span className="text-t-muted truncate">{myCurrentSubject}{myCurrentChapter ? ` · ${myCurrentChapter}` : ''}</span>
+                      <span className="truncate" style={{ color: 'var(--muted-foreground)' }}>{myCurrentSubject}{myCurrentChapter ? ` · ${myCurrentChapter}` : ''}</span>
                     )}
                   </div>
                 </div>
@@ -511,33 +548,60 @@ export function PartnerCard() {
               <div className="flex items-center gap-2.5">
                 <PartnerAvatar
                   initials={(partner.partnerName || 'P').charAt(0).toUpperCase()}
-                  accentColor="#8b5cf6"
+                  accentColor="#7c3aed"
                   status={partnerIsPracticing ? 'studying' : partnerIsStudying ? 'studying' : partnerIsWasting ? 'wasting' : partnerIsPaused ? 'paused' : partnerIsOffline ? 'offline' : 'online'}
                   size={40}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between text-[10px] mb-0.5">
-                    <span className="font-bold text-violet-600 dark:text-violet-400 uppercase truncate">
+                  <div className="flex items-center justify-between text-[10px] mb-1">
+                    <span className="font-bold uppercase truncate" style={{ color: '#7c3aed' }}>
                       {partner.partnerName || '—'}
                     </span>
-                    <span className="tabular text-t-secondary font-semibold">
-                      {formatHM(partnerLiveSec)} <span className="text-t-muted font-normal">/ {dailyGoalHours}h</span>
+                    <span className="tabular font-semibold" style={{ color: 'var(--foreground)' }}>
+                      {formatHM(partnerLiveSec)} <span style={{ color: 'var(--muted-foreground)' }}>/ {dailyGoalHours}h</span>
                     </span>
                   </div>
-                  <div className="h-2.5 rounded-full bg-white/5 overflow-hidden">
+                  {/* Modern progress bar — gradient + glow + goal % */}
+                  <div className="relative h-3 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
                     <motion.div
                       animate={{ width: `${Math.min(100, (partnerLiveSec / (dailyGoalHours * 3600)) * 100)}%` }}
-                      transition={{ duration: 0.5 }}
-                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500"
-                    />
+                      transition={{ duration: 0.5, ease: 'easeOut' }}
+                      className="h-full rounded-full relative"
+                      style={{
+                        background: 'linear-gradient(90deg, #7c3aed, #a78bfa)',
+                        boxShadow: partnerLiveSec > 0 ? '0 0 6px rgba(124,58,237,0.5)' : 'none',
+                      }}
+                    >
+                      <motion.div
+                        className="absolute inset-0"
+                        style={{
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                        }}
+                        animate={{ x: ['-100%', '200%'] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                      />
+                    </motion.div>
+                    <div className="absolute top-0 bottom-0 flex items-center" style={{ left: 'calc(100% - 0px)', transform: 'translateX(-100%)' }}>
+                      <span className="text-[8px] font-bold px-1" style={{ color: 'var(--muted-foreground)' }}>
+                        {Math.round((partnerLiveSec / (dailyGoalHours * 3600)) * 100)}%
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-[9px] mt-0.5">
+                  <div className="flex items-center gap-2 text-[9px] mt-1">
                     <span style={{ color: partnerStatusColor }} className="font-bold">{partnerStatusText}</span>
+                    {partnerLiveSessionSec > 0 && (
+                      <span className="tabular font-bold px-1.5 py-0.5 rounded-md" style={{
+                        background: partnerIsPracticing ? 'rgba(37,99,235,0.15)' : 'rgba(22,163,74,0.15)',
+                        color: partnerIsPracticing ? '#2563eb' : '#16a34a',
+                      }}>
+                        {formatHM(partnerLiveSessionSec)}
+                      </span>
+                    )}
                     {partnerWastedSec > 0 && (
-                      <span className="text-red-500 dark:text-red-400 tabular">⚠ {formatHM(partnerWastedSec)}</span>
+                      <span className="tabular" style={{ color: '#dc2626' }}>⚠ {formatHM(partnerWastedSec)}</span>
                     )}
                     {partnerLastSubject && (
-                      <span className="text-t-muted truncate">{partnerLastSubject}{partnerLastChapter ? ` · ${partnerLastChapter}` : ''}</span>
+                      <span className="truncate" style={{ color: 'var(--muted-foreground)' }}>{partnerLastSubject}{partnerLastChapter ? ` · ${partnerLastChapter}` : ''}</span>
                     )}
                   </div>
                 </div>
@@ -545,120 +609,80 @@ export function PartnerCard() {
             </div>
             )}
 
-            {/* === Live Status Badge === */}
+            {/* === Live Status Badge — theme-aware === */}
             <div className="flex items-center justify-center">
               {partnerDataAge !== null && partnerDataAge < 20_000 ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">Live</span>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.3)' }}>
+                  <motion.span
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="inline-block w-1.5 h-1.5 rounded-full"
+                    style={{ background: '#16a34a' }}
+                  />
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#16a34a' }}>Live</span>
                 </div>
               ) : partnerDataAge !== null && partnerDataAge < 120_000 ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500" />
-                  <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">Last seen {Math.floor(partnerDataAge/1000)}s ago</span>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.3)' }}>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#d97706' }} />
+                  <span className="text-[10px] font-semibold" style={{ color: '#d97706' }}>Last seen {Math.floor(partnerDataAge/1000)}s ago</span>
                 </div>
               ) : (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500" />
-                  <span className="text-[10px] font-semibold text-red-600 dark:text-red-400">Offline · {formatAge(partnerDataAge)}</span>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)' }}>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#dc2626' }} />
+                  <span className="text-[10px] font-semibold" style={{ color: '#dc2626' }}>Offline · {formatAge(partnerDataAge)}</span>
                 </div>
               )}
             </div>
 
-            {/* === Partner studying banner ===
-                Renders "Practicing X" if the partner is in practice mode (activityType='practice'),
-                otherwise the default "studying X" banner. */}
+            {/* === Partner studying banner — theme-aware === */}
             {(partnerIsStudying || partnerIsPracticing) && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className={cn(
-                  "flex items-center gap-2 text-[11px] rounded-xl px-3 py-2 border",
-                  partnerIsPracticing
-                    ? "bg-blue-500/10 border-blue-500/20"
-                    : "bg-green-500/10 border-green-500/20"
-                )}
+                className="flex items-center gap-2 text-[11px] rounded-xl px-3 py-2 border"
+                style={{
+                  background: partnerIsPracticing ? 'rgba(37,99,235,0.1)' : 'rgba(22,163,74,0.1)',
+                  borderColor: partnerIsPracticing ? 'rgba(37,99,235,0.25)' : 'rgba(22,163,74,0.25)',
+                }}
               >
                 <motion.div
                   animate={{ scale: [1, 1.3, 1] }}
                   transition={{ duration: 1, repeat: Infinity }}
-                  className={cn(
-                    "w-1.5 h-1.5 rounded-full shrink-0",
-                    partnerIsPracticing ? "bg-blue-500" : "bg-green-500"
-                  )}
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: partnerIsPracticing ? '#2563eb' : '#16a34a' }}
                 />
-                <Play size={11} className={cn("shrink-0", partnerIsPracticing ? "text-blue-500" : "text-green-500")} />
-                <span className="truncate text-t-secondary flex-1">
-                  <strong className={cn(partnerIsPracticing ? "text-blue-600 dark:text-blue-400" : "text-green-600 dark:text-green-400")}>
+                <Play size={11} className="shrink-0" style={{ color: partnerIsPracticing ? '#2563eb' : '#16a34a' }} />
+                <span className="truncate flex-1" style={{ color: 'var(--foreground)' }}>
+                  <strong style={{ color: partnerIsPracticing ? '#2563eb' : '#16a34a' }}>
                     {partner.partnerName}
                   </strong>{' '}
                   {partnerIsPracticing ? 'practicing' : 'studying'}
                   {partnerLastSubject ? ` · ${partnerLastSubject}` : ''}
                   {partnerLastChapter ? ` · ${partnerLastChapter}` : ''}
                 </span>
-                {/* Live session timer — ticks locally every second using
-                    practiceStartedAt/focusStartedAt from the sync payload.
-                    Shows "12m 34s" format so it's easy to read at a glance. */}
                 {partnerLiveSessionSec > 0 && (
-                  <span className={cn(
-                    "tabular font-bold text-[11px] shrink-0 px-1.5 py-0.5 rounded-md",
-                    partnerIsPracticing
-                      ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                      : "bg-green-500/15 text-green-600 dark:text-green-400"
-                  )}>
+                  <span className="tabular font-bold text-[11px] shrink-0 px-1.5 py-0.5 rounded-md" style={{
+                    background: partnerIsPracticing ? 'rgba(37,99,235,0.15)' : 'rgba(22,163,74,0.15)',
+                    color: partnerIsPracticing ? '#2563eb' : '#16a34a',
+                  }}>
                     {formatHM(partnerLiveSessionSec)}
                   </span>
                 )}
               </motion.div>
             )}
             {partnerIsWasting && !partnerIsStudying && (
-              <div className="flex items-center gap-2 text-[11px] bg-red-500/10 rounded-xl px-3 py-2 border border-red-500/20">
-                <span className="text-red-500">⚠</span>
-                <span className="truncate text-t-secondary">
-                  <strong className="text-red-600 dark:text-red-400">{partner.partnerName}</strong> is wasting time
+              <div className="flex items-center gap-2 text-[11px] rounded-xl px-3 py-2 border" style={{ background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.25)' }}>
+                <span style={{ color: '#dc2626' }}>⚠</span>
+                <span className="truncate" style={{ color: 'var(--foreground)' }}>
+                  <strong style={{ color: '#dc2626' }}>{partner.partnerName}</strong> is wasting time
                 </span>
               </div>
             )}
 
-            {/* === Collapsible stats === */}
-            <details className="group">
-              <summary className="flex items-center justify-center gap-1 text-[10px] text-t-muted cursor-pointer hover:text-t-secondary py-1">
-                <span>Stats</span>
-                <ChevronRight size={10} className="group-open:rotate-90 transition-transform" />
-              </summary>
-              <div className="grid grid-cols-3 gap-2 text-center pt-2">
-                <div className="glass rounded-xl p-2">
-                  <div className="flex items-center justify-center gap-0.5 text-[9px] text-t-muted uppercase mb-1">
-                    <Flame size={8} /> Streak
-                  </div>
-                  <div className="text-xs font-bold tabular font-mono">
-                    <span className="text-teal-500 dark:text-teal-400">{myStreak}</span>
-                    <span className="text-t-muted/40 mx-0.5">·</span>
-                    <span className="text-violet-500 dark:text-violet-400">{partnerStreak}</span>
-                  </div>
-                </div>
-                <div className="glass rounded-xl p-2">
-                  <div className="flex items-center justify-center gap-0.5 text-[9px] text-t-muted uppercase mb-1">
-                    <Target size={8} /> Targets
-                  </div>
-                  <div className="text-xs font-bold tabular font-mono">
-                    <span className="text-teal-500 dark:text-teal-400">{myTargetsDone}/{myTargetsTotal}</span>
-                    <span className="text-t-muted/40 mx-0.5">·</span>
-                    <span className="text-violet-500 dark:text-violet-400">{partnerTargetsDone}/{partnerTargetsTotal}</span>
-                  </div>
-                </div>
-                <div className="glass rounded-xl p-2">
-                  <div className="flex items-center justify-center gap-0.5 text-[9px] text-t-muted uppercase mb-1">
-                    <Trophy size={8} /> Test
-                  </div>
-                  <div className="text-xs font-bold tabular font-mono">
-                    <span className="text-teal-500 dark:text-teal-400">{myLastTestScore ?? '—'}</span>
-                    <span className="text-t-muted/40 mx-0.5">·</span>
-                    <span className="text-violet-500 dark:text-violet-400">{partnerLastTestScore ?? '—'}</span>
-                  </div>
-                </div>
-              </div>
-            </details>
+            {/* === Tap hint (replaces collapsed stats) === */}
+            <div className="text-center text-[10px] pt-1" style={{ color: 'var(--muted-foreground)' }}>
+              Tap for full details →
+            </div>
           </div>
         )}
       </div>
