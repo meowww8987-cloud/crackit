@@ -1,28 +1,26 @@
 'use client';
 
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
   RadialBarChart, RadialBar,
 } from 'recharts';
-import { BarChart3, TrendingUp, TrendingDown, Clock, AlertTriangle, Moon } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Clock, AlertTriangle } from 'lucide-react';
 import { useHistory } from '@/lib/store/history';
 import { useRecall } from '@/lib/store/recall';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useSettings } from '@/lib/store/settings';
 import { useProgress } from '@/lib/store/progress';
-import { useSleep } from '@/lib/store/sleep';
 import { subjectColor } from '@/lib/colors';
 import { triggerTimeline } from '@/components/app/AppShell';
 import { SubjectWeeklyBreakdown } from '@/components/stats/SubjectWeeklyBreakdown';
-import { HeatmapCalendar } from '@/components/stats/HeatmapCalendar';
 import { SubjectSunburst } from '@/components/stats/SubjectSunburst';
 import { PeakStudyTime } from '@/components/stats/PeakStudyTime';
-import { WeekStory } from '@/components/stats/WeekStory';
+import { ActivityCard } from '@/components/stats/ActivityCard';
+import { SleepHealthCard } from '@/components/stats/SleepHealthCard';
 import { SleepReportSheet } from '@/components/dailylog/SleepReportSheet';
-import { buildWeeklySleepReport, verdictColor, verdictLabel } from '@/lib/sleepHealth';
 import {
   subjectDistribution,
   trendData,
@@ -39,11 +37,7 @@ export function StatsTab() {
   const retentionTrend = useRecall((s) => s.challenges);
   const lectures = useSyllabus((s) => s.lectures);
   const prefer2D = useSettings((s) => s.prefer2D);
-  const sleepHistory = useSleep((s) => s.history);
   const [showSleepReport, setShowSleepReport] = useState(false);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const sleepReport = useMemo(() => buildWeeklySleepReport(sleepHistory), [sleepHistory]);
 
   const distribution = useMemo(() => subjectDistribution(sessions), [sessions]);
   const trend = useMemo(() => trendData(sessions, 30), [sessions]);
@@ -81,74 +75,16 @@ export function StatsTab() {
         Stats
       </h1>
 
-      {/* Weekly Study Time — 3-level Week Story card */}
-      <WeekStory />
+      {/* === Activity card — Week | Month segmented control === */}
+      <ActivityCard />
 
-      {/* === Sleep Health Card — long-press for full report === */}
-      {sleepHistory.length > 0 && (
-        <motion.div
-          className="glass rounded-2xl p-4 border border-indigo-500/25 relative select-none"
-          onTouchStart={() => {
-            longPressTimer.current = setTimeout(() => {
-              setShowSleepReport(true);
-            }, 500);
-          }}
-          onTouchEnd={() => {
-            if (longPressTimer.current) {
-              clearTimeout(longPressTimer.current);
-              longPressTimer.current = null;
-            }
-          }}
-          onTouchCancel={() => {
-            if (longPressTimer.current) {
-              clearTimeout(longPressTimer.current);
-              longPressTimer.current = null;
-            }
-          }}
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0">
-              <Moon size={16} className="text-indigo-300" />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-bold">Sleep Health</div>
-              <div className="text-[10px] text-white/60">Long-press for full report</div>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold tabular" style={{ color: verdictColor(sleepReport.verdict) }}>
-                {sleepReport.healthScore}
-              </div>
-              <div className="text-[9px]" style={{ color: verdictColor(sleepReport.verdict) }}>
-                {verdictLabel(sleepReport.verdict)}
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <div className="text-[9px] uppercase text-white/60">Avg</div>
-              <div className="text-sm font-semibold tabular">{sleepReport.avgNightHours.toFixed(1)}h</div>
-            </div>
-            <div>
-              <div className="text-[9px] uppercase text-white/60">Quality</div>
-              <div className="text-sm font-semibold tabular">
-                {sleepReport.avgQuality > 0 ? `${sleepReport.avgQuality.toFixed(1)}★` : '—'}
-              </div>
-            </div>
-            <div>
-              <div className="text-[9px] uppercase text-white/60">Consist.</div>
-              <div className="text-sm font-semibold tabular">{sleepReport.bedtimeConsistency}%</div>
-            </div>
-          </div>
-        </motion.div>
-      )}
+      {/* === Sleep Health — modernized card with score ring === */}
+      <SleepHealthCard onTap={() => setShowSleepReport(true)} />
 
       <SleepReportSheet open={showSleepReport} onClose={() => setShowSleepReport(false)} />
 
       {/* 7-Day Subject Breakdown */}
       <SubjectWeeklyBreakdown />
-
-      {/* 365-day Heatmap Calendar */}
-      <HeatmapCalendar />
 
       {/* Subject Sunburst — radial time distribution */}
       <SubjectSunburst />

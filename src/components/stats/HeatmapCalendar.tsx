@@ -21,7 +21,7 @@ import type { SavedSession } from '@/lib/types';
  * - Prev/Next month buttons (← →)
  * - Swipe left/right inside the calendar (doesn't trigger tab change)
  */
-export function HeatmapCalendar() {
+export function HeatmapCalendar({ embedded = false }: { embedded?: boolean }) {
   const sessions = useHistory((s) => s.sessions);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -156,7 +156,7 @@ export function HeatmapCalendar() {
   const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   return (
-    <div className="glass rounded-2xl p-4" data-card data-heatmap
+    <div className={cn("data-card data-heatmap", !embedded && "glass rounded-2xl p-4")}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >

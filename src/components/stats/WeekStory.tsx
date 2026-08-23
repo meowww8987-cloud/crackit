@@ -45,7 +45,7 @@ const TILE_COLORS = [
   'rgba(34, 197, 94, 0.85)',  // 4 — goal hit (green)
 ];
 
-export function WeekStory() {
+export function WeekStory({ embedded = false }: { embedded?: boolean }) {
   const sessions = useHistory((s) => s.sessions);
   const dailyGoalHours = useSettings((s) => s.dailyGoalHours);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -86,7 +86,10 @@ export function WeekStory() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-50px' }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="glass rounded-2xl p-4 cursor-pointer select-none active:scale-[0.99] transition-transform"
+        className={cn(
+          "cursor-pointer select-none active:scale-[0.99] transition-transform",
+          !embedded && "glass rounded-2xl p-4"
+        )}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onClick={() => {
