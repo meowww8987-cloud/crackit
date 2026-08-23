@@ -125,7 +125,7 @@ export function ProgressRings({
               animate={isLive ? { rotate: 360 } : {}}
               transition={isLive ? { duration: 3, repeat: Infinity, ease: 'linear' } : {}}
             >
-              <Activity size={16} style={{ color: isLive ? '#22c55e' : '#14b8a6' }} />
+              <Activity size={16} style={{ color: isLive ? '#16a34a' : '#0d9488' }} />
             </motion.div>
             <h3 className="text-xs font-bold" style={{ color: 'var(--foreground)' }}>
               Progress
@@ -140,15 +140,15 @@ export function ProgressRings({
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
                 className="flex items-center gap-1.5 px-2 py-0.5 rounded-full"
-                style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)' }}
+                style={{ background: 'rgba(22,163,74,0.15)', border: '1px solid rgba(22,163,74,0.4)' }}
               >
                 <motion.div
                   animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                   className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: '#22c55e', boxShadow: '0 0 6px #22c55e' }}
+                  style={{ background: '#16a34a', boxShadow: '0 0 6px rgba(22,163,74,0.6)' }}
                 />
-                <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: '#22c55e' }}>
+                <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: '#16a34a' }}>
                   Live
                 </span>
               </motion.div>
@@ -211,7 +211,7 @@ export function ProgressRings({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex items-center justify-center gap-1.5 mt-3 pt-2 text-[10px] relative z-10"
-            style={{ borderTop: '1px solid var(--border)', color: '#ef4444' }}
+            style={{ borderTop: '1px solid var(--border)', color: '#dc2626' }}
           >
             <Zap size={10} />
             <span className="font-semibold">{formatHM(wastedToday)} wasted today</span>
@@ -270,12 +270,13 @@ function AdvancedRing({
   const outerCircumference = 2 * Math.PI * outerRadius;
   const innerCircumference = 2 * Math.PI * innerRadius;
 
+  // Darker colors for visibility on BOTH dark and light themes
   const colors = colorScheme === 'teal'
-    ? { primary: '#14b8a6', secondary: '#2dd4bf', glow: 'rgba(20,184,166,0.6)', gradId: 'grad-teal' }
-    : { primary: '#22c55e', secondary: '#4ade80', glow: 'rgba(34,197,94,0.6)', gradId: 'grad-green' };
+    ? { primary: '#0d9488', secondary: '#14b8a6', glow: 'rgba(13,148,136,0.5)', gradId: 'grad-teal' }
+    : { primary: '#16a34a', secondary: '#22c55e', glow: 'rgba(22,163,74,0.5)', gradId: 'grad-green' };
 
-  // Goal-based color
-  const ringColor = goalPct >= 100 ? '#22c55e' : goalPct >= 75 ? colors.secondary : goalPct >= 25 ? colors.primary : '#f59e0b';
+  // Goal-based color (darker for light-theme visibility)
+  const ringColor = goalPct >= 100 ? '#16a34a' : goalPct >= 75 ? colors.secondary : goalPct >= 25 ? colors.primary : '#c2410c';
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -366,7 +367,7 @@ function AdvancedRing({
         <div className="text-sm font-bold tabular" style={{ color: ringColor }}>
           {formatHM(timeSec)}
         </div>
-        <div className="text-[8px] tabular" style={{ color: goalPct >= 100 ? '#22c55e' : 'var(--muted-foreground)' }}>
+        <div className="text-[8px] tabular" style={{ color: goalPct >= 100 ? '#16a34a' : 'var(--muted-foreground)' }}>
           {Math.round(goalPct)}%
         </div>
       </div>
@@ -383,7 +384,7 @@ function AdvancedRing({
                   width: 4,
                   height: 4,
                   borderRadius: '50%',
-                  background: ['#fbbf24', '#22c55e', '#14b8a6', '#3b82f6'][i % 4],
+                  background: ['#d97706', '#16a34a', '#0d9488', '#2563eb'][i % 4],
                 }}
                 initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
                 animate={{
@@ -422,7 +423,7 @@ function AdvancedRing({
 function TrendBadge({ trend }: { trend: number }) {
   const isUp = trend >= 5;
   const isDown = trend <= -5;
-  const color = isUp ? '#22c55e' : isDown ? '#ef4444' : '#f59e0b';
+  const color = isUp ? '#16a34a' : isDown ? '#dc2626' : '#c2410c';
   const Icon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
 
   return (
@@ -493,8 +494,8 @@ function DayDetailPopup({ date, title, onClose }: { date: string; title: string;
           <h2 className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>{title}</h2>
           <p className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>{dateLabel}</p>
           <div className="flex items-center justify-center gap-3 mt-1 text-[11px]">
-            <span style={{ color: '#14b8a6' }}>📚 {formatHM(totalStudy)}</span>
-            {totalWasted > 60 && <span style={{ color: '#ef4444' }}>⚠ {formatHM(totalWasted)}</span>}
+            <span style={{ color: '#0d9488' }}>📚 {formatHM(totalStudy)}</span>
+            {totalWasted > 60 && <span style={{ color: '#dc2626' }}>⚠ {formatHM(totalWasted)}</span>}
             <span style={{ color: 'var(--muted-foreground)' }}>{daySessions.length} sessions</span>
           </div>
         </div>
@@ -503,9 +504,9 @@ function DayDetailPopup({ date, title, onClose }: { date: string; title: string;
         <div className="space-y-2">
           {daySessions.map((session, i) => {
             const subjColors: Record<string, string> = {
-              Physics: '#3b82f6', Chemistry: '#22c55e', Botany: '#f59e0b', Zoology: '#a855f7', General: '#14b8a6',
+              Physics: '#2563eb', Chemistry: '#16a34a', Botany: '#d97706', Zoology: '#9333ea', General: '#0d9488',
             };
-            const subjColor = subjColors[session.subject] || '#14b8a6';
+            const subjColor = subjColors[session.subject] || '#0d9488';
             const startTime = new Date(session.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
             const endTime = new Date(session.endedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
             return (
@@ -532,9 +533,9 @@ function DayDetailPopup({ date, title, onClose }: { date: string; title: string;
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-xs font-bold tabular" style={{ color: '#14b8a6' }}>{formatHM(session.studySeconds)}</div>
+                  <div className="text-xs font-bold tabular" style={{ color: '#0d9488' }}>{formatHM(session.studySeconds)}</div>
                   {session.wastedSeconds > 60 && (
-                    <div className="text-[9px] tabular" style={{ color: '#ef4444' }}>⚠ {formatHM(session.wastedSeconds)}</div>
+                    <div className="text-[9px] tabular" style={{ color: '#dc2626' }}>⚠ {formatHM(session.wastedSeconds)}</div>
                   )}
                 </div>
               </motion.div>
@@ -612,42 +613,86 @@ function WeekDetailPopup({ onClose }: { onClose: () => void }) {
         <div className="text-center mb-5">
           <h2 className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>This Week</h2>
           <p className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>Last 7 days</p>
-          <div className="text-2xl font-bold tabular mt-1" style={{ color: '#22c55e' }}>
+          <div className="text-2xl font-bold tabular mt-1" style={{ color: '#16a34a' }}>
             {formatHM(totalWeek)}
           </div>
         </div>
 
-        {/* 7-day bars */}
-        <div className="flex items-end justify-between gap-1.5 h-32 mb-2">
-          {weekData.map((day, i) => {
-            const heightPct = (day.studySec / maxSec) * 100;
-            return (
-              <motion.div
-                key={i}
-                initial={{ height: 0 }}
-                animate={{ height: `${Math.max(4, heightPct)}%` }}
-                transition={{ duration: 0.5, delay: i * 0.05, ease: 'easeOut' }}
-                className="flex-1 flex flex-col items-center gap-1"
-              >
-                <div className="text-[8px] tabular font-bold" style={{ color: 'var(--foreground)' }}>
-                  {day.studySec > 0 ? formatHM(day.studySec).replace(' ', '') : ''}
+        {/* 7-day bar chart — proper grid layout with baseline */}
+        <div className="rounded-xl p-3" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+          {/* Times row (aligned above chart) */}
+          <div className="flex justify-between gap-1.5 mb-2">
+            {weekData.map((day, i) => (
+              <div key={i} className="flex-1 text-center text-[8px] tabular font-bold" style={{ color: day.studySec > 0 ? 'var(--foreground)' : 'var(--muted-foreground)', opacity: day.studySec > 0 ? 1 : 0.3 }}>
+                {day.studySec > 0 ? formatHM(day.studySec).replace(' ', '') : '—'}
+              </div>
+            ))}
+          </div>
+
+          {/* Chart area with grid lines + baseline */}
+          <div className="relative h-28 mb-2">
+            {/* Grid lines (horizontal) */}
+            <div className="absolute inset-0 flex flex-col justify-between">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="border-t" style={{ borderColor: 'var(--border)', opacity: 0.5 }} />
+              ))}
+            </div>
+
+            {/* Bars (aligned to bottom baseline) */}
+            <div className="absolute inset-0 flex items-end justify-between gap-1.5">
+              {weekData.map((day, i) => {
+                const heightPct = maxSec > 0 ? (day.studySec / maxSec) * 100 : 0;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.max(3, heightPct)}%` }}
+                    transition={{ duration: 0.5, delay: i * 0.05, ease: 'easeOut' }}
+                    className="flex-1 rounded-t-md relative"
+                    style={{
+                      background: day.isToday
+                        ? 'linear-gradient(180deg, #d97706, #b45309)'
+                        : day.studySec > 0
+                          ? 'linear-gradient(180deg, #16a34a, #15803d)'
+                          : 'var(--border)',
+                      minHeight: 3,
+                      boxShadow: day.isToday ? '0 0 8px rgba(217,119,6,0.4)' : 'none',
+                      border: day.studySec > 0 ? '1px solid rgba(0,0,0,0.1)' : 'none',
+                    }}
+                  >
+                    {/* Today indicator dot */}
+                    {day.isToday && day.studySec > 0 && (
+                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full" style={{ background: '#d97706' }} />
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Day names + date numbers (aligned below chart) */}
+          <div className="flex justify-between gap-1.5">
+            {weekData.map((day, i) => (
+              <div key={i} className="flex-1 text-center">
+                <div className="text-[8px] font-bold uppercase" style={{ color: day.isToday ? '#d97706' : 'var(--muted-foreground)' }}>
+                  {day.dayName.slice(0, 3)}
                 </div>
-                <div
-                  className="w-full rounded-t-md"
-                  style={{
-                    background: day.isToday
-                      ? 'linear-gradient(180deg, #fbbf24, #f59e0b)'
-                      : 'linear-gradient(180deg, #22c55e, #16a34a)',
-                    minHeight: 4,
-                    boxShadow: day.isToday ? '0 0 8px rgba(251,191,36,0.4)' : 'none',
-                  }}
-                />
-                <span className="text-[8px]" style={{ color: day.isToday ? '#fbbf24' : 'var(--muted-foreground)' }}>
-                  {day.dayName.slice(0, 2)}
-                </span>
-              </motion.div>
-            );
-          })}
+                <div className="text-[7px] tabular" style={{ color: 'var(--muted-foreground)' }}>
+                  {day.dateNum}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Summary footer */}
+        <div className="flex items-center justify-between mt-3 pt-2 text-[10px]" style={{ borderTop: '1px solid var(--border)' }}>
+          <span style={{ color: 'var(--muted-foreground)' }}>
+            Daily avg: <span className="font-bold tabular" style={{ color: 'var(--foreground)' }}>{formatHM(Math.round(totalWeek / 7))}</span>
+          </span>
+          <span style={{ color: 'var(--muted-foreground)' }}>
+            Best: <span className="font-bold tabular" style={{ color: '#16a34a' }}>{formatHM(Math.max(...weekData.map((d) => d.studySec)))}</span>
+          </span>
         </div>
       </motion.div>
     </motion.div>
