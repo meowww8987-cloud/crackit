@@ -346,18 +346,18 @@ function DayDetailPopup({
 
         {/* === Header: Date + Total Study + Total Wasted === */}
         <div className="shrink-0 px-4 pt-5 pb-3 border-b border-white/10">
-          <div className="text-sm font-bold text-white pr-8">{dateStr}</div>
+          <div className="text-sm font-bold text-foreground pr-8">{dateStr}</div>
           <div className="flex items-center gap-4 mt-2">
             <div className="flex items-center gap-1.5">
               <TrendingUp size={13} className="text-green-400" />
               <span className="text-lg font-bold tabular text-green-400">{formatHM(totalStudySec)}</span>
-              <span className="text-[9px] text-white/40 uppercase">studied</span>
+              <span className="text-[9px] text-muted-foreground uppercase">studied</span>
             </div>
             {totalWastedSec > 0 && (
               <div className="flex items-center gap-1.5">
                 <AlertCircle size={13} className="text-red-400" />
                 <span className="text-sm font-bold tabular text-red-400">{formatHM(totalWastedSec)}</span>
-                <span className="text-[9px] text-white/40 uppercase">wasted</span>
+                <span className="text-[9px] text-muted-foreground uppercase">wasted</span>
               </div>
             )}
           </div>
@@ -376,8 +376,8 @@ function DayDetailPopup({
               className={cn(
                 'shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold transition active:scale-95',
                 selectedSubject === null
-                  ? 'bg-white/15 text-white'
-                  : 'bg-white/5 text-white/50'
+                  ? 'bg-primary/15 text-primary'
+                  : 'bg-muted text-muted-foreground'
               )}
             >
               All ({sessions.length})
@@ -396,7 +396,7 @@ function DayDetailPopup({
                   )}
                   style={isActive
                     ? { background: `${sc.hex}25`, color: sc.hex, border: `1px solid ${sc.hex}40` }
-                    : { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.5)' }
+                    : { background: 'var(--muted)', color: 'var(--muted-foreground)' }
                   }
                 >
                   <div className="w-2 h-2 rounded-full" style={{ background: sc.hex }} />
@@ -419,17 +419,17 @@ function DayDetailPopup({
                 const iconColor = isPractice ? '#3b82f6' : isTest ? '#a855f7' : '#22c55e';
                 const sc = subjectColor(s.subject as any);
                 return (
-                  <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5"
+                  <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
                     style={{ borderLeft: `3px solid ${sc.hex}` }}>
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                       style={{ background: `${iconColor}20` }}>
                       <Icon size={14} style={{ color: iconColor }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[11px] font-semibold text-white truncate">
+                      <div className="text-[11px] font-semibold text-foreground truncate">
                         {s.subject}{s.chapter && s.chapter !== 'All' ? ` · ${s.chapter}` : ''}
                       </div>
-                      <div className="text-[9px] text-white/60 truncate">
+                      <div className="text-[9px] text-muted-foreground truncate">
                         {s.lecture || s.topic || ''}
                         {s.mood && ` · ${s.mood}`}
                       </div>
