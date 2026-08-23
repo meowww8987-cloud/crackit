@@ -518,7 +518,6 @@ export function AppShell() {
                       key={tab.key}
                       onClick={() => {
                         if (draggedLectureId) {
-                          // If dragging, clicking the Study tab = drop
                           if (tab.key === 'study') handleDropOnStudyTab();
                           else endDrag();
                           return;
@@ -533,7 +532,6 @@ export function AppShell() {
                       onPointerDown={longPressHandler}
                       onPointerUp={(e) => {
                         clearLongPress?.();
-                        // Handle drag-drop on Study tab
                         if (draggedLectureId && tab.key === 'study') {
                           handleDropOnStudyTab();
                         }
@@ -553,19 +551,27 @@ export function AppShell() {
                       className={cn(
                         'relative flex flex-col items-center justify-center rounded-xl transition-all',
                         'min-w-[42px] h-12 px-1.5',
-                        isActive ? 'text-adaptive' : 'text-adaptive-muted hover:text-adaptive',
-                        // Highlight Study tab when dragging a lecture from Syllabus
-                        draggedLectureId && tab.key === 'study' && 'bg-teal-500/20 ring-2 ring-teal-400/50 scale-110',
                         // Hide History, Tests, Stats tabs in Minimal Mode
                         minimalMode && (tab.key === 'history' || tab.key === 'tests' || tab.key === 'stats') && 'minimal-hide'
                       )}
+                      style={{
+                        color: isActive ? '#0d9488' : 'var(--muted-foreground)',
+                        ...(draggedLectureId && tab.key === 'study' ? {
+                          background: 'rgba(13, 148, 136, 0.15)',
+                          boxShadow: '0 0 0 2px rgba(13, 148, 136, 0.4)',
+                          transform: 'scale(1.1)',
+                        } : {}),
+                      }}
                       aria-label={tab.label}
                     >
                       {isActive && (
                         <motion.div
                           layoutId="tab-indicator"
                           className="absolute inset-0 rounded-xl"
-                          style={{ background: 'rgba(20, 184, 166, 0.2)' }}
+                          style={{
+                            background: 'rgba(13, 148, 136, 0.12)',
+                            border: '1px solid rgba(13, 148, 136, 0.25)',
+                          }}
                           transition={{ type: 'spring', stiffness: 400, damping: 32 }}
                         />
                       )}
@@ -573,17 +579,28 @@ export function AppShell() {
                         animate={
                           reduceAnimations
                             ? {}
-                            : { scale: isActive ? 1.1 : 1, y: isActive ? -1 : 0 }
+                            : { scale: isActive ? 1.15 : 1, y: isActive ? -2 : 0 }
                         }
                         transition={{ type: 'spring', stiffness: 500, damping: 15 }}
                         className="relative z-10"
                       >
-                      <Icon
-                        size={20}
-                        strokeWidth={isActive ? 2.5 : 2}
-                        style={{ opacity: isActive ? 1 : 0.85 }}
-                      />
+                        <Icon
+                          size={20}
+                          strokeWidth={isActive ? 2.5 : 2}
+                          style={{ opacity: isActive ? 1 : 0.6 }}
+                        />
                       </motion.div>
+                      {/* Active label — small text under icon */}
+                      {isActive && !reduceAnimations && (
+                        <motion.span
+                          initial={{ opacity: 0, y: 2 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="absolute -bottom-0.5 text-[7px] font-bold uppercase tracking-wide"
+                          style={{ color: '#0d9488' }}
+                        >
+                          {tab.label}
+                        </motion.span>
+                      )}
                     </button>
                   );
                 })}
