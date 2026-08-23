@@ -288,7 +288,7 @@ export function ProgressRings({
             />
             {/* Trend badge */}
             <TrendBadge trend={trendToday} themeColors={themeColors} />
-            <div className="text-[9px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            <div className="text-[9px] mt-1" style={{ color: '#dc2626' }}>
               Yesterday: {formatHM(yestSec)}
             </div>
           </motion.button>
@@ -312,7 +312,7 @@ export function ProgressRings({
             />
             {/* Trend badge */}
             <TrendBadge trend={trendWeek} themeColors={themeColors} />
-            <div className="text-[9px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            <div className="text-[9px] mt-1" style={{ color: '#dc2626' }}>
               Last: {formatHM(lastWeek)}
             </div>
           </motion.button>
@@ -440,16 +440,16 @@ function AdvancedRing({
 
         {/* Outer ring track (yesterday/last week) */}
         <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="var(--muted)" strokeWidth={strokeWidth - 1} />
-        {/* Outer ring progress — DISTINCT visible color (not faint outline) */}
+        {/* Outer ring progress — RED for comparison (yesterday/last week) */}
         <motion.circle
           cx={center}
           cy={center}
           r={outerRadius}
           fill="none"
-          stroke={colors.outerRing}
+          stroke="#dc2626"
           strokeWidth={strokeWidth - 1}
           strokeLinecap="round"
-          opacity="0.75"
+          opacity="0.8"
           strokeDasharray={outerCircumference}
           initial={{ strokeDashoffset: outerCircumference }}
           animate={{ strokeDashoffset: outerCircumference - (outerPct / 100) * outerCircumference }}
