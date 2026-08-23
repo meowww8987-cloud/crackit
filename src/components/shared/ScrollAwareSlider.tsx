@@ -61,13 +61,19 @@ export function ScrollAwareSlider({ children }: { children: ReactNode }) {
       const dy = Math.abs(e.clientY - startRef.current.y);
       const totalDist = dx + dy;
 
-      // Need at least 8px of movement to decide (avoid jitter on tap)
-      if (totalDist < 8) return;
+      // Need at least 12px of movement to decide (was 8px — too sensitive)
+      if (totalDist < 12) return;
 
       // Compute angle from horizontal (0° = pure horizontal, 90° = pure vertical)
       const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
 
-      if (angle > 60) {
+      // Stricter thresholds (was 60/30, now 50/20):
+      // - angle > 50° → definitely scrolling (was 60°)
+      // - angle < 20° → definitely dragging slider (was 30°)
+      // - 20-50° = ambiguous, keep tracking until clearer movement
+      // This means the user has to drag MORE horizontally to activate the slider,
+      // preventing accidental changes when scrolling slightly diagonally.
+      if (angle > 50) {
         // Mostly vertical → user is scrolling. Cancel the slider drag.
         decidedRef.current = 'scroll';
         const slider = findSlider();
@@ -80,21 +86,16 @@ export function ScrollAwareSlider({ children }: { children: ReactNode }) {
         // Wrapper allows vertical scroll
         el.style.touchAction = 'pan-y';
         try { el.releasePointerCapture(e.pointerId); } catch {}
-      } else if (angle < 30) {
+      } else if (angle < 20) {
         // Mostly horizontal → user is dragging the slider.
-        // OPTION C: Lock ALL scrolling (touch-action: none) so vertical
-        // movement doesn't leak through and cause double-action.
         decidedRef.current = 'slider';
         const slider = findSlider();
         if (slider) {
           slider.style.touchAction = 'none';
         }
-        // Also lock the wrapper — prevents page scroll during slider drag
         el.style.touchAction = 'none';
-        // Capture pointer so we get all subsequent move events
         try { el.setPointerCapture(e.pointerId); } catch {}
       }
-      // 30-60° = ambiguous, keep tracking until clearer movement
     };
 
     const onPointerUp = (e: PointerEvent) => {

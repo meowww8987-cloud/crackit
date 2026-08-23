@@ -245,54 +245,41 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 function Slider({ value, min, max, step = 1, onChange, format }: {
- value: number; min: number; max: number; step?: number; onChange: (v: number) => void; format?: (v: number) => string;
+  value: number; min: number; max: number; step?: number; onChange: (v: number) => void; format?: (v: number) => string;
 }) {
- const pct = ((value - min) / (max - min)) * 100;
- return (
- <div>
- {format && (
- <div className="flex items-center justify-between mb-1.5">
- <span className="text-sm font-bold tabular" style={{ color: '#0d9488' }}>{format(value)}</span>
- <span className="text-[9px] tabular" style={{ color: 'var(--muted-foreground)' }}>{Math.round(pct)}%</span>
- </div>
- )}
- <div className="relative">
- {/* Track background */}
- <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-2 rounded-full" style={{ background: 'var(--muted)' }} />
- {/* Filled portion */}
- <div
- className="absolute top-1/2 -translate-y-1/2 left-0 h-2 rounded-full"
- style={{
- width: `${pct}%`,
- background: 'linear-gradient(90deg, #0d9488, #14b8a6)',
- boxShadow: '0 0 4px rgba(13,148,136,0.4)',
- }}
- />
- <ScrollAwareSlider>
- <input
- type="range"
- min={min}
- max={max}
- step={step}
- value={value}
- onChange={(e) => onChange(Number(e.target.value))}
- className="w-full relative z-10"
- style={{
- appearance: 'none',
- WebkitAppearance: 'none',
- background: 'transparent',
- height: '24px',
- cursor: 'pointer',
- }}
- />
- </ScrollAwareSlider>
- </div>
- <div className="flex justify-between text-[8px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
- <span>{min}</span>
- <span>{max}</span>
- </div>
- </div>
- );
+  const pct = ((value - min) / (max - min)) * 100;
+  return (
+    <div>
+      {format && (
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-bold tabular" style={{ color: '#0d9488' }}>{format(value)}</span>
+          <span className="text-[9px] tabular" style={{ color: 'var(--muted-foreground)' }}>{Math.round(pct)}%</span>
+        </div>
+      )}
+      <ScrollAwareSlider>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full modern-slider"
+          style={{
+            // Use CSS custom properties for the fill — the thumb/track are
+            // styled entirely in globals.css (.modern-slider)
+            '--slider-pct': `${pct}%`,
+            '--slider-fill': 'linear-gradient(90deg, #0d9488, #14b8a6)',
+            '--slider-track': 'var(--border)',
+          } as React.CSSProperties}
+        />
+      </ScrollAwareSlider>
+      <div className="flex justify-between text-[8px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+        <span>{min}</span>
+        <span>{max}</span>
+      </div>
+    </div>
+  );
 }
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
