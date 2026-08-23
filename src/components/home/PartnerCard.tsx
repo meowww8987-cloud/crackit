@@ -139,11 +139,16 @@ export function PartnerCard() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [partner.code, syncData, fetchPartnerData]);
 
-  // Tick every 5s so "updated Xs ago" counter stays fresh (30s sync, 5s display)
+  // === Local 1-second tick (declared here, before activePractice is set below) ===
+  // We use a non-reactive peek at the practice store for the tick speed decision.
+  // The actual reactive activePractice is declared later and used for display.
+  const _partnerLive = partner.partnerLastData?.isStudying || partner.partnerLastData?.isPracticing || false;
+  const _iAmLive = (!!myActiveSession && !myActiveSession.paused) || !!usePractice.getState().activePractice;
+  const _tickIntervalMs = (_partnerLive || _iAmLive) ? 1_000 : 5_000;
   useEffect(() => {
-    const t = setInterval(() => setTick((x) => x + 1), 5_000);
+    const t = setInterval(() => setTick((x) => x + 1), _tickIntervalMs);
     return () => clearInterval(t);
-  }, []);
+  }, [_tickIntervalMs]);
 
   // Push when a session is saved (global hook handles live state, but this
   // catches the moment a session is committed to history).
@@ -248,10 +253,32 @@ export function PartnerCard() {
   const partnerLastTopic = partnerData?.lastTopic || null;
   const partnerLastTestScore = partnerData?.lastTestScore || null;
 
-  // Comparison bar — who's studied more today
-  const maxSec = Math.max(myTodaySec, partnerSec, 1);
+  // === LIVE partner time (ticks locally every second) ===
+  // Between syncs, if the partner is practicing/studying, their todaySec keeps
+  // growing. We compute the delta from the last sync time and add it to the
+  // synced partnerSec so the timer counts up in real-time on our card.
+  // This gives a "live" feel without hammering the server.
+  const partnerActiveNow = partnerIsStudying || partnerIsPracticing;
+  const partnerLiveDelta = (partnerActiveNow && partnerUpdatedAt)
+    ? Math.max(0, Math.floor((Date.now() - partnerUpdatedAt) / 1000))
+    : 0;
+  const partnerLiveSec = partnerSec + partnerLiveDelta;
+  // Live current-session timer for the partner (for the banner display).
+  // Uses practiceStartedAt / focusStartedAt from the payload so the elapsed
+  // time is accurate even if the sync was a few seconds ago.
+  const partnerSessionStartedAt = partnerIsPracticing
+    ? (partnerData?.practiceStartedAt ?? null)
+    : partnerIsStudying
+      ? (partnerData?.focusStartedAt ?? null)
+      : null;
+  const partnerLiveSessionSec = partnerSessionStartedAt
+    ? Math.max(0, Math.floor((Date.now() - partnerSessionStartedAt) / 1000))
+    : 0;
+
+  // Comparison bar — who's studied more today (uses LIVE times so it ticks)
+  const maxSec = Math.max(myTodaySec, partnerLiveSec, 1);
   const myPct = Math.round((myTodaySec / maxSec) * 100);
-  const partnerPct = Math.round((partnerSec / maxSec) * 100);
+  const partnerPct = Math.round((partnerLiveSec / maxSec) * 100);
 
   // Status text — offline/online checked FIRST, then activity (only if live)
   const partnerStatusText = partnerIsOffline
@@ -476,12 +503,12 @@ export function PartnerCard() {
                       {partner.partnerName || '—'}
                     </span>
                     <span className="tabular text-t-secondary font-semibold">
-                      {formatHM(partnerSec)} <span className="text-t-muted font-normal">/ {dailyGoalHours}h</span>
+                      {formatHM(partnerLiveSec)} <span className="text-t-muted font-normal">/ {dailyGoalHours}h</span>
                     </span>
                   </div>
                   <div className="h-2.5 rounded-full bg-white/5 overflow-hidden">
                     <motion.div
-                      animate={{ width: `${Math.min(100, (partnerSec / (dailyGoalHours * 3600)) * 100)}%` }}
+                      animate={{ width: `${Math.min(100, (partnerLiveSec / (dailyGoalHours * 3600)) * 100)}%` }}
                       transition={{ duration: 0.5 }}
                       className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500"
                     />
@@ -543,7 +570,7 @@ export function PartnerCard() {
                   )}
                 />
                 <Play size={11} className={cn("shrink-0", partnerIsPracticing ? "text-blue-500" : "text-green-500")} />
-                <span className="truncate text-t-secondary">
+                <span className="truncate text-t-secondary flex-1">
                   <strong className={cn(partnerIsPracticing ? "text-blue-600 dark:text-blue-400" : "text-green-600 dark:text-green-400")}>
                     {partner.partnerName}
                   </strong>{' '}
@@ -551,6 +578,19 @@ export function PartnerCard() {
                   {partnerLastSubject ? ` · ${partnerLastSubject}` : ''}
                   {partnerLastChapter ? ` · ${partnerLastChapter}` : ''}
                 </span>
+                {/* Live session timer — ticks locally every second using
+                    practiceStartedAt/focusStartedAt from the sync payload.
+                    Shows "12m 34s" format so it's easy to read at a glance. */}
+                {partnerLiveSessionSec > 0 && (
+                  <span className={cn(
+                    "tabular font-bold text-[11px] shrink-0 px-1.5 py-0.5 rounded-md",
+                    partnerIsPracticing
+                      ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                      : "bg-green-500/15 text-green-600 dark:text-green-400"
+                  )}>
+                    {formatHM(partnerLiveSessionSec)}
+                  </span>
+                )}
               </motion.div>
             )}
             {partnerIsWasting && !partnerIsStudying && (

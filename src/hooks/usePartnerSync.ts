@@ -69,11 +69,13 @@ export function usePartnerSync() {
     return () => clearTimeout(t);
   }, [partnerCode, sessionKey, practiceKey, sessionsLen, pausedPracticesLen, targetsLen, testsLen, syncData, fetchPartnerData]);
 
-  // === Periodic sync — REAL-TIME, every 3 seconds ===
-  // Push + fetch every 3s so both sides see updates within ~6s end-to-end.
-  // This is aggressive but the payload is tiny (~200 bytes) and the feature
-  // needs to feel LIVE. 3s is the sweet spot between real-time feel and
-  // battery/network impact.
+  // === Periodic sync — ADAPTIVE interval ===
+  // 10s while actively studying/practicing (partner sees near-real-time updates)
+  // 30s while idle (saves battery on low-end devices)
+  // The payload is tiny (~250 bytes) so 10s during active study is fine.
+  const hasActive = (!!activeSession && !activeSession.paused) || !!activePractice;
+  const syncIntervalMs = hasActive ? 10_000 : 30_000;
+
   useEffect(() => {
     if (!partnerCode) return;
 
@@ -81,16 +83,16 @@ export function usePartnerSync() {
     syncData();
     fetchPartnerData();
 
-    // Sync interval — 30s globally (was 3s, too aggressive for low-end devices).
-    // During FocusTimer: still 30s (already optimized).
-    // The 'updated Xs ago' display on PartnerCard handles the perception of freshness.
+    // Adaptive sync interval — faster when user is studying/practicing.
+    // When hasActive changes, this effect re-runs (clearing old interval
+    // and starting a new one at the new speed).
     const i = setInterval(() => {
       syncData();
       fetchPartnerData();
-    }, 30_000);
+    }, syncIntervalMs);
 
     return () => clearInterval(i);
-  }, [partnerCode, sessionKey, practiceKey, sessionsLen, pausedPracticesLen, targetsLen, syncData, fetchPartnerData]);
+  }, [partnerCode, sessionKey, practiceKey, sessionsLen, pausedPracticesLen, targetsLen, testsLen, syncData, fetchPartnerData, syncIntervalMs]);
 
   // Fetch partner data when tab becomes visible OR window regains focus.
   // CRITICAL: mobile browsers throttle setInterval when the tab goes to the

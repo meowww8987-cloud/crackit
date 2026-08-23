@@ -49,6 +49,14 @@ export interface PartnerSyncPayload {
   activityType: 'focus' | 'practice' | null;
   /** True if the user is currently mid-practice (activePractice is set). */
   isPracticing: boolean;
+  /** Timestamp (ms) when the current practice session started (adjusted for
+   *  pause/resume so elapsed = Date.now() - practiceStartedAt is always correct).
+   *  Sent so the partner card can tick the practice timer LOCALLY every second
+   *  without waiting for the next sync. Null when not practicing. */
+  practiceStartedAt: number | null;
+  /** Timestamp (ms) when the current focus session started (adjusted for
+   *  pause/resume). Null when no focus session is active. */
+  focusStartedAt: number | null;
 
   // === Today's targets ===
   /** Number of today's targets marked done. */
@@ -346,6 +354,13 @@ export const usePartner = create<PartnerStore>()(
           currentSessionSec,
           activityType,
           isPracticing,
+          // Send the startedAt timestamps so the partner card can tick the
+          // timer LOCALLY every second between syncs (real-time feel without
+          // hammering the server). For focus, use activeSession.startedAt.
+          // For practice, use activePractice.startedAt (already adjusted for
+          // pause/resume by the practice store).
+          practiceStartedAt: hasPractice ? activePractice!.startedAt : null,
+          focusStartedAt: hasFocus ? activeSession!.startedAt : null,
           targetsDone,
           targetsTotal,
           lastTestScore,
