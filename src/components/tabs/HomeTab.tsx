@@ -520,7 +520,6 @@ function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
   const todayLog = useDailyLog((s) => s.getToday());
   const pendingDoubts = useDoubts((s) => s.getPendingCount());
   const resolvedDoubts = useDoubts((s) => s.doubts.filter(d => d.status === 'resolved').length);
-  // Real sleep data from the new sleep store
   const todaySleepSec = useSleep((s) => s.getDurationForDate(todayKey()));
   const avgSleepHours = useSleep((s) => s.getAverageHours(7));
   const sleepHistory = useSleep((s) => s.history);
@@ -534,27 +533,26 @@ function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
 
   return (
     <>
-      <div className="glass rounded-2xl p-3">
+      <div className="glass rounded-2xl p-3" style={{ border: '1px solid var(--border)' }}>
         {/* Header row */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
             <span className="text-sm">😴</span>
-            <span className="text-[10px] font-bold text-white/50 uppercase tracking-wide">Sleep & Energy</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>Sleep & Energy</span>
           </div>
           <button
             onClick={() => onOpenPlan()}
-            className="text-[9px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-semibold active:scale-95 transition"
+            className="text-[9px] px-2 py-0.5 rounded-full font-semibold active:scale-95 transition"
+            style={{ background: 'rgba(99,102,241,0.15)', color: '#6366f1' }}
           >
             Sleep Plan →
           </button>
         </div>
 
-        {/* === Sleep block — tap to start sleep OR view report if has history === */}
+        {/* === Sleep block — tap to start sleep OR view report === */}
         <button
           onClick={() => {
-            // If active sleep → no-op (lock screen handles it)
             if (activeSleep) return;
-            // If has sleep history → open report; else open manual log
             if (hasAnySleepHistory) onOpenReport();
             else onOpenSleepLog();
           }}
@@ -567,67 +565,70 @@ function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
           onTouchCancel={() => {
             if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
           }}
-          className="w-full text-left rounded-xl p-2.5 bg-white/[0.03] hover:bg-white/[0.06] transition mb-2 active:scale-[0.99]"
+          className="w-full text-left rounded-xl p-2.5 transition mb-2 active:scale-[0.99]"
+          style={{ background: 'var(--muted)' }}
         >
           {activeSleep ? (
             <div className="flex items-center gap-2">
-              <div className="text-xl">🌙</div>
+              <motion.div
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="text-xl"
+              >🌙</motion.div>
               <div className="flex-1">
-                <div className="text-xs font-semibold text-indigo-300">Sleeping now…</div>
-                <div className="text-[9px] text-white/40">Tap NEET logo to wake · Long-press for report</div>
+                <div className="text-xs font-semibold" style={{ color: '#6366f1' }}>Sleeping now…</div>
+                <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>Tap NEET logo to wake · Long-press for report</div>
               </div>
             </div>
           ) : hasTodaySleep ? (
             <div className="flex items-center gap-2">
               <div className="text-xl">😴</div>
               <div className="flex-1">
-                <div className="text-sm font-bold tabular text-indigo-300">{todaySleepHours.toFixed(1)}h today</div>
-                <div className="text-[9px] text-white/40">7-day avg: {avgSleepHours.toFixed(1)}h · Long-press for report</div>
+                <div className="text-sm font-bold tabular" style={{ color: '#6366f1' }}>{todaySleepHours.toFixed(1)}h today</div>
+                <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>7-day avg: {avgSleepHours.toFixed(1)}h · Long-press for report</div>
               </div>
-              <Moon size={14} className="text-indigo-400/60" />
+              <Moon size={14} style={{ color: '#6366f1', opacity: 0.6 }} />
             </div>
           ) : todayLog ? (
             <div className="flex items-center gap-2">
               <div className="text-xl">😴</div>
               <div className="flex-1">
-                <div className="text-sm font-bold tabular text-indigo-300">{todayLog.sleepHours}h (manual)</div>
-                <div className="text-[9px] text-white/40">Long-press for report</div>
+                <div className="text-sm font-bold tabular" style={{ color: '#6366f1' }}>{todayLog.sleepHours}h (manual)</div>
+                <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>Long-press for report</div>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <div className="text-xl">😴</div>
               <div className="flex-1">
-                <div className="text-sm font-semibold text-white/60">Tap NEET logo to sleep</div>
-                <div className="text-[9px] text-white/40">Long-press here for sleep report</div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--muted-foreground)' }}>Tap NEET logo to sleep</div>
+                <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>Long-press here for sleep report</div>
               </div>
-              <Moon size={14} className="text-indigo-400/60" />
+              <Moon size={14} style={{ color: '#6366f1', opacity: 0.6 }} />
             </div>
           )}
         </button>
 
-        {/* === Energy block — quick 1-5 energy level picker === */}
+        {/* === Energy block === */}
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-[9px] font-bold text-white/50 uppercase tracking-wide">Energy</span>
-          <div className="flex-1 h-px bg-white/5" />
-          <span className="text-[9px] text-white/30">{todayLog ? `last: ${todayLog.energyLevel}/5` : 'tap to rate'}</span>
+          <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>Energy</span>
+          <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+          <span className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>{todayLog ? `last: ${todayLog.energyLevel}/5` : 'tap to rate'}</span>
         </div>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((lvl) => {
             const current = todayLog?.energyLevel ?? 0;
             const isFilled = lvl <= current;
+            const fillColor = lvl <= 2 ? '#dc2626' : lvl === 3 ? '#d97706' : '#16a34a';
             return (
               <button
                 key={lvl}
                 onClick={() => setEnergy(lvl)}
                 className="flex-1 py-1.5 rounded-lg text-sm transition active:scale-95"
                 style={{
-                  background: isFilled
-                    ? `rgba(${lvl <= 2 ? '239,68,68' : lvl === 3 ? '245,158,11' : '34,197,94'},0.18)`
-                    : 'rgba(255,255,255,0.03)',
-                  color: isFilled
-                    ? (lvl <= 2 ? '#f87171' : lvl === 3 ? '#fbbf24' : '#4ade80')
-                    : 'rgba(255,255,255,0.3)',
+                  background: isFilled ? `${fillColor}20` : 'var(--muted)',
+                  color: isFilled ? fillColor : 'var(--muted-foreground)',
+                  border: isFilled ? `1px solid ${fillColor}40` : '1px solid var(--border)',
                 }}
               >
                 {lvl <= 1 ? '😫' : lvl === 2 ? '😦' : lvl === 3 ? '😐' : lvl === 4 ? '🙂' : '😄'}
@@ -639,15 +640,15 @@ function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
         {/* Doubts mini-row */}
         <button
           onClick={() => {
-            // navigate to doubts (handled by AppShell via custom event)
             window.dispatchEvent(new CustomEvent('navigate-doubts'));
           }}
-          className="w-full mt-2 flex items-center gap-2 rounded-lg p-2 bg-white/[0.02] hover:bg-white/[0.05] transition"
+          className="w-full mt-2 flex items-center gap-2 rounded-lg p-2 transition"
+          style={{ background: 'var(--muted)' }}
         >
           <span className="text-sm">❓</span>
-          <span className="text-[10px] font-bold text-white/50 flex-1 text-left">Doubts</span>
-          <span className="text-xs font-bold tabular text-amber-400">{pendingDoubts}</span>
-          <span className="text-[9px] text-white/30">· {resolvedDoubts} resolved</span>
+          <span className="text-[10px] font-bold flex-1 text-left" style={{ color: 'var(--muted-foreground)' }}>Doubts</span>
+          <span className="text-xs font-bold tabular" style={{ color: '#d97706' }}>{pendingDoubts}</span>
+          <span className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>· {resolvedDoubts} resolved</span>
         </button>
       </div>
     </>
