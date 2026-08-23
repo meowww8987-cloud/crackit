@@ -15,19 +15,16 @@ import { useSettings } from '@/lib/store/settings';
 import { useProgress } from '@/lib/store/progress';
 import { subjectColor } from '@/lib/colors';
 import { triggerTimeline } from '@/components/app/AppShell';
-import { SubjectWeeklyBreakdown } from '@/components/stats/SubjectWeeklyBreakdown';
-import { SubjectSunburst } from '@/components/stats/SubjectSunburst';
 import { PeakStudyTime } from '@/components/stats/PeakStudyTime';
 import { ActivityCard } from '@/components/stats/ActivityCard';
 import { SleepHealthCard } from '@/components/stats/SleepHealthCard';
+import { SubjectBreakdown } from '@/components/stats/SubjectBreakdown';
 import { SleepReportSheet } from '@/components/dailylog/SleepReportSheet';
 import {
-  subjectDistribution,
   trendData,
   moodDistribution,
   wastedRatio,
   weeklyComparison,
-  neglectedSubjects,
 } from '@/lib/analytics';
 import { formatHM, isRevisionOverdue } from '@/lib/utils';
 import { CountUp } from '@/components/shared/CountUp';
@@ -39,12 +36,10 @@ export function StatsTab() {
   const prefer2D = useSettings((s) => s.prefer2D);
   const [showSleepReport, setShowSleepReport] = useState(false);
 
-  const distribution = useMemo(() => subjectDistribution(sessions), [sessions]);
   const trend = useMemo(() => trendData(sessions, 30), [sessions]);
   const moods = useMemo(() => moodDistribution(sessions), [sessions]);
   const wasted = useMemo(() => wastedRatio(sessions), [sessions]);
   const comparison = useMemo(() => weeklyComparison(sessions), [sessions]);
-  const neglected = useMemo(() => neglectedSubjects(sessions), [sessions]);
   const retentionData = useMemo(
     () => retentionTrend.filter((c) => c.completedAt > 0).map((c) => ({ date: c.date, score: c.retentionScore })),
     [retentionTrend]
@@ -83,51 +78,8 @@ export function StatsTab() {
 
       <SleepReportSheet open={showSleepReport} onClose={() => setShowSleepReport(false)} />
 
-      {/* 7-Day Subject Breakdown */}
-      <SubjectWeeklyBreakdown />
-
-      {/* Subject Sunburst — radial time distribution */}
-      <SubjectSunburst />
-
-      {/* Subject distribution donut */}
-      {distribution.length > 0 && (
-        <ChartCard title="Subject Distribution">
-          <div className="flex items-center gap-3">
-            <div className="h-36 flex-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={distribution}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={35}
-                    outerRadius={60}
-                    paddingAngle={2}
-                  >
-                    {distribution.map((d, i) => (
-                      <Cell key={i} fill={d.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="space-y-1 flex-1">
-              {distribution.map((d) => (
-                <div key={d.name} className="flex items-center gap-2 text-xs">
-                  <span className="w-2 h-2 rounded-full" style={{ background: d.color }} />
-                  <span className="text-white/70 flex-1">{d.name}</span>
-                  <span className="tabular text-white/50">{d.value}m</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </ChartCard>
-      )}
+      {/* Subject Breakdown — 3-level card (replaces stacked bars + sunburst + donut + neglected) */}
+      <SubjectBreakdown />
 
       {/* 30-day trend */}
       <ChartCard title="Study Time Trend (30 days)">
@@ -227,25 +179,6 @@ export function StatsTab() {
 
       {/* Best study hour — 3-level Peak Study Time card */}
       <PeakStudyTime />
-
-      {/* Neglected subjects */}
-      {neglected.length > 0 && (
-        <ChartCard title="Neglected Subjects (<5% time)">
-          <div className="space-y-1.5">
-            {neglected.map((n) => {
-              const c = subjectColor(n.subject);
-              return (
-                <div key={n.subject} className="flex items-center gap-2 text-xs">
-                  <AlertTriangle size={12} className="text-amber-400" />
-                  <span className="w-2 h-2 rounded-full" style={{ background: c.hex }} />
-                  <span className="text-white/70 flex-1">{n.subject}</span>
-                  <span className="tabular text-white/60">{n.minutes}m ({n.pct}%)</span>
-                </div>
-              );
-            })}
-          </div>
-        </ChartCard>
-      )}
 
       {/* Retention trend */}
       {retentionData.length > 0 && (

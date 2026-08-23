@@ -177,6 +177,131 @@ export function subjectDistribution(sessions: SavedSession[]): { name: Subject; 
   })).filter((d) => d.value > 0);
 }
 
+// ===== Subject Breakdown v2 — per-subject weekly detail with per-day + chapters =====
+
+export interface SubjectWeekDay {
+  date: string; // YYYY-MM-DD
+  dayName: string; // "Mon", "Tue"
+  dateNum: number;
+  studySec: number;
+  wastedSec: number;
+  sessionCount: number;
+  isToday: boolean;
+}
+
+export interface SubjectChapterStat {
+  chapter: string;
+  studySec: number;
+  pct: number; // % of subject total
+}
+
+export interface SubjectDetail {
+  subject: Subject;
+  color: string;
+  totalStudySec: number;
+  totalWastedSec: number;
+  sessionCount: number;
+  daysActive: number; // unique days studied this subject
+  avgPerSessionSec: number;
+  pctOfWeek: number; // % of total weekly study time
+  days: SubjectWeekDay[]; // 7 entries
+  topChapters: SubjectChapterStat[];
+  isBest: boolean; // highest totalStudySec this week
+  isNeglected: boolean; // <5% of week
+}
+
+export interface SubjectBreakdownData {
+  subjects: SubjectDetail[]; // sorted by totalStudySec desc
+  totalStudySec: number; // grand total across all subjects this week
+  totalWastedSec: number;
+  weekAgo: number;
+}
+
+export function subjectBreakdownData(sessions: SavedSession[]): SubjectBreakdownData {
+  const weekAgo = Date.now() - 7 * 86400000;
+  const today = todayKey();
+
+  // Filter sessions from last 7 days
+  const weekSessions = sessions.filter((s) => s.endedAt >= weekAgo);
+
+  const subjects: SubjectDetail[] = SUBJECTS.map((subj) => {
+    const subjSessions = weekSessions.filter((s) => s.subject === subj);
+    const totalStudySec = subjSessions.reduce((a, s) => a + s.studySeconds, 0);
+    const totalWastedSec = subjSessions.reduce((a, s) => a + s.wastedSeconds, 0);
+    const sessionCount = subjSessions.length;
+    const avgPerSessionSec = sessionCount > 0 ? Math.round(totalStudySec / sessionCount) : 0;
+
+    // 7-day breakdown
+    const days: SubjectWeekDay[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = addDays(new Date(), -i);
+      const key = dateKey(d);
+      const daySessions = subjSessions.filter((s) => s.date === key);
+      days.push({
+        date: key,
+        dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        dateNum: d.getDate(),
+        studySec: daySessions.reduce((a, s) => a + s.studySeconds, 0),
+        wastedSec: daySessions.reduce((a, s) => a + s.wastedSeconds, 0),
+        sessionCount: daySessions.length,
+        isToday: key === today,
+      });
+    }
+
+    const daysActive = days.filter((d) => d.studySec > 0).length;
+
+    // Top chapters
+    const chapterMap: Record<string, number> = {};
+    for (const s of subjSessions) {
+      const ch = s.chapter || 'Unknown';
+      chapterMap[ch] = (chapterMap[ch] || 0) + s.studySeconds;
+    }
+    const topChapters: SubjectChapterStat[] = Object.entries(chapterMap)
+      .map(([chapter, sec]) => ({
+        chapter,
+        studySec: sec,
+        pct: totalStudySec > 0 ? Math.round((sec / totalStudySec) * 100) : 0,
+      }))
+      .sort((a, b) => b.studySec - a.studySec)
+      .slice(0, 5);
+
+    return {
+      subject: subj,
+      color: subjectColor(subj).hex,
+      totalStudySec,
+      totalWastedSec,
+      sessionCount,
+      daysActive,
+      avgPerSessionSec,
+      pctOfWeek: 0, // filled after we know grand total
+      days,
+      topChapters,
+      isBest: false,
+      isNeglected: false,
+    };
+  });
+
+  const totalStudySec = subjects.reduce((a, s) => a + s.totalStudySec, 0);
+  const totalWastedSec = subjects.reduce((a, s) => a + s.totalWastedSec, 0);
+
+  // Fill in pctOfWeek, isBest, isNeglected
+  const subjectsWithStudy = subjects.filter((s) => s.totalStudySec > 0);
+  const bestSubject = subjectsWithStudy.length > 0
+    ? subjectsWithStudy.reduce((max, s) => (s.totalStudySec > max.totalStudySec ? s : max))
+    : null;
+
+  for (const s of subjects) {
+    s.pctOfWeek = totalStudySec > 0 ? Math.round((s.totalStudySec / totalStudySec) * 100) : 0;
+    s.isBest = bestSubject?.subject === s.subject;
+    s.isNeglected = s.pctOfWeek < 5 && s.pctOfWeek > 0;
+  }
+
+  // Sort: studied subjects first (by totalStudySec desc), then unused
+  const sorted = subjects.sort((a, b) => b.totalStudySec - a.totalStudySec);
+
+  return { subjects: sorted, totalStudySec, totalWastedSec, weekAgo };
+}
+
 // ===== 30-day trend line =====
 export function trendData(sessions: SavedSession[], days: number = 30): { date: string; label: string; minutes: number }[] {
   const result: { date: string; label: string; minutes: number }[] = [];
