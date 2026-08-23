@@ -269,7 +269,7 @@ export function PartnerComparisonSheet({ onClose }: Props) {
           </div>
         </div>
 
-        {/* === Weekly Leaderboard (full width) === */}
+        {/* === Weekly Leaderboard — modernized with wasted time === */}
         <div className="rounded-2xl p-4 mb-3" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
           <div
             data-card
@@ -303,28 +303,48 @@ export function PartnerComparisonSheet({ onClose }: Props) {
               </div>
             </div>
 
-            {/* Week total summary */}
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              <div className="text-center rounded-lg p-2" style={{ background: `${YOU_COLOR}10` }}>
-                <div className="text-[9px] font-bold uppercase" style={{ color: YOU_COLOR }}>You</div>
-                <div className="text-sm font-bold tabular" style={{ color: YOU_COLOR }}>{formatHM(myWeekTotal)}</div>
-                {myWeekWasted > 0 && <div className="text-[8px] tabular" style={{ color: WASTED_COLOR, opacity: 0.7 }}>⚠ {formatHM(myWeekWasted)}</div>}
-              </div>
-              <div className="text-center rounded-lg p-2" style={{ background: `${GOLD_COLOR}10` }}>
-                <div className="text-[9px] font-bold uppercase" style={{ color: GOLD_COLOR }}>Days Won</div>
-                <div className="text-sm font-bold tabular" style={{ color: GOLD_COLOR }}>
-                  {partnerHasData ? `${daysWon}/7` : '—'}
+            {/* Week summary — 3 tiles with study + wasted */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {/* YOU tile */}
+              <div className="rounded-xl p-2.5" style={{ background: `${YOU_COLOR}10`, border: `1px solid ${YOU_COLOR}25` }}>
+                <div className="flex items-center gap-1 mb-1">
+                  <div className="w-2 h-2 rounded-full" style={{ background: YOU_COLOR }} />
+                  <span className="text-[9px] font-bold uppercase" style={{ color: YOU_COLOR }}>You</span>
                 </div>
-                <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>this week</div>
+                <div className="text-lg font-bold tabular" style={{ color: 'var(--foreground)' }}>{formatHM(myWeekTotal)}</div>
+                <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>7-day study</div>
+                {myWeekWasted > 60 && (
+                  <div className="text-[9px] tabular mt-0.5" style={{ color: WASTED_COLOR }}>⚠ {formatHM(myWeekWasted)} wasted</div>
+                )}
               </div>
-              <div className="text-center rounded-lg p-2" style={{ background: `${PARTNER_COLOR}10` }}>
-                <div className="text-[9px] font-bold uppercase" style={{ color: PARTNER_COLOR }}>Partner</div>
-                <div className="text-sm font-bold tabular" style={{ color: PARTNER_COLOR }}>{partnerHasData ? formatHM(partnerWeekTotal) : '—'}</div>
-                <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>7-day total</div>
+              {/* PARTNER tile */}
+              <div className="rounded-xl p-2.5" style={{ background: `${PARTNER_COLOR}10`, border: `1px solid ${PARTNER_COLOR}25` }}>
+                <div className="flex items-center gap-1 mb-1">
+                  <div className="w-2 h-2 rounded-full" style={{ background: PARTNER_COLOR }} />
+                  <span className="text-[9px] font-bold uppercase" style={{ color: PARTNER_COLOR }}>Partner</span>
+                </div>
+                <div className="text-lg font-bold tabular" style={{ color: 'var(--foreground)' }}>{partnerHasData ? formatHM(partnerWeekTotal) : '—'}</div>
+                <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>7-day study</div>
+                <div className="text-[9px] tabular mt-0.5" style={{ color: GOLD_COLOR }}>
+                  {partnerHasData ? `${daysWon}/7 days won` : 'No data'}
+                </div>
               </div>
             </div>
 
-            {/* Daily bars — modern with gradient + glow */}
+            {/* Legend */}
+            <div className="flex items-center justify-center gap-3 mb-3 text-[8px]" style={{ color: 'var(--muted-foreground)' }}>
+              <span className="flex items-center gap-0.5">
+                <span className="w-2 h-2 rounded-sm" style={{ background: `linear-gradient(90deg, ${YOU_COLOR}, ${YOU_LIGHT})` }} /> You
+              </span>
+              <span className="flex items-center gap-0.5">
+                <span className="w-2 h-2 rounded-sm" style={{ background: `linear-gradient(90deg, ${PARTNER_COLOR}, ${PARTNER_LIGHT})` }} /> Partner
+              </span>
+              <span className="flex items-center gap-0.5">
+                <span className="w-2 h-2 rounded-sm" style={{ background: `${WASTED_COLOR}80` }} /> Wasted
+              </span>
+            </div>
+
+            {/* Daily bars — stacked design with wasted overlay */}
             <div className="space-y-2">
               {weekDates.map((date, i) => {
                 const dayObj = weekDateObjs[i];
@@ -338,47 +358,67 @@ export function PartnerComparisonSheet({ onClose }: Props) {
                 return (
                   <div
                     key={date}
-                    className="flex items-center gap-2 text-[10px] rounded-lg p-1.5"
+                    className="flex items-center gap-2 text-[10px] rounded-lg p-2"
                     style={{
                       background: isToday ? `${YOU_COLOR}08` : 'transparent',
                       border: isToday ? `1px solid ${YOU_COLOR}30` : '1px solid transparent',
                     }}
                   >
-                    <div className="w-9 shrink-0 text-center">
-                      <div className="font-bold" style={{ color: isToday ? YOU_COLOR : 'var(--foreground)' }}>{dayLabel}</div>
+                    {/* Day label */}
+                    <div className="w-8 shrink-0 text-center">
+                      <div className="font-bold text-[10px]" style={{ color: isToday ? YOU_COLOR : 'var(--foreground)' }}>{dayLabel}</div>
                       <div className="text-[8px]" style={{ color: 'var(--muted-foreground)' }}>{dateLabel}</div>
                     </div>
+
+                    {/* Bars container */}
                     <div className="flex-1 space-y-1">
-                      {/* My bar — gradient + glow */}
+                      {/* YOU bar — study (gradient) + wasted (red overlay) */}
                       <div className="flex items-center gap-1">
-                        <div className="flex-1 h-2.5 rounded-full overflow-hidden relative" style={{ background: 'var(--border)' }}>
+                        <div className="flex-1 h-3 rounded-full overflow-hidden relative" style={{ background: 'var(--border)' }}>
+                          {/* Study bar */}
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${(myH/maxDaily)*100}%` }}
                             transition={{ duration: 0.5, delay: i * 0.05 }}
-                            className="h-full rounded-full"
+                            className="h-full rounded-full absolute left-0 top-0"
                             style={{
                               background: `linear-gradient(90deg, ${YOU_COLOR}, ${YOU_LIGHT})`,
                               boxShadow: myH > 0 ? `0 0 4px ${YOU_COLOR}80` : 'none',
                             }}
                           />
+                          {/* Wasted overlay — red stripe on top of study bar */}
                           {myW > 0 && (
-                            <div className="absolute top-0 right-0 h-full rounded-full" style={{ width: `${Math.min(30, (myW/maxDaily)*100)}%`, background: `${WASTED_COLOR}60` }} />
+                            <div
+                              className="absolute top-0 h-full rounded-full"
+                              style={{
+                                left: `${(myH/maxDaily)*100}%`,
+                                width: `${Math.min(20, (myW/maxDaily)*100)}%`,
+                                background: `${WASTED_COLOR}80`,
+                                border: `0.5px solid ${WASTED_COLOR}`,
+                              }}
+                            />
                           )}
                         </div>
-                        <span className="tabular w-12 text-right font-bold" style={{ color: myWon && myH > 0 ? YOU_COLOR : 'var(--muted-foreground)' }}>
-                          {formatHM(myH)}
-                        </span>
+                        {/* Time + wasted badge */}
+                        <div className="flex flex-col items-end shrink-0 w-14">
+                          <span className="tabular font-bold text-[9px]" style={{ color: myWon && myH > 0 ? YOU_COLOR : 'var(--muted-foreground)' }}>
+                            {formatHM(myH)}
+                          </span>
+                          {myW > 60 && (
+                            <span className="tabular text-[7px]" style={{ color: WASTED_COLOR }}>⚠{formatHM(myW)}</span>
+                          )}
+                        </div>
                       </div>
-                      {/* Partner bar — gradient + glow */}
+
+                      {/* PARTNER bar */}
                       <div className="flex items-center gap-1">
-                        <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                        <div className="flex-1 h-3 rounded-full overflow-hidden relative" style={{ background: 'var(--border)' }}>
                           {partnerHasData && pH > 0 && (
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${(pH/maxDaily)*100}%` }}
                               transition={{ duration: 0.5, delay: i * 0.05 + 0.1 }}
-                              className="h-full rounded-full"
+                              className="h-full rounded-full absolute left-0 top-0"
                               style={{
                                 background: `linear-gradient(90deg, ${PARTNER_COLOR}, ${PARTNER_LIGHT})`,
                                 boxShadow: `0 0 4px ${PARTNER_COLOR}80`,
@@ -386,12 +426,18 @@ export function PartnerComparisonSheet({ onClose }: Props) {
                             />
                           )}
                         </div>
-                        <span className="tabular w-12 text-right font-bold" style={{ color: !myWon && partnerHasData && pH > 0 ? PARTNER_COLOR : 'var(--muted-foreground)' }}>
-                          {partnerHasData && pH > 0 ? formatHM(pH) : '—'}
-                        </span>
+                        <div className="flex flex-col items-end shrink-0 w-14">
+                          <span className="tabular font-bold text-[9px]" style={{ color: !myWon && partnerHasData && pH > 0 ? PARTNER_COLOR : 'var(--muted-foreground)' }}>
+                            {partnerHasData && pH > 0 ? formatHM(pH) : '—'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    {myWon && myH > 0 && <span className="text-[10px] shrink-0">🏆</span>}
+
+                    {/* Winner badge */}
+                    {myWon && myH > 0 && (
+                      <span className="text-[10px] shrink-0" title="You won this day">🏆</span>
+                    )}
                   </div>
                 );
               })}
@@ -440,58 +486,103 @@ export function PartnerComparisonSheet({ onClose }: Props) {
           />
         </div>
 
-        {/* === Subject Comparison === */}
+        {/* === Subject Comparison — modernized === */}
         <div className="rounded-2xl p-4 mb-3" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
           <div className="flex items-center gap-1.5 mb-3">
             <BookOpen size={14} style={{ color: YOU_COLOR }} />
             <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Subjects Today</span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {/* YOUR subjects */}
-            <div>
-              <div className="text-[10px] font-bold mb-2" style={{ color: YOU_COLOR }}>YOUR SUBJECTS</div>
-              {Object.entries(mySubjects).length === 0 ? (
-                <div className="text-[10px] italic" style={{ color: 'var(--muted-foreground)' }}>No study yet</div>
-              ) : (
-                Object.entries(mySubjects).sort((a,b) => b[1]-a[1]).map(([subj, sec]) => (
-                  <div key={subj} className="flex items-center gap-1.5 text-[10px] mb-1.5">
-                    <span className="w-14 truncate" style={{ color: 'var(--muted-foreground)' }}>{subj}</span>
-                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${(sec/Math.max(...Object.values(mySubjects),1))*100}%`,
-                          background: `linear-gradient(90deg, ${YOU_COLOR}, ${YOU_LIGHT})`,
-                        }}
-                      />
-                    </div>
-                    <span className="tabular w-8 text-right font-bold" style={{ color: 'var(--foreground)' }}>{formatHM(sec)}</span>
-                  </div>
-                ))
-              )}
+
+          {/* YOU subjects — full width with modern bars */}
+          <div className="mb-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <div className="w-2 h-2 rounded-full" style={{ background: YOU_COLOR }} />
+              <span className="text-[10px] font-bold uppercase" style={{ color: YOU_COLOR }}>Your Subjects</span>
             </div>
-            {/* PARTNER */}
-            <div>
-              <div className="text-[10px] font-bold mb-2" style={{ color: PARTNER_COLOR }}>PARTNER</div>
-              {pd?.lastSubject ? (
-                <>
-                  <div className="flex items-center gap-1.5 text-[10px] mb-1.5">
-                    <span className="w-14 truncate" style={{ color: 'var(--muted-foreground)' }}>{pd.lastSubject}</span>
-                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: '100%', background: `linear-gradient(90deg, ${PARTNER_COLOR}, ${PARTNER_LIGHT})` }}
-                      />
+            {Object.entries(mySubjects).length === 0 ? (
+              <div className="text-[10px] italic py-2" style={{ color: 'var(--muted-foreground)' }}>No study yet today</div>
+            ) : (
+              <div className="space-y-2">
+                {Object.entries(mySubjects).sort((a,b) => b[1]-a[1]).map(([subj, sec]) => {
+                  const subjColors: Record<string, string> = {
+                    Physics: '#2563eb', Chemistry: '#16a34a', Botany: '#d97706', Zoology: '#9333ea', General: '#0d9488',
+                  };
+                  const subjColor = subjColors[subj] || YOU_COLOR;
+                  const pct = (sec/Math.max(...Object.values(mySubjects),1))*100;
+                  return (
+                    <div key={subj} className="flex items-center gap-2">
+                      <span className="w-16 text-[10px] font-semibold truncate" style={{ color: 'var(--foreground)' }}>{subj}</span>
+                      <div className="flex-1 h-2.5 rounded-full overflow-hidden relative" style={{ background: 'var(--border)' }}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.5 }}
+                          className="h-full rounded-full"
+                          style={{
+                            background: `linear-gradient(90deg, ${subjColor}, ${subjColor}cc)`,
+                            boxShadow: `0 0 4px ${subjColor}80`,
+                          }}
+                        />
+                      </div>
+                      <span className="tabular text-[10px] font-bold w-10 text-right" style={{ color: 'var(--foreground)' }}>{formatHM(sec)}</span>
                     </div>
-                    <span className="tabular w-8 text-right font-bold" style={{ color: 'var(--foreground)' }}>{formatHM(partnerSec)}</span>
-                  </div>
-                  {pd?.lastChapter && <div className="text-[9px] mt-1" style={{ color: 'var(--muted-foreground)' }}>📖 {pd.lastChapter}</div>}
-                  {pd?.lastLecture && <div className="text-[9px]" style={{ color: PARTNER_COLOR }}>📄 {pd.lastLecture}</div>}
-                </>
-              ) : (
-                <div className="text-[10px] italic" style={{ color: 'var(--muted-foreground)' }}>No data</div>
-              )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="h-px mb-4" style={{ background: 'var(--border)' }} />
+
+          {/* PARTNER subjects */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <div className="w-2 h-2 rounded-full" style={{ background: PARTNER_COLOR }} />
+              <span className="text-[10px] font-bold uppercase" style={{ color: PARTNER_COLOR }}>Partner's Activity</span>
             </div>
+            {pd?.lastSubject ? (
+              <div className="space-y-2">
+                {/* Current subject bar */}
+                <div className="flex items-center gap-2">
+                  <span className="w-16 text-[10px] font-semibold truncate" style={{ color: 'var(--foreground)' }}>{pd.lastSubject}</span>
+                  <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: '100%' }}
+                      transition={{ duration: 0.5 }}
+                      className="h-full rounded-full"
+                      style={{
+                        background: `linear-gradient(90deg, ${PARTNER_COLOR}, ${PARTNER_LIGHT})`,
+                        boxShadow: `0 0 4px ${PARTNER_COLOR}80`,
+                      }}
+                    />
+                  </div>
+                  <span className="tabular text-[10px] font-bold w-10 text-right" style={{ color: 'var(--foreground)' }}>{formatHM(partnerSec)}</span>
+                </div>
+                {/* Chapter + lecture info */}
+                {pd?.lastChapter && (
+                  <div className="flex items-center gap-1.5 text-[9px]" style={{ color: 'var(--muted-foreground)' }}>
+                    <span>📖</span>
+                    <span className="truncate">{pd.lastChapter}</span>
+                  </div>
+                )}
+                {pd?.lastLecture && (
+                  <div className="flex items-center gap-1.5 text-[9px]" style={{ color: PARTNER_COLOR }}>
+                    <span>📄</span>
+                    <span className="truncate">{pd.lastLecture}</span>
+                  </div>
+                )}
+                {pd?.lastTopic && (
+                  <div className="flex items-center gap-1.5 text-[9px]" style={{ color: 'var(--muted-foreground)' }}>
+                    <span>📌</span>
+                    <span className="truncate">{pd.lastTopic}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-[10px] italic py-2" style={{ color: 'var(--muted-foreground)' }}>No data from partner</div>
+            )}
           </div>
         </div>
 
