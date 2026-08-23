@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
  Target as TargetIcon,
@@ -28,138 +28,111 @@ import { pushToast } from '@/components/shared/Toast';
 
 type SectionKey = 'goals' | 'focus' | 'appearance' | 'notifications' | 'data';
 
-const SECTIONS: { key: SectionKey; label: string; icon: typeof TargetIcon; color: string }[] = [
- { key: 'goals', label: 'Study Goals', icon: TargetIcon, color: '#22c55e' },
- { key: 'focus', label: 'Focus & Timer', icon: Timer, color: '#f59e0b' },
- { key: 'appearance', label: 'Appearance', icon: Palette, color: '#a855f7' },
- { key: 'notifications', label: 'Notifications', icon: Bell, color: '#14b8a6' },
- { key: 'data', label: 'Data & Account', icon: Database, color: '#ef4444' },
+const SECTIONS: { key: SectionKey; label: string; icon: typeof TargetIcon; color: string; emoji: string }[] = [
+  { key: 'goals', label: 'Goals', icon: TargetIcon, color: '#0d9488', emoji: '🎯' },
+  { key: 'focus', label: 'Focus', icon: Timer, color: '#d97706', emoji: '⏱️' },
+  { key: 'appearance', label: 'Appearance', icon: Palette, color: '#7c3aed', emoji: '🎨' },
+  { key: 'notifications', label: 'Alerts', icon: Bell, color: '#2563eb', emoji: '🔔' },
+  { key: 'data', label: 'Data', icon: Database, color: '#dc2626', emoji: '💾' },
 ];
 
 export function SettingsTab() {
- const [open, setOpen] = useState<SectionKey>('goals');
- const s = useSettings();
+  const [activeSection, setActiveSection] = useState<SectionKey>('goals');
+  const s = useSettings();
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
- const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
- s.set(key, value);
- if (key === 'textSize') applyTextSize(value as Settings['textSize']);
- if (key === 'appTheme') applyTheme(value as Settings['appTheme']);
- };
+  const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
+    s.set(key, value);
+    if (key === 'textSize') applyTextSize(value as Settings['textSize']);
+    if (key === 'appTheme') applyTheme(value as Settings['appTheme']);
+  };
 
- return (
- <div className="pt-2 pb-4 space-y-3">
- {/* Header with Tutorial + Minimal Mode toggles */}
- <div className="flex items-center justify-between mb-2">
- <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>Settings</h1>
- <div className="flex items-center gap-2">
- {/* Tutorial Mode toggle */}
- <button
- onClick={() => {
- vibrate(15);
- update('tutorialMode', !(s.tutorialMode ?? false));
- if (!(s.tutorialMode ?? false)) {
- triggerTutorialOnboarding();
- }
- }}
- className={cn(
- 'px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95',
- )}
- style={{
- background: (s.tutorialMode ?? false) ? '#7c3aed' : 'var(--muted)',
- color: (s.tutorialMode ?? false) ? '#ffffff' : 'var(--muted-foreground)',
- border: (s.tutorialMode ?? false) ? 'none' : '1px solid var(--border)',
- }}
- title="Tutorial mode — long-press any tab to see its info"
- >
- {(s.tutorialMode ?? false) ? (
- <><HelpCircle size={13} /> Tutorial ON</>
- ) : (
- <><HelpCircle size={13} /> Tutorial</>
- )}
- </button>
- {/* Minimal Mode toggle */}
- <button
- onClick={() => {
- vibrate(15);
- const newVal = !s.minimalMode;
- update('minimalMode', newVal);
- if (newVal) {
- pushToast(
- '⚡ Minimal Mode Activated',
- '• 3D background disabled (saves battery)\n• Gradient mesh disabled (saves GPU)\n• Non-essential tabs hidden\n• Partner sync every 30s (saves network)\n• Focus timer optimized for low-end devices\n• Animations reduced for smoother UX',
- 'success'
- );
- } else {
- pushToast(
- '✨ Full Mode Restored',
- '• 3D background enabled\n• Gradient mesh enabled\n• All tabs visible\n• Full partner sync speed',
- 'info'
- );
- }
- }}
- className={cn(
- 'px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95',
- )}
- style={{
- background: s.minimalMode ? '#0d9488' : 'var(--muted)',
- color: s.minimalMode ? '#ffffff' : 'var(--muted-foreground)',
- border: s.minimalMode ? 'none' : '1px solid var(--border)',
- }}
- >
- {s.minimalMode ? (
- <><EyeOff size={13} /> Minimal ON</>
- ) : (
- <><Eye size={13} /> Minimal</>
- )}
- </button>
- </div>
- </div>
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - (touchStartY.current ?? 0);
+    touchStartX.current = null;
+    touchStartY.current = null;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const idx = SECTIONS.findIndex(sec => sec.key === activeSection);
+    if (dx > 0 && idx > 0) { vibrate(8); setActiveSection(SECTIONS[idx - 1].key); }
+    else if (dx < 0 && idx < SECTIONS.length - 1) { vibrate(8); setActiveSection(SECTIONS[idx + 1].key); }
+  };
 
- {SECTIONS.map((sec) => {
- const Icon = sec.icon;
- const isOpen = open === sec.key;
- return (
- <div key={sec.key} className="glass rounded-2xl overflow-hidden">
- <button
- onClick={() => setOpen(isOpen ? null : sec.key)}
- className="w-full p-3 flex items-center gap-3"
- >
- <div
- className="w-8 h-8 rounded-lg flex items-center justify-center"
- style={{ background: `${sec.color}22`, color: sec.color }}
- >
- <Icon size={16} />
- </div>
- <span className="text-sm font-semibold flex-1 text-left" style={{ color: 'var(--foreground)' }}>{sec.label}</span>
- <ChevronDown
- size={16}
- style={{ color: 'var(--muted-foreground)' }}
- className={cn('transition-transform', isOpen && 'rotate-180')}
- />
- </button>
+  return (
+    <div className="pt-2 pb-4 space-y-3">
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>Settings</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { vibrate(15); update('tutorialMode', !(s.tutorialMode ?? false)); if (!(s.tutorialMode ?? false)) triggerTutorialOnboarding(); }}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95"
+            style={{ background: (s.tutorialMode ?? false) ? '#7c3aed' : 'var(--muted)', color: (s.tutorialMode ?? false) ? '#ffffff' : 'var(--muted-foreground)', border: (s.tutorialMode ?? false) ? 'none' : '1px solid var(--border)' }}
+          >
+            {(s.tutorialMode ?? false) ? <><HelpCircle size={13} /> Tutorial ON</> : <><HelpCircle size={13} /> Tutorial</>}
+          </button>
+          <button
+            onClick={() => { vibrate(15); const newVal = !s.minimalMode; update('minimalMode', newVal); if (newVal) pushToast('⚡ Minimal Mode', '3D disabled, tabs hidden, optimized', 'success'); else pushToast('✨ Full Mode', 'All features enabled', 'info'); }}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95"
+            style={{ background: s.minimalMode ? '#0d9488' : 'var(--muted)', color: s.minimalMode ? '#ffffff' : 'var(--muted-foreground)', border: s.minimalMode ? 'none' : '1px solid var(--border)' }}
+          >
+            {s.minimalMode ? <><EyeOff size={13} /> Minimal ON</> : <><Eye size={13} /> Minimal</>}
+          </button>
+        </div>
+      </div>
 
- <AnimatePresence initial={false}>
- {isOpen && (
- <motion.div
- initial={{ height: 0, opacity: 0 }}
- animate={{ height: 'auto', opacity: 1 }}
- exit={{ height: 0, opacity: 0 }}
- transition={{ duration: 0.2 }}
- className="overflow-hidden"
- >
- <div className="p-3 pt-0 space-y-4">
- {sec.key === 'goals' && <GoalsSection s={s} update={update} />}
- {sec.key === 'focus' && <FocusSection s={s} update={update} />}
- {sec.key === 'appearance' && <AppearanceSection s={s} update={update} />}
- {sec.key === 'notifications' && <NotificationsSection s={s} update={update} />}
- {sec.key === 'data' && <DataSection s={s} />}
- </div>
- </motion.div>
- )}
- </AnimatePresence>
- </div>
- );
- })}
+      {/* Horizontal scrollable category tabs */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1" style={{ scrollbarWidth: 'none' }}>
+        {SECTIONS.map((sec) => {
+          const isActive = activeSection === sec.key;
+          return (
+            <button
+              key={sec.key}
+              onClick={() => { vibrate(8); setActiveSection(sec.key); }}
+              className="shrink-0 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95"
+              style={{
+                background: isActive ? sec.color : 'var(--muted)',
+                color: isActive ? '#ffffff' : 'var(--muted-foreground)',
+                border: isActive ? 'none' : '1px solid var(--border)',
+                boxShadow: isActive ? `0 2px 8px ${sec.color}40` : 'none',
+              }}
+            >
+              <span className="text-sm">{sec.emoji}</span>
+              {sec.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Swipeable content */}
+      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeSection}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="glass rounded-2xl p-4" style={{ border: '1px solid var(--border)' }}>
+              {activeSection === 'goals' && <GoalsSection s={s} update={update} />}
+              {activeSection === 'focus' && <FocusSection s={s} update={update} />}
+              {activeSection === 'appearance' && <AppearanceSection s={s} update={update} />}
+              {activeSection === 'notifications' && <NotificationsSection s={s} update={update} />}
+              {activeSection === 'data' && <DataSection s={s} />}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <div className="text-center text-[9px]" style={{ color: 'var(--muted-foreground)' }}>
+        ← swipe between categories →
+      </div>
 
  {/* Version info + expandable changelog */}
  <div className="glass rounded-2xl p-3 mt-4" style={{ border: '1px solid var(--border)' }}>
