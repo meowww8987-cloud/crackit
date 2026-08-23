@@ -2071,18 +2071,27 @@ textarea:focus-visible {
     background: rgba(255,255,255,0.08) !important;
   }
 
-  /* Reset .glass/.glass-strong/.card-solid inside force-dark-ui */
-  .force-dark-ui .glass {
+  /* Reset .glass/.glass-strong/.card-solid inside force-dark-ui.
+   * NOTE: Two selectors per rule — one for DESCENDANT (space) and one for
+   * SAME-ELEMENT (no space). The same-element selector is critical for
+   * modal sheets like PracticeSetupSheet that have both classes on the
+   * same div: className="... glass-strong ... force-dark-ui". Without
+   * the no-space selector, the dark bg override never applies and text
+   * becomes invisible (white-on-white) in light themes. */
+  .force-dark-ui .glass,
+  .force-dark-ui.glass {
     background: rgba(12,14,20,0.65) !important;
     border: 1px solid rgba(255,255,255,0.07) !important;
     box-shadow: 0 4px 24px -6px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06) !important;
   }
-  .force-dark-ui .glass-strong {
+  .force-dark-ui .glass-strong,
+  .force-dark-ui.glass-strong {
     background: rgba(22,24,32,0.92) !important;
     border: 1px solid rgba(255,255,255,0.08) !important;
     box-shadow: 0 12px 48px -8px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.12) !important;
   }
-  .force-dark-ui .card-solid {
+  .force-dark-ui .card-solid,
+  .force-dark-ui.card-solid {
     background: rgba(15,17,24,0.85) !important;
     border: 1px solid rgba(255,255,255,0.06) !important;
     box-shadow: 0 2px 12px -2px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04) !important;
