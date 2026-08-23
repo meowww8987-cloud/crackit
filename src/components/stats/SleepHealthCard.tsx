@@ -11,6 +11,7 @@ import {
   formatHour,
 } from '@/lib/sleepHealth';
 import { formatHM, vibrate } from '@/lib/utils';
+import { SleepBackfillSheet } from '@/components/dailylog/SleepBackfillSheet';
 
 /**
  * SleepHealthCard — modernized sleep health summary card for Stats tab.
@@ -36,6 +37,16 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
   const activeSleep = useSleep((s) => s.activeSleep);
   const report = useMemo(() => buildWeeklySleepReport(history), [history]);
   const last7 = useMemo(() => sleepLast7Days(history, activeSleep), [history, activeSleep]);
+
+  // Backfill sheet state
+  const [backfillOpen, setBackfillOpen] = useState(false);
+  const [backfillDate, setBackfillDate] = useState<string | undefined>(undefined);
+
+  const openBackfill = (date?: string) => {
+    setBackfillDate(date);
+    setBackfillOpen(true);
+    vibrate(8);
+  };
 
   // Live tick — update every 1s while sleeping, every 30s otherwise
   const [, setTick] = useState(0);
@@ -226,7 +237,7 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
           ) : (
             // === Today not reported ===
             <button
-              onClick={(e) => { e.stopPropagation(); vibrate(8); onTap(); }}
+              onClick={(e) => { e.stopPropagation(); openBackfill(todayEntry.date); }}
               className="w-full rounded-xl p-2.5 text-left transition active:scale-[0.98]"
               style={{
                 background: 'rgba(245, 158, 11, 0.08)',
@@ -319,7 +330,7 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
                 {/* Quality dots OR nap icons OR "add" prompt */}
                 {day.notReported ? (
                   <button
-                    onClick={(e) => { e.stopPropagation(); vibrate(8); onTap(); }}
+                    onClick={(e) => { e.stopPropagation(); openBackfill(day.date); }}
                     className="text-[7px] font-bold uppercase"
                     style={{ color: '#f59e0b' }}
                   >
@@ -412,6 +423,13 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
           </span>
         </div>
       )}
+
+      {/* Backfill sheet — for adding forgotten sleep entries */}
+      <SleepBackfillSheet
+        open={backfillOpen}
+        onClose={() => setBackfillOpen(false)}
+        defaultDate={backfillDate}
+      />
     </motion.div>
   );
 }

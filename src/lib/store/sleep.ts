@@ -37,6 +37,11 @@ interface SleepStore {
   wakeUp: (quality?: number) => void;
   /** Cancel an accidental sleep start (no entry saved). */
   cancelSleep: () => void;
+  /** Manually add a past sleep entry (for backfilling forgotten nights).
+   *  Takes bed time + wake time as timestamps; computes duration + date. */
+  addManualSleep: (bedTime: number, wakeTime: number, quality?: number) => void;
+  /** Delete a sleep entry from history (for correcting mistakes). */
+  deleteSleep: (id: string) => void;
 
   /** Get all sleep entries for a given date (YYYY-MM-DD). */
   getForDate: (date: string) => SleepEntry[];
@@ -100,6 +105,31 @@ export const useSleep = create<SleepStore>()(
       cancelSleep: () => {
         set({ activeSleep: null });
         // The PersistentNotificationManager will revert to awake state.
+      },
+
+      addManualSleep: (bedTime, wakeTime, quality) => {
+        // Validate: wakeTime must be after bedTime
+        if (wakeTime <= bedTime) return;
+        const durationSec = Math.max(0, Math.floor((wakeTime - bedTime) / 1000));
+        // Date = the WAKE date (consistent with wakeUp logic)
+        const wakeDate = dateKey(new Date(wakeTime));
+        const entry: SleepEntry = {
+          id: `sleep_manual_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          bedTime,
+          wakeTime,
+          durationSec,
+          date: wakeDate,
+          quality: quality ?? null,
+        };
+        set((s) => ({
+          history: [entry, ...s.history].slice(0, 100),
+        }));
+      },
+
+      deleteSleep: (id) => {
+        set((s) => ({
+          history: s.history.filter((e) => e.id !== id),
+        }));
       },
 
       getForDate: (date) => {
