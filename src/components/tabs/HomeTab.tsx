@@ -30,6 +30,7 @@ import { CoachCard } from '@/components/home/CoachCard';
 import { PartnerCard } from '@/components/home/PartnerCard';
 import { NextTestCard, TestDayMode } from '@/components/home/NextTestCard';
 import { CountdownCard } from '@/components/home/CountdownCard';
+import { ProgressRings } from '@/components/home/ProgressRings';
 import { useMounted } from '@/lib/hooks/useMounted';
 import { CountUp } from '@/components/shared/CountUp';
 import { NumberMorph } from '@/components/shared/NumberMorph';
@@ -386,28 +387,20 @@ export function HomeTab() {
           a focused, calming test-day layout. */}
       <motion.div {...cardEntrance}><TestDayMode /></motion.div>
 
-      <motion.div {...cardEntrance} className="grid grid-cols-2 gap-3">
-        <RingComparison
-          title="Today vs Yesterday"
-          innerSec={todaySec}
-          outerSec={yestSec}
-          innerPct={todayPct}
-          outerPct={yestPct}
-          trend={trendToday}
-          label="TODAY"
-          sublabel={`Yesterday: ${formatHM(yestSec)}`}
-        />
-        <RingComparison
-          title="This Week vs Last"
-          innerSec={thisWeek}
-          outerSec={lastWeek}
-          innerPct={Math.min(100, Math.round((thisWeek / (dailyGoal * 3600 * 7)) * 100))}
-          outerPct={Math.min(100, Math.round((lastWeek / (dailyGoal * 3600 * 7)) * 100))}
-          trend={trendWeek}
-          label="WEEK"
-          sublabel={`Last: ${formatHM(lastWeek)}`}
-        />
-      </motion.div>
+      {/* Progress Rings — advanced animated dual-ring card */}
+      <ProgressRings
+        todaySec={todaySec}
+        yestSec={yestSec}
+        todayPct={todayPct}
+        yestPct={yestPct}
+        trendToday={trendToday}
+        thisWeek={thisWeek}
+        lastWeek={lastWeek}
+        weekPct={Math.min(100, Math.round((thisWeek / (dailyGoal * 3600 * 7)) * 100))}
+        lastWeekPct={Math.min(100, Math.round((lastWeek / (dailyGoal * 3600 * 7)) * 100))}
+        trendWeek={trendWeek}
+        dailyGoalHours={dailyGoal}
+      />
 
       {/* Next Test — collapsible readiness card.
           On test day, NextTestCard returns null and TestDayMode renders instead
