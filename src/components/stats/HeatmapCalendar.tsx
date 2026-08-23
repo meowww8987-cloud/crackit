@@ -2,8 +2,9 @@
 
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, ChevronLeft, ChevronRight, X, Clock, BookOpen, FileText, Brain, TrendingUp, AlertCircle } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, X, Clock, BookOpen, FileText, Brain, TrendingUp, TrendingDown, Flame, Target, AlertCircle } from 'lucide-react';
 import { useHistory } from '@/lib/store/history';
+import { useSettings } from '@/lib/store/settings';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
 import { dateKey, formatHM, cn, vibrate } from '@/lib/utils';
 import type { SavedSession } from '@/lib/types';
@@ -121,6 +122,74 @@ export function HeatmapCalendar({ embedded = false }: { embedded?: boolean }) {
     return { totalHours: totalSec / 3600, activeDays, bestStreak };
   }, [sessionMap]);
 
+  // === Month summary (for the currently-viewed month) ===
+  // Merges Month Story features: total, trend, streak, goal, days, best, avg
+  const dailyGoalHours = useSettings((s) => s.dailyGoalHours);
+  const monthSummary = useMemo(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const now = new Date();
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+    const today = isCurrentMonth ? now.getDate() : new Date(year, month + 1, 0).getDate();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const dailyGoalSec = Math.round(dailyGoalHours * 3600);
+    const monthlyGoalSec = dailyGoalSec * (isCurrentMonth ? today : daysInMonth);
+
+    let totalStudySec = 0;
+    let totalWastedSec = 0;
+    let daysStudied = 0;
+    let bestDaySec = 0;
+    let currentStreak = 0;
+
+    for (let d = 1; d <= today; d++) {
+      const date = new Date(year, month, d);
+      const key = dateKey(date);
+      const study = sessionMap.get(key) || 0;
+      const daySessions = sessions.filter((s) => s.date === key);
+      const wasted = daySessions.reduce((a, s) => a + s.wastedSeconds, 0);
+      totalStudySec += study;
+      totalWastedSec += wasted;
+      if (study > 0) {
+        daysStudied++;
+        if (study > bestDaySec) bestDaySec = study;
+      }
+    }
+
+    // Current streak (only meaningful for current month)
+    if (isCurrentMonth) {
+      for (let d = today; d >= 1; d--) {
+        const date = new Date(year, month, d);
+        const key = dateKey(date);
+        const study = sessionMap.get(key) || 0;
+        if (study > 0) currentStreak++;
+        else break;
+      }
+    }
+
+    const goalPct = monthlyGoalSec > 0 ? Math.round((totalStudySec / monthlyGoalSec) * 100) : 0;
+    const dailyAvgSec = today > 0 ? Math.round(totalStudySec / today) : 0;
+
+    // Trend: compare to same-day-last-month
+    let prevStudySec = 0;
+    const lastMonth = new Date(year, month - 1, 1);
+    const lmy = lastMonth.getFullYear();
+    const lmm = lastMonth.getMonth();
+    for (let d = 1; d <= today; d++) {
+      const date = new Date(lmy, lmm, d);
+      const key = dateKey(date);
+      prevStudySec += sessionMap.get(key) || 0;
+    }
+    const trendPct = prevStudySec > 0
+      ? Math.round(((totalStudySec - prevStudySec) / prevStudySec) * 100)
+      : totalStudySec > 0 ? 100 : 0;
+
+    return {
+      totalStudySec, totalWastedSec, goalPct, monthlyGoalSec,
+      daysStudied, daysInMonth: isCurrentMonth ? today : daysInMonth,
+      currentStreak, bestDaySec, dailyAvgSec, trendPct, isCurrentMonth,
+    };
+  }, [currentMonth, sessionMap, sessions, dailyGoalHours]);
+
   // Touch handlers for swipe-to-navigate (doesn't bubble to AppShell)
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -187,19 +256,73 @@ export function HeatmapCalendar({ embedded = false }: { embedded?: boolean }) {
         </div>
       </div>
 
-      {/* Yearly stats row */}
+      {/* === Month summary (merged from Month Story) === */}
+      {/* Big total + trend badge */}
+      <div className="flex items-baseline gap-2 mb-2">
+        <span className="text-2xl font-bold tabular" style={{ color: 'var(--foreground)' }}>
+          {formatHM(monthSummary.totalStudySec)}
+        </span>
+        <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
+          studied
+        </span>
+        {monthSummary.totalStudySec > 0 && (
+          <div
+            className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+            style={{
+              background: monthSummary.trendPct >= 0 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+              color: monthSummary.trendPct >= 0 ? '#22c55e' : '#ef4444',
+            }}
+          >
+            {monthSummary.trendPct >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+            {monthSummary.trendPct > 0 ? '+' : ''}{monthSummary.trendPct}%
+          </div>
+        )}
+      </div>
+      {monthSummary.totalWastedSec > 60 && (
+        <div className="text-[10px] mb-2" style={{ color: '#ef4444' }}>
+          ⚠ {formatHM(monthSummary.totalWastedSec)} wasted
+        </div>
+      )}
+
+      {/* Goal progress bar */}
+      <div className="mb-3">
+        <div className="flex justify-between text-[9px] mb-1" style={{ color: 'var(--muted-foreground)' }}>
+          <span>{monthSummary.goalPct}% of goal</span>
+          <span className="tabular">{formatHM(monthSummary.totalStudySec)} / {formatHM(monthSummary.monthlyGoalSec)}</span>
+        </div>
+        <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(100, monthSummary.goalPct)}%` }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="h-full rounded-full"
+            style={{
+              background: monthSummary.goalPct >= 100
+                ? 'linear-gradient(90deg, #14b8a6, #22c55e)'
+                : 'linear-gradient(90deg, #14b8a6, #2dd4bf)',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Quick stats: streak + days + avg */}
       <div className="grid grid-cols-3 gap-2 mb-3">
-        <div className="text-center rounded-lg bg-white/5 py-1.5">
-          <div className="text-base font-bold tabular text-green-400">{Math.round(yearlyStats.totalHours)}h</div>
-          <div className="text-[8px] text-white/60 uppercase">365d Total</div>
+        <div className="text-center rounded-lg py-1.5" style={{ background: 'var(--muted)' }}>
+          <div className="flex items-center justify-center gap-0.5">
+            <Flame size={10} style={{ color: '#f59e0b' }} />
+            <span className="text-sm font-bold tabular" style={{ color: '#f59e0b' }}>{monthSummary.currentStreak}</span>
+          </div>
+          <div className="text-[8px] uppercase" style={{ color: 'var(--muted-foreground)' }}>Streak</div>
         </div>
-        <div className="text-center rounded-lg bg-white/5 py-1.5">
-          <div className="text-base font-bold tabular text-teal-400">{yearlyStats.activeDays}</div>
-          <div className="text-[8px] text-white/60 uppercase">Active days</div>
+        <div className="text-center rounded-lg py-1.5" style={{ background: 'var(--muted)' }}>
+          <div className="text-sm font-bold tabular" style={{ color: '#22c55e' }}>
+            {monthSummary.daysStudied}/{monthSummary.daysInMonth}
+          </div>
+          <div className="text-[8px] uppercase" style={{ color: 'var(--muted-foreground)' }}>Days</div>
         </div>
-        <div className="text-center rounded-lg bg-white/5 py-1.5">
-          <div className="text-base font-bold tabular text-amber-400">{yearlyStats.bestStreak}</div>
-          <div className="text-[8px] text-white/60 uppercase">Best streak</div>
+        <div className="text-center rounded-lg py-1.5" style={{ background: 'var(--muted)' }}>
+          <div className="text-sm font-bold tabular" style={{ color: '#14b8a6' }}>{formatHM(monthSummary.dailyAvgSec)}</div>
+          <div className="text-[8px] uppercase" style={{ color: 'var(--muted-foreground)' }}>Avg/day</div>
         </div>
       </div>
 

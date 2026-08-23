@@ -320,6 +320,101 @@ export function trendData(sessions: SavedSession[], days: number = 30): { date: 
   return result;
 }
 
+// ===== Month Summary — stats header for the Heatmap Calendar (Month tab) =====
+// Merges Month Story's stats (total, trend, streak, goal, days, best, avg)
+// into the Heatmap Calendar so there's ONE unified Month view.
+
+export interface MonthSummary {
+  totalStudySec: number;
+  totalWastedSec: number;
+  dailyGoalSec: number;
+  monthlyGoalSec: number;
+  goalPct: number;
+  daysStudied: number;
+  daysInMonth: number;
+  currentStreak: number;
+  bestDaySec: number;
+  dailyAvgSec: number;
+  trendPct: number; // vs same point last month
+  monthLabel: string; // "August 2026"
+}
+
+export function monthSummary(sessions: SavedSession[], dailyGoalHours: number): MonthSummary {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const today = now.getDate();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayKeyStr = todayKey();
+  const dailyGoalSec = Math.round(dailyGoalHours * 3600);
+  const monthlyGoalSec = dailyGoalSec * daysInMonth;
+
+  let totalStudySec = 0;
+  let totalWastedSec = 0;
+  let daysStudied = 0;
+  let bestDaySec = 0;
+
+  for (let d = 1; d <= today; d++) {
+    const date = new Date(year, month, d);
+    const key = dateKey(date);
+    const daySessions = sessions.filter((s) => s.date === key);
+    const study = daySessions.reduce((a, s) => a + s.studySeconds, 0);
+    const wasted = daySessions.reduce((a, s) => a + s.wastedSeconds, 0);
+    totalStudySec += study;
+    totalWastedSec += wasted;
+    if (study > 0) daysStudied++;
+    if (study > bestDaySec) bestDaySec = study;
+  }
+
+  // Current streak (consecutive days ending today)
+  let currentStreak = 0;
+  for (let d = today; d >= 1; d--) {
+    const date = new Date(year, month, d);
+    const key = dateKey(date);
+    const study = sessions
+      .filter((s) => s.date === key)
+      .reduce((a, s) => a + s.studySeconds, 0);
+    if (study > 0) currentStreak++;
+    else break;
+  }
+
+  const goalPct = monthlyGoalSec > 0 ? Math.round((totalStudySec / monthlyGoalSec) * 100) : 0;
+  const dailyAvgSec = today > 0 ? Math.round(totalStudySec / today) : 0;
+
+  // Trend: compare to same-day-last-month total
+  const lastMonth = new Date(year, month - 1, 1);
+  const lastMonthYear = lastMonth.getFullYear();
+  const lastMonthMonth = lastMonth.getMonth();
+  let prevStudySec = 0;
+  for (let d = 1; d <= today; d++) {
+    const date = new Date(lastMonthYear, lastMonthMonth, d);
+    const key = dateKey(date);
+    prevStudySec += sessions
+      .filter((s) => s.date === key)
+      .reduce((a, s) => a + s.studySeconds, 0);
+  }
+  const trendPct = prevStudySec > 0
+    ? Math.round(((totalStudySec - prevStudySec) / prevStudySec) * 100)
+    : totalStudySec > 0 ? 100 : 0;
+
+  const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  return {
+    totalStudySec,
+    totalWastedSec,
+    dailyGoalSec,
+    monthlyGoalSec,
+    goalPct,
+    daysStudied,
+    daysInMonth,
+    currentStreak,
+    bestDaySec,
+    dailyAvgSec,
+    trendPct,
+    monthLabel,
+  };
+}
+
 // ===== Month Story v2 — 30-day tiles + streak + weekly groups =====
 
 export interface MonthDayData {

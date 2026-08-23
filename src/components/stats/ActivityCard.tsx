@@ -5,39 +5,29 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart3, Calendar } from 'lucide-react';
 import { WeekStory } from './WeekStory';
 import { HeatmapCalendar } from './HeatmapCalendar';
-import { MonthStory } from './MonthStory';
 import { vibrate } from '@/lib/utils';
 
 /**
- * ActivityCard — combined "Activity" card with Week | Month | 30D segmented control.
+ * ActivityCard — combined "Activity" card with Week | Month segmented control.
  *
- * Groups three study-activity-over-time views into a single card at the top of
- * the Stats tab:
- *   - Week  → WeekStory (big total, 7 intensity tiles, trend, goal bar)
- *   - Month → HeatmapCalendar (monthly calendar grid with day cells + nav)
- *   - 30D   → MonthStory (30-day GitHub-style tiles + streak + trend + goal)
+ * Groups two study-activity-over-time views into a single card:
+ *   - Week  → WeekStory (7-day detail: big total, tiles, trend, goal bar)
+ *   - Month → HeatmapCalendar (calendar grid + month summary: total, trend,
+ *             streak, goal, days, avg — all merged in)
  *
- * All views support tap-to-drill-down into a Day Detail popup.
+ * The Month tab now includes all the stats that were previously in the
+ * separate "Month Story / 30D" card (total, trend, streak, goal progress,
+ * days studied, daily average) — integrated directly above the calendar grid.
+ * No more separate 30D tab needed.
  *
- * The segmented control uses a sliding pill animation (iOS-style).
- * With 3 tabs, the pill width is calc(33.33% - 2px) and slides between
- * 3 positions.
+ * Both views support tap-to-drill-down into a Day Detail popup.
+ * Segmented control uses iOS-style sliding pill animation.
  */
 
-type Tab = 'week' | 'month' | '30d';
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'week', label: 'Week' },
-  { id: 'month', label: 'Month' },
-  { id: '30d', label: '30D' },
-];
+type Tab = 'week' | 'month';
 
 export function ActivityCard() {
   const [tab, setTab] = useState<Tab>('week');
-
-  // Calculate pill position for 3 tabs (0%, 33.33%, 66.66%)
-  const tabIndex = TABS.findIndex((t) => t.id === tab);
-  const pillLeft = `calc(${tabIndex * 33.33}% + 2px)`;
 
   return (
     <div className="glass rounded-2xl p-4">
@@ -48,7 +38,7 @@ export function ActivityCard() {
           Activity
         </h3>
 
-        {/* Segmented control — iOS style, 3 tabs */}
+        {/* Segmented control — iOS style, 2 tabs */}
         <div
           className="relative flex rounded-lg p-0.5"
           style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
@@ -56,8 +46,8 @@ export function ActivityCard() {
           {/* Sliding pill background */}
           <motion.div
             className="absolute top-0.5 bottom-0.5 rounded-md"
-            style={{ width: 'calc(33.33% - 2px)' }}
-            animate={{ left: pillLeft }}
+            style={{ width: 'calc(50% - 2px)' }}
+            animate={{ left: tab === 'week' ? '2px' : 'calc(50% + 0px)' }}
             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
           >
             <div
@@ -69,22 +59,25 @@ export function ActivityCard() {
             />
           </motion.div>
 
-          {/* Tab buttons */}
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => { vibrate(8); setTab(t.id); }}
-              className="relative z-10 flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold transition-colors rounded-md"
-              style={{
-                color: tab === t.id ? '#ffffff' : 'var(--muted-foreground)',
-                minWidth: '52px',
-                justifyContent: 'center',
-              }}
-            >
-              <Calendar size={10} />
-              {t.label}
-            </button>
-          ))}
+          {/* Week button */}
+          <button
+            onClick={() => { vibrate(8); setTab('week'); }}
+            className="relative z-10 flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold transition-colors rounded-md"
+            style={{ color: tab === 'week' ? '#ffffff' : 'var(--muted-foreground)' }}
+          >
+            <Calendar size={11} />
+            Week
+          </button>
+
+          {/* Month button */}
+          <button
+            onClick={() => { vibrate(8); setTab('month'); }}
+            className="relative z-10 flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold transition-colors rounded-md"
+            style={{ color: tab === 'month' ? '#ffffff' : 'var(--muted-foreground)' }}
+          >
+            <Calendar size={11} />
+            Month
+          </button>
         </div>
       </div>
 
@@ -97,9 +90,7 @@ export function ActivityCard() {
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
         >
-          {tab === 'week' && <WeekStory embedded />}
-          {tab === 'month' && <HeatmapCalendar embedded />}
-          {tab === '30d' && <MonthStory embedded />}
+          {tab === 'week' ? <WeekStory embedded /> : <HeatmapCalendar embedded />}
         </motion.div>
       </AnimatePresence>
     </div>
