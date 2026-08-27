@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
-import { Play, Pause, Check, CheckCircle2, Clock, MoreVertical, GripVertical, BookOpen, FileText } from 'lucide-react';
+import {
+  Play, Pause, Check, CheckCircle2, Clock, MoreVertical, GripVertical,
+  BookOpen, FileText, Pencil, Copy, RotateCcw, Trash2, ArrowRight, Sparkles,
+} from 'lucide-react';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
 import { useHistory } from '@/lib/store/history';
 import { useTargets } from '@/lib/store/targets';
@@ -18,27 +21,27 @@ interface Props {
   onEdit: () => void;
   onDelete?: () => void;
   onDuplicate?: () => void;
-  /**
-   * Index of this card within its chapter group (1-based).
-   * Used for the "sister card" indicator — shows "1/3", "2/3" etc. when
-   * multiple cards share the same subject + chapter.
-   */
   indexInChapter?: number;
-  /** Total cards in this chapter group. */
   chapterTotal?: number;
-  /** Whether this card has at least one sibling in the same chapter. */
   hasSiblings?: boolean;
 }
 
-// Activity-specific icon + tint — makes it easy to tell a Lecture apart from
-// a DPP / Notes / Revision card at a glance, even when they share a subject.
-const ACTIVITY_META: Record<ActivityType, { icon: typeof BookOpen; label: string }> = {
-  Lecture:  { icon: BookOpen,  label: 'Lecture' },
-  DPP:      { icon: FileText,  label: 'DPP' },
-  Notes:    { icon: FileText,  label: 'Notes' },
-  Revision: { icon: BookOpen,  label: 'Revision' },
-  Custom:   { icon: FileText,  label: 'Task' },
+// Activity-specific icon + label + accent color (left border / icon glow)
+const ACTIVITY_META: Record<ActivityType, {
+  icon: typeof BookOpen;
+  label: string;
+  accent: string; // hex, used for left border + icon halo
+}> = {
+  Lecture:  { icon: BookOpen,  label: 'Lecture',  accent: '#3b82f6' },
+  DPP:      { icon: FileText,  label: 'DPP',      accent: '#f97316' },
+  Notes:    { icon: FileText,  label: 'Notes',    accent: '#22c55e' },
+  Revision: { icon: BookOpen,  label: 'Revision', accent: '#a855f7' },
+  Custom:   { icon: FileText,  label: 'Task',     accent: '#64748b' },
 };
+
+// Premium easing curves
+const EASE_SMOOTH = [0.4, 0, 0.2, 1] as const;
+const EASE_OUT_QUART = [0.25, 1, 0.5, 1] as const;
 
 export function TargetCard({
   target,
@@ -59,17 +62,24 @@ export function TargetCard({
   const pause = useSession((s) => s.pause);
   const resume = useSession((s) => s.resume);
   const toggleDone = useTargets();
+  const deleteTarget = useTargets((s) => s.deleteTarget);
+  const deleteSession = useHistory((s) => s.deleteSession);
   const haptics = useSettings((s) => s.haptics);
   const reduceAnimations = useSettings((s) => s.reduceAnimations);
   const animationIntensity = useSettings((s) => s.animationIntensity);
+
   const [celebrate, setCelebrate] = useState(false);
   const [flashGreen, setFlashGreen] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [justRestored, setJustRestored] = useState(false);
 
-  // Drag controls — a dedicated drag handle (GripVertical) starts the drag.
-  // This is more reliable than long-press on mobile + doesn't conflict with
-  // tap-to-open-detail. The handle calls dragControls.start(e) on pointerdown;
-  // Reorder.Item reads `dragListener={false}` + `dragControls={dragControls}`.
   const dragControls = useDragControls();
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+  // WASTING — periodic shake nonce (state, not remount key)
+  const [shakeNonce, setShakeNonce] = useState(0);
 
   const isThisActive = active?.targetId === target.id;
   const isAnyActive = active !== null && !isThisActive;
@@ -83,6 +93,18 @@ export function TargetCard({
     ? 'done'
     : 'idle';
 
+  // Detect "background-paused" — when component mounts and finds active paused
+  // session for this target, treat as background-paused for 10s
+  useEffect(() => {
+    if (isThisActive && active?.paused) {
+      setJustRestored(true);
+      const t = setTimeout(() => setJustRestored(false), 10000);
+      return () => clearTimeout(t);
+    } else {
+      setJustRestored(false);
+    }
+  }, [isThisActive, active?.paused]);
+
   // Today's sessions for this target
   const allSessions = useHistory((s) => s.sessions);
   const sessions = useMemo(
@@ -92,6 +114,19 @@ export function TargetCard({
   const studiedSec = sessions.reduce((a, s) => a + s.studySeconds, 0);
   const wastedSec = sessions.reduce((a, s) => a + s.wastedSeconds, 0);
 
+  // All-time sessions for this target (for smart expected-time hint)
+  const allTimeSessions = useMemo(
+    () => allSessions.filter((s) => s.targetId === target.id),
+    [allSessions, target.id]
+  );
+
+  // Smart expected-time hint: if avg studied > expected * 1.3 across 3+ sessions, suggest adjust
+  const showAdjustHint = useMemo(() => {
+    if (allTimeSessions.length < 3) return false;
+    const avgStudied = allTimeSessions.reduce((a, s) => a + s.studySeconds, 0) / allTimeSessions.length;
+    return avgStudied > target.expectedMinutes * 60 * 1.3;
+  }, [allTimeSessions, target.expectedMinutes]);
+
   // Live ticking when this card is active
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -100,14 +135,39 @@ export function TargetCard({
     return () => clearInterval(i);
   }, [isThisActive]);
 
+  // WASTING — periodic shake every 5s
+  useEffect(() => {
+    if (sessionState !== 'wasting' || reduceAnimations) return;
+    const i = setInterval(() => {
+      setShakeNonce((n) => n + 1);
+    }, 5000);
+    return () => clearInterval(i);
+  }, [sessionState, reduceAnimations]);
+
   const liveStudied = isThisActive ? getLiveStudySeconds(active) : studiedSec;
   const liveWasted = isThisActive ? getLiveWastedSeconds(active) : wastedSec;
   const expectedSec = target.expectedMinutes * 60;
   const progressPct = expectedSec > 0 ? Math.min(100, Math.round((liveStudied / expectedSec) * 100)) : 0;
   const remainingSec = Math.max(0, expectedSec - liveStudied);
+  const wastedOverThreshold = liveWasted >= 300; // 5 minutes
 
-  const handleStartPause = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  // Find next-up sibling (same subject + chapter, not done, not this)
+  const todayTargets = useTargets((s) => s.byDate[target.date] || []);
+  const nextUpTarget = useMemo(() => {
+    if (!target.done) return null;
+    const siblings = todayTargets
+      .filter((t) =>
+        t.id !== target.id &&
+        t.subject === target.subject &&
+        t.chapter === target.chapter &&
+        !t.done
+      )
+      .sort((a, b) => a.order - b.order);
+    return siblings[0] || null;
+  }, [todayTargets, target]);
+
+  const handleStartPause = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (haptics) vibrate(12);
     if (target.done) {
       toggleDone.toggleDone(target.id);
@@ -127,18 +187,127 @@ export function TargetCard({
         expectedMinutes: target.expectedMinutes,
       });
     }
+  }, [haptics, target, isThisActive, active, toggleDone, resume, pause, startSession]);
+
+  const handleDone = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (haptics) vibrate(15);
+    setFlashGreen(true);
+    setCelebrate(true);
+    setTimeout(() => setFlashGreen(false), 500);
+    setTimeout(() => setCelebrate(false), 700);
+    toggleDone.toggleDone(target.id);
+    playSound('done');
+    if (!reduceAnimations) {
+      import('@/components/shared/Effects').then(({ triggerParticleBurst }) => {
+        triggerParticleBurst(e.clientX, e.clientY, color.hex);
+      });
+    }
+    import('@/components/shared/Effects').then(({ triggerEffect }) => triggerEffect('small', 'chime'));
+  }, [haptics, color.hex, reduceAnimations, toggleDone]);
+
+  // Long-press handler — opens quick actions menu
+  const handlePointerDownLong = useCallback((e: React.PointerEvent) => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressFired.current = false;
+    (e.currentTarget as HTMLElement).dataset.pointerStart = '1';
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      if (haptics) vibrate([10, 20, 10]);
+      setShowQuickActions(true);
+    }, 450);
+  }, [haptics]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    const el = e.currentTarget as HTMLElement;
+    if (!longPressFired.current && el.dataset.pointerStart === '1' && !el.dataset.dragged) {
+      onOpenDetail();
+    }
+    delete el.dataset.pointerStart;
+    delete el.dataset.dragged;
+  }, [onOpenDetail]);
+
+  const handlePointerLeave = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  // Keyboard shortcuts (desktop only — when card is focused)
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (showQuickActions) return;
+    switch (e.key) {
+      case ' ':
+      case 'Spacebar':
+        e.preventDefault();
+        handleStartPause();
+        break;
+      case 'd':
+      case 'D':
+        if (!target.done) {
+          e.preventDefault();
+          handleDone({ stopPropagation: () => {}, clientX: 0, clientY: 0 } as any);
+        }
+        break;
+      case 'e':
+      case 'E':
+        e.preventDefault();
+        onEdit();
+        break;
+    }
+  }, [showQuickActions, handleStartPause, handleDone, target.done, onEdit]);
+
+  // Quick action handlers
+  const handleQuickEdit = () => { setShowQuickActions(false); onEdit(); };
+  const handleQuickDuplicate = () => {
+    setShowQuickActions(false);
+    if (onDuplicate) onDuplicate();
+    else if (haptics) vibrate(8);
+  };
+  const handleQuickReset = () => {
+    setShowQuickActions(false);
+    if (haptics) vibrate([10, 30, 10]);
+    sessions.forEach((s) => deleteSession(s.id));
+  };
+  const handleQuickDelete = () => {
+    setShowQuickActions(false);
+    if (haptics) vibrate([10, 30, 50]);
+    if (onDelete) onDelete();
+    else deleteTarget(target.id);
   };
 
-  // Status pill content for the active session state
+  // Status pill content
   const statusPill = sessionState === 'studying' ? (
     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-green-500 text-white pulse-slow shadow flex items-center gap-1">
       <span className="inline-block w-1 h-1 rounded-full bg-white" /> LIVE
     </span>
   ) : sessionState === 'paused' ? (
-    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500 text-white shadow">⏸ PAUSED</span>
+    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500 text-white shadow">
+      {justRestored ? '⏸ BG PAUSED' : '⏸ PAUSED'}
+    </span>
   ) : sessionState === 'wasting' ? (
     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-red-500 text-white pulse-fast shadow">⚠ WASTING</span>
   ) : null;
+
+  // Breathing animation when studying (subtle scale 1 → 1.015 → 1)
+  // Celebrate (1.03) takes priority over breathing
+  const breathingScale = celebrate && !reduceAnimations
+    ? 1.03
+    : sessionState === 'studying' && !reduceAnimations
+    ? [1, 1.015, 1]
+    : 1;
+
+  // Wasting shake — re-triggered every 5s via shakeNonce
+  // We can't put it on the Reorder.Item itself (would remount), so we
+  // render a child motion.div with key={shakeNonce} for the shake.
+
+  // Determine if card should "settle" (dim + shrink) because another card is active
+  const isSettled = isAnyActive && !target.done;
 
   return (
     <Reorder.Item
@@ -149,9 +318,9 @@ export function TargetCard({
       dragControls={dragControls}
       initial={reduceAnimations ? false : { opacity: 0, y: 8 }}
       animate={{
-        opacity: 1,
+        opacity: isSettled ? 0.55 : 1,
         y: 0,
-        scale: celebrate && !reduceAnimations ? 1.02 : 1,
+        scale: breathingScale,
       }}
       whileDrag={{
         scale: 1.04,
@@ -159,32 +328,29 @@ export function TargetCard({
         cursor: 'grabbing',
         boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.08)',
       }}
-      dragTransition={{
-        bounceStiffness: 600,
-        bounceDamping: 40,
-      }}
+      dragTransition={{ bounceStiffness: 600, bounceDamping: 40 }}
       transition={{
         type: 'spring',
         stiffness: 500,
         damping: 35,
         mass: 0.6,
-      }}
+        // For breathing, use smoother timing
+        ...(sessionState === 'studying' && !reduceAnimations
+          ? { duration: 4, repeat: Infinity, ease: 'easeInOut' }
+          : {}),
+        }}
       className={cn(
-        'card-solid rounded-2xl relative overflow-hidden select-none',
-        'cursor-pointer',
+        'card-solid rounded-2xl relative overflow-hidden select-none cursor-pointer outline-none',
         sessionState === 'studying' && 'glow-pulse',
         sessionState === 'wasting' && 'glow-pulse',
-        target.done && 'opacity-65',
+        target.done && 'grayscale-[60%]',
         flashGreen && 'ring-2 ring-green-500',
+        isFocused && 'ring-2 ring-white/40',
       )}
       style={{
-        // ONLY transition border-color + box-shadow + background-color.
-        // Do NOT transition transform — that's handled by framer-motion.
-        // Including transform in CSS transition causes stutter during drag.
-        transitionProperty: 'border-color, box-shadow, background-color',
-        transitionDuration: '200ms',
+        transitionProperty: 'border-color, box-shadow, background-color, filter',
+        transitionDuration: '300ms',
         transitionTimingFunction: 'ease-out',
-        // GPU acceleration for smooth drag
         willChange: 'transform',
         borderColor: flashGreen
           ? '#22c55e'
@@ -205,21 +371,20 @@ export function TargetCard({
         boxShadow: isThisActive && !active!.paused && !active!.wasting
           ? `0 0 24px -4px ${color.hex}80, 0 4px 16px -2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.16)`
           : undefined,
+        // Activity-color left border (#6) — 2px solid strip
+        borderLeft: `2px solid ${activityMeta.accent}`,
       }}
-      onPointerDown={(e) => {
-        // Tap to open detail — but only if the pointer didn't start on the
-        // drag handle (the handle stops propagation in its own onPointerDown).
-        // We defer the "was this a tap?" decision to onPointerUp.
-        (e.currentTarget as HTMLElement).dataset.pointerStart = '1';
-      }}
-      onPointerUp={(e) => {
-        const el = e.currentTarget as HTMLElement;
-        if (el.dataset.pointerStart === '1' && !el.dataset.dragged) {
-          onOpenDetail();
-        }
-        delete el.dataset.pointerStart;
-        delete el.dataset.dragged;
-      }}
+      onPointerDown={handlePointerDownLong}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerLeave}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="button"
+      aria-label={`${target.topic} — ${activityMeta.label}. Press Space to start/pause, D to mark done, E to edit.`}
     >
       {/* Subject color tint overlay */}
       <div
@@ -231,97 +396,143 @@ export function TargetCard({
         }}
       />
 
-      {/* === Sister-card indicator: left-edge "depth" bar ===
-          When multiple cards share the same subject+chapter, show a colored
-          vertical bar on the left edge with a small "1/3" badge so the user
-          can tell at a glance which card is which within the group. */}
-      {hasSiblings && (
-        <div
-          className="absolute left-0 top-0 bottom-0 flex flex-col items-center justify-center pointer-events-none"
-          style={{ width: 4, background: color.hex, opacity: 0.6 }}
-        >
-          <span
-            className="absolute left-1 top-1.5 text-[8px] font-bold tabular px-1 py-0.5 rounded-sm"
-            style={{ background: `${color.hex}30`, color: color.hex }}
-          >
-            {indexInChapter}/{chapterTotal}
-          </span>
+      {/* === Sister-card indicator: filled/hollow dots on left edge === */}
+      {hasSiblings && chapterTotal && (
+        <div className="absolute left-1 top-1/2 -translate-y-1/2 flex flex-col gap-1 pointer-events-none z-[1]">
+          {Array.from({ length: chapterTotal }, (_, i) => {
+            const idx = i + 1;
+            const isCurrent = idx === indexInChapter;
+            // Mark dots as filled if their index is < current (heuristic: previous cards done)
+            // True completion status would require sibling data; this is a visual hint
+            const isFilled = isCurrent ? !target.done : idx < (indexInChapter ?? 0);
+            return (
+              <motion.div
+                key={i}
+                layout
+                className={cn('w-1.5 h-1.5 rounded-full transition-all duration-300')}
+                style={{
+                  background: isFilled ? color.hex : 'transparent',
+                  border: `1px solid ${color.hex}80`,
+                  transform: isCurrent ? 'scale(1.4)' : 'scale(1)',
+                }}
+              />
+            );
+          })}
         </div>
       )}
 
-      {/* Content wrapper */}
-      <div className="relative p-3 pl-3.5">
+      {/* Done check badge — top right corner */}
+      <AnimatePresence>
+        {target.done && (
+          <motion.div
+            initial={{ scale: 0, rotate: -180, opacity: 0 }}
+            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+            className="absolute top-2 right-2 z-[2] pointer-events-none"
+          >
+            <div
+              className="w-5 h-5 rounded-full flex items-center justify-center"
+              style={{ background: '#22c55e', boxShadow: '0 0 12px rgba(34,197,94,0.5)' }}
+            >
+              <Check size={12} strokeWidth={3} color="#fff" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Content wrapper — wrapped in motion.div for periodic wasting shake.
+          Using key={shakeNonce} on this inner div re-triggers the shake animation
+          every 5s without remounting the parent Reorder.Item (which would lose state). */}
+      <motion.div
+        key={shakeNonce}
+        animate={sessionState === 'wasting' && !reduceAnimations ? { x: [0, -2, 2, -1, 1, 0] } : { x: 0 }}
+        transition={sessionState === 'wasting' && !reduceAnimations ? { duration: 0.4 } : {}}
+        className="relative p-3 pl-3.5"
+      >
         {/* Green flash on done celebration */}
         <AnimatePresence>
           {flashGreen && (
             <motion.div
-              initial={{ opacity: 0.3 }}
+              initial={{ opacity: 0.4 }}
               animate={{ opacity: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.5 }}
               className="absolute inset-0 bg-green-500 pointer-events-none rounded-2xl"
             />
           )}
         </AnimatePresence>
 
-        {/* === Row 1: Header — activity icon + lecture tag + activity badge + status pill === */}
-        <div className="flex items-center gap-1.5 mb-1.5 min-h-[24px]">
-          {/* Activity icon — color-coded by subject, shape-coded by activity */}
-          <div
-            className="w-5 h-5 rounded flex items-center justify-center shrink-0"
-            style={{ background: `${color.hex}22`, color: color.hex }}
+        {/* === Row 1: Header — merged chip + expected + drag handle === */}
+        <div className="flex items-center gap-1.5 mb-1.5 min-h-[28px]">
+          {/* Activity icon — visual anchor (28px, gradient fill) */}
+          <motion.div
+            whileHover={{ scale: 1.1 }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 relative overflow-hidden"
+            style={{
+              background: `linear-gradient(135deg, ${activityMeta.accent}30, ${activityMeta.accent}10)`,
+              color: activityMeta.accent,
+              border: `1px solid ${activityMeta.accent}40`,
+              boxShadow: `inset 0 1px 0 ${activityMeta.accent}30`,
+            }}
           >
-            <ActivityIcon size={12} />
-          </div>
+            <ActivityIcon size={14} />
+          </motion.div>
 
-          {/* Lecture tag (e.g. "Lec 12") — only for Lecture activity */}
-          {target.lecture && (
-            <span
-              className={cn(
-                'text-[9px] font-bold px-1.5 py-0.5 rounded tabular shrink-0',
-                target.done && 'line-through opacity-60'
-              )}
-              style={{ background: `${color.hex}25`, color: color.hex, border: `1px solid ${color.hex}40` }}
-            >
-              {target.lecture}
-            </span>
-          )}
-
-          {/* Activity badge — DPP / Notes / Revision / Custom */}
+          {/* Merged chip: "Lec 12 · Lecture" or just activity label */}
           <span
             className={cn(
-              'text-[9px] font-medium px-1.5 py-0.5 rounded shrink-0',
-              target.done && 'line-through opacity-60'
+              'text-[10px] font-bold px-2 py-0.5 rounded-md tabular shrink-0 flex items-center gap-1',
+              target.done && 'opacity-60'
             )}
-            style={{ background: 'rgba(255,255,255,0.10)', color: 'inherit' }}
+            style={{
+              background: `${color.hex}20`,
+              color: color.hex,
+              border: `1px solid ${color.hex}30`,
+            }}
           >
-            {activityMeta.label}
+            {target.lecture && <span className="tabular">{target.lecture}</span>}
+            {target.lecture && <span className="opacity-40">·</span>}
+            <span>{activityMeta.label}</span>
           </span>
 
           {/* Status pill (LIVE / PAUSED / WASTING) — only when active */}
           {statusPill}
 
-          {/* Spacer */}
+          {/* Smart adjust hint */}
+          {showAdjustHint && !target.done && (
+            <motion.span
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-[9px] font-medium px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5 shrink-0"
+              title={`You usually study longer than ${target.expectedMinutes}m on this. Update expected time?`}
+            >
+              <Sparkles size={9} /> adjust?
+            </motion.span>
+          )}
+
           <div className="flex-1" />
 
-          {/* Expected time — compact */}
+          {/* Expected time */}
           <span className="text-[10px] text-white/55 tabular flex items-center gap-0.5 shrink-0">
             <Clock size={10} />
             {target.expectedMinutes}m
           </span>
 
-          {/* Drag handle — dedicated, calls dragControls.start on pointerdown */}
+          {/* Drag handle — visible on hover/focus, expand on grab */}
           <button
             onPointerDown={(e) => {
               e.stopPropagation();
               if (haptics) vibrate(15);
               dragControls.start(e);
-              // Mark card as "being dragged" so onPointerUp doesn't open detail
               const card = (e.currentTarget as HTMLElement).closest('[data-card]') as HTMLElement;
               if (card) card.dataset.dragged = '1';
             }}
             onClick={(e) => e.stopPropagation()}
-            className="ml-1 w-6 h-6 rounded flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 active:scale-90 transition shrink-0 cursor-grab active:cursor-grabbing"
+            className={cn(
+              'ml-0.5 w-6 h-6 rounded flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 active:scale-90 transition shrink-0 cursor-grab active:cursor-grabbing',
+              !isHovered && !isFocused && 'opacity-40'
+            )}
             style={{ touchAction: 'none' }}
             aria-label="Drag to reorder"
             title="Drag to reorder"
@@ -334,39 +545,62 @@ export function TargetCard({
         <div
           className={cn(
             'text-sm font-semibold mb-2 leading-snug pr-1',
-            target.done && 'line-through text-white/55'
+            target.done && 'text-white/55'
           )}
         >
           {target.topic}
         </div>
 
-        {/* === Row 3: Segment progress (no left-to-right stretch) ===
-            Discrete segments that "light up" — like a battery indicator.
-            No continuous bar that stretches; segments just change color/opacity. */}
-        <div className="flex gap-[3px] mb-2 h-1.5">
-          {Array.from({ length: 10 }, (_, i) => {
-            const segmentPct = (i + 1) * 10;
-            const isFilled = progressPct >= segmentPct;
-            const isPartial = !isFilled && progressPct > (i * 10);
-            const segColor = sessionState === 'wasting' ? '#ef4444' : color.hex;
-            return (
-              <div
-                key={i}
-                className="flex-1 rounded-full transition-all duration-300"
+        {/* === Row 3: Modern progress bar with live shimmer === */}
+        <div className="relative mb-2 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          {/* Fill — gradient + spring-animated width */}
+          <motion.div
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{
+              background: sessionState === 'wasting'
+                ? 'linear-gradient(90deg, #ef4444, #f87171)'
+                : `linear-gradient(90deg, ${color.hex}, ${color.hex}cc)`,
+              boxShadow: `0 0 8px ${sessionState === 'wasting' ? 'rgba(239,68,68,0.6)' : color.glow}`,
+            }}
+            initial={{ width: 0 }}
+            animate={{ width: `${progressPct}%` }}
+            transition={{
+              type: 'spring',
+              stiffness: 120,
+              damping: 20,
+              mass: 0.8,
+            }}
+          >
+            {/* Shimmer overlay — only when actively studying */}
+            {sessionState === 'studying' && !reduceAnimations && (
+              <motion.div
+                className="absolute inset-0"
                 style={{
-                  background: isFilled
-                    ? segColor
-                    : isPartial
-                    ? `${segColor}60`
-                    : 'var(--bar-track, rgba(255,255,255,0.06))',
-                  opacity: isFilled ? 1 : isPartial ? 0.7 : 0.4,
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
+                  backgroundSize: '200% 100%',
                 }}
+                animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }}
               />
-            );
-          })}
+            )}
+          </motion.div>
+
+          {/* Percentage label — floating at right end of bar */}
+          {(progressPct > 0 || isThisActive) && (
+            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] font-bold tabular text-white/80 z-[1]">
+              {progressPct}%
+            </span>
+          )}
+
+          {/* Status pill overlay on bar — only when active */}
+          {isThisActive && (
+            <div className="absolute -top-0.5 right-0 translate-y-[-100%] z-[2]">
+              {statusPill}
+            </div>
+          )}
         </div>
 
-        {/* === Row 4: Stats — studied / remaining / sessions + action buttons === */}
+        {/* === Row 4: Stats — studied / remaining / session dots + action buttons === */}
         <div className="flex items-center gap-2">
           {/* Studied time */}
           <span className="text-[11px] text-green-400 tabular flex items-center gap-0.5 font-medium">
@@ -385,19 +619,40 @@ export function TargetCard({
             </span>
           ) : null}
 
-          {/* Wasted time (if any) */}
+          {/* Wasted time — pulses red when >5min */}
           {liveWasted > 0 && (
-            <span className="text-[10px] text-red-400 tabular">⚠ {formatHM(liveWasted)}</span>
+            <motion.span
+              animate={wastedOverThreshold && !reduceAnimations ? { scale: [1, 1.1, 1] } : {}}
+              transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+              className={cn(
+                'text-[10px] tabular flex items-center gap-0.5',
+                wastedOverThreshold ? 'text-red-400 font-bold' : 'text-red-400/80'
+              )}
+              title={wastedOverThreshold ? 'Tap to note what distracted you' : undefined}
+            >
+              ⚠ {formatHM(liveWasted)}
+            </motion.span>
           )}
 
-          {/* Session count */}
+          {/* Session dots — replaces "3 sessions" text */}
           {sessions.length > 0 && (
-            <span className="text-[10px] text-white/40 tabular">
-              · {sessions.length}{sessions.length === 1 ? ' session' : ' sessions'}
-            </span>
+            <div className="flex items-center gap-0.5" title={`${sessions.length} session${sessions.length === 1 ? '' : 's'} today`}>
+              {Array.from({ length: Math.min(sessions.length, 5) }, (_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: i * 0.05, type: 'spring', stiffness: 400, damping: 20 }}
+                  className="w-1 h-1 rounded-full"
+                  style={{ background: color.hex, opacity: 0.6 + i * 0.08 }}
+                />
+              ))}
+              {sessions.length > 5 && (
+                <span className="text-[8px] text-white/40 ml-0.5">+{sessions.length - 5}</span>
+              )}
+            </div>
           )}
 
-          {/* Spacer */}
           <div className="flex-1" />
 
           {/* Start/Pause button */}
@@ -443,27 +698,11 @@ export function TargetCard({
           {!target.done && (
             <button
               onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (haptics) vibrate(15);
-                setFlashGreen(true);
-                setCelebrate(true);
-                setTimeout(() => setFlashGreen(false), 400);
-                setTimeout(() => setCelebrate(false), 600);
-                toggleDone.toggleDone(target.id);
-                playSound('done');
-                if (!reduceAnimations) {
-                  import('@/components/shared/Effects').then(({ triggerParticleBurst }) => {
-                    triggerParticleBurst(e.clientX, e.clientY, color.hex);
-                  });
-                }
-                import('@/components/shared/Effects').then(({ triggerEffect }) => triggerEffect('small', 'chime'));
-              }}
+              onClick={handleDone}
               className="flex items-center justify-center rounded-lg transition active:scale-95 min-w-[28px] h-7 px-1.5 bg-green-500/15 text-green-400 hover:bg-green-500/25"
               aria-label="Mark as done"
               title="Mark as done"
             >
-              {/* Animated checkmark — SVG path draws itself on tap */}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <motion.path
                   d="M5 13l4 4L19 7"
@@ -479,7 +718,106 @@ export function TargetCard({
             </button>
           )}
         </div>
-      </div>
+
+        {/* === Next-up hint footer — shown after done === */}
+        <AnimatePresence>
+          {target.done && nextUpTarget && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              transition={{ duration: 0.4, ease: EASE_OUT_QUART }}
+              className="overflow-hidden"
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (haptics) vibrate(10);
+                  startSession({
+                    targetId: nextUpTarget.id,
+                    subject: nextUpTarget.subject,
+                    chapter: nextUpTarget.chapter,
+                    lecture: nextUpTarget.lecture,
+                    topic: nextUpTarget.topic,
+                    mode: 'focus',
+                    expectedMinutes: nextUpTarget.expectedMinutes,
+                  });
+                }}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition text-left"
+              >
+                <span className="text-[9px] uppercase tracking-wider text-white/40 font-semibold">Next up</span>
+                <span className="text-[11px] text-white/80 font-medium truncate flex-1">{nextUpTarget.topic}</span>
+                <ArrowRight size={11} className="text-white/60 shrink-0" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* === Quick Actions Menu — long-press to open === */}
+      <AnimatePresence>
+        {showQuickActions && (
+          <>
+            {/* Backdrop — closes menu on tap */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[10001]"
+              onClick={() => setShowQuickActions(false)}
+              onPointerDown={(e) => { e.stopPropagation(); setShowQuickActions(false); }}
+            />
+            {/* Menu — positioned near top-right of the card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: -8 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              className="absolute top-2 right-2 z-[10002] min-w-[160px] rounded-xl overflow-hidden border border-white/15"
+              style={{ background: 'rgba(20, 22, 30, 0.96)', backdropFilter: 'blur(16px)' }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <QuickActionItem icon={Pencil} label="Edit" onClick={handleQuickEdit} />
+              <QuickActionItem icon={Copy} label="Duplicate" onClick={handleQuickDuplicate} />
+              <QuickActionItem
+                icon={RotateCcw}
+                label="Reset today's progress"
+                onClick={handleQuickReset}
+                destructive={false}
+              />
+              <div className="h-px bg-white/10" />
+              <QuickActionItem icon={Trash2} label="Delete" onClick={handleQuickDelete} destructive />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </Reorder.Item>
+  );
+}
+
+// ===== Quick Action Item — single row in the long-press menu =====
+function QuickActionItem({
+  icon: Icon,
+  label,
+  onClick,
+  destructive = false,
+}: {
+  icon: typeof Pencil;
+  label: string;
+  onClick: () => void;
+  destructive?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-white/8',
+        destructive ? 'text-red-400 hover:bg-red-500/10' : 'text-white/85'
+      )}
+    >
+      <Icon size={13} />
+      {label}
+    </button>
   );
 }
