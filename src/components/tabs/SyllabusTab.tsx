@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GraduationCap, Plus, Search, ChevronDown, Calendar, Clock, Sigma,
-  GripVertical, Check, X, CheckCircle2, RotateCcw, Trash2
+  GripVertical, Check, X, CheckCircle2, RotateCcw, Trash2, Sparkles, BookMarked, FlaskConical,
 } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -65,6 +66,8 @@ export function SyllabusTab() {
   const [showBuildSheet, setShowBuildSheet] = useState(false);
   const [showFormulaVault, setShowFormulaVault] = useState(false);
   const [chapterMenu, setChapterMenu] = useState<Chapter | null>(null);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const headerLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chapterLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const todayTargets = useTargets((s) => s.byDate[todayKey()] || EMPTY_TARGETS);
@@ -79,6 +82,18 @@ export function SyllabusTab() {
     return res === 0;
   }).length;
   const overdueCount = lectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt)).length;
+
+  // === Header stats ===
+  const totalLectures = lectures.length;
+  const overallPct = totalLectures > 0 ? Math.round((doneCount / totalLectures) * 100) : 0;
+  const todayKeyStr = todayKey();
+  const doneTodayCount = lectures.filter((l) => {
+    if (!l.doneDate) return false;
+    const d = new Date(l.doneDate);
+    const dKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return dKey === todayKeyStr;
+  }).length;
+  const overallPctColor = overallPct >= 70 ? '#22c55e' : overallPct >= 30 ? '#f59e0b' : '#ef4444';
 
   const filteredSubjects = useMemo(() => {
     if (subjectFilter === 'all') return subjects;
@@ -116,27 +131,168 @@ export function SyllabusTab() {
 
   return (
     <div className="pt-2 pb-4 space-y-4">
-      <div className="flex items-center gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">Syllabus</h1>
-        <div className="flex-1" />
-        <button
-          onClick={() => { setReorderMode(!reorderMode); vibrate(10); }}
-          className={cn(
-            'shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition',
-            reorderMode ? 'bg-teal-500 text-black' : 'bg-white/5 text-t-muted hover:text-teal-400 hover:bg-white/10'
+      {/* === Header — 2-row compact summary ===
+          Row 1: Title + 3 icon buttons (Timeline, Reorder, Build)
+          Row 2: One-line summary (overall %, lectures done/total, overdue, today)
+          Long-press header → quick actions menu (Build, Formula Vault) */}
+      <div
+        className={cn(
+          'glass rounded-2xl p-3 transition-all',
+          reorderMode && 'ring-2 ring-teal-500/40 bg-teal-500/5'
+        )}
+        onPointerDown={() => {
+          headerLongPressRef.current = setTimeout(() => {
+            setShowHeaderMenu(true);
+            vibrate(20);
+          }, 500);
+        }}
+        onPointerUp={() => { if (headerLongPressRef.current) { clearTimeout(headerLongPressRef.current); headerLongPressRef.current = null; } }}
+        onPointerLeave={() => { if (headerLongPressRef.current) { clearTimeout(headerLongPressRef.current); headerLongPressRef.current = null; } }}
+      >
+        {/* Row 1: Title + icon buttons */}
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-bold tracking-tight" style={{ color: 'var(--foreground)' }}>
+            Syllabus
+          </h1>
+          {reorderMode && (
+            <motion.span
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-500/30"
+            >
+              REORDER MODE
+            </motion.span>
           )}
-          title="Reorder chapters"
-        >
-          <GripVertical size={16} />
-        </button>
-        <button
-          onClick={() => { triggerTimeline(); vibrate(10); }}
-          className="shrink-0 w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-t-muted hover:text-teal-400 hover:bg-white/10 transition"
-          title="Progress Timeline"
-        >
-          <Clock size={16} />
-        </button>
+          <div className="flex-1" />
+          {/* Timeline button */}
+          <button
+            onClick={() => { triggerTimeline(); vibrate(10); }}
+            className="shrink-0 w-8 h-8 rounded-lg glass flex items-center justify-center hover:bg-foreground/10 transition active:scale-95"
+            aria-label="Progress Timeline"
+            title="Progress Timeline"
+          >
+            <Clock size={15} className="text-muted-foreground" />
+          </button>
+          {/* Reorder toggle — pulses when active */}
+          <button
+            onClick={() => { setReorderMode(!reorderMode); vibrate(10); }}
+            className={cn(
+              'shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-95',
+              reorderMode
+                ? 'bg-teal-500 text-black'
+                : 'glass text-muted-foreground hover:bg-foreground/10'
+            )}
+            aria-label={reorderMode ? 'Exit reorder mode' : 'Reorder chapters'}
+            title="Reorder chapters"
+          >
+            <GripVertical size={15} />
+          </button>
+          {/* Build button — primary accent, opens BuildSyllabusSheet */}
+          <button
+            onClick={() => { setShowBuildSheet(true); vibrate(10); }}
+            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg, #14b8a6, #0d9488)',
+              color: '#fff',
+              boxShadow: '0 2px 8px -2px rgba(20,184,166,0.5)',
+            }}
+            aria-label="Build Syllabus"
+            title="Build / Edit Syllabus"
+          >
+            <Sparkles size={15} />
+          </button>
+        </div>
+
+        {/* Row 2: One-line summary — only show if there are lectures */}
+        {totalLectures > 0 && (
+          <div className="flex items-center gap-2 mt-2 text-[11px] tabular" style={{ color: 'var(--muted-foreground)' }}>
+            {/* Overall % — colored by progress */}
+            <span className="font-bold text-sm" style={{ color: overallPctColor }}>
+              {overallPct}%
+            </span>
+            <span>·</span>
+            <span>
+              <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{doneCount}</span>
+              /{totalLectures} lectures
+            </span>
+            {/* Overdue badge — only if >0 */}
+            {overdueCount > 0 && (
+              <>
+                <span>·</span>
+                <span className="font-semibold text-red-500 dark:text-red-400">⚠ {overdueCount} overdue</span>
+              </>
+            )}
+            {/* Done today — green, motivation */}
+            {doneTodayCount > 0 && (
+              <>
+                <span>·</span>
+                <span className="font-semibold text-green-500 dark:text-green-400">+{doneTodayCount} today</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* === Header Quick Actions Menu — long-press to open ===
+          Rendered via Portal to escape any transform/overflow context. */}
+      {showHeaderMenu && typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowHeaderMenu(false)}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+            className="fixed left-1/2 top-1/2 z-[10002] w-[280px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
+            style={{
+              background: 'var(--popover, rgba(20,22,30,0.96))',
+              backdropFilter: 'blur(16px)',
+              transform: 'translate(-50%, -50%)',
+              overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-y',
+            }}
+          >
+            <div className="px-4 py-3 border-b border-foreground/10 sticky top-0" style={{ background: 'var(--popover, rgba(20,22,30,0.96))' }}>
+              <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Quick Actions</div>
+              <div className="text-sm font-semibold text-foreground mt-0.5">Syllabus tools</div>
+            </div>
+            <div className="py-1">
+              <button
+                onClick={() => { setShowHeaderMenu(false); setShowBuildSheet(true); vibrate(10); }}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
+              >
+                <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-teal-500/20 text-teal-600 dark:text-teal-400">
+                  <Sparkles size={14} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium text-foreground">Build Syllabus</div>
+                  <div className="text-[10px] text-muted-foreground">Add NEET chapters & lectures</div>
+                </div>
+              </button>
+              <button
+                onClick={() => { setShowHeaderMenu(false); setShowFormulaVault(true); vibrate(10); }}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
+              >
+                <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                  <BookMarked size={14} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium text-foreground">Formula Vault</div>
+                  <div className="text-[10px] text-muted-foreground">Saved formulas & quick reference</div>
+                </div>
+              </button>
+            </div>
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )}
 
       <div className="relative minimal-hide">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t-muted" />
