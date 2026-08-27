@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import {
   Play, Pause, Check, CheckCircle2, Clock, MoreVertical, GripVertical,
@@ -810,12 +811,18 @@ export function TargetCard({
       </motion.div>
 
       {/* === Quick Actions Menu — long-press to open ===
-          Rendered as a centered modal (not absolute to the card) so:
-          - All options are always visible regardless of card position
-          - Delete (last item) is never cut off below the viewport
-          - Backdrop locks body scroll (see useEffect above) */}
-      <AnimatePresence>
-        {showQuickActions && (
+          CRITICAL: Rendered via React Portal (createPortal) to document.body.
+          Why? Because Reorder.Item applies a CSS `transform` for layout/drag
+          animations, and per CSS spec, `position: fixed` becomes relative to
+          the nearest ancestor with a transform — NOT the viewport. Without a
+          portal, the menu would be:
+          1. Positioned relative to the card (not centered on screen)
+          2. Clipped by the card's `overflow: hidden`
+          3. Only the header would be visible (action items cut off)
+          The portal escapes this by rendering the menu at document.body,
+          where there's no transform/overflow context to interfere. */}
+      {showQuickActions && typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
           <>
             {/* Backdrop — dark + blur, closes on tap.
                 Do NOT set touchAction:none here — it blocks all touch
@@ -873,8 +880,9 @@ export function TargetCard({
               </div>
             </motion.div>
           </>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </Reorder.Item>
   );
 }
