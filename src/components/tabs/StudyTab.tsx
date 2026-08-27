@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Plus, Sparkles, X, Check, ChevronRight,
   Flame, Eye, EyeOff, RefreshCw, Play,
-  BookOpen, FileText, HelpCircle, Zap, RotateCcw,
+  BookOpen, FileText, Zap, RotateCcw,
 } from 'lucide-react';
 import { Reorder, motion, AnimatePresence } from 'framer-motion';
 import { useTargets } from '@/lib/store/targets';
@@ -440,7 +440,7 @@ function HeaderRow({
               title={`${streak}-day streak — keep it up!`}
             >
               <Flame size={12} className="text-orange-400" />
-              <span className="text-[11px] font-bold text-orange-300 tabular">{streak}</span>
+              <span className="text-[11px] font-bold text-orange-600 dark:text-orange-300 tabular">{streak}</span>
             </motion.div>
           ) : (
             <div suppressHydrationWarning className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
@@ -460,16 +460,16 @@ function HeaderRow({
         <div className="flex items-center gap-1.5">
           <button
             onClick={onToggleSuggestions}
-            className="w-8 h-8 rounded-lg glass flex items-center justify-center hover:bg-white/10 transition active:scale-95"
+            className="w-8 h-8 rounded-lg glass flex items-center justify-center hover:bg-foreground/10 transition active:scale-95"
             aria-label="Toggle smart plan suggestions"
             title="Smart suggestions"
           >
-            <Sparkles size={14} className="text-teal-400" />
+            <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
           </button>
           <button
             onClick={() => { vibrate(10); setWidgetHidden(!widgetHidden); }}
             className={cn(
-              'w-8 h-8 rounded-lg glass flex items-center justify-center hover:bg-white/10 transition active:scale-95',
+              'w-8 h-8 rounded-lg glass flex items-center justify-center hover:bg-foreground/10 transition active:scale-95',
               !activeSession && 'opacity-40'
             )}
             aria-label={widgetHidden ? 'Show floating widget' : 'Hide floating widget'}
@@ -539,7 +539,7 @@ function ProgressCard({
         {/* Circular ring */}
         <div className="relative shrink-0" style={{ width: 64, height: 64 }}>
           <svg width="64" height="64" viewBox="0 0 64 64" className="-rotate-90">
-            <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+            <circle cx="32" cy="32" r="26" fill="none" stroke="var(--bar-track, rgba(255,255,255,0.08))" strokeWidth="6" />
             <motion.circle
               cx="32" cy="32" r="26" fill="none"
               stroke={ringColor}
@@ -716,13 +716,13 @@ function SmartPlan({ onAcceptAll, onDismiss, forceShow }: { onAcceptAll: () => v
     >
       {/* Header */}
       <div className="flex items-center gap-2 mb-2.5">
-        <Sparkles size={14} className="text-teal-400" />
+        <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
         <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Suggested for today</span>
-        <button onClick={handleRefresh} className="ml-auto w-6 h-6 rounded-md flex items-center justify-center hover:bg-white/10 transition" aria-label="Regenerate suggestions" title="Regenerate">
-          <RefreshCw size={12} className="text-white/50" />
+        <button onClick={handleRefresh} className="ml-auto w-6 h-6 rounded-md flex items-center justify-center hover:bg-foreground/10 transition" aria-label="Regenerate suggestions" title="Regenerate">
+          <RefreshCw size={12} className="text-muted-foreground" />
         </button>
-        <button onClick={() => { setDismissed(true); onDismiss(); }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-white/10 transition" aria-label="Dismiss">
-          <X size={14} className="text-white/50" />
+        <button onClick={() => { setDismissed(true); onDismiss(); }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-foreground/10 transition" aria-label="Dismiss">
+          <X size={14} className="text-muted-foreground" />
         </button>
       </div>
 
@@ -741,8 +741,8 @@ function SmartPlan({ onAcceptAll, onDismiss, forceShow }: { onAcceptAll: () => v
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition group"
-              style={{ background: `${c.hex}08` }}
+              className="flex items-center gap-2 p-2 rounded-lg hover:bg-foreground/5 transition group"
+              style={{ background: `${c.hex}15` }}
             >
               <div className="w-1 h-8 rounded-full shrink-0" style={{ background: c.hex }} />
               <div className="flex-1 min-w-0">
@@ -754,11 +754,11 @@ function SmartPlan({ onAcceptAll, onDismiss, forceShow }: { onAcceptAll: () => v
                   <span>·</span>
                   <span className="tabular">{s.expectedMinutes}m</span>
                 </div>
-                <div className="text-[9px] italic mt-0.5 text-teal-400/70 truncate">{s.reason}</div>
+                <div className="text-[9px] italic mt-0.5 text-teal-600/80 dark:text-teal-600 dark:text-teal-400/70 truncate">{s.reason}</div>
               </div>
               <button
                 onClick={() => handleAcceptOne(i)}
-                className="w-7 h-7 rounded-md flex items-center justify-center bg-teal-500/15 hover:bg-teal-500/30 text-teal-400 transition active:scale-90 shrink-0"
+                className="w-7 h-7 rounded-md flex items-center justify-center bg-teal-500/15 hover:bg-teal-500/30 text-teal-600 dark:text-teal-400 transition active:scale-90 shrink-0"
                 aria-label={`Accept ${s.topic}`}
                 title="Add this target"
               >
@@ -853,7 +853,7 @@ function SubjectSection({
         {/* Subject header */}
         <button
           onClick={toggleCollapse}
-          className="w-full flex items-center gap-2 px-1 py-1 -mx-1 rounded-md hover:bg-white/5 transition text-left"
+          className="w-full flex items-center gap-2 px-1 py-1 -mx-1 rounded-md hover:bg-foreground/5 transition text-left"
           aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${subject}`}
           aria-expanded={!collapsed}
         >
@@ -869,7 +869,7 @@ function SubjectSection({
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); onAddToSubject(); }}
-            className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-white/10 transition active:scale-90"
+            className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-foreground/10 transition active:scale-90"
             aria-label={`Add target to ${subject}`}
             title="Add to this subject"
           >
@@ -878,7 +878,7 @@ function SubjectSection({
         </button>
 
         {/* Thick progress bar with glow */}
-        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}>
           <motion.div
             className="h-full rounded-full"
             style={{
@@ -984,7 +984,7 @@ function ChapterSection({
       {/* Chapter header — clickable to collapse */}
       <button
         onClick={toggleCollapse}
-        className="w-full flex items-center gap-1.5 px-1 py-1 rounded-md hover:bg-white/5 transition text-left"
+        className="w-full flex items-center gap-1.5 px-1 py-1 rounded-md hover:bg-foreground/5 transition text-left"
         aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${chapter}`}
         aria-expanded={!collapsed}
       >
@@ -1001,7 +1001,7 @@ function ChapterSection({
 
       {/* Chapter progress + time */}
       <div className="flex items-center gap-2 px-1">
-        <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+        <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}>
           <motion.div
             className="h-full rounded-full"
             style={{
@@ -1123,7 +1123,7 @@ function EmptyState({
         </button>
         <button
           onClick={onAddManual}
-          className="w-full font-semibold py-2.5 rounded-xl text-sm border border-white/15 hover:bg-white/5 transition flex items-center justify-center gap-1.5"
+          className="w-full font-semibold py-2.5 rounded-xl text-sm border border-border hover:bg-foreground/5 transition flex items-center justify-center gap-1.5"
           style={{ color: 'var(--foreground)' }}
         >
           <Plus size={14} />
@@ -1132,7 +1132,7 @@ function EmptyState({
       </div>
 
       {/* Tip */}
-      <p className="text-[10px] italic pt-2 border-t border-white/5" style={{ color: 'var(--muted-foreground)' }}>
+      <p className="text-[10px] italic pt-2 border-t border-foreground/10" style={{ color: 'var(--muted-foreground)' }}>
         💡 Tip: Aim for 4-6 targets per day for balanced prep.
       </p>
     </motion.div>
@@ -1169,7 +1169,7 @@ function AllDoneState({
       </div>
       <button
         onClick={onAddMore}
-        className="text-[11px] font-semibold px-4 py-2 rounded-lg border border-white/15 hover:bg-white/5 transition inline-flex items-center gap-1"
+        className="text-[11px] font-semibold px-4 py-2 rounded-lg border border-border hover:bg-foreground/5 transition inline-flex items-center gap-1"
         style={{ color: 'var(--foreground)' }}
       >
         <Plus size={12} />
@@ -1216,17 +1216,17 @@ function AddFAB({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="fixed bottom-24 right-4 z-[101] rounded-2xl overflow-hidden border border-white/15"
-              style={{ background: 'rgba(20,22,30,0.96)', backdropFilter: 'blur(16px)', minWidth: 180 }}
+              className="fixed bottom-24 right-4 z-[101] rounded-2xl overflow-hidden border border-border"
+              style={{ background: 'var(--popover, rgba(20,22,30,0.96))', backdropFilter: 'blur(16px)', minWidth: 180 }}
             >
-              <div className="px-3 py-2 text-[10px] uppercase tracking-wider font-bold text-white/40 border-b border-white/5">
+              <div className="px-3 py-2 text-[10px] uppercase tracking-wider font-bold text-muted-foreground border-b border-foreground/10">
                 Quick Add
               </div>
               {quickOptions.map((opt) => (
                 <button
                   key={opt.type}
                   onClick={() => onQuickAddType(opt.type)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/8 transition text-left"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-foreground/10 transition text-left"
                 >
                   <div
                     className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
@@ -1234,18 +1234,18 @@ function AddFAB({
                   >
                     <opt.icon size={12} />
                   </div>
-                  <span className="text-[12px] font-medium text-white/85">Quick: {opt.label}</span>
+                  <span className="text-[12px] font-medium text-foreground">Quick: {opt.label}</span>
                 </button>
               ))}
-              <div className="h-px bg-white/10" />
+              <div className="h-px bg-foreground/10" />
               <button
                 onClick={() => { onCloseQuickAdd(); onFullAdd(); }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/8 transition text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-foreground/10 transition text-left"
               >
-                <div className="w-6 h-6 rounded-md flex items-center justify-center bg-teal-500/20 text-teal-400 shrink-0">
+                <div className="w-6 h-6 rounded-md flex items-center justify-center bg-teal-500/20 text-teal-600 dark:text-teal-400 shrink-0">
                   <Plus size={12} />
                 </div>
-                <span className="text-[12px] font-medium text-white/85">Full target</span>
+                <span className="text-[12px] font-medium text-foreground">Full target</span>
               </button>
             </motion.div>
           </>
@@ -1298,7 +1298,7 @@ function DayStrip({
           This Week
         </span>
         {streak >= 2 && (
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-300 flex items-center gap-1">
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-600 dark:text-orange-300 flex items-center gap-1">
             <Flame size={9} /> {streak}-day
           </span>
         )}
@@ -1316,7 +1316,7 @@ function DayStrip({
               onClick={() => setExpandedDay(isExpanded ? null : d.key)}
               className={cn(
                 'rounded-lg p-1.5 flex flex-col items-center gap-0.5 transition',
-                isExpanded ? 'bg-white/15' : 'hover:bg-white/8'
+                isExpanded ? 'bg-foreground/15' : 'hover:bg-foreground/10'
               )}
               aria-label={`View ${d.date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`}
             >
@@ -1356,7 +1356,7 @@ function DayStrip({
             transition={{ duration: 0.3, ease: EASE_SMOOTH }}
             className="overflow-hidden"
           >
-            <div className="rounded-lg bg-white/5 p-3 space-y-2">
+            <div className="rounded-lg bg-foreground/5 p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold" style={{ color: 'var(--foreground)' }}>
                   {expandedData.isToday
@@ -1369,7 +1369,7 @@ function DayStrip({
               </div>
 
               {/* Mini progress bar */}
-              <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}>
                 <div
                   className="h-full rounded-full"
                   style={{
@@ -1439,11 +1439,14 @@ function DoubtFAB({
       whileTap={{ scale: 0.9 }}
       onClick={onClick}
       className="fixed bottom-40 right-4 z-30 w-12 h-12 rounded-full shadow-xl flex items-center justify-center"
-      style={{ background: bg, boxShadow: `0 8px 24px -4px ${color ? color.glow : 'rgba(245,158,11,0.5)'}` }}
+      style={{
+        background: bg,
+        boxShadow: `0 8px 24px -4px ${color ? color.glow : 'rgba(245,158,11,0.5)'}, 0 0 0 2px var(--background, #fff), 0 0 0 4px ${color ? color.hex : '#f59e0b'}40`,
+      }}
       aria-label={`${count} doubt${count === 1 ? '' : 's'} pending — tap to review`}
       title={`${count} doubt${count === 1 ? '' : 's'} pending`}
     >
-      <HelpCircle size={22} color="#fff" />
+      <Plus size={24} color="#fff" strokeWidth={2.5} />
       <AnimatePresence>
         {count > 0 && (
           <motion.span
@@ -1452,7 +1455,8 @@ function DoubtFAB({
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
             transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-            className="absolute -top-1 -right-1 min-w-[24px] h-6 px-1.5 rounded-full bg-red-500 text-[11px] font-bold flex items-center justify-center text-white border-2 border-black/30"
+            className="absolute -top-1 -right-1 min-w-[24px] h-6 px-1.5 rounded-full bg-red-500 text-[11px] font-bold flex items-center justify-center text-white"
+            style={{ border: '2px solid var(--background, #fff)', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
           >
             {count}
           </motion.span>
