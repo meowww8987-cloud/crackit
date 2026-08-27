@@ -224,21 +224,33 @@ export function StudyTab() {
   const activeSubject: Subject | null = activeSession?.subject || (activePractice?.subject as Subject) || null;
 
   // === Quick Add handlers ===
+  // Smart default subject: active session → last-added target today → first
+  // syllabus subject → Physics. This ensures Quick Add goes to the RIGHT
+  // subject, not always the 1st one.
+  const quickAddSubject: Subject = useMemo(() => {
+    if (activeSubject) return activeSubject;
+    if (sortedTargets.length > 0) {
+      // Use the subject of the last-added target (highest order)
+      return sortedTargets[sortedTargets.length - 1].subject;
+    }
+    const syllabusSubjects = useSyllabus.getState().subjects;
+    if (syllabusSubjects.length > 0) return syllabusSubjects[0].name as Subject;
+    return 'Physics';
+  }, [activeSubject, sortedTargets]);
+
   const handleQuickAdd = useCallback((activity: ActivityType) => {
     if (mounted) vibrate(12);
-    // Smart defaults: use active subject, last used chapter, or first subject
-    const subj: Subject = activeSubject || 'Physics';
     const defaultMinutes = activity === 'DPP' ? 30 : activity === 'Notes' ? 25 : activity === 'Revision' ? 20 : 45;
     addTarget({
       date: todayKeyStr,
-      subject: subj,
+      subject: quickAddSubject,
       activity,
       chapter: 'General',
       topic: `${activity} ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
       expectedMinutes: defaultMinutes,
     });
     setShowQuickAdd(false);
-  }, [activeSubject, addTarget, todayKeyStr, mounted]);
+  }, [quickAddSubject, addTarget, todayKeyStr, mounted]);
 
   // === Determine empty state type ===
   const emptyStateType: 'first-time' | 'returning' | 'all-done' | null = useMemo(() => {
@@ -390,6 +402,7 @@ export function StudyTab() {
         showQuickAdd={showQuickAdd}
         onCloseQuickAdd={() => setShowQuickAdd(false)}
         onQuickAddType={handleQuickAdd}
+        defaultSubject={quickAddSubject}
       />
 
       {/* ============ SECTION 9: DOUBT FAB ============ */}
@@ -1183,26 +1196,29 @@ function AllDoneState({
    SECTION 7: ADD FAB + QUICK ADD MENU
    ========================================================================= */
 function AddFAB({
-  onQuickAdd, onFullAdd, showQuickAdd, onCloseQuickAdd, onQuickAddType,
+  onQuickAdd, onFullAdd, showQuickAdd, onCloseQuickAdd, onQuickAddType, defaultSubject,
 }: {
   onQuickAdd: () => void;
   onFullAdd: () => void;
   showQuickAdd: boolean;
   onCloseQuickAdd: () => void;
   onQuickAddType: (a: ActivityType) => void;
+  defaultSubject: Subject;
 }) {
-  // Lock body scroll while Quick Add menu is open
+  // Lock body scroll while Quick Add menu is open.
+  // Do NOT set touchAction:none on body — it breaks in-menu scrolling.
+  // The menu uses overscroll-behavior:contain to prevent scroll chaining.
   useEffect(() => {
     if (!showQuickAdd) return;
-    const prev = document.body.style.overflow;
-    const prevTouchAction = document.body.style.touchAction;
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
+    const escHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseQuickAdd(); };
+    window.addEventListener('keydown', escHandler);
     return () => {
-      document.body.style.overflow = prev;
-      document.body.style.touchAction = prevTouchAction;
+      window.removeEventListener('keydown', escHandler);
+      document.body.style.overflow = prevOverflow;
     };
-  }, [showQuickAdd]);
+  }, [showQuickAdd, onCloseQuickAdd]);
 
   const quickOptions: { type: ActivityType; label: string; icon: typeof BookOpen; color: string }[] = [
     { type: 'Lecture',  label: 'Lecture',  icon: BookOpen, color: '#3b82f6' },
@@ -1210,6 +1226,8 @@ function AddFAB({
     { type: 'Notes',    label: 'Notes',    icon: FileText, color: '#22c55e' },
     { type: 'Revision', label: 'Revision', icon: RotateCcw, color: '#a855f7' },
   ];
+
+  const subjColor = subjectColor(defaultSubject);
 
   return (
     <>
@@ -1223,25 +1241,32 @@ function AddFAB({
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
               onClick={onCloseQuickAdd}
-              onTouchMove={(e) => e.preventDefault()}
-              style={{ touchAction: 'none' }}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-              className="fixed left-1/2 top-1/2 z-[101] w-[280px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
+              className="fixed left-1/2 top-1/2 z-[101] w-[300px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
               style={{
                 background: 'var(--popover, rgba(20,22,30,0.96))',
                 backdropFilter: 'blur(16px)',
                 transform: 'translate(-50%, -50%)',
+                overscrollBehavior: 'contain',
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-y',
               }}
-              onTouchMove={(e) => e.stopPropagation()}
             >
               <div className="px-4 py-3 border-b border-foreground/10 sticky top-0" style={{ background: 'var(--popover, rgba(20,22,30,0.96))' }}>
                 <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Quick Add</div>
                 <div className="text-sm font-semibold text-foreground mt-0.5">Choose a target type</div>
+                {/* Show which subject the target will be added to */}
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <div className="w-2.5 h-2.5 rounded-sm" style={{ background: subjColor.hex }} />
+                  <span className="text-[10px] font-medium" style={{ color: subjColor.hex }}>
+                    Adds to: {defaultSubject}
+                  </span>
+                </div>
               </div>
               <div className="py-1">
                 {quickOptions.map((opt) => (

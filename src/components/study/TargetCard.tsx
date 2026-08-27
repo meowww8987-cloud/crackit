@@ -62,6 +62,7 @@ export function TargetCard({
   const pause = useSession((s) => s.pause);
   const resume = useSession((s) => s.resume);
   const toggleDone = useTargets();
+  const addTargetFromStore = useTargets((s) => s.addTarget);
   const deleteTarget = useTargets((s) => s.deleteTarget);
   const deleteSession = useHistory((s) => s.deleteSession);
   const haptics = useSettings((s) => s.haptics);
@@ -144,19 +145,46 @@ export function TargetCard({
     return () => clearInterval(i);
   }, [sessionState, reduceAnimations]);
 
-  // === Quick Actions menu — lock body scroll while open ===
-  // Prevents the page behind the backdrop from scrolling on touch / wheel.
+  // === Quick Actions menu — global coordination + scroll lock ===
+  // 1. Only ONE menu can be open at a time across all cards.
+  //    When this card's menu opens, dispatch a CustomEvent; other cards
+  //    listen and close theirs.
+  // 2. Lock body scroll (overflow:hidden) but do NOT set touchAction:none
+  //    on body — that would block scrolling INSIDE the menu too.
+  //    Instead, the menu uses overscroll-behavior:contain to prevent
+  //    scroll chaining to the page behind it.
   useEffect(() => {
     if (!showQuickActions) return;
-    const prev = document.body.style.overflow;
-    const prevTouchAction = document.body.style.touchAction;
-    document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
-    return () => {
-      document.body.style.overflow = prev;
-      document.body.style.touchAction = prevTouchAction;
+
+    // Close any other open menu
+    const closeHandler = () => setShowQuickActions(false);
+    window.dispatchEvent(new CustomEvent('targetcard-menu-open', { detail: { id: target.id } }));
+
+    // Listen for OTHER cards opening their menu
+    const otherOpenHandler = (e: Event) => {
+      const ce = e as CustomEvent;
+      if (ce.detail?.id !== target.id) {
+        setShowQuickActions(false);
+      }
     };
-  }, [showQuickActions]);
+    window.addEventListener('targetcard-menu-open', otherOpenHandler);
+
+    // Lock body scroll — but NOT touchAction (that breaks in-menu scrolling)
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    // Close on Escape
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowQuickActions(false);
+    };
+    window.addEventListener('keydown', escHandler);
+
+    return () => {
+      window.removeEventListener('targetcard-menu-open', otherOpenHandler);
+      window.removeEventListener('keydown', escHandler);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [showQuickActions, target.id]);
 
   const liveStudied = isThisActive ? getLiveStudySeconds(active) : studiedSec;
   const liveWasted = isThisActive ? getLiveWastedSeconds(active) : wastedSec;
@@ -280,8 +308,21 @@ export function TargetCard({
   const handleQuickEdit = () => { setShowQuickActions(false); onEdit(); };
   const handleQuickDuplicate = () => {
     setShowQuickActions(false);
-    if (onDuplicate) onDuplicate();
-    else if (haptics) vibrate(8);
+    if (haptics) vibrate([10, 20, 10]);
+    // Create a copy right after the original, with (copy) suffix
+    // so the user can see something actually happened
+    addTargetFromStore({
+      date: target.date,
+      subject: target.subject,
+      activity: target.activity,
+      chapter: target.chapter,
+      lecture: target.lecture,
+      topic: `${target.topic} (copy)`,
+      expectedMinutes: target.expectedMinutes,
+      lectureId: target.lectureId,
+      chapterId: target.chapterId,
+      isChapterTarget: target.isChapterTarget,
+    });
   };
   const handleQuickReset = () => {
     setShowQuickActions(false);
@@ -776,7 +817,10 @@ export function TargetCard({
       <AnimatePresence>
         {showQuickActions && (
           <>
-            {/* Backdrop — dark + blur, closes on tap, blocks scroll */}
+            {/* Backdrop — dark + blur, closes on tap.
+                Do NOT set touchAction:none here — it blocks all touch
+                including inside the menu. Body overflow:hidden handles
+                page scroll lock. */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -785,23 +829,26 @@ export function TargetCard({
               className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm"
               onClick={() => setShowQuickActions(false)}
               onPointerDown={(e) => { e.stopPropagation(); setShowQuickActions(false); }}
-              onTouchMove={(e) => e.preventDefault()}
-              style={{ touchAction: 'none' }}
             />
-            {/* Menu — centered on screen, max-height ensures scrollable if needed */}
+            {/* Menu — centered modal.
+                overscroll-behavior:contain prevents scroll from chaining
+                to the page behind when the menu's scroll hits the boundary.
+                -webkit-overflow-scrolling:touch enables momentum scroll on iOS. */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-              className="fixed left-1/2 top-1/2 z-[10002] w-[260px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
+              className="fixed left-1/2 top-1/2 z-[10002] w-[280px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
               style={{
                 background: 'var(--popover, rgba(20, 22, 30, 0.96))',
                 backdropFilter: 'blur(16px)',
                 transform: 'translate(-50%, -50%)',
+                overscrollBehavior: 'contain',
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-y',
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
             >
               {/* Header — shows which target these actions apply to */}
               <div className="px-4 py-3 border-b border-foreground/10 sticky top-0" style={{ background: 'var(--popover, rgba(20, 22, 30, 0.96))' }}>
