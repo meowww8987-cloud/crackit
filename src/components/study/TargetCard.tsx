@@ -144,6 +144,20 @@ export function TargetCard({
     return () => clearInterval(i);
   }, [sessionState, reduceAnimations]);
 
+  // === Quick Actions menu — lock body scroll while open ===
+  // Prevents the page behind the backdrop from scrolling on touch / wheel.
+  useEffect(() => {
+    if (!showQuickActions) return;
+    const prev = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = prev;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [showQuickActions]);
+
   const liveStudied = isThisActive ? getLiveStudySeconds(active) : studiedSec;
   const liveWasted = isThisActive ? getLiveWastedSeconds(active) : wastedSec;
   const expectedSec = target.expectedMinutes * 60;
@@ -754,40 +768,62 @@ export function TargetCard({
         </AnimatePresence>
       </motion.div>
 
-      {/* === Quick Actions Menu — long-press to open === */}
+      {/* === Quick Actions Menu — long-press to open ===
+          Rendered as a centered modal (not absolute to the card) so:
+          - All options are always visible regardless of card position
+          - Delete (last item) is never cut off below the viewport
+          - Backdrop locks body scroll (see useEffect above) */}
       <AnimatePresence>
         {showQuickActions && (
           <>
-            {/* Backdrop — closes menu on tap */}
+            {/* Backdrop — dark + blur, closes on tap, blocks scroll */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-[10001]"
+              className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm"
               onClick={() => setShowQuickActions(false)}
               onPointerDown={(e) => { e.stopPropagation(); setShowQuickActions(false); }}
+              onTouchMove={(e) => e.preventDefault()}
+              style={{ touchAction: 'none' }}
             />
-            {/* Menu — positioned near top-right of the card */}
+            {/* Menu — centered on screen, max-height ensures scrollable if needed */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.85, y: -8 }}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.85, y: -8 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="absolute top-2 right-2 z-[10002] min-w-[160px] rounded-xl overflow-hidden border border-border"
-              style={{ background: 'var(--popover, rgba(20, 22, 30, 0.96))', backdropFilter: 'blur(16px)' }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="fixed left-1/2 top-1/2 z-[10002] w-[260px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
+              style={{
+                background: 'var(--popover, rgba(20, 22, 30, 0.96))',
+                backdropFilter: 'blur(16px)',
+                transform: 'translate(-50%, -50%)',
+              }}
               onPointerDown={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
             >
-              <QuickActionItem icon={Pencil} label="Edit" onClick={handleQuickEdit} />
-              <QuickActionItem icon={Copy} label="Duplicate" onClick={handleQuickDuplicate} />
-              <QuickActionItem
-                icon={RotateCcw}
-                label="Reset today's progress"
-                onClick={handleQuickReset}
-                destructive={false}
-              />
-              <div className="h-px bg-foreground/10" />
-              <QuickActionItem icon={Trash2} label="Delete" onClick={handleQuickDelete} destructive />
+              {/* Header — shows which target these actions apply to */}
+              <div className="px-4 py-3 border-b border-foreground/10 sticky top-0" style={{ background: 'var(--popover, rgba(20, 22, 30, 0.96))' }}>
+                <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Quick Actions</div>
+                <div className="text-sm font-semibold text-foreground truncate mt-0.5">{target.topic}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                  {target.subject} · {target.chapter}
+                </div>
+              </div>
+
+              {/* Action items */}
+              <div className="py-1">
+                <QuickActionItem icon={Pencil} label="Edit" onClick={handleQuickEdit} />
+                <QuickActionItem icon={Copy} label="Duplicate" onClick={handleQuickDuplicate} />
+                <QuickActionItem
+                  icon={RotateCcw}
+                  label="Reset today's progress"
+                  onClick={handleQuickReset}
+                />
+                <div className="h-px bg-foreground/10 my-1" />
+                <QuickActionItem icon={Trash2} label="Delete" onClick={handleQuickDelete} destructive />
+              </div>
             </motion.div>
           </>
         )}
@@ -812,12 +848,12 @@ function QuickActionItem({
     <button
       onClick={onClick}
       className={cn(
-        'w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-foreground/10',
-        destructive ? 'text-red-400 hover:bg-red-500/10' : 'text-foreground'
+        'w-full flex items-center gap-3 px-4 py-3 text-left text-[13px] font-medium transition hover:bg-foreground/10 active:bg-foreground/15',
+        destructive ? 'text-red-500 dark:text-red-400 hover:bg-red-500/10' : 'text-foreground'
       )}
     >
-      <Icon size={13} />
-      {label}
+      <Icon size={15} className="shrink-0" />
+      <span className="truncate">{label}</span>
     </button>
   );
 }

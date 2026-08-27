@@ -1191,6 +1191,19 @@ function AddFAB({
   onCloseQuickAdd: () => void;
   onQuickAddType: (a: ActivityType) => void;
 }) {
+  // Lock body scroll while Quick Add menu is open
+  useEffect(() => {
+    if (!showQuickAdd) return;
+    const prev = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = prev;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [showQuickAdd]);
+
   const quickOptions: { type: ActivityType; label: string; icon: typeof BookOpen; color: string }[] = [
     { type: 'Lecture',  label: 'Lecture',  icon: BookOpen, color: '#3b82f6' },
     { type: 'DPP',      label: 'DPP',      icon: FileText, color: '#f97316' },
@@ -1200,7 +1213,7 @@ function AddFAB({
 
   return (
     <>
-      {/* Quick Add menu */}
+      {/* Quick Add menu — centered modal with scroll lock */}
       <AnimatePresence>
         {showQuickAdd && (
           <>
@@ -1208,45 +1221,61 @@ function AddFAB({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] bg-black/30 backdrop-blur-sm"
+              className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
               onClick={onCloseQuickAdd}
+              onTouchMove={(e) => e.preventDefault()}
+              style={{ touchAction: 'none' }}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="fixed bottom-24 right-4 z-[101] rounded-2xl overflow-hidden border border-border"
-              style={{ background: 'var(--popover, rgba(20,22,30,0.96))', backdropFilter: 'blur(16px)', minWidth: 180 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="fixed left-1/2 top-1/2 z-[101] w-[280px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
+              style={{
+                background: 'var(--popover, rgba(20,22,30,0.96))',
+                backdropFilter: 'blur(16px)',
+                transform: 'translate(-50%, -50%)',
+              }}
+              onTouchMove={(e) => e.stopPropagation()}
             >
-              <div className="px-3 py-2 text-[10px] uppercase tracking-wider font-bold text-muted-foreground border-b border-foreground/10">
-                Quick Add
+              <div className="px-4 py-3 border-b border-foreground/10 sticky top-0" style={{ background: 'var(--popover, rgba(20,22,30,0.96))' }}>
+                <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Quick Add</div>
+                <div className="text-sm font-semibold text-foreground mt-0.5">Choose a target type</div>
               </div>
-              {quickOptions.map((opt) => (
-                <button
-                  key={opt.type}
-                  onClick={() => onQuickAddType(opt.type)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-foreground/10 transition text-left"
-                >
-                  <div
-                    className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
-                    style={{ background: `${opt.color}20`, color: opt.color }}
+              <div className="py-1">
+                {quickOptions.map((opt) => (
+                  <button
+                    key={opt.type}
+                    onClick={() => onQuickAddType(opt.type)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
                   >
-                    <opt.icon size={12} />
+                    <div
+                      className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+                      style={{ background: `${opt.color}20`, color: opt.color }}
+                    >
+                      <opt.icon size={14} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-medium text-foreground">Quick: {opt.label}</div>
+                      <div className="text-[10px] text-muted-foreground">{opt.type === 'DPP' ? '30 min' : opt.type === 'Notes' ? '25 min' : opt.type === 'Revision' ? '20 min' : '45 min'}</div>
+                    </div>
+                  </button>
+                ))}
+                <div className="h-px bg-foreground/10 my-1" />
+                <button
+                  onClick={() => { onCloseQuickAdd(); onFullAdd(); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
+                >
+                  <div className="w-7 h-7 rounded-md flex items-center justify-center bg-teal-500/20 text-teal-600 dark:text-teal-400 shrink-0">
+                    <Plus size={14} />
                   </div>
-                  <span className="text-[12px] font-medium text-foreground">Quick: {opt.label}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium text-foreground">Full target</div>
+                    <div className="text-[10px] text-muted-foreground">Custom subject, chapter, time</div>
+                  </div>
                 </button>
-              ))}
-              <div className="h-px bg-foreground/10" />
-              <button
-                onClick={() => { onCloseQuickAdd(); onFullAdd(); }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-foreground/10 transition text-left"
-              >
-                <div className="w-6 h-6 rounded-md flex items-center justify-center bg-teal-500/20 text-teal-600 dark:text-teal-400 shrink-0">
-                  <Plus size={12} />
-                </div>
-                <span className="text-[12px] font-medium text-foreground">Full target</span>
-              </button>
+              </div>
             </motion.div>
           </>
         )}
