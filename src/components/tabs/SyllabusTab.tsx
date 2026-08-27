@@ -95,6 +95,35 @@ export function SyllabusTab() {
   }).length;
   const overallPctColor = overallPct >= 70 ? '#22c55e' : overallPct >= 30 ? '#f59e0b' : '#ef4444';
 
+  // === Filter bar stats ===
+  // Per-subject lecture count (for filter pill counts)
+  const subjectLectureCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const lec of lectures) {
+      const ch = chapters.find((c) => c.id === lec.chapterId);
+      if (ch) {
+        const subj = subjects.find((s) => s.id === ch.subjectId);
+        if (subj) counts[subj.name] = (counts[subj.name] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [lectures, chapters, subjects]);
+
+  // Search match count — how many lectures match the current search
+  const searchMatchCount = search
+    ? lectures.filter((l) => l.topic.toLowerCase().includes(search.toLowerCase())).length
+    : 0;
+
+  // Active filter count — for the "clear all" banner
+  const activeFilterCount = (subjectFilter !== 'all' ? 1 : 0) + (progressFilter !== 'all' ? 1 : 0) + (search ? 1 : 0);
+
+  const clearAllFilters = () => {
+    setSearch('');
+    handleSubjectFilter('all');
+    handleProgressFilter('all');
+    vibrate(10);
+  };
+
   const filteredSubjects = useMemo(() => {
     if (subjectFilter === 'all') return subjects;
     return subjects.filter((s) => s.name === subjectFilter);
@@ -215,18 +244,30 @@ export function SyllabusTab() {
               <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{doneCount}</span>
               /{totalLectures} lectures
             </span>
-            {/* Overdue badge — only if >0 */}
+            {/* Overdue badge — tappable to filter by overdue */}
             {overdueCount > 0 && (
               <>
                 <span>·</span>
-                <span className="font-semibold text-red-500 dark:text-red-400">⚠ {overdueCount} overdue</span>
+                <button
+                  onClick={() => { handleProgressFilter('overdue'); vibrate(8); }}
+                  className="font-semibold text-red-500 dark:text-red-400 hover:underline active:scale-95 transition"
+                  title="Show overdue lectures"
+                >
+                  ⚠ {overdueCount} overdue
+                </button>
               </>
             )}
-            {/* Done today — green, motivation */}
+            {/* Done today — tappable to filter by done */}
             {doneTodayCount > 0 && (
               <>
                 <span>·</span>
-                <span className="font-semibold text-green-500 dark:text-green-400">+{doneTodayCount} today</span>
+                <button
+                  onClick={() => { handleProgressFilter('done'); vibrate(8); }}
+                  className="font-semibold text-green-500 dark:text-green-400 hover:underline active:scale-95 transition"
+                  title="Show completed lectures"
+                >
+                  +{doneTodayCount} today
+                </button>
               </>
             )}
           </div>
@@ -294,33 +335,84 @@ export function SyllabusTab() {
         document.body
       )}
 
-      <div className="relative minimal-hide">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t-muted" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search chapters, lectures..."
-          className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50 focus:bg-white/[0.07] transition"
-        />
-      </div>
+      {/* === Filter Bar — sticky, merges search + stats + filters ===
+          Replaces the old 3 separate sections (search, stats row, 2 filter rows).
+          - Search has clear button + results count
+          - Filter pills show counts (so you know what you're filtering)
+          - Active filter banner with "clear all" when filtering
+          - Sticky on scroll so filters are always accessible */}
+      <div className="sticky top-0 z-20 glass rounded-2xl p-3 space-y-2.5">
+        {/* Search with clear + count */}
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search lectures..."
+            className="w-full bg-foreground/5 border border-border rounded-xl pl-10 pr-20 py-2.5 text-sm focus:outline-none focus:border-teal-400/50 focus:bg-foreground/[0.07] transition"
+            style={{ color: 'var(--foreground)' }}
+          />
+          {/* Results count + clear button — only when searching */}
+          {search && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              <span className="text-[10px] tabular text-muted-foreground">{searchMatchCount} found</span>
+              <button
+                onClick={() => { setSearch(''); vibrate(6); }}
+                className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-foreground/10 transition active:scale-90"
+                aria-label="Clear search"
+              >
+                <X size={13} className="text-muted-foreground" />
+              </button>
+            </div>
+          )}
+        </div>
 
-      <div className="flex items-center gap-2 text-xs">
-        <span className="px-2.5 py-1 rounded-lg bg-green-500/10 text-green-500 dark:text-green-400 font-semibold">✓ {doneCount} done</span>
-        <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-500 dark:text-amber-400 font-semibold">◐ {studyingCount} active</span>
-        {overdueCount > 0 && (<span className="px-2.5 py-1 rounded-lg bg-red-500/10 text-red-500 dark:text-red-400 font-semibold">⚠ {overdueCount} overdue</span>)}
-        <span className="text-t-muted ml-auto">{lectures.length} total lectures</span>
-      </div>
+        {/* Subject filter pills — with counts, flex-wrap on desktop */}
+        <div className="flex gap-1.5 flex-wrap">
+          <FilterPill count={totalLectures} active={subjectFilter === 'all'} onClick={() => handleSubjectFilter('all')}>All</FilterPill>
+          {SUBJECTS.map((s) => (
+            <FilterPill
+              key={s}
+              count={subjectLectureCounts[s] || 0}
+              active={subjectFilter === s}
+              onClick={() => handleSubjectFilter(s)}
+              color={subjectColor(s)}
+            >
+              {s}
+            </FilterPill>
+          ))}
+        </div>
 
-      <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-        <FilterPill active={subjectFilter === 'all'} onClick={() => handleSubjectFilter('all')}>All</FilterPill>
-        {SUBJECTS.map((s) => (<FilterPill key={s} active={subjectFilter === s} onClick={() => handleSubjectFilter(s)} color={subjectColor(s)}>{s}</FilterPill>))}
-      </div>
-      <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-        <FilterPill small active={progressFilter === 'all'} onClick={() => handleProgressFilter('all')}>All</FilterPill>
-        <FilterPill small active={progressFilter === 'studying'} onClick={() => handleProgressFilter('studying')}>Active</FilterPill>
-        <FilterPill small active={progressFilter === 'next'} onClick={() => handleProgressFilter('next')}>Next Up</FilterPill>
-        <FilterPill small active={progressFilter === 'done'} onClick={() => handleProgressFilter('done')}>Done</FilterPill>
-        <FilterPill small active={progressFilter === 'overdue'} onClick={() => handleProgressFilter('overdue')}>⚠ Overdue</FilterPill>
+        {/* Progress filter pills — with counts */}
+        <div className="flex gap-1.5 flex-wrap">
+          <FilterPill small count={totalLectures} active={progressFilter === 'all'} onClick={() => handleProgressFilter('all')}>All</FilterPill>
+          <FilterPill small count={studyingCount} active={progressFilter === 'studying'} onClick={() => handleProgressFilter('studying')}>In Progress</FilterPill>
+          <FilterPill small count={nextCount} active={progressFilter === 'next'} onClick={() => handleProgressFilter('next')}>Not Started</FilterPill>
+          <FilterPill small count={doneCount} active={progressFilter === 'done'} onClick={() => handleProgressFilter('done')}>Done</FilterPill>
+          {overdueCount > 0 && (
+            <FilterPill small count={overdueCount} active={progressFilter === 'overdue'} onClick={() => handleProgressFilter('overdue')}>⚠ Overdue</FilterPill>
+          )}
+        </div>
+
+        {/* Active filter banner — only shows when filtering */}
+        {activeFilterCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-center gap-2 text-[10px] pt-1 border-t border-foreground/10"
+          >
+            <span className="text-muted-foreground">
+              {activeFilterCount} filter{activeFilterCount === 1 ? '' : 's'} active
+            </span>
+            <button
+              onClick={clearAllFilters}
+              className="ml-auto px-2 py-0.5 rounded-md bg-red-500/10 text-red-500 dark:text-red-400 font-semibold hover:bg-red-500/20 transition active:scale-95"
+            >
+              clear all
+            </button>
+          </motion.div>
+        )}
       </div>
 
       {/* Build Syllabus + Formula Vault buttons moved to Syllabus tab
@@ -599,9 +691,24 @@ function SubjectHeader({ name, color, count, onAdd }: { name: string; color: { h
   );
 }
 
-function FilterPill({ active, onClick, children, color, small }: { active: boolean; onClick: () => void; children: React.ReactNode; color?: { hex: string }; small?: boolean }) {
+function FilterPill({ active, onClick, children, color, small, count }: { active: boolean; onClick: () => void; children: React.ReactNode; color?: { hex: string }; small?: boolean; count?: number }) {
   return (
-    <button onClick={() => { onClick(); vibrate(6); }} className={cn('rounded-full font-medium whitespace-nowrap transition shrink-0', small ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-xs', active ? 'text-black font-bold' : 'bg-white/5 text-t-muted hover:bg-white/10 hover:text-t-secondary')} style={active ? { background: color?.hex ?? '#14b8a6' } : color ? { background: `${color.hex}15`, color: color.hex, border: `1px solid ${color.hex}25` } : undefined}>{children}</button>
+    <button
+      onClick={() => { onClick(); vibrate(6); }}
+      className={cn(
+        'rounded-full font-medium whitespace-nowrap transition shrink-0 flex items-center gap-1',
+        small ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-xs',
+        active ? 'text-black font-bold' : 'bg-foreground/5 text-muted-foreground hover:bg-foreground/10 hover:text-foreground'
+      )}
+      style={active ? { background: color?.hex ?? '#14b8a6' } : color ? { background: `${color.hex}15`, color: color.hex, border: `1px solid ${color.hex}25` } : undefined}
+    >
+      {children}
+      {count !== undefined && count > 0 && (
+        <span className={cn('tabular font-bold', small ? 'text-[9px]' : 'text-[10px]', active ? 'text-black/70' : 'opacity-60')}>
+          {count}
+        </span>
+      )}
+    </button>
   );
 }
 
