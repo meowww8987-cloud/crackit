@@ -1071,6 +1071,7 @@ function ChapterSection({
                   indexInChapter={idx + 1}
                   chapterTotal={items.length}
                   hasSiblings={items.length > 1}
+                  cardIndex={idx}
                 />
               ))}
             </Reorder.Group>

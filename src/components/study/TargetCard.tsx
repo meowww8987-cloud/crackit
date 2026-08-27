@@ -25,19 +25,23 @@ interface Props {
   indexInChapter?: number;
   chapterTotal?: number;
   hasSiblings?: boolean;
+  /** Index of this card within its chapter (0-based) — used for zebra striping. */
+  cardIndex?: number;
 }
 
-// Activity-specific icon + label + accent color (left border / icon glow)
+// Activity-specific icon + label + accent color + gradient + watermark
 const ACTIVITY_META: Record<ActivityType, {
   icon: typeof BookOpen;
   label: string;
-  accent: string; // hex, used for left border + icon halo
+  accent: string;       // single color (left border, icon halo)
+  gradient: [string, string]; // top stripe gradient
+  watermark: string;    // emoji for large background watermark
 }> = {
-  Lecture:  { icon: BookOpen,  label: 'Lecture',  accent: '#3b82f6' },
-  DPP:      { icon: FileText,  label: 'DPP',      accent: '#f97316' },
-  Notes:    { icon: FileText,  label: 'Notes',    accent: '#22c55e' },
-  Revision: { icon: BookOpen,  label: 'Revision', accent: '#a855f7' },
-  Custom:   { icon: FileText,  label: 'Task',     accent: '#64748b' },
+  Lecture:  { icon: BookOpen,  label: 'Lecture',  accent: '#3b82f6', gradient: ['#3b82f6', '#60a5fa'], watermark: '📚' },
+  DPP:      { icon: FileText,  label: 'DPP',      accent: '#f97316', gradient: ['#f97316', '#fb923c'], watermark: '📝' },
+  Notes:    { icon: FileText,  label: 'Notes',    accent: '#22c55e', gradient: ['#22c55e', '#4ade80'], watermark: '✍️' },
+  Revision: { icon: BookOpen,  label: 'Revision', accent: '#a855f7', gradient: ['#a855f7', '#c084fc'], watermark: '🔄' },
+  Custom:   { icon: FileText,  label: 'Task',     accent: '#64748b', gradient: ['#64748b', '#94a3b8'], watermark: '⭐' },
 };
 
 // Premium easing curves
@@ -53,6 +57,7 @@ export function TargetCard({
   indexInChapter,
   chapterTotal,
   hasSiblings,
+  cardIndex = 0,
 }: Props) {
   const color = subjectColor(target.subject);
   const activityMeta = ACTIVITY_META[target.activity] || ACTIVITY_META.Custom;
@@ -358,6 +363,33 @@ export function TargetCard({
     ? [1, 1.015, 1]
     : 1;
 
+  // Status-based card lift — studying cards lift up slightly for emphasis
+  const cardLiftY = sessionState === 'studying' && !reduceAnimations ? -2 : 0;
+
+  // Wasting tilt — card tilts -1deg to feel "off"
+  const cardRotate = sessionState === 'wasting' && !reduceAnimations ? -1 : 0;
+
+  // Topic text sizing by length — prevents long topics from dominating
+  const topicLen = target.topic.length;
+  const topicClassName = topicLen > 40
+    ? 'text-[13px] font-medium leading-tight mb-2 pr-1'
+    : topicLen > 20
+    ? 'text-sm font-medium leading-snug mb-2 pr-1'
+    : 'text-sm font-semibold leading-snug mb-2 pr-1';
+
+  // Zebra stripe tint — alternating shades within same chapter
+  const isEvenCard = cardIndex % 2 === 0;
+  const zebraTint = isEvenCard ? `${color.hex}08` : `${color.hex}04`;
+
+  // Over-goal state — studied more than expected
+  const isOverGoal = liveStudied > expectedSec && expectedSec > 0;
+  const overMin = Math.floor((liveStudied - expectedSec) / 60);
+
+  // Session count badge number (circled unicode for 1-9, plain for 10+)
+  const sessionBadge = target.done ? '✓' : sessions.length > 0 && sessions.length <= 9
+    ? ['①','②','③','④','⑤','⑥','⑦','⑧','⑨'][sessions.length - 1]
+    : sessions.length > 9 ? `${sessions.length}` : null;
+
   // Wasting shake — re-triggered every 5s via shakeNonce
   // We can't put it on the Reorder.Item itself (would remount), so we
   // render a child motion.div with key={shakeNonce} for the shake.
@@ -375,7 +407,8 @@ export function TargetCard({
       initial={reduceAnimations ? false : { opacity: 0, y: 8 }}
       animate={{
         opacity: isSettled ? 0.55 : 1,
-        y: 0,
+        y: cardLiftY,
+        rotate: cardRotate,
         scale: breathingScale,
       }}
       whileDrag={{
@@ -399,6 +432,7 @@ export function TargetCard({
         'card-solid rounded-2xl relative overflow-hidden select-none cursor-pointer outline-none',
         sessionState === 'studying' && 'glow-pulse',
         sessionState === 'wasting' && 'glow-pulse',
+        sessionState === 'paused' && 'border-dashed',
         target.done && 'grayscale-[60%]',
         flashGreen && 'ring-2 ring-green-500',
         isFocused && 'ring-2 ring-white/40',
@@ -442,13 +476,38 @@ export function TargetCard({
       role="button"
       aria-label={`${target.topic} — ${activityMeta.label}. Press Space to start/pause, D to mark done, E to edit.`}
     >
-      {/* Subject color tint overlay */}
+      {/* === Activity-colored top stripe (3px gradient) ===
+          Instantly differentiates Lecture/DPP/Notes/Revision/Custom. */}
+      <div
+        className="absolute top-0 left-0 right-0 z-[1] pointer-events-none"
+        style={{
+          height: 3,
+          background: `linear-gradient(90deg, ${activityMeta.gradient[0]}, ${activityMeta.gradient[1]})`,
+          opacity: target.done ? 0.3 : 1,
+        }}
+      />
+
+      {/* === Large faint activity icon watermark (bottom-right) ===
+          Gives each card a "texture" without adding visual noise. */}
+      <div
+        className="absolute -bottom-3 -right-2 z-[0] pointer-events-none select-none"
+        style={{
+          fontSize: 80,
+          opacity: target.done ? 0.03 : 0.06,
+          lineHeight: 1,
+          transform: 'rotate(-12deg)',
+        }}
+      >
+        {activityMeta.watermark}
+      </div>
+
+      {/* Subject color tint overlay + zebra stripe */}
       <div
         className="card-tint"
         style={{
           background: target.done
             ? `linear-gradient(135deg, ${color.hex}10, transparent)`
-            : `linear-gradient(135deg, ${color.hex}28, ${color.hex}0a)`,
+            : `linear-gradient(135deg, ${zebraTint}, ${color.hex}0a)`,
         }}
       />
 
@@ -477,21 +536,31 @@ export function TargetCard({
         </div>
       )}
 
-      {/* Done check badge — top right corner */}
+      {/* === Session-count badge — top right corner ===
+          Shows ①②③ for session count, or ✓ for done.
+          Quickly tells "have I touched this?" at a glance. */}
       <AnimatePresence>
-        {target.done && (
+        {sessionBadge && (
           <motion.div
+            key={sessionBadge}
             initial={{ scale: 0, rotate: -180, opacity: 0 }}
             animate={{ scale: 1, rotate: 0, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 400, damping: 18 }}
-            className="absolute top-2 right-2 z-[2] pointer-events-none"
+            className="absolute top-2.5 right-2.5 z-[3] pointer-events-none"
           >
             <div
-              className="w-5 h-5 rounded-full flex items-center justify-center"
-              style={{ background: '#22c55e', boxShadow: '0 0 12px rgba(34,197,94,0.5)' }}
+              className="min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center text-[10px] font-bold"
+              style={{
+                background: target.done ? '#22c55e' : `${color.hex}30`,
+                color: target.done ? '#fff' : color.hex,
+                boxShadow: target.done
+                  ? '0 0 12px rgba(34,197,94,0.5)'
+                  : `0 0 8px ${color.glow}`,
+                border: target.done ? 'none' : `1px solid ${color.hex}50`,
+              }}
             >
-              <Check size={12} strokeWidth={3} color="#fff" />
+              {target.done ? <Check size={12} strokeWidth={3} color="#fff" /> : sessionBadge}
             </div>
           </motion.div>
         )}
@@ -504,7 +573,7 @@ export function TargetCard({
         key={shakeNonce}
         animate={sessionState === 'wasting' && !reduceAnimations ? { x: [0, -2, 2, -1, 1, 0] } : { x: 0 }}
         transition={sessionState === 'wasting' && !reduceAnimations ? { duration: 0.4 } : {}}
-        className="relative p-3 pl-3.5"
+        className="relative p-3 pl-3.5 pt-3.5"
       >
         {/* Green flash on done celebration */}
         <AnimatePresence>
@@ -597,63 +666,166 @@ export function TargetCard({
           </button>
         </div>
 
-        {/* === Row 2: Title (topic name) === */}
+        {/* === Row 2: Title (topic name) — sized by length === */}
         <div
           className={cn(
-            'text-sm font-semibold mb-2 leading-snug pr-1',
+            topicClassName,
             target.done && 'text-muted-foreground'
           )}
         >
           {target.topic}
         </div>
 
-        {/* === Row 3: Modern progress bar with live shimmer === */}
-        <div className="relative mb-2 h-2 rounded-full overflow-hidden" style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}>
-          {/* Fill — gradient + spring-animated width */}
-          <motion.div
-            className="absolute inset-y-0 left-0 rounded-full"
-            style={{
-              background: sessionState === 'wasting'
-                ? 'linear-gradient(90deg, #ef4444, #f87171)'
-                : `linear-gradient(90deg, ${color.hex}, ${color.hex}cc)`,
-              boxShadow: `0 0 8px ${sessionState === 'wasting' ? 'rgba(239,68,68,0.6)' : color.glow}`,
-            }}
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPct}%` }}
-            transition={{
-              type: 'spring',
-              stiffness: 120,
-              damping: 20,
-              mass: 0.8,
-            }}
-          >
-            {/* Shimmer overlay — only when actively studying */}
-            {sessionState === 'studying' && !reduceAnimations && (
-              <motion.div
-                className="absolute inset-0"
-                style={{
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
-                  backgroundSize: '200% 100%',
-                }}
-                animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
-                transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }}
-              />
-            )}
-          </motion.div>
-
-          {/* Percentage label — floating at right end of bar */}
-          {(progressPct > 0 || isThisActive) && (
-            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] font-bold tabular text-foreground/85 z-[1]">
-              {progressPct}%
-            </span>
-          )}
-
-          {/* Status pill overlay on bar — only when active */}
+        {/* === Row 3: Segmented liquid progress bar ===
+            12px height, 4 segments (25/50/75/100), wavy SVG top edge,
+            wave animates gently when idle + faster when studying,
+            % label moves with fill edge, gold + sparkles when over-goal. */}
+        <div className="relative mb-1">
+          {/* Status pill — floats above bar when active */}
           {isThisActive && (
-            <div className="absolute -top-0.5 right-0 translate-y-[-100%] z-[2]">
+            <div className="absolute -top-3 right-0 z-[3]">
               {statusPill}
             </div>
           )}
+
+          {/* The bar itself — 12px tall, with segment dividers */}
+          <div
+            className="relative h-3 rounded-full overflow-hidden"
+            style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}
+          >
+            {/* Fill — spring-animated width with liquid wave top */}
+            <motion.div
+              className="absolute inset-y-0 left-0 rounded-full overflow-hidden"
+              style={{
+                width: `${Math.min(100, progressPct)}%`,
+              }}
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, progressPct)}%` }}
+              transition={{
+                type: 'spring',
+                stiffness: 120,
+                damping: 20,
+                mass: 0.8,
+              }}
+            >
+              {/* Fill background — gradient or gold if over-goal */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: isOverGoal
+                    ? 'linear-gradient(90deg, #fbbf24, #fde047)'
+                    : sessionState === 'wasting'
+                    ? 'linear-gradient(90deg, #ef4444, #f87171)'
+                    : `linear-gradient(90deg, ${color.hex}, ${color.hex}cc)`,
+                  boxShadow: `0 0 8px ${
+                    isOverGoal ? 'rgba(251,191,36,0.6)'
+                    : sessionState === 'wasting' ? 'rgba(239,68,68,0.6)'
+                    : color.glow
+                  }`,
+                }}
+              />
+
+              {/* Liquid wave overlay — SVG wavy top edge, always animating */}
+              {!reduceAnimations && (
+                <svg
+                  className="absolute inset-0 w-full h-full"
+                  viewBox="0 0 100 12"
+                  preserveAspectRatio="none"
+                  style={{ opacity: 0.3 }}
+                >
+                  <motion.path
+                    d="M0,6 Q25,3 50,6 T100,6 L100,12 L0,12 Z"
+                    fill="rgba(255,255,255,0.4)"
+                    animate={{
+                      d: [
+                        'M0,6 Q25,3 50,6 T100,6 L100,12 L0,12 Z',
+                        'M0,6 Q25,9 50,6 T100,6 L100,12 L0,12 Z',
+                        'M0,6 Q25,3 50,6 T100,6 L100,12 L0,12 Z',
+                      ]
+                    }}
+                    transition={{
+                      duration: sessionState === 'studying' ? 2 : 4,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                </svg>
+              )}
+
+              {/* Shimmer overlay — only when actively studying */}
+              {sessionState === 'studying' && !reduceAnimations && (
+                <motion.div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)',
+                    backgroundSize: '200% 100%',
+                  }}
+                  animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }}
+                />
+              )}
+
+              {/* Sparkles when over-goal */}
+              {isOverGoal && !reduceAnimations && (
+                <motion.div
+                  className="absolute inset-0 flex items-center justify-center"
+                  animate={{ opacity: [0.3, 0.8, 0.3] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{ fontSize: 8 }}
+                >
+                  ✨
+                </motion.div>
+              )}
+            </motion.div>
+
+            {/* Segment dividers — at 25%, 50%, 75% */}
+            {[25, 50, 75].map((pos) => (
+              <div
+                key={pos}
+                className="absolute top-0 bottom-0 w-px z-[1] pointer-events-none"
+                style={{
+                  left: `${pos}%`,
+                  background: 'var(--border, rgba(255,255,255,0.12))',
+                }}
+              />
+            ))}
+
+            {/* % label — moves with fill edge, sits just right of the fill */}
+            {(progressPct > 0 || isThisActive) && (
+              <motion.span
+                className="absolute top-1/2 -translate-y-1/2 text-[8px] font-bold tabular z-[2] pointer-events-none whitespace-nowrap"
+                animate={{
+                  left: `calc(${Math.min(100, progressPct)}% + 4px)`,
+                }}
+                transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+                style={{
+                  color: progressPct > 50 ? '#fff' : 'var(--foreground)',
+                  textShadow: progressPct > 50 ? '0 0 4px rgba(0,0,0,0.5)' : 'none',
+                }}
+              >
+                {isOverGoal ? `+${overMin}m` : `${progressPct}%`}
+              </motion.span>
+            )}
+          </div>
+
+          {/* Tick marks — 25 · 50 · 75 · 100, only on hover/active */}
+          <AnimatePresence>
+            {(isHovered || isFocused || isThisActive) && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex justify-between px-0.5 mt-0.5 overflow-hidden"
+              >
+                {['25', '50', '75', '100'].map((tick) => (
+                  <span key={tick} className="text-[7px] tabular text-muted-foreground/60">
+                    {tick}
+                  </span>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* === Row 4: Stats — studied / remaining / session dots + action buttons === */}
