@@ -727,15 +727,13 @@ export function SyllabusTab() {
   );
 }
 
-function SortableChapterCard({ chapter, color, lectureCount }: { chapter: Chapter; color: { hex: string }; lectureCount: number }) {
+function SortableChapterCard({ chapter, color, lectureCount }: { chapter: Chapter; color: { hex: string; glow: string }; lectureCount: number }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: chapter.id });
   const [showMenu, setShowMenu] = useState(false);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Use stable selectors — filter inline creates a new array every render
   // which causes infinite loops with Zustand's useSyncExternalStore.
   const allLectures = useSyllabus((s) => s.lectures);
-  const deleteChapter = useSyllabus((s) => s.deleteChapter);
-  const updateLecture = useSyllabus((s) => s.updateLecture);
   const lectures = useMemo(() => allLectures.filter((l) => l.chapterId === chapter.id), [allLectures, chapter.id]);
   const allDone = lectures.length > 0 && lectures.every((l) => l.done);
 
@@ -746,22 +744,6 @@ function SortableChapterCard({ chapter, color, lectureCount }: { chapter: Chapte
       longPressRef.current = null;
     }
   }, [isDragging]);
-
-  const markAllDone = () => {
-    vibrate(15);
-    lectures.forEach((l) => { if (!l.done) updateLecture(l.id, { done: true }); });
-    setShowMenu(false);
-  };
-  const resetAll = () => {
-    vibrate(15);
-    lectures.forEach((l) => { if (l.done) updateLecture(l.id, { done: false }); });
-    setShowMenu(false);
-  };
-  const handleDelete = () => {
-    vibrate([10, 30, 10]);
-    deleteChapter(chapter.id);
-    setShowMenu(false);
-  };
 
   return (
     <>
@@ -790,55 +772,10 @@ function SortableChapterCard({ chapter, color, lectureCount }: { chapter: Chapte
         {chapter.pyqCount > 0 && (<span className="text-[9px] font-bold px-1.5 py-0.5 rounded tabular" style={{ background: `${color.hex}20`, color: color.hex }}>⚖ {chapter.pyqCount}m</span>)}
       </div>
 
-      {/* === Long-press context menu === */}
-      <AnimatePresence>
-        {showMenu && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-            onClick={() => setShowMenu(false)}
-          >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-sm glass-strong rounded-3xl p-5"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-bold">{chapter.name}</h3>
-                  <p className="text-[10px] text-muted-foreground">{lectures.length} lectures · {lectures.filter(l => l.done).length} done</p>
-                </div>
-                <button onClick={() => setShowMenu(false)} className="w-7 h-7 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"><X size={14} /></button>
-              </div>
-
-              <div className="space-y-1.5">
-                {!allDone && (
-                  <button onClick={markAllDone} className="w-full p-3 rounded-xl bg-green-500/10 hover:bg-green-500/15 flex items-center gap-3 transition active:scale-95">
-                    <CheckCircle2 size={18} className="text-green-400" />
-                    <span className="text-sm font-semibold text-green-300">Mark All Done</span>
-                  </button>
-                )}
-                {allDone && lectures.length > 0 && (
-                  <button onClick={resetAll} className="w-full p-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 flex items-center gap-3 transition active:scale-95">
-                    <RotateCcw size={18} className="text-amber-400" />
-                    <span className="text-sm font-semibold text-amber-300">Reset All (Mark Undone)</span>
-                  </button>
-                )}
-                <button onClick={handleDelete} className="w-full p-3 rounded-xl bg-red-500/10 hover:bg-red-500/15 flex items-center gap-3 transition active:scale-95">
-                  <Trash2 size={18} className="text-red-400" />
-                  <span className="text-sm font-semibold text-red-300">Delete Chapter</span>
-                </button>
-              </div>
-              <p className="text-[9px] text-white/30 text-center mt-3">Long-press any chapter to see this menu</p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* === Long-press context menu — uses reusable ChapterActionsModal === */}
+      {showMenu && (
+        <ChapterActionsModal chapter={chapter} color={color} onClose={() => setShowMenu(false)} />
+      )}
     </>
   );
 }
@@ -973,13 +910,40 @@ function FormulaVaultInline({ onClose }: { onClose: () => void }) {
   );
 }
 
-// === Chapter Context Menu — shown on long-press in normal mode ===
-function ChapterContextMenu({ chapter, onClose }: { chapter: Chapter; onClose: () => void }) {
+// === Chapter Actions Modal — reusable, via Portal ===
+// Used by both normal mode (ChapterContextMenu) and reorder mode (SortableChapterCard).
+// Rendered via createPortal to escape any transform/overflow context.
+function ChapterActionsModal({
+  chapter,
+  color,
+  onClose,
+  onAddLecture,
+}: {
+  chapter: Chapter;
+  color: { hex: string; glow: string };
+  onClose: () => void;
+  onAddLecture?: () => void;
+}) {
   const allLectures = useSyllabus((s) => s.lectures);
   const deleteChapter = useSyllabus((s) => s.deleteChapter);
   const updateLecture = useSyllabus((s) => s.updateLecture);
   const lectures = useMemo(() => allLectures.filter((l) => l.chapterId === chapter.id), [allLectures, chapter.id]);
   const allDone = lectures.length > 0 && lectures.every((l) => l.done);
+  const doneCount = lectures.filter((l) => l.done).length;
+  const notDoneCount = lectures.length - doneCount;
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Scroll lock + Escape
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', esc);
+    return () => {
+      window.removeEventListener('keydown', esc);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
 
   const markAllDone = () => {
     vibrate(15);
@@ -997,50 +961,178 @@ function ChapterContextMenu({ chapter, onClose }: { chapter: Chapter; onClose: (
     onClose();
   };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <AnimatePresence>
       <motion.div
-        initial={{ scale: 0.9 }}
-        animate={{ scale: 1 }}
-        exit={{ scale: 0.9 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+        className="fixed left-1/2 top-1/2 z-[10002] w-[300px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
+        style={{
+          background: 'var(--popover, rgba(20,22,30,0.96))',
+          backdropFilter: 'blur(16px)',
+          transform: 'translate(-50%, -50%)',
+          overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y',
+        }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-sm glass-strong rounded-3xl p-5"
       >
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-sm font-bold">{chapter.name}</h3>
-            <p className="text-[10px] text-muted-foreground">{lectures.length} lectures · {lectures.filter(l => l.done).length} done</p>
+        {/* Header with chapter color stripe + icon */}
+        <div className="px-4 py-3 border-b border-foreground/10 sticky top-0" style={{ background: 'var(--popover, rgba(20,22,30,0.96))' }}>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color.hex}20`, color: color.hex }}>
+                <BookMarked size={16} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Chapter Actions</div>
+                <div className="text-sm font-semibold text-foreground truncate">{chapter.name}</div>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-foreground/10 transition active:scale-90 shrink-0" aria-label="Close">
+              <X size={14} className="text-muted-foreground" />
+            </button>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"><X size={14} /></button>
+          {/* Progress summary */}
+          {lectures.length > 0 && (
+            <div className="text-[10px] tabular mt-1.5" style={{ color: 'var(--muted-foreground)' }}>
+              {doneCount}/{lectures.length} lectures done
+              {allDone && <span className="text-green-600 dark:text-green-400 font-semibold ml-1">· ✓ complete</span>}
+            </div>
+          )}
         </div>
 
-        <div className="space-y-1.5">
-          {!allDone && (
-            <button onClick={markAllDone} className="w-full p-3 rounded-xl bg-green-500/10 hover:bg-green-500/15 flex items-center gap-3 transition active:scale-95">
-              <CheckCircle2 size={18} className="text-green-400" />
-              <span className="text-sm font-semibold text-green-300">Mark All Done</span>
+        {/* Action items */}
+        <div className="py-1">
+          {/* Add lecture (optional) */}
+          {onAddLecture && (
+            <button
+              onClick={() => { onAddLecture(); onClose(); }}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
+            >
+              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ background: `${color.hex}20`, color: color.hex }}>
+                <Plus size={14} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium text-foreground">Add Lecture</div>
+                <div className="text-[10px] text-muted-foreground">Add a new lecture to this chapter</div>
+              </div>
             </button>
           )}
+
+          {/* Mark all done */}
+          {!allDone && lectures.length > 0 && (
+            <button
+              onClick={markAllDone}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
+            >
+              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-green-500/20 text-green-600 dark:text-green-400">
+                <CheckCircle2 size={14} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium text-foreground">Mark All Done</div>
+                <div className="text-[10px] text-muted-foreground">{notDoneCount} lecture{notDoneCount === 1 ? '' : 's'} remaining</div>
+              </div>
+            </button>
+          )}
+
+          {/* Reset all */}
           {allDone && lectures.length > 0 && (
-            <button onClick={resetAll} className="w-full p-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 flex items-center gap-3 transition active:scale-95">
-              <RotateCcw size={18} className="text-amber-400" />
-              <span className="text-sm font-semibold text-amber-300">Reset All (Mark Undone)</span>
+            <button
+              onClick={resetAll}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
+            >
+              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                <RotateCcw size={14} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium text-foreground">Reset All</div>
+                <div className="text-[10px] text-muted-foreground">Mark all {lectures.length} as not done</div>
+              </div>
             </button>
           )}
-          <button onClick={handleDelete} className="w-full p-3 rounded-xl bg-red-500/10 hover:bg-red-500/15 flex items-center gap-3 transition active:scale-95">
-            <Trash2 size={18} className="text-red-400" />
-            <span className="text-sm font-semibold text-red-300">Delete Chapter</span>
+
+          {/* Delete — opens confirmation */}
+          <div className="h-px bg-foreground/10 my-1" />
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 active:bg-red-500/15 transition text-left"
+          >
+            <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-red-500/20 text-red-600 dark:text-red-400">
+              <Trash2 size={14} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-medium text-red-600 dark:text-red-400">Delete Chapter</div>
+              <div className="text-[10px] text-muted-foreground">Remove chapter and all {lectures.length} lectures</div>
+            </div>
           </button>
         </div>
-        <p className="text-[9px] text-white/30 text-center mt-3">Long-press any chapter to see this menu</p>
       </motion.div>
-    </motion.div>
+
+      {/* Delete confirmation — nested portal */}
+      {showDeleteConfirm && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[10003] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0.9 }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-[300px] rounded-2xl border border-border shadow-2xl p-4"
+            style={{ background: 'var(--popover, rgba(20,22,30,0.96))', backdropFilter: 'blur(16px)' }}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
+                <Trash2 size={18} className="text-red-500 dark:text-red-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-foreground">Delete chapter?</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  "{chapter.name}" and all {lectures.length} lectures will be permanently removed.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2 rounded-lg bg-foreground/5 text-foreground text-[12px] font-semibold hover:bg-foreground/10 active:scale-95 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-2 rounded-lg bg-red-500 text-white text-[12px] font-bold hover:bg-red-600 active:scale-95 transition"
+              >
+                Delete
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body
   );
+}
+
+// Keep ChapterContextMenu as a thin wrapper for backward compatibility
+function ChapterContextMenu({ chapter, onClose }: { chapter: Chapter; onClose: () => void }) {
+  const subj = useSyllabus((s) => s.subjects.find((su) => su.id === chapter.subjectId));
+  const color = subjectColor(subj?.name || 'General');
+  return <ChapterActionsModal chapter={chapter} color={color} onClose={onClose} />;
 }
