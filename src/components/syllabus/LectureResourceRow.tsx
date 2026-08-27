@@ -40,6 +40,7 @@ const REVISION_COLORS = [
 
 export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }: Props) {
   const toggleResource = useSyllabus((s) => s.toggleLectureResource);
+  const updateLecture = useSyllabus((s) => s.updateLecture);
   const deleteLecture = useSyllabus((s) => s.deleteLecture);
   const addTarget = useTargets((s) => s.addTarget);
   const isAlreadyAdded = useTargets((s) => s.isAlreadyAddedToday);
@@ -92,7 +93,20 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
   const handleResourceToggle = (resource: LectureResource, e: React.MouseEvent) => {
     e.stopPropagation();
     vibrate(10);
-    toggleResource(lecture.id, resource);
+    if (resource === 'revision') {
+      // Revision INCREMENTS — each tap counts as one more revision
+      // Cycles through: not done → 1st → 2nd → 3rd → 4th → back to not done
+      const currentStage = lecture.revisionStage;
+      const nextStage = currentStage >= 4 ? -1 : currentStage + 1;
+      updateLecture(lecture.id, {
+        revisionDone: nextStage >= 0,
+        revisionStage: nextStage,
+        lastRevisedAt: nextStage >= 0 ? Date.now() : undefined,
+        nextRevisionAt: nextStage >= 0 ? Date.now() + (1 << nextStage) * 86400000 : undefined,
+      });
+    } else {
+      toggleResource(lecture.id, resource);
+    }
   };
 
   const handleResourceLongPress = (resource: LectureResource, label: string, e: React.MouseEvent) => {
@@ -112,13 +126,15 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
     vibrate(20);
   };
 
-  const handleResourcePointerDown = (resource: LectureResource, label: string) => {
+  const handleResourcePointerDown = (resource: LectureResource, label: string, e: React.PointerEvent) => {
+    e.stopPropagation(); // Prevent card's onPointerDown from firing
     resourceLongPressTimer.current = setTimeout(() => {
       handleResourceLongPress(resource, label, {} as React.MouseEvent);
     }, 500);
   };
 
-  const handleResourcePointerUp = () => {
+  const handleResourcePointerUp = (e: React.PointerEvent) => {
+    e.stopPropagation();
     if (resourceLongPressTimer.current) {
       clearTimeout(resourceLongPressTimer.current);
       resourceLongPressTimer.current = null;
@@ -202,25 +218,24 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
           background: cardBackground,
           border: cardBorder,
         }}
-        onTouchStart={handleLongPressStart}
-        onTouchEnd={handleLongPressEnd}
-        onTouchCancel={handleLongPressEnd}
+        onPointerDown={handleLongPressStart}
+        onPointerUp={handleLongPressEnd}
+        onPointerLeave={handleLongPressEnd}
+        onPointerCancel={handleLongPressEnd}
       >
-        {/* === Colored header strip — subject color, marks start of new lecture ===
-            Full-width colored bar at the top, always visible in all themes.
-            This is the primary visual separator between lectures. */}
+        {/* === Colored header row — subject color background ===
+            The ENTIRE header row (lec# + topic name) has a subject-color
+            tint background. This is the primary visual separator between
+            lectures — always visible in all themes, all subjects. */}
         <div
-          className="h-1.5 w-full"
+          className="flex items-center gap-2 p-3 pt-2.5 relative"
           style={{
             background: isComplete
-              ? 'linear-gradient(90deg, #22c55e, #16a34a)'
-              : `linear-gradient(90deg, ${color.hex}, ${color.hex}cc)`,
-            opacity: isComplete ? 0.6 : 1,
+              ? 'linear-gradient(90deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))'
+              : `linear-gradient(90deg, ${color.hex}25, ${color.hex}10)`,
+            borderBottom: `2px solid ${isComplete ? 'rgba(34,197,94,0.2)' : `${color.hex}20`}`,
           }}
-        />
-
-        {/* Header row: add button + lec# + topic + progress */}
-        <div className="flex items-center gap-2 p-3 pt-2.5">
+        >
           {/* Add to today button */}
           <button
             onClick={handleAddTodayClick}
@@ -334,7 +349,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               <button
                 key={res.key}
                 onClick={(e) => handleResourceToggle(res.key, e)}
-                onPointerDown={() => handleResourcePointerDown(res.key, res.label)}
+                onPointerDown={(e) => handleResourcePointerDown(res.key, res.label, e)}
                 onPointerUp={handleResourcePointerUp}
                 onPointerLeave={handleResourcePointerUp}
                 className={cn(

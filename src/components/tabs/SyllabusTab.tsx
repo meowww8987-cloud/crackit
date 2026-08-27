@@ -542,12 +542,12 @@ export function SyllabusTab() {
                 const isChapterActive = activeSession?.subject === subj.name && chLectures.some((l) => l.id === activeSession?.targetId);
                 return (
                   <div key={ch.id}>
-                    {/* Chapter divider — highlighted line between chapters (not before the first) */}
+                    {/* Chapter divider — thick highlighted line between chapters */}
                     {chIdx > 0 && (
-                      <div className="flex items-center gap-2 py-1.5 px-1">
-                        <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color.hex}40, transparent)` }} />
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: color.hex, opacity: 0.5 }} />
-                        <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color.hex}40, transparent)` }} />
+                      <div className="flex items-center gap-2 py-2 px-2">
+                        <div className="flex-1 h-0.5 rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${color.hex}60)` }} />
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color.hex }} />
+                        <div className="flex-1 h-0.5 rounded-full" style={{ background: `linear-gradient(90deg, ${color.hex}60, transparent)` }} />
                       </div>
                     )}
                   <div
