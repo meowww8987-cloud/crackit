@@ -1009,20 +1009,18 @@ export function TargetCard({
               onClick={() => setShowQuickActions(false)}
               onPointerDown={(e) => { e.stopPropagation(); setShowQuickActions(false); }}
             />
-            {/* Menu — centered modal.
-                overscroll-behavior:contain prevents scroll from chaining
-                to the page behind when the menu's scroll hits the boundary.
-                -webkit-overflow-scrolling:touch enables momentum scroll on iOS. */}
+            {/* Flex wrapper for reliable centering (avoids left-1/2 + translate
+                issues inside transformed parents) */}
+            <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-              className="fixed left-1/2 top-1/2 z-[10002] w-[280px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
+              className="w-[280px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
               style={{
                 background: 'var(--popover, rgba(20, 22, 30, 0.96))',
                 backdropFilter: 'blur(16px)',
-                transform: 'translate(-50%, -50%)',
                 overscrollBehavior: 'contain',
                 WebkitOverflowScrolling: 'touch',
                 touchAction: 'pan-y',
@@ -1051,6 +1049,7 @@ export function TargetCard({
                 <QuickActionItem icon={Trash2} label="Delete" onClick={handleQuickDelete} destructive />
               </div>
             </motion.div>
+            </div>
           </>
         </AnimatePresence>,
         document.body

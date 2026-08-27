@@ -1243,16 +1243,16 @@ function AddFAB({
               className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
               onClick={onCloseQuickAdd}
             />
+            <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-              className="fixed left-1/2 top-1/2 z-[101] w-[300px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
+              className="w-[300px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
               style={{
                 background: 'var(--popover, rgba(20,22,30,0.96))',
                 backdropFilter: 'blur(16px)',
-                transform: 'translate(-50%, -50%)',
                 overscrollBehavior: 'contain',
                 WebkitOverflowScrolling: 'touch',
                 touchAction: 'pan-y',
@@ -1303,6 +1303,7 @@ function AddFAB({
                 </button>
               </div>
             </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

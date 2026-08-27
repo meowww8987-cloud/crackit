@@ -965,6 +965,7 @@ function ChapterActionsModal({
 
   return createPortal(
     <AnimatePresence>
+      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -972,22 +973,24 @@ function ChapterActionsModal({
         className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-        className="fixed left-1/2 top-1/2 z-[10002] w-[300px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
-        style={{
-          background: 'var(--popover, rgba(20,22,30,0.96))',
-          backdropFilter: 'blur(16px)',
-          transform: 'translate(-50%, -50%)',
-          overscrollBehavior: 'contain',
-          WebkitOverflowScrolling: 'touch',
-          touchAction: 'pan-y',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
+      {/* Centered modal wrapper — flexbox centering is more reliable than
+          left-1/2 + translate(-50%) which can break inside transformed parents */}
+      <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+          className="w-[300px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
+          style={{
+            background: 'var(--popover, rgba(20,22,30,0.96))',
+            backdropFilter: 'blur(16px)',
+            overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header with chapter color stripe + icon */}
         <div className="px-4 py-3 border-b border-foreground/10 sticky top-0" style={{ background: 'var(--popover, rgba(20,22,30,0.96))' }}>
           <div className="flex items-start justify-between">
@@ -1078,7 +1081,8 @@ function ChapterActionsModal({
             </div>
           </button>
         </div>
-      </motion.div>
+        </motion.div>
+      </div>
 
       {/* Delete confirmation — nested portal */}
       {showDeleteConfirm && (

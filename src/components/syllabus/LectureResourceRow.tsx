@@ -124,6 +124,24 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
     setShowActions(false);
   };
 
+  // Zebra striping — alternating tints within same chapter for differentiation
+  const isEvenRow = index % 2 === 0;
+
+  // Status-based card styling — stronger differentiation
+  const cardBackground = isComplete
+    ? 'rgba(34, 197, 94, 0.06)'
+    : isInProgress
+    ? `${color.hex}${isEvenRow ? '0d' : '08'}`  // in-progress: subject tint, darker on even
+    : isEvenRow
+    ? 'var(--bg-card, rgba(255,255,255,0.04))'  // not-started even: slightly visible
+    : 'var(--bg-card, rgba(255,255,255,0.01))';  // not-started odd: barely visible
+
+  const cardBorder = isComplete
+    ? '1px solid rgba(34,197,94,0.25)'
+    : isInProgress
+    ? `1px solid ${color.hex}40`
+    : '1px solid var(--border-card, rgba(255,255,255,0.06))';
+
   return (
     <>
       <motion.div
@@ -132,16 +150,14 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
         exit={{ opacity: 0 }}
         className={cn(
           'rounded-xl transition-all relative overflow-hidden',
-          isActive && 'glow-pulse'
+          isActive && 'glow-pulse',
+          // Not-started rows get reduced opacity to push them visually back
+          !isInProgress && !isComplete && 'opacity-90',
         )}
         style={{
           ['--glow-color' as string]: color.glow,
-          background: isComplete
-            ? 'rgba(34, 197, 94, 0.05)'
-            : isInProgress
-            ? `${color.hex}08`
-            : 'var(--bg-card, rgba(255,255,255,0.02))',
-          border: `1px solid ${isComplete ? 'rgba(34,197,94,0.2)' : 'var(--border-card, rgba(255,255,255,0.08))'}`,
+          background: cardBackground,
+          border: cardBorder,
         }}
         onTouchStart={handleLongPressStart}
         onTouchEnd={handleLongPressEnd}
@@ -177,16 +193,20 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
             {isAddedToday ? <Check size={13} strokeWidth={3} /> : <Plus size={13} />}
           </button>
 
-          {/* Lecture number badge — pulses when in progress */}
+          {/* Lecture number badge — larger, fixed width for alignment, status-colored */}
           <div
             className={cn(
-              'shrink-0 px-1.5 py-0.5 rounded-md text-[9px] font-bold tabular',
+              'shrink-0 min-w-[28px] h-6 px-1 rounded-md text-[10px] font-bold tabular flex items-center justify-center',
               isInProgress && !isComplete && 'animate-pulse'
             )}
             style={{
-              background: isComplete ? 'rgba(34,197,94,0.15)' : `${color.hex}15`,
-              color: isComplete ? '#22c55e' : color.hex,
-              border: `1px solid ${isComplete ? 'rgba(34,197,94,0.3)' : `${color.hex}30`}`,
+              background: isComplete
+                ? 'rgba(34,197,94,0.15)'
+                : isInProgress
+                ? `${color.hex}25`
+                : `${color.hex}10`,
+              color: isComplete ? '#22c55e' : isInProgress ? color.hex : 'var(--muted-foreground)',
+              border: `1px solid ${isComplete ? 'rgba(34,197,94,0.3)' : isInProgress ? `${color.hex}50` : `${color.hex}20`}`,
             }}
           >
             {labelPrefix}{lecture.lecNo}
@@ -378,16 +398,17 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
             className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm"
             onClick={() => setShowAddToday(false)}
           />
+          {/* Flex wrapper for reliable centering */}
+          <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-            className="fixed left-1/2 top-1/2 z-[10002] w-[320px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
+            className="w-[320px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
             style={{
               background: 'var(--popover, rgba(20,22,30,0.96))',
               backdropFilter: 'blur(16px)',
-              transform: 'translate(-50%, -50%)',
               overscrollBehavior: 'contain',
               WebkitOverflowScrolling: 'touch',
               touchAction: 'pan-y',
@@ -459,6 +480,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               </button>
             </div>
           </motion.div>
+          </div>
         </AnimatePresence>,
         document.body
       )}
@@ -473,16 +495,16 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
             className="fixed inset-0 z-[10003] bg-black/50 backdrop-blur-sm"
             onClick={() => setShowDeleteConfirm(false)}
           />
+          <div className="fixed inset-0 z-[10004] flex items-center justify-center p-4 pointer-events-none">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-            className="fixed left-1/2 top-1/2 z-[10004] w-[300px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border shadow-2xl"
+            className="w-[300px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border shadow-2xl pointer-events-auto"
             style={{
               background: 'var(--popover, rgba(20,22,30,0.96))',
               backdropFilter: 'blur(16px)',
-              transform: 'translate(-50%, -50%)',
             }}
           >
             <div className="p-4">
@@ -513,6 +535,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               </div>
             </div>
           </motion.div>
+          </div>
         </AnimatePresence>,
         document.body
       )}
