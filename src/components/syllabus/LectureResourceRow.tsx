@@ -128,17 +128,32 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
 
   const handleResourcePointerDown = (resource: LectureResource, label: string, e: React.PointerEvent) => {
     e.stopPropagation(); // Prevent card's onPointerDown from firing
+    longPressFiredRef.current = false; // Reset flag
     resourceLongPressTimer.current = setTimeout(() => {
+      longPressFiredRef.current = true; // Mark that long-press fired
       handleResourceLongPress(resource, label, {} as React.MouseEvent);
     }, 500);
   };
 
-  const handleResourcePointerUp = (e: React.PointerEvent) => {
-    e.stopPropagation();
+  const handleResourcePointerUp = (e?: React.PointerEvent) => {
+    e?.stopPropagation();
     if (resourceLongPressTimer.current) {
       clearTimeout(resourceLongPressTimer.current);
       resourceLongPressTimer.current = null;
     }
+  };
+
+  // Track if long-press fired — prevents onClick toggle from firing after long-press
+  const longPressFiredRef = useRef(false);
+
+  const handleResourceClick = (resource: LectureResource, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // If long-press just fired, don't toggle — just reset the flag
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      return;
+    }
+    handleResourceToggle(resource, e);
   };
 
   const handleConfirmResourceAdd = () => {
@@ -350,10 +365,10 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
             return (
               <button
                 key={res.key}
-                onClick={(e) => handleResourceToggle(res.key, e)}
+                onClick={(e) => handleResourceClick(res.key, e)}
                 onPointerDown={(e) => handleResourcePointerDown(res.key, res.label, e)}
-                onPointerUp={handleResourcePointerUp}
-                onPointerLeave={handleResourcePointerUp}
+                onPointerUp={(e) => handleResourcePointerUp(e)}
+                onPointerLeave={() => handleResourcePointerUp()}
                 className={cn(
                   'py-2 px-1 rounded-lg flex flex-col items-center justify-center gap-0.5 transition border active:scale-95 relative',
                   isDone
