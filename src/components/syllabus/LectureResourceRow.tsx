@@ -109,8 +109,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
     }
   };
 
-  const handleResourceLongPress = (resource: LectureResource, label: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleResourceLongPress = (resource: LectureResource, label: string) => {
     // Map resource to activity type
     const activityMap: Record<LectureResource, ActivityType> = {
       lecture: 'Lecture',
@@ -131,8 +130,8 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
     longPressFiredRef.current = false; // Reset flag
     resourceLongPressTimer.current = setTimeout(() => {
       longPressFiredRef.current = true; // Mark that long-press fired
-      handleResourceLongPress(resource, label, {} as React.MouseEvent);
-    }, 500);
+      handleResourceLongPress(resource, label);
+    }, 400);
   };
 
   const handleResourcePointerUp = (e?: React.PointerEvent) => {
