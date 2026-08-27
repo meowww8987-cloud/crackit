@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  GraduationCap, Plus, Search, ChevronDown, Calendar, Clock, Sigma,
+  GraduationCap, Plus, Search, ChevronDown, ChevronRight, Calendar, Clock, Sigma,
   GripVertical, Check, X, CheckCircle2, RotateCcw, Trash2, Sparkles, BookMarked, FlaskConical,
 } from 'lucide-react';
 import {
@@ -19,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTargets } from '@/lib/store/targets';
+import { useSession } from '@/lib/store/session';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
 import type { Subject, Lecture, SubjectEntity, Chapter } from '@/lib/types';
 import { cn, vibrate, isRevisionOverdue, todayKey } from '@/lib/utils';
@@ -67,10 +68,28 @@ export function SyllabusTab() {
   const [showFormulaVault, setShowFormulaVault] = useState(false);
   const [chapterMenu, setChapterMenu] = useState<Chapter | null>(null);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [collapsedSubjects, setCollapsedSubjects] = useState<Set<string>>(new Set());
   const headerLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chapterLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Listen for subject collapse events from SubjectHeader children
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent;
+      const { subject, collapsed } = ce.detail;
+      setCollapsedSubjects((prev) => {
+        const next = new Set(prev);
+        if (collapsed) next.add(subject);
+        else next.delete(subject);
+        return next;
+      });
+    };
+    window.addEventListener('syllabus-subject-collapse', handler);
+    return () => window.removeEventListener('syllabus-subject-collapse', handler);
+  }, []);
+
   const todayTargets = useTargets((s) => s.byDate[todayKey()] || EMPTY_TARGETS);
+  const activeSession = useSession((s) => s.active);
 
   const doneCount = lectures.filter((l) => l.done).length;
   const studyingCount = lectures.filter((l) => {
@@ -430,29 +449,62 @@ export function SyllabusTab() {
       {subjects.length === 0 && (
         <div className="glass rounded-2xl p-10 text-center">
           <div className="w-16 h-16 rounded-2xl bg-teal-500/10 flex items-center justify-center mx-auto mb-4"><GraduationCap size={28} className="text-teal-500 dark:text-teal-400" /></div>
-          <p className="text-t-primary text-sm font-semibold mb-1">No syllabus yet</p>
-          <p className="text-t-muted text-xs">Tap "Build Syllabus" to select NEET chapters & lectures</p>
+          <p className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>No syllabus yet</p>
+          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Tap "Build Syllabus" to select NEET chapters & lectures</p>
         </div>
       )}
 
-      <div className="space-y-5">
+      <div className="space-y-4">
         {filteredSubjects.map((subj) => {
           const color = subjectColor(subj.name);
           const subjChapters = chapters.filter((c) => c.subjectId === subj.id);
           if (subjectFilter !== 'all' && subj.name !== subjectFilter) return null;
+
+          // Per-subject stats
+          const subjLectures = lectures.filter((l) =>
+            subjChapters.some((c) => c.id === l.chapterId)
+          );
+          const subjDoneCount = subjLectures.filter((l) => l.done).length;
+          const subjOverallPct = subjLectures.length > 0
+            ? Math.round((subjDoneCount / subjLectures.length) * 100)
+            : 0;
+          const isSubjectActive = activeSession?.subject === subj.name;
+          const isCollapsed = collapsedSubjects.has(subj.name);
+
           if (subjChapters.length === 0) {
             return (
-              <div key={subj.id}>
-                <SubjectHeader name={subj.name} color={color} count={0} onAdd={() => { setAddChapterFor(subj); vibrate(10); }} />
-                <button onClick={() => { setAddChapterFor(subj); vibrate(10); }} className="w-full py-3 rounded-xl border border-dashed text-xs font-semibold flex items-center justify-center gap-1.5 transition" style={{ borderColor: `${color.hex}40`, color: color.hex }}>
-                  <Plus size={14} /> Add Chapter
-                </button>
+              <div key={subj.id} className="space-y-2">
+                <SubjectHeader
+                  name={subj.name}
+                  color={color}
+                  count={0}
+                  lectureCount={0}
+                  overallPct={0}
+                  onAdd={() => { setAddChapterFor(subj); vibrate(10); }}
+                  isActive={isSubjectActive}
+                />
+                {!isCollapsed && (
+                  <button onClick={() => { setAddChapterFor(subj); vibrate(10); }} className="w-full py-3 rounded-xl border border-dashed text-xs font-semibold flex items-center justify-center gap-1.5 transition" style={{ borderColor: `${color.hex}40`, color: color.hex }}>
+                    <Plus size={14} /> Add Chapter
+                  </button>
+                )}
               </div>
             );
           }
           return (
             <div key={subj.id} className="space-y-2">
-              <SubjectHeader name={subj.name} color={color} count={subjChapters.length} onAdd={() => { setAddChapterFor(subj); vibrate(10); }} />
+              <SubjectHeader
+                name={subj.name}
+                color={color}
+                count={subjChapters.length}
+                lectureCount={subjLectures.length}
+                overallPct={subjOverallPct}
+                onAdd={() => { setAddChapterFor(subj); vibrate(10); }}
+                isActive={isSubjectActive}
+              />
+              {/* Chapters — hidden when subject is collapsed, OR when in reorder mode (reorder shows all) */}
+              {!isCollapsed && (
+                <>
               {reorderMode ? (
                 <DndContext
                   sensors={sensors}
@@ -487,11 +539,18 @@ export function SyllabusTab() {
                 if (search && !matchesSearch(ch.name) && !chLectures.some((l) => matchesSearch(l.topic))) return null;
                 const chOpen = openChapter === ch.id;
                 const chTodayCount = todayTargets.filter((t) => t.chapterId === ch.id).length;
+                const isChapterActive = activeSession?.subject === subj.name && chLectures.some((l) => l.id === activeSession?.targetId);
                 return (
                   <div
                     key={ch.id}
-                    className="glass rounded-2xl overflow-hidden transition-all"
-                    style={{ borderColor: isInProgress ? `${color.hex}60` : 'var(--border-card)' }}
+                    className={cn(
+                      'glass rounded-2xl overflow-hidden transition-all relative',
+                      isChapterActive && 'glow-pulse'
+                    )}
+                    style={{
+                      borderColor: isInProgress ? `${color.hex}60` : 'var(--border-card)',
+                      ['--glow-color' as string]: color.glow,
+                    }}
                     onPointerDown={() => {
                       chapterLongPressRef.current = setTimeout(() => {
                         setChapterMenu(ch);
@@ -501,37 +560,139 @@ export function SyllabusTab() {
                     onPointerUp={() => { if (chapterLongPressRef.current) { clearTimeout(chapterLongPressRef.current); chapterLongPressRef.current = null; } }}
                     onPointerLeave={() => { if (chapterLongPressRef.current) { clearTimeout(chapterLongPressRef.current); chapterLongPressRef.current = null; } }}
                   >
-                    <button onClick={() => setOpenChapter(chOpen ? null : ch.id)} className="w-full p-3.5 flex items-center gap-3 text-left">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold transition-all" style={{ background: isComplete ? '#22c55e' : isInProgress ? color.hex : 'rgba(255,255,255,0.06)', color: isComplete || isInProgress ? '#000' : '#fff' }}>{isComplete ? '✓' : isInProgress ? `${pct}` : ''}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className={cn('text-sm truncate', isInProgress ? 'font-bold text-t-primary' : 'font-medium text-t-primary')}>{ch.name}</div>
-                        <div className="flex items-center gap-2 text-[10px] text-t-muted mt-0.5">
-                          <span className="tabular">{chLectures.length} lectures</span>
-                          {ch.pyqCount > 0 && (<span className="tabular" style={{ color: ch.pyqCount >= 8 ? '#fca5a5' : ch.pyqCount >= 6 ? '#fcd34d' : undefined }}>⚖ {ch.pyqCount}m</span>)}
-                          {chTodayCount > 0 && (<span className="flex items-center gap-0.5" style={{ color: color.hex }}><Calendar size={9} /> {chTodayCount}</span>)}
-                          {chOverdue > 0 && (<span className="text-amber-500 dark:text-amber-400">⚠ {chOverdue}</span>)}
+                    {/* 3px subject-color top stripe */}
+                    <div
+                      className="absolute top-0 left-0 right-0 z-[1] pointer-events-none"
+                      style={{
+                        height: 3,
+                        background: `linear-gradient(90deg, ${color.hex}, ${color.hex}aa)`,
+                        opacity: isComplete ? 0.4 : 1,
+                      }}
+                    />
+
+                    <button onClick={() => setOpenChapter(chOpen ? null : ch.id)} className="w-full p-3.5 pt-4 flex items-center gap-3 text-left relative">
+                      {/* Progress ring (28px SVG) replaces the circle number */}
+                      <div className="shrink-0 relative" style={{ width: 32, height: 32 }}>
+                        <svg width="32" height="32" viewBox="0 0 32 32" className="-rotate-90">
+                          <circle cx="16" cy="16" r="13" fill="none" stroke="var(--bar-track, rgba(255,255,255,0.08))" strokeWidth="3" />
+                          <motion.circle
+                            cx="16" cy="16" r="13" fill="none"
+                            stroke={isComplete ? '#22c55e' : color.hex}
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            initial={false}
+                            animate={{ strokeDashoffset: 81.68 - (81.68 * pct) / 100 }}
+                            transition={{ type: 'spring', stiffness: 60, damping: 20 }}
+                            style={{
+                              strokeDasharray: 81.68,
+                              filter: `drop-shadow(0 0 4px ${isComplete ? 'rgba(34,197,94,0.5)' : color.glow})`,
+                            }}
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          {isComplete ? (
+                            <Check size={14} strokeWidth={3} color="#22c55e" />
+                          ) : (
+                            <span className="text-[9px] font-bold tabular" style={{ color: isInProgress ? color.hex : 'var(--muted-foreground)' }}>
+                              {pct}
+                            </span>
+                          )}
                         </div>
                       </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className={cn('text-sm truncate', isInProgress ? 'font-bold' : 'font-medium')} style={{ color: 'var(--foreground)' }}>
+                          {ch.name}
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] mt-0.5 flex-wrap" style={{ color: 'var(--muted-foreground)' }}>
+                          <span className="tabular">{chLectures.length} lectures</span>
+                          {ch.pyqCount > 0 && (
+                            <span className="tabular font-semibold text-amber-600 dark:text-amber-400">⚖ {ch.pyqCount} PYQ</span>
+                          )}
+                          {/* Today badge — more prominent */}
+                          {chTodayCount > 0 && (
+                            <span
+                              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-semibold"
+                              style={{ background: `${color.hex}20`, color: color.hex }}
+                            >
+                              <Calendar size={9} /> {chTodayCount} today
+                            </span>
+                          )}
+                          {/* Overdue badge — pulsing red */}
+                          {chOverdue > 0 && (
+                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-semibold bg-red-500/15 text-red-500 dark:text-red-400 pulse-slow">
+                              ⚠ {chOverdue} overdue
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* % + chevron */}
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-sm font-bold tabular" style={{ color: isComplete ? '#22c55e' : isInProgress ? color.hex : '#6b7280' }}>{pct}%</span>
-                        <ChevronDown size={16} className={cn('text-t-muted transition-transform', chOpen && 'rotate-180')} />
+                        <span className="text-sm font-bold tabular" style={{ color: isComplete ? '#22c55e' : isInProgress ? color.hex : 'var(--muted-foreground)' }}>
+                          {pct}%
+                        </span>
+                        <motion.div animate={{ rotate: chOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
+                          <ChevronDown size={16} className="text-muted-foreground" />
+                        </motion.div>
                       </div>
                     </button>
-                    <div className="px-3.5"><div className="h-2 rounded-full bg-white/5 overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }} className="h-full rounded-full" style={{ background: isComplete ? 'linear-gradient(90deg, #22c55e, #16a34a)' : `linear-gradient(90deg, ${color.hex}, ${color.hex}cc)` }} /></div></div>
+
+                    {/* Segmented liquid progress bar — matches TargetCard */}
+                    <div className="px-3.5">
+                      <div className="relative h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}>
+                        <motion.div
+                          className="absolute inset-y-0 left-0 rounded-full overflow-hidden"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+                        >
+                          <div
+                            className="absolute inset-0"
+                            style={{
+                              background: isComplete
+                                ? 'linear-gradient(90deg, #22c55e, #16a34a)'
+                                : `linear-gradient(90deg, ${color.hex}, ${color.hex}cc)`,
+                              boxShadow: `0 0 6px ${isComplete ? 'rgba(34,197,94,0.4)' : color.glow}`,
+                            }}
+                          />
+                        </motion.div>
+                        {/* Segment dividers at 25/50/75% */}
+                        {[25, 50, 75].map((pos) => (
+                          <div
+                            key={pos}
+                            className="absolute top-0 bottom-0 w-px pointer-events-none"
+                            style={{ left: `${pos}%`, background: 'var(--border, rgba(255,255,255,0.12))' }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Resource row — cleaner spacing */}
                     {chLectures.length > 0 && (
-                      <div className="flex items-center gap-3 px-3.5 py-2.5 text-[11px] tabular">
-                        <span className="text-t-muted">📺 <span className="text-teal-500 dark:text-teal-400 font-semibold">{lecDone}</span>/{chLectures.length}</span>
-                        <span className="text-t-muted">📝 <span className="text-green-500 dark:text-green-400 font-semibold">{dppDone}</span>/{chLectures.length}</span>
-                        <span className="text-t-muted">📖 <span className="text-blue-500 dark:text-blue-400 font-semibold">{notesDone}</span>/{chLectures.length}</span>
-                        <span className="text-t-muted">🔄 <span className="text-amber-500 dark:text-amber-400 font-semibold">{revDone}</span>/{chLectures.length}</span>
-                        <button onClick={(e) => { e.stopPropagation(); setAddLectureFor({ chapter: ch, subject: subj }); vibrate(10); }} className="ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold transition flex items-center gap-0.5" style={{ background: `${color.hex}20`, color: color.hex, border: `1px solid ${color.hex}40` }}><Plus size={10} /> Lec</button>
+                      <div className="flex items-center gap-2.5 px-3.5 py-2.5 text-[11px] tabular">
+                        <span className="text-muted-foreground">📺 <span className="text-teal-600 dark:text-teal-400 font-semibold">{lecDone}</span>/{chLectures.length}</span>
+                        <span className="text-muted-foreground">📝 <span className="text-green-600 dark:text-green-400 font-semibold">{dppDone}</span>/{chLectures.length}</span>
+                        <span className="text-muted-foreground">📖 <span className="text-blue-600 dark:text-blue-400 font-semibold">{notesDone}</span>/{chLectures.length}</span>
+                        <span className="text-muted-foreground">🔄 <span className="text-amber-600 dark:text-amber-400 font-semibold">{revDone}</span>/{chLectures.length}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setAddLectureFor({ chapter: ch, subject: subj }); vibrate(10); }}
+                          className="ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold transition flex items-center gap-0.5 active:scale-95"
+                          style={{ background: `${color.hex}20`, color: color.hex, border: `1px solid ${color.hex}40` }}
+                          aria-label={`Add lecture to ${ch.name}`}
+                          title="Add lecture"
+                        >
+                          <Plus size={10} /> Lec
+                        </button>
                       </div>
                     )}
+
+                    {/* Expanded lecture list */}
                     <AnimatePresence initial={false}>
                       {chOpen && (
                         <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                           <div className="px-2.5 pb-2.5 pt-1 space-y-2">
-                            {chLectures.length === 0 && (<p className="text-xs text-t-muted text-center py-3">No lectures yet</p>)}
+                            {chLectures.length === 0 && (<p className="text-xs text-center py-3" style={{ color: 'var(--muted-foreground)' }}>No lectures yet</p>)}
                             {chLectures.filter((l) => { if (progressFilter === 'done') return l.done; if (progressFilter === 'next') return !l.done; if (progressFilter === 'studying') return !l.done && l.revisionStage >= 0; if (progressFilter === 'overdue') return l.done && isRevisionOverdue(l.nextRevisionAt); return true; }).filter((l) => !search || matchesSearch(l.topic)).map((lec, lecIndex) => (<LectureResourceRow key={lec.id} lecture={lec} chapter={ch} subject={subj} index={lecIndex} onEdit={() => setEditingLecture(lec)} />))}
                           </div>
                         </motion.div>
@@ -540,6 +701,8 @@ export function SyllabusTab() {
                   </div>
                 );
               })}
+                </>
+              )}
             </div>
           );
         })}
@@ -621,9 +784,9 @@ function SortableChapterCard({ chapter, color, lectureCount }: { chapter: Chapte
         onPointerUp={() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }}
         onPointerLeave={() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }}
       >
-        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-t-muted hover:text-t-primary touch-none"><GripVertical size={18} /></button>
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"><GripVertical size={18} /></button>
         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color.hex }} />
-        <div className="flex-1 min-w-0"><div className="text-sm font-medium text-t-primary truncate">{chapter.name}</div><div className="text-[10px] text-t-muted">{lectureCount} lectures{allDone && ' · ✓ all done'}</div></div>
+        <div className="flex-1 min-w-0"><div className="text-sm font-medium text-foreground truncate">{chapter.name}</div><div className="text-[10px] text-muted-foreground">{lectureCount} lectures{allDone && ' · ✓ all done'}</div></div>
         {chapter.pyqCount > 0 && (<span className="text-[9px] font-bold px-1.5 py-0.5 rounded tabular" style={{ background: `${color.hex}20`, color: color.hex }}>⚖ {chapter.pyqCount}m</span>)}
       </div>
 
@@ -648,9 +811,9 @@ function SortableChapterCard({ chapter, color, lectureCount }: { chapter: Chapte
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-sm font-bold">{chapter.name}</h3>
-                  <p className="text-[10px] text-t-muted">{lectures.length} lectures · {lectures.filter(l => l.done).length} done</p>
+                  <p className="text-[10px] text-muted-foreground">{lectures.length} lectures · {lectures.filter(l => l.done).length} done</p>
                 </div>
-                <button onClick={() => setShowMenu(false)} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-white/50"><X size={14} /></button>
+                <button onClick={() => setShowMenu(false)} className="w-7 h-7 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"><X size={14} /></button>
               </div>
 
               <div className="space-y-1.5">
@@ -680,13 +843,100 @@ function SortableChapterCard({ chapter, color, lectureCount }: { chapter: Chapte
   );
 }
 
-function SubjectHeader({ name, color, count, onAdd }: { name: string; color: { hex: string }; count: number; onAdd: () => void }) {
+function SubjectHeader({ name, color, count, lectureCount, overallPct, onAdd, isActive }: {
+  name: string;
+  color: { hex: string; glow: string };
+  count: number;
+  lectureCount: number;
+  overallPct: number;
+  onAdd: () => void;
+  isActive?: boolean;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const collapseKey = `neet-collapse-syllabus-subj-${name}`;
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(collapseKey);
+      if (v === '1') setCollapsed(true);
+    } catch {}
+  }, [collapseKey]);
+
+  const toggleCollapse = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try { localStorage.setItem(collapseKey, next ? '1' : '0'); } catch {}
+  };
+
+  // Notify parent of collapse state via a custom event
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('syllabus-subject-collapse', { detail: { subject: name, collapsed } }));
+  }, [name, collapsed]);
+
+  // Distinct shape per subject for at-a-glance recognition (matches StudyTab)
+  const shapes: Record<string, React.ReactNode> = {
+    Physics:   <circle cx="8" cy="8" r="6" fill={color.hex} />,
+    Chemistry: <rect x="2" y="2" width="12" height="12" rx="3" fill={color.hex} />,
+    Botany:    <path d="M8 2 L14 14 L2 14 Z" fill={color.hex} />,
+    Zoology:   <path d="M8 2 L14 8 L8 14 L2 8 Z" fill={color.hex} />,
+    General:   <rect x="4" y="4" width="8" height="8" rx="1" fill={color.hex} />,
+  };
+
   return (
-    <div className="flex items-center gap-2 px-1">
-      <div className="w-2.5 h-2.5 rounded-full" style={{ background: color.hex }} />
-      <span className="text-sm font-black uppercase tracking-wider" style={{ color: color.hex }}>{name}</span>
-      <span className="text-[10px] text-t-muted font-medium">{count} {count === 1 ? 'chapter' : 'chapters'}</span>
-      <button onClick={onAdd} className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center transition" style={{ background: `${color.hex}15`, color: color.hex }}><Plus size={14} /></button>
+    <div
+      className={cn(
+        'flex items-center gap-2 px-1 py-1 rounded-md transition',
+        isActive && 'glow-pulse'
+      )}
+      style={{
+        ['--glow-color' as string]: color.glow,
+      }}
+    >
+      {/* Collapse toggle */}
+      <button
+        onClick={toggleCollapse}
+        className="w-5 h-5 flex items-center justify-center shrink-0 hover:bg-foreground/10 rounded transition"
+        aria-label={collapsed ? `Expand ${name}` : `Collapse ${name}`}
+        title={collapsed ? 'Expand' : 'Collapse'}
+      >
+        <motion.div animate={{ rotate: collapsed ? 0 : 90 }} transition={{ duration: 0.2 }}>
+          <ChevronRight size={12} style={{ color: color.hex }} />
+        </motion.div>
+      </button>
+
+      {/* Subject icon — distinct shape per subject */}
+      <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0">
+        {shapes[name]}
+      </svg>
+
+      {/* Subject name */}
+      <span className="text-sm font-black uppercase tracking-wider" style={{ color: color.hex }}>
+        {name}
+      </span>
+
+      {/* Stats: % · lecture count · chapter count */}
+      <span className="text-[10px] tabular" style={{ color: 'var(--muted-foreground)' }}>
+        <span className="font-bold" style={{ color: overallPct >= 70 ? '#22c55e' : overallPct >= 30 ? '#f59e0b' : '#ef4444' }}>
+          {overallPct}%
+        </span>
+        {' · '}
+        <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{lectureCount}</span> lec
+        {' · '}
+        {count} {count === 1 ? 'chapter' : 'chapters'}
+      </span>
+
+      <div className="flex-1" />
+
+      {/* Add chapter button */}
+      <button
+        onClick={onAdd}
+        className="w-7 h-7 rounded-lg flex items-center justify-center transition active:scale-90 shrink-0"
+        style={{ background: `${color.hex}15`, color: color.hex }}
+        aria-label={`Add chapter to ${name}`}
+        title={`Add chapter to ${name}`}
+      >
+        <Plus size={14} />
+      </button>
     </div>
   );
 }
@@ -716,7 +966,7 @@ function FormulaVaultInline({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end justify-center" onClick={onClose}>
       <div className="w-full max-w-md max-h-[80vh] overflow-y-auto glass-strong rounded-t-3xl p-5 pb-8" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold">Formula Vault</h2><button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-t-secondary">✕</button></div>
+        <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold">Formula Vault</h2><button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">✕</button></div>
         <FormulaVault />
       </div>
     </div>
@@ -766,9 +1016,9 @@ function ChapterContextMenu({ chapter, onClose }: { chapter: Chapter; onClose: (
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-bold">{chapter.name}</h3>
-            <p className="text-[10px] text-t-muted">{lectures.length} lectures · {lectures.filter(l => l.done).length} done</p>
+            <p className="text-[10px] text-muted-foreground">{lectures.length} lectures · {lectures.filter(l => l.done).length} done</p>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-white/50"><X size={14} /></button>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"><X size={14} /></button>
         </div>
 
         <div className="space-y-1.5">
