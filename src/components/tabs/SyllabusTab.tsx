@@ -520,7 +520,7 @@ export function SyllabusTab() {
                   </SortableContext>
                 </DndContext>
               ) : null}
-              {!reorderMode && subjChapters.map((ch) => {
+              {!reorderMode && subjChapters.map((ch, chIdx) => {
                 const chLectures = lectures.filter((l) => l.chapterId === ch.id);
                 const chOverdue = chLectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt)).length;
                 const lecDone = chLectures.filter((l) => l.done).length;
@@ -541,8 +541,17 @@ export function SyllabusTab() {
                 const chTodayCount = todayTargets.filter((t) => t.chapterId === ch.id).length;
                 const isChapterActive = activeSession?.subject === subj.name && chLectures.some((l) => l.id === activeSession?.targetId);
                 return (
+                  <div key={ch.id}>
+                    {/* Chapter divider — highlighted line between chapters (not before the first) */}
+                    {chIdx > 0 && (
+                      <div className="flex items-center gap-2 py-1.5 px-1">
+                        <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color.hex}40, transparent)` }} />
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: color.hex, opacity: 0.5 }} />
+                        <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color.hex}40, transparent)` }} />
+                      </div>
+                    )}
                   <div
-                    key={ch.id}
+                    key={ch.id + '-card'}
                     className={cn(
                       'glass rounded-2xl overflow-hidden transition-all relative',
                       isChapterActive && 'glow-pulse'
@@ -698,6 +707,7 @@ export function SyllabusTab() {
                         </motion.div>
                       )}
                     </AnimatePresence>
+                  </div>
                   </div>
                 );
               })}
