@@ -181,14 +181,16 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
     setShowAddToday(false);
   };
 
-  const handleLongPressStart = () => {
+  const handleLongPressStart = (e: React.PointerEvent) => {
+    e.stopPropagation(); // Prevent chapter card's long-press from firing
     longPressTimer.current = setTimeout(() => {
       setShowActions(true);
       vibrate(20);
     }, 500);
   };
 
-  const handleLongPressEnd = () => {
+  const handleLongPressEnd = (e?: React.PointerEvent) => {
+    e?.stopPropagation();
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
@@ -219,9 +221,9 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
           border: cardBorder,
         }}
         onPointerDown={handleLongPressStart}
-        onPointerUp={handleLongPressEnd}
-        onPointerLeave={handleLongPressEnd}
-        onPointerCancel={handleLongPressEnd}
+        onPointerUp={(e) => handleLongPressEnd(e)}
+        onPointerLeave={() => handleLongPressEnd()}
+        onPointerCancel={() => handleLongPressEnd()}
       >
         {/* === Colored header row — subject color background ===
             The ENTIRE header row (lec# + topic name) has a subject-color
@@ -419,7 +421,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
         )}
       </motion.div>
 
-      {/* === Long-press Actions Modal — Edit + Delete only (via Portal) === */}
+      {/* === Long-press Actions Modal — Edit + Delete + lecture details (via Portal) === */}
       {showActions && typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           <motion.div
@@ -435,19 +437,50 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-              className="w-[280px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border shadow-2xl pointer-events-auto"
-              style={{ background: 'var(--popover, rgba(20,22,30,0.96))', backdropFilter: 'blur(16px)' }}
+              className="w-[320px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
+              style={{
+                background: 'var(--popover, rgba(20,22,30,0.96))',
+                backdropFilter: 'blur(16px)',
+                overscrollBehavior: 'contain',
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-y',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
-              <div className="px-4 py-3 border-b border-foreground/10">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color.hex}20`, color: color.hex }}>
-                    <BookOpen size={16} />
+              {/* === Header with lecture identity === */}
+              <div
+                className="px-4 py-3 border-b border-foreground/10 sticky top-0 z-10"
+                style={{
+                  background: isComplete
+                    ? 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))'
+                    : `linear-gradient(135deg, ${color.hex}20, ${color.hex}08)`,
+                }}
+              >
+                <div className="flex items-start gap-2">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color.hex}25`, color: color.hex, border: `1px solid ${color.hex}30` }}>
+                    <BookOpen size={18} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Lecture Actions</div>
-                    <div className="text-sm font-semibold text-foreground truncate">{lecture.topic}</div>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span
+                        className="text-[10px] font-bold tabular px-1.5 py-0.5 rounded-md"
+                        style={{ background: `${color.hex}25`, color: color.hex }}
+                      >
+                        {labelPrefix}{lecture.lecNo}
+                      </span>
+                      {isComplete && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-green-500/20 text-green-600 dark:text-green-400">
+                          ✓ COMPLETE
+                        </span>
+                      )}
+                      {isInProgress && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: `${color.hex}20`, color: color.hex }}>
+                          IN PROGRESS
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm font-semibold text-foreground leading-snug">{lecture.topic}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{subject.name} · {chapter.name}</div>
                   </div>
                   <button
                     onClick={() => setShowActions(false)}
@@ -458,7 +491,97 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
                   </button>
                 </div>
               </div>
-              {/* Actions */}
+
+              {/* === Lecture Details — progress summary === */}
+              <div className="px-4 py-3 border-b border-foreground/10">
+                {/* Resource progress grid */}
+                <div className="grid grid-cols-4 gap-1.5 mb-3">
+                  {RESOURCES.map((res) => {
+                    const isDone = res.key === 'lecture' ? lecture.done
+                      : res.key === 'dpp' ? lecture.dppDone
+                      : res.key === 'notes' ? lecture.notesDone
+                      : lecture.revisionDone;
+                    const Icon = res.icon;
+                    const btnColor = res.key === 'revision' && revisionCount > 0 ? revisionColor : res.color;
+                    return (
+                      <div
+                        key={res.key}
+                        className="rounded-lg p-1.5 flex flex-col items-center gap-0.5 border"
+                        style={{
+                          background: isDone ? `${btnColor}20` : 'transparent',
+                          borderColor: isDone ? `${btnColor}40` : 'var(--border, rgba(255,255,255,0.08))',
+                        }}
+                      >
+                        <Icon size={12} fill={isDone ? 'currentColor' : 'none'} style={{ color: isDone ? btnColor : 'var(--muted-foreground)' }} />
+                        <span className="text-[8px] font-semibold uppercase" style={{ color: isDone ? btnColor : 'var(--muted-foreground)' }}>
+                          {res.label}
+                        </span>
+                        {res.key === 'revision' && revisionCount > 0 && (
+                          <span className="text-[8px] font-bold" style={{ color: revisionColor }}>×{revisionCount}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Overall progress bar */}
+                <div className="relative h-1.5 rounded-full overflow-hidden mb-1.5" style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${progressPct}%`,
+                      background: isComplete ? 'linear-gradient(90deg, #22c55e, #16a34a)' : `linear-gradient(90deg, ${color.hex}, ${color.hex}cc)`,
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[10px] tabular" style={{ color: 'var(--muted-foreground)' }}>
+                  <span><span className="font-bold" style={{ color: isComplete ? '#22c55e' : color.hex }}>{progressPct}%</span> complete · {doneCount}/4 resources</span>
+                </div>
+              </div>
+
+              {/* === Time stats (if any) === */}
+              {(lecture.timeSpentSec || lecture.timeWastedSec || lecture.doneDate) && (
+                <div className="px-4 py-2.5 border-b border-foreground/10">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Study Stats</div>
+                  <div className="flex items-center gap-3 text-[11px] tabular flex-wrap" style={{ color: 'var(--muted-foreground)' }}>
+                    {lecture.timeSpentSec && lecture.timeSpentSec > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Play size={10} className="text-green-600 dark:text-green-400" fill="currentColor" />
+                        <span className="text-foreground font-medium">{formatHM(lecture.timeSpentSec)}</span> studied
+                      </span>
+                    )}
+                    {lecture.timeWastedSec && lecture.timeWastedSec > 0 && (
+                      <span className="flex items-center gap-1">
+                        <span className="text-red-500 dark:text-red-400">⚠</span>
+                        <span className="text-red-500 dark:text-red-400 font-medium">{formatHM(lecture.timeWastedSec)}</span> wasted
+                      </span>
+                    )}
+                    {lecture.confidence && lecture.confidence > 0 && (
+                      <span className="flex items-center gap-1">
+                        <span className="text-[9px] uppercase">Confidence:</span>
+                        {[1, 2, 3, 4, 5].map((d) => (
+                          <span key={d} className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: d <= lecture.confidence! ? (lecture.confidence! >= 4 ? '#22c55e' : lecture.confidence! >= 3 ? '#f59e0b' : '#ef4444') : 'var(--bar-track)' }} />
+                        ))}
+                      </span>
+                    )}
+                    {lecture.doneDate && (
+                      <span className="ml-auto">Done: {new Date(lecture.doneDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* === Notes preview (if any) === */}
+              {lecture.notes && lecture.notes.trim() && (
+                <div className="px-4 py-2.5 border-b border-foreground/10">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Notes</div>
+                  <p className="text-[11px] leading-relaxed" style={{ color: 'var(--foreground)' }}>
+                    {lecture.notes.length > 120 ? lecture.notes.substring(0, 120) + '...' : lecture.notes}
+                  </p>
+                </div>
+              )}
+
+              {/* === Actions === */}
               <div className="py-1">
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowActions(false); onEdit(); }}
@@ -469,7 +592,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium text-foreground">Edit Lecture</div>
-                    <div className="text-[10px] text-muted-foreground">Change topic, hardness, notes</div>
+                    <div className="text-[10px] text-muted-foreground">Change topic, hardness, notes, confidence</div>
                   </div>
                 </button>
                 <div className="h-px bg-foreground/10 my-1" />
