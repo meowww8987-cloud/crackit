@@ -132,7 +132,7 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
       >
         {/* Sticky header */}
         <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+          <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-3" />
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5">
@@ -142,22 +142,22 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
                 >
                   {target.subject}
                 </span>
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/10 text-white/70">
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-foreground/10 text-foreground/70">
                   {target.activity}
                 </span>
               </div>
             <button
               onClick={() => { setTab('syllabus'); onClose(); }}
-              className="text-sm text-white/60 hover:text-white flex items-center gap-1"
+              className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
             >
               {target.chapter}
               <ExternalLink size={12} />
             </button>
-            <h2 className={cn('text-lg font-bold mt-1', target.done && 'line-through text-white/50')}>
+            <h2 className={cn('text-lg font-bold mt-1', target.done && 'line-through text-muted-foreground')}>
               {target.topic}
             </h2>
             </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 shrink-0">
+            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground shrink-0">
               <X size={16} />
             </button>
           </div>
@@ -200,7 +200,7 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
           </svg>
           <div className="mt-2 text-sm">
             {remainingSec > 0 ? (
-              <span className="text-white/60 tabular">{formatClock(remainingSec)} remaining</span>
+              <span className="text-muted-foreground tabular">{formatClock(remainingSec)} remaining</span>
             ) : (
               <span className="text-green-400 font-semibold">✓ Goal reached!</span>
             )}
@@ -210,12 +210,12 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
         {/* Session history today */}
         {sessions.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-white/40 mb-2">Today's Sessions</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Today's Sessions</h3>
             <div className="space-y-1.5">
               {sessions.map((s) => (
                 <div key={s.id} className="glass rounded-xl p-2.5 flex items-center gap-3">
                   <div className="text-center min-w-[36px]">
-                    <div className="text-xs text-white/40">
+                    <div className="text-xs text-muted-foreground">
                       {new Date(s.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                     </div>
                   </div>
@@ -249,7 +249,7 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
               className={cn(
                 'py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-1.5 transition active:scale-95',
                 target.done
-                  ? 'bg-white/5 text-white/30'
+                  ? 'bg-foreground/5 text-muted-foreground/60'
                   : 'text-white'
               )}
               style={!target.done ? { background: color.hex, color: '#000' } : undefined}
@@ -298,7 +298,7 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
             </button>
             <button
               onClick={onEdit}
-              className="py-3 rounded-xl font-semibold text-sm bg-white/10 text-white flex items-center justify-center gap-1.5 active:scale-95"
+              className="py-3 rounded-xl font-semibold text-sm bg-foreground/10 text-foreground flex items-center justify-center gap-1.5 active:scale-95"
             >
               <Pencil size={14} /> Edit
             </button>
@@ -318,7 +318,7 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
 function StatBox({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="glass rounded-xl p-2.5 text-center">
-      <div className="text-[10px] uppercase tracking-wide text-white/40 mb-0.5">{label}</div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{label}</div>
       <div className="text-base font-bold tabular" style={{ color }}>
         {value}
       </div>

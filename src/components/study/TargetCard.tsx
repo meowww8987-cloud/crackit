@@ -326,7 +326,7 @@ export function TargetCard({
         scale: 1.04,
         zIndex: 100,
         cursor: 'grabbing',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.08)',
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border, rgba(255,255,255,0.08))',
       }}
       dragTransition={{ bounceStiffness: 600, bounceDamping: 40 }}
       transition={{
@@ -514,7 +514,7 @@ export function TargetCard({
           <div className="flex-1" />
 
           {/* Expected time */}
-          <span className="text-[10px] text-white/55 tabular flex items-center gap-0.5 shrink-0">
+          <span className="text-[10px] text-muted-foreground tabular flex items-center gap-0.5 shrink-0">
             <Clock size={10} />
             {target.expectedMinutes}m
           </span>
@@ -530,7 +530,7 @@ export function TargetCard({
             }}
             onClick={(e) => e.stopPropagation()}
             className={cn(
-              'ml-0.5 w-6 h-6 rounded flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 active:scale-90 transition shrink-0 cursor-grab active:cursor-grabbing',
+              'ml-0.5 w-6 h-6 rounded flex items-center justify-center text-muted-foreground/60 hover:text-foreground/70 hover:bg-foreground/10 active:scale-90 transition shrink-0 cursor-grab active:cursor-grabbing',
               !isHovered && !isFocused && 'opacity-40'
             )}
             style={{ touchAction: 'none' }}
@@ -545,14 +545,14 @@ export function TargetCard({
         <div
           className={cn(
             'text-sm font-semibold mb-2 leading-snug pr-1',
-            target.done && 'text-white/55'
+            target.done && 'text-muted-foreground'
           )}
         >
           {target.topic}
         </div>
 
         {/* === Row 3: Modern progress bar with live shimmer === */}
-        <div className="relative mb-2 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+        <div className="relative mb-2 h-2 rounded-full overflow-hidden" style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}>
           {/* Fill — gradient + spring-animated width */}
           <motion.div
             className="absolute inset-y-0 left-0 rounded-full"
@@ -587,7 +587,7 @@ export function TargetCard({
 
           {/* Percentage label — floating at right end of bar */}
           {(progressPct > 0 || isThisActive) && (
-            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] font-bold tabular text-white/80 z-[1]">
+            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] font-bold tabular text-foreground/85 z-[1]">
               {progressPct}%
             </span>
           )}
@@ -614,7 +614,7 @@ export function TargetCard({
               <Check size={10} strokeWidth={3} /> Done
             </span>
           ) : remainingSec > 0 ? (
-            <span className="text-[10px] text-white/45 tabular">
+            <span className="text-[10px] text-muted-foreground tabular">
               · {formatHM(remainingSec)} left
             </span>
           ) : null}
@@ -648,7 +648,7 @@ export function TargetCard({
                 />
               ))}
               {sessions.length > 5 && (
-                <span className="text-[8px] text-white/40 ml-0.5">+{sessions.length - 5}</span>
+                <span className="text-[8px] text-muted-foreground ml-0.5">+{sessions.length - 5}</span>
               )}
             </div>
           )}
@@ -671,8 +671,8 @@ export function TargetCard({
                   ? 'bg-amber-500 text-white'
                   : 'text-white pulse-slow'
                 : isAnyActive
-                ? 'bg-white/5 text-white/30 cursor-not-allowed'
-                : 'bg-white/10 text-white hover:bg-white/20'
+                ? 'bg-foreground/5 text-muted-foreground/60 cursor-not-allowed'
+                : 'bg-foreground/10 text-foreground hover:bg-foreground/20'
             )}
             style={
               !target.done && isThisActive && !active!.wasting && !active!.paused
@@ -743,11 +743,11 @@ export function TargetCard({
                     expectedMinutes: nextUpTarget.expectedMinutes,
                   });
                 }}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition text-left"
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-foreground/5 hover:bg-foreground/10 transition text-left"
               >
-                <span className="text-[9px] uppercase tracking-wider text-white/40 font-semibold">Next up</span>
-                <span className="text-[11px] text-white/80 font-medium truncate flex-1">{nextUpTarget.topic}</span>
-                <ArrowRight size={11} className="text-white/60 shrink-0" />
+                <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Next up</span>
+                <span className="text-[11px] text-foreground/85 font-medium truncate flex-1">{nextUpTarget.topic}</span>
+                <ArrowRight size={11} className="text-muted-foreground shrink-0" />
               </button>
             </motion.div>
           )}
@@ -774,8 +774,8 @@ export function TargetCard({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.85, y: -8 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="absolute top-2 right-2 z-[10002] min-w-[160px] rounded-xl overflow-hidden border border-white/15"
-              style={{ background: 'rgba(20, 22, 30, 0.96)', backdropFilter: 'blur(16px)' }}
+              className="absolute top-2 right-2 z-[10002] min-w-[160px] rounded-xl overflow-hidden border border-border"
+              style={{ background: 'var(--popover, rgba(20, 22, 30, 0.96))', backdropFilter: 'blur(16px)' }}
               onPointerDown={(e) => e.stopPropagation()}
             >
               <QuickActionItem icon={Pencil} label="Edit" onClick={handleQuickEdit} />
@@ -786,7 +786,7 @@ export function TargetCard({
                 onClick={handleQuickReset}
                 destructive={false}
               />
-              <div className="h-px bg-white/10" />
+              <div className="h-px bg-foreground/10" />
               <QuickActionItem icon={Trash2} label="Delete" onClick={handleQuickDelete} destructive />
             </motion.div>
           </>
@@ -812,8 +812,8 @@ function QuickActionItem({
     <button
       onClick={onClick}
       className={cn(
-        'w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-white/8',
-        destructive ? 'text-red-400 hover:bg-red-500/10' : 'text-white/85'
+        'w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-foreground/10',
+        destructive ? 'text-red-400 hover:bg-red-500/10' : 'text-foreground'
       )}
     >
       <Icon size={13} />

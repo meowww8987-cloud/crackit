@@ -45,9 +45,9 @@ export function FreeStudyPicker({ onClose }: Props) {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-lg font-bold">Free Study</h2>
-            <p className="text-xs text-white/50">Pick a subject and start studying</p>
+            <p className="text-xs text-muted-foreground">Pick a subject and start studying</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
             <X size={16} />
           </button>
         </div>
@@ -66,13 +66,13 @@ export function FreeStudyPicker({ onClose }: Props) {
               >
                 <div className="w-3 h-8 rounded" style={{ background: c.hex }} />
                 <span className="font-semibold text-sm" style={{ color: c.hex }}>{s}</span>
-                <span className="ml-auto text-xs text-white/30">→</span>
+                <span className="ml-auto text-xs text-muted-foreground/60">→</span>
               </motion.button>
             );
           })}
         </div>
 
-        <p className="text-[10px] text-white/30 text-center mt-4">
+        <p className="text-[10px] text-muted-foreground/60 text-center mt-4">
           No target pressure — study freely and track your time.
         </p>
       </motion.div>

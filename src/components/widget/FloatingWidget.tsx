@@ -150,7 +150,7 @@ export function FloatingWidget() {
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => setFocusOpen(true)}
-            className="text-white/80 hover:text-white p-0.5"
+            className="text-foreground/85 hover:text-foreground p-0.5"
             aria-label="Maximize"
           >
             <Maximize2 size={12} />
@@ -158,7 +158,7 @@ export function FloatingWidget() {
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => setWidgetHidden(true)}
-            className="text-white/80 hover:text-white p-0.5"
+            className="text-foreground/85 hover:text-foreground p-0.5"
             aria-label="Hide"
           >
             <EyeOff size={12} />
@@ -174,7 +174,7 @@ export function FloatingWidget() {
           <div className="text-xs font-bold truncate" style={{ color: color.hex }}>
             {active.subject}
           </div>
-          <div className="text-[10px] text-white/80 truncate mb-1">{active.chapter}</div>
+          <div className="text-[10px] text-foreground/85 truncate mb-1">{active.chapter}</div>
           <div className="text-2xl font-bold tabular text-white">
             {formatClock(isWasting ? wastedSec : studySec)}
           </div>

@@ -221,7 +221,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
               {step > 1 && !editing && (
                 <button
                   onClick={() => { setStep(step - 1); vibrate(8); }}
-                  className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-white/60"
+                  className="w-7 h-7 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"
                 >
                   <ChevronLeft size={16} />
                 </button>
@@ -234,12 +234,12 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                 {[1, 2, 3].map((s) => (
                   <div
                     key={s}
-                    className={cn('h-1.5 rounded-full transition-all', s === step ? 'w-6 bg-teal-400' : s < step ? 'w-1.5 bg-teal-400/50' : 'w-1.5 bg-white/15')}
+                    className={cn('h-1.5 rounded-full transition-all', s === step ? 'w-6 bg-teal-400' : s < step ? 'w-1.5 bg-teal-400/50' : 'w-1.5 bg-foreground/15')}
                   />
                 ))}
               </div>
             )}
-            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
               <X size={16} />
             </button>
           </div>
@@ -258,7 +258,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                 transition={{ duration: 0.2 }}
                 className="px-5 py-4"
               >
-                <label className="text-xs font-semibold text-white/60 mb-3 block">PICK A SUBJECT</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-3 block">PICK A SUBJECT</label>
                 <div className="grid grid-cols-2 gap-2.5">
                   {SUBJECTS.map((s) => {
                     const c = subjectColor(s);
@@ -321,12 +321,12 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                 transition={{ duration: 0.2 }}
                 className="px-5 py-4"
               >
-                <label className="text-xs font-semibold text-white/60 mb-2 block flex items-center gap-1">
+                <label className="text-xs font-semibold text-muted-foreground mb-2 block flex items-center gap-1">
                   <BookOpen size={11} /> CHAPTER
                 </label>
                 {availableChapters.length === 0 ? (
                   <div className="glass rounded-xl p-3 text-center">
-                    <p className="text-xs text-white/50 mb-2">No {subject} chapters in your syllabus yet.</p>
+                    <p className="text-xs text-muted-foreground mb-2">No {subject} chapters in your syllabus yet.</p>
                     <p className="text-[10px] text-teal-400">Long-press Syllabus tab → Build Syllabus</p>
                   </div>
                 ) : (
@@ -347,14 +347,14 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                           }}
                           className={cn(
                             'w-full p-2.5 rounded-xl flex items-center gap-2 transition border',
-                            sel ? 'border-2' : 'border border-white/5 bg-white/[0.03] hover:bg-white/[0.05]'
+                            sel ? 'border-2' : 'border border-foreground/10 bg-foreground/[0.04] hover:bg-foreground/[0.07]'
                           )}
                           style={sel ? { background: `${color.hex}15`, borderColor: color.hex } : undefined}
                         >
                           <div className="w-1 h-6 rounded" style={{ background: color.hex }} />
                           <span className="text-xs font-medium flex-1 text-left truncate">{ch.name}</span>
                           {isCurrent && <span className="text-[8px] font-bold text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded-full">STUDYING</span>}
-                          <span className="text-[9px] text-white/30 tabular">{chLecCount} lec</span>
+                          <span className="text-[9px] text-muted-foreground/60 tabular">{chLecCount} lec</span>
                           {sel && <Check size={14} style={{ color: color.hex }} strokeWidth={3} />}
                         </button>
                       );
@@ -366,7 +366,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                 {selectedChapterId && availableLectures.length > 0 && (
                   <div className="mt-4">
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-semibold text-white/60">LECTURES</label>
+                      <label className="text-xs font-semibold text-muted-foreground">LECTURES</label>
                       <button onClick={selectAllLectures} className="text-[10px] text-teal-400">
                         {selectedLectureIds.size === availableLectures.length ? 'Deselect All' : 'Select All'}
                       </button>
@@ -382,7 +382,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                             disabled={already}
                             className={cn(
                               'w-full p-2 rounded-lg flex items-center gap-2 transition',
-                              sel ? 'bg-teal-500/15' : 'bg-white/[0.02] hover:bg-white/[0.05]',
+                              sel ? 'bg-teal-500/15' : 'bg-foreground/[0.03] hover:bg-foreground/[0.07]',
                               already && 'opacity-50 cursor-not-allowed'
                             )}
                           >
@@ -393,8 +393,8 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                               {sel && <Check size={10} className="text-black" strokeWidth={3} />}
                               {already && !sel && <Check size={10} className="text-green-400" strokeWidth={3} />}
                             </div>
-                            <span className="text-[10px] font-bold text-white/40 tabular w-6">L{lec.lecNo}</span>
-                            <span className={cn('text-xs truncate flex-1 text-left', sel ? 'text-white' : 'text-white/60')}>{lec.topic}</span>
+                            <span className="text-[10px] font-bold text-muted-foreground tabular w-6">L{lec.lecNo}</span>
+                            <span className={cn('text-xs truncate flex-1 text-left', sel ? 'text-foreground' : 'text-muted-foreground')}>{lec.topic}</span>
                             {already && <span className="text-[9px] text-green-400 font-bold">ADDED</span>}
                           </button>
                         );
@@ -422,7 +422,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-bold" style={{ color: color.hex }}>{subject}</div>
-                    <div className="text-[10px] text-white/50 truncate">{selectedChapter?.name || 'No chapter'}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{selectedChapter?.name || 'No chapter'}</div>
                   </div>
                   {selectedLectureIds.size > 0 && (
                     <span className="text-[10px] text-teal-400 font-bold">{selectedLectureIds.size} lec</span>
@@ -430,7 +430,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                 </div>
 
                 {/* Activity picker — color-coded with icons */}
-                <label className="text-xs font-semibold text-white/60 mb-2 block">ACTIVITY</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-2 block">ACTIVITY</label>
                 <div className="flex gap-2 mb-4">
                   {ACTIVITIES.map((a) => {
                     const cfg = ACTIVITY_CONFIG[a];
@@ -442,7 +442,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                         onClick={() => { setActivity(a); vibrate(8); }}
                         className={cn(
                           'flex-1 py-2.5 rounded-xl flex flex-col items-center gap-1 transition border',
-                          sel ? 'border-2' : 'border border-white/5 bg-white/[0.03]'
+                          sel ? 'border-2' : 'border border-foreground/10 bg-foreground/[0.04]'
                         )}
                         style={sel ? { background: `${cfg.color}20`, borderColor: cfg.color } : undefined}
                       >
@@ -456,7 +456,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                 {/* Expected time — slider with preset snap points */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-semibold text-white/60">EXPECTED TIME</label>
+                    <label className="text-xs font-semibold text-muted-foreground">EXPECTED TIME</label>
                     <span className="text-lg font-bold tabular" style={{ color: actConfig.color }}>{expectedMinutes} min</span>
                   </div>
                   {/* Slider */}
@@ -482,7 +482,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                         onClick={() => { setExpectedMinutes(p); vibrate(6); }}
                         className={cn(
                           'px-2 py-1 rounded-lg text-[10px] font-bold transition',
-                          expectedMinutes === p ? 'text-black' : 'text-white/40 bg-white/5 hover:bg-white/10'
+                          expectedMinutes === p ? 'text-black' : 'text-muted-foreground bg-foreground/5 hover:bg-foreground/10'
                         )}
                         style={expectedMinutes === p ? { background: actConfig.color } : undefined}
                       >
@@ -495,12 +495,12 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                 {/* Custom topic (for non-lecture or custom) */}
                 {activity !== 'Lecture' && selectedLectureIds.size === 0 && (
                   <div className="mb-4">
-                    <label className="text-xs font-semibold text-white/60 mb-2 block">TOPIC (optional)</label>
+                    <label className="text-xs font-semibold text-muted-foreground mb-2 block">TOPIC (optional)</label>
                     <input
                       value={customTopic}
                       onChange={(e) => setCustomTopic(e.target.value)}
                       placeholder={`e.g. ${activity} practice`}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
+                      className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
                     />
                   </div>
                 )}
@@ -512,7 +512,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
         {/* === Footer with Next / Create button === */}
         <div className="sticky bottom-0 z-10 px-5 py-3 glass rounded-b-3xl" style={{ borderTop: '1px solid var(--border)' }}>
           {step === 1 && (
-            <p className="text-[10px] text-white/30 text-center py-3">Tap a subject to continue</p>
+            <p className="text-[10px] text-muted-foreground/60 text-center py-3">Tap a subject to continue</p>
           )}
           {step === 2 && (
             <button
@@ -520,7 +520,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
               disabled={!canProceedStep2}
               className={cn(
                 'w-full py-3.5 rounded-xl font-bold text-sm transition active:scale-[0.98] flex items-center justify-center gap-2',
-                canProceedStep2 ? 'text-black' : 'bg-white/5 text-white/30 cursor-not-allowed'
+                canProceedStep2 ? 'text-black' : 'bg-foreground/5 text-muted-foreground/60 cursor-not-allowed'
               )}
               style={canProceedStep2 ? { background: color.hex } : undefined}
             >
@@ -533,7 +533,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
               disabled={!canSubmit}
               className={cn(
                 'w-full py-3.5 rounded-xl font-bold text-sm transition active:scale-[0.98]',
-                canSubmit ? 'text-black' : 'bg-white/5 text-white/30 cursor-not-allowed'
+                canSubmit ? 'text-black' : 'bg-foreground/5 text-muted-foreground/60 cursor-not-allowed'
               )}
               style={canSubmit ? { background: color.hex } : undefined}
             >
