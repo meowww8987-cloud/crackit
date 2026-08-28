@@ -312,6 +312,11 @@ export function TargetCard({
 
   // Quick action handlers
   const handleQuickEdit = () => { setShowQuickActions(false); onEdit(); };
+  const handleQuickToggleDone = () => {
+    setShowQuickActions(false);
+    if (haptics) vibrate(15);
+    toggleDone.toggleDone(target.id);
+  };
   const handleQuickDuplicate = () => {
     setShowQuickActions(false);
     if (haptics) vibrate([10, 20, 10]);
@@ -1038,6 +1043,13 @@ export function TargetCard({
 
               {/* Action items */}
               <div className="py-1">
+                {/* Mark Done / Mark Undone — toggles completion state */}
+                <QuickActionItem
+                  icon={CheckCircle2}
+                  label={target.done ? 'Mark as Undone' : 'Mark as Done'}
+                  onClick={handleQuickToggleDone}
+                  accent={target.done ? 'amber' : 'green'}
+                />
                 <QuickActionItem icon={Pencil} label="Edit" onClick={handleQuickEdit} />
                 <QuickActionItem icon={Copy} label="Duplicate" onClick={handleQuickDuplicate} />
                 <QuickActionItem
@@ -1064,18 +1076,29 @@ function QuickActionItem({
   label,
   onClick,
   destructive = false,
+  accent,
 }: {
   icon: typeof Pencil;
   label: string;
   onClick: () => void;
   destructive?: boolean;
+  /** 'green' for mark-done, 'amber' for mark-undone, undefined for default */
+  accent?: 'green' | 'amber';
 }) {
+  const accentColor = accent === 'green'
+    ? 'text-green-600 dark:text-green-400 hover:bg-green-500/10'
+    : accent === 'amber'
+    ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'
+    : null;
+
   return (
     <button
       onClick={onClick}
       className={cn(
         'w-full flex items-center gap-3 px-4 py-3 text-left text-[13px] font-medium transition hover:bg-foreground/10 active:bg-foreground/15',
-        destructive ? 'text-red-500 dark:text-red-400 hover:bg-red-500/10' : 'text-foreground'
+        destructive
+          ? 'text-red-500 dark:text-red-400 hover:bg-red-500/10'
+          : accentColor || 'text-foreground'
       )}
     >
       <Icon size={15} className="shrink-0" />
