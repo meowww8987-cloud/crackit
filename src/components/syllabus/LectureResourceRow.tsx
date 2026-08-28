@@ -2,14 +2,14 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { Plus, Check, Pencil, Trash2, Play, FileText, BookOpen, RotateCw, X, Clock } from 'lucide-react';
+import { Plus, Check, Pencil, Trash2, Play, FileText, BookOpen, RotateCw, RotateCcw, X, Clock } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTargets } from '@/lib/store/targets';
 import { useSession } from '@/lib/store/session';
 import { subjectColor } from '@/lib/colors';
 import type { Lecture, Chapter, SubjectEntity, LectureResource, ActivityType } from '@/lib/types';
-import { cn, todayKey, vibrate, formatHM } from '@/lib/utils';
+import { cn, todayKey, vibrate, formatHM, nextRevisionDate } from '@/lib/utils';
 import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 
 interface Props {
@@ -102,11 +102,24 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
         revisionDone: nextStage >= 0,
         revisionStage: nextStage,
         lastRevisedAt: nextStage >= 0 ? Date.now() : undefined,
-        nextRevisionAt: nextStage >= 0 ? Date.now() + (1 << nextStage) * 86400000 : undefined,
+        // Use the store's spaced-repetition function (consistent intervals)
+        nextRevisionAt: nextStage >= 0 ? nextRevisionDate(nextStage) : undefined,
       });
     } else {
       toggleResource(lecture.id, resource);
     }
+  };
+
+  // Reset revision count back to 0 — shown in the long-press popup
+  const handleResetRevision = () => {
+    setShowActions(false);
+    vibrate([10, 20, 10]);
+    updateLecture(lecture.id, {
+      revisionDone: false,
+      revisionStage: -1,
+      lastRevisedAt: undefined,
+      nextRevisionAt: undefined,
+    });
   };
 
   const handleResourceLongPress = (resource: LectureResource, label: string) => {
@@ -609,6 +622,21 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
                     <div className="text-[10px] text-muted-foreground">Change topic, hardness, notes, confidence</div>
                   </div>
                 </button>
+                {/* Reset revision count — only shows if revised at least once */}
+                {lecture.revisionStage >= 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleResetRevision(); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-500/10 active:bg-amber-500/15 transition text-left"
+                  >
+                    <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                      <RotateCcw size={14} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-medium text-amber-600 dark:text-amber-400">Reset Revision Count</div>
+                      <div className="text-[10px] text-muted-foreground">Currently revised {revisionCount}× — reset to 0</div>
+                    </div>
+                  </button>
+                )}
                 <div className="h-px bg-foreground/10 my-1" />
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowActions(false); setShowDeleteConfirm(true); }}
