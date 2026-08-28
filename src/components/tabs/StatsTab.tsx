@@ -3,10 +3,10 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  LineChart, Line, PieChart, Pie, Cell,
+  LineChart, Line,
   XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
 } from 'recharts';
-import { BarChart3, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
+import { BarChart3, TrendingUp } from 'lucide-react';
 import { useHistory } from '@/lib/store/history';
 import { useRecall } from '@/lib/store/recall';
 import { useSyllabus } from '@/lib/store/syllabus';
@@ -78,37 +78,47 @@ export function StatsTab() {
       {/* 30-Day Progress Graph — modern area chart with goal line */}
       <ProgressGraph />
 
-      {/* Mood distribution */}
+      {/* Mood distribution — horizontal bars (replaces tiny pie chart) */}
       <div className="grid grid-cols-1 gap-3">
         {moods.length > 0 && (
           <ChartCard title="Mood Distribution">
-            <div className="flex items-center gap-3">
-              <div className="h-28 flex-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={moods} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40}>
-                      {moods.map((d, i) => (
-                        <Cell key={i} fill={d.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11, color: 'var(--foreground)' }}
-                      labelStyle={{ color: 'var(--foreground)' }}
-                      itemStyle={{ color: 'var(--foreground)' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-1.5 flex-1">
-                {moods.map((m) => (
-                  <div key={m.name} className="flex items-center gap-2 text-xs">
-                    <span className="text-base">{m.emoji}</span>
-                    <span className="flex-1" style={{ color: 'var(--muted-foreground)' }}>{m.name}</span>
-                    <span className="tabular font-bold" style={{ color: 'var(--foreground)' }}>{m.value}</span>
+            {(() => {
+              const total = moods.reduce((a, m) => a + m.value, 0);
+              // Sort by value descending so most common mood is at top
+              const sorted = [...moods].sort((a, b) => b.value - a.value);
+              return (
+                <div className="space-y-2">
+                  {sorted.map((m) => {
+                    const pct = total > 0 ? Math.round((m.value / total) * 100) : 0;
+                    return (
+                      <div key={m.name} className="flex items-center gap-2">
+                        <span className="text-base shrink-0 w-5 text-center">{m.emoji}</span>
+                        <span className="text-[11px] w-16 shrink-0" style={{ color: 'var(--muted-foreground)' }}>{m.name}</span>
+                        {/* Bar track */}
+                        <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}>
+                          <motion.div
+                            className="h-full rounded-full"
+                            style={{ background: m.color, boxShadow: `0 0 4px ${m.color}80` }}
+                            initial={{ width: 0 }}
+                            whileInView={{ width: `${pct}%` }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.5, ease: 'easeOut' }}
+                          />
+                        </div>
+                        {/* Count + percentage */}
+                        <span className="text-[11px] tabular font-bold shrink-0 w-8 text-right" style={{ color: 'var(--foreground)' }}>{m.value}</span>
+                        <span className="text-[10px] tabular shrink-0 w-8 text-right" style={{ color: 'var(--muted-foreground)' }}>{pct}%</span>
+                      </div>
+                    );
+                  })}
+                  {/* Total footer */}
+                  <div className="flex items-center justify-between pt-2 mt-1 text-[10px] tabular" style={{ borderTop: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
+                    <span>Total sessions</span>
+                    <span className="font-bold" style={{ color: 'var(--foreground)' }}>{total}</span>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              );
+            })()}
           </ChartCard>
         )}
       </div>
