@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff, PlayCircle, Brain, ChevronRight, Plus, Sigma, HelpCircle, Target, Trophy, ClipboardList, TrendingUp, Moon } from 'lucide-react';
 import { useNav, type TabKey, TAB_ORDER } from '@/lib/store/nav';
 import { useSession } from '@/lib/store/session';
-import { cn, vibrate, todayKey } from '@/lib/utils';
+import { cn, vibrate, todayKey, isRevisionOverdue } from '@/lib/utils';
 import { FocusTimer } from '@/components/timer/FocusTimer';
 import { FloatingWidget } from '@/components/widget/FloatingWidget';
 import { MoodPicker } from '@/components/timer/MoodPicker';
@@ -64,14 +64,16 @@ export function triggerTimeline() { _showTimeline(); }
 let _showTutorialOnboarding: () => void = () => {};
 export function triggerTutorialOnboarding() { _showTutorialOnboarding(); }
 
-const TABS: { key: TabKey; label: string; icon: typeof Home }[] = [
-  { key: 'home', label: 'Home', icon: Home },
-  { key: 'study', label: 'Study', icon: BookOpen },
-  { key: 'syllabus', label: 'Syllabus', icon: GraduationCap },
-  { key: 'history', label: 'History', icon: History },
-  { key: 'tests', label: 'Tests', icon: FileText },
-  { key: 'stats', label: 'Stats', icon: BarChart3 },
-  { key: 'settings', label: 'Settings', icon: SettingsIcon },
+// Per-tab accent colors — each tab has its own identity color
+// These are visible in both light and dark themes (tested for contrast)
+const TABS: { key: TabKey; label: string; icon: typeof Home; color: string }[] = [
+  { key: 'home',     label: 'Home',     icon: Home,           color: '#14b8a6' },
+  { key: 'study',    label: 'Study',    icon: BookOpen,       color: '#3b82f6' },
+  { key: 'syllabus', label: 'Syllabus', icon: GraduationCap,  color: '#a855f7' },
+  { key: 'history',  label: 'History',  icon: History,        color: '#64748b' },
+  { key: 'tests',    label: 'Tests',    icon: FileText,       color: '#f97316' },
+  { key: 'stats',    label: 'Stats',    icon: BarChart3,      color: '#22c55e' },
+  { key: 'settings', label: 'Settings', icon: SettingsIcon,   color: '#6b7280' },
 ];
 
 export function AppShell() {
@@ -79,6 +81,21 @@ export function AppShell() {
   const { active, focusOpen, pendingMoodSession, tick } = useSession();
   const minimalMode = useSettings((s) => s.minimalMode);
   const oledBlack = useSettings((s) => s.oledBlack);
+
+  // === Tab badge data ===
+  const syllabusLectures = useSyllabusStore((s) => s.lectures);
+  const overdueRevisions = syllabusLectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt)).length;
+  const hasPendingMood = !!pendingMoodSession;
+
+  // === Arrival pulse — triggers when activeTab changes ===
+  const [pulseKey, setPulseKey] = useState(0);
+  const prevTabForPulse = useRef(activeTab);
+  useEffect(() => {
+    if (prevTabForPulse.current !== activeTab) {
+      setPulseKey((k) => k + 1);
+      prevTabForPulse.current = activeTab;
+    }
+  }, [activeTab]);
   // === Global partner sync — runs on ALL tabs so live data is always fresh ===
   usePartnerSync();
   const [navVisible, setNavVisible] = useState(true);
@@ -492,17 +509,12 @@ export function AppShell() {
                 {TABS.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.key;
-                  // ALL tabs except 'settings' are long-pressable → shows the overlay
                   const isLongPressable = tab.key !== 'settings';
                   const longPressHandler = isLongPressable ? () => {
                     studyTabLongPress.current = setTimeout(() => {
-                      // If tutorial onboarding is active, dismiss it (the user
-                      // successfully long-pressed a tab — that's the goal).
-                      // Then show the overlay for this tab.
                       if (showTutorialOnboarding) {
                         setShowTutorialOnboarding(false);
                       }
-                      // Show the full-screen overlay for this tab
                       setLongPressTab(tab.key as InfoTabKey);
                       vibrate(20);
                     }, 500);
@@ -513,6 +525,14 @@ export function AppShell() {
                       studyTabLongPress.current = null;
                     }
                   } : undefined;
+
+                  // === Tab badge — red dot for attention-needed tabs ===
+                  const badge = tab.key === 'syllabus' && overdueRevisions > 0
+                    ? { count: overdueRevisions, color: '#ef4444' }
+                    : tab.key === 'history' && hasPendingMood
+                    ? { count: 0, color: '#f59e0b' } // dot only, no count
+                    : null;
+
                   return (
                     <button
                       key={tab.key}
@@ -551,30 +571,44 @@ export function AppShell() {
                       className={cn(
                         'relative flex flex-col items-center justify-center rounded-xl transition-all',
                         'min-w-[42px] h-12 px-1.5',
-                        // Hide History, Tests, Stats tabs in Minimal Mode
                         minimalMode && (tab.key === 'history' || tab.key === 'tests' || tab.key === 'stats') && 'minimal-hide'
                       )}
                       style={{
-                        color: isActive ? '#0d9488' : 'var(--muted-foreground)',
+                        // #1 + #2: Per-tab color instead of hardcoded teal
+                        color: isActive ? tab.color : 'var(--muted-foreground)',
                         ...(draggedLectureId && tab.key === 'study' ? {
-                          background: 'rgba(13, 148, 136, 0.15)',
-                          boxShadow: '0 0 0 2px rgba(13, 148, 136, 0.4)',
+                          background: `${tab.color}26`,
+                          boxShadow: `0 0 0 2px ${tab.color}66`,
                           transform: 'scale(1.1)',
                         } : {}),
                       }}
                       aria-label={tab.label}
                     >
+                      {/* #1 + #2: Active indicator uses tab color */}
                       {isActive && (
                         <motion.div
                           layoutId="tab-indicator"
                           className="absolute inset-0 rounded-xl"
                           style={{
-                            background: 'rgba(13, 148, 136, 0.12)',
-                            border: '1px solid rgba(13, 148, 136, 0.25)',
+                            background: `${tab.color}1a`,
+                            border: `1px solid ${tab.color}40`,
                           }}
                           transition={{ type: 'spring', stiffness: 400, damping: 32 }}
                         />
                       )}
+
+                      {/* #5: Arrival pulse — ripple on tab switch */}
+                      {isActive && !reduceAnimations && (
+                        <motion.div
+                          key={pulseKey}
+                          className="absolute inset-0 rounded-xl pointer-events-none"
+                          style={{ border: `2px solid ${tab.color}` }}
+                          initial={{ scale: 1, opacity: 0.6 }}
+                          animate={{ scale: 1.4, opacity: 0 }}
+                          transition={{ duration: 0.5, ease: 'easeOut' }}
+                        />
+                      )}
+
                       <motion.div
                         animate={
                           reduceAnimations
@@ -587,19 +621,47 @@ export function AppShell() {
                         <Icon
                           size={20}
                           strokeWidth={isActive ? 2.5 : 2}
-                          style={{ opacity: isActive ? 1 : 0.6 }}
+                          style={{
+                            opacity: isActive ? 1 : 0.7,
+                            color: isActive ? tab.color : undefined,
+                          }}
                         />
                       </motion.div>
-                      {/* Active label — small text under icon */}
-                      {isActive && !reduceAnimations && (
-                        <motion.span
-                          initial={{ opacity: 0, y: 2 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="absolute -bottom-0.5 text-[7px] font-bold uppercase tracking-wide"
-                          style={{ color: '#0d9488' }}
+
+                      {/* #3: Always-visible labels — smaller when inactive */}
+                      <span
+                        className="absolute -bottom-0.5 transition-all"
+                        style={{
+                          fontSize: isActive ? '7px' : '6px',
+                          fontWeight: isActive ? 700 : 500,
+                          opacity: isActive ? 1 : 0.5,
+                          color: isActive ? tab.color : 'var(--muted-foreground)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                        }}
+                      >
+                        {tab.label}
+                      </span>
+
+                      {/* #4: Notification badge */}
+                      {badge && (
+                        <div
+                          className="absolute top-0.5 right-0.5 flex items-center justify-center pointer-events-none"
+                          style={{
+                            minWidth: badge.count > 0 ? 14 : 8,
+                            height: badge.count > 0 ? 14 : 8,
+                            padding: badge.count > 0 ? '0 3px' : 0,
+                            borderRadius: 999,
+                            background: badge.color,
+                            border: '1.5px solid var(--card)',
+                          }}
                         >
-                          {tab.label}
-                        </motion.span>
+                          {badge.count > 0 && (
+                            <span className="text-[8px] font-bold text-white tabular leading-none">
+                              {badge.count > 9 ? '9+' : badge.count}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </button>
                   );
