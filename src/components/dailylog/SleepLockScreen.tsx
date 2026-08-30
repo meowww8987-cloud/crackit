@@ -171,6 +171,27 @@ export function SleepLockScreen() {
     if (!visibleSleep) setPhase('sleeping');
   }, [visibleSleep]);
 
+  // === Time-of-day-aware exit animation ===
+  // MUST be above the early return — React hooks can't be conditional.
+  const exitAnimation = useMemo(() => {
+    switch (tod) {
+      case 'night':
+        return { opacity: 0, scale: 1.15, filter: 'blur(16px) brightness(1.5) sepia(0.3)' };
+      case 'dawn':
+        return { opacity: 0, scale: 1.08, filter: 'blur(12px) brightness(1.3) saturate(1.4)' };
+      case 'morning':
+        return { opacity: 0, scale: 1.12, filter: 'blur(8px) brightness(1.8)' };
+      case 'noon':
+        return { opacity: 0, scale: 1.18, filter: 'blur(14px) brightness(1.4) sepia(0.2)' };
+      case 'dusk':
+        return { opacity: 0, scale: 1.1, filter: 'blur(12px) brightness(1.2) hue-rotate(-10deg)' };
+      case 'evening':
+        return { opacity: 0, scale: 1.08, filter: 'blur(14px) brightness(0.9) hue-rotate(20deg)' };
+      default:
+        return { opacity: 0, scale: 1.08, filter: 'blur(12px)' };
+    }
+  }, [tod]);
+
   if (!visibleSleep) return null;
 
   const elapsedSec = Math.floor((Date.now() - visibleSleep.bedTime) / 1000);
@@ -180,39 +201,6 @@ export function SleepLockScreen() {
 
   const isWakingPhase = phase === 'waking' || phase === 'quality' || phase === 'celebrating';
   const bgGradient = isWakingPhase ? scene.wakingGradient : scene.gradient;
-
-  // === Time-of-day-aware exit animation ===
-  // Each time of day has a unique "wake up" transition that matches the scene:
-  // - night:   sunrise burst (scale up + warm glow, like the sun rising)
-  // - dawn:    golden dissolve (fade + warm blur)
-  // - morning: bright flash (quick white flash, like stepping into sunlight)
-  // - noon:    golden expand (radial expand, energetic)
-  // - dusk:    sunset dissolve (warm fade, like the day ending)
-  // - evening: aurora fade (soft purple/blue dissolve)
-  const exitAnimation = useMemo(() => {
-    switch (tod) {
-      case 'night':
-        // Sunrise burst — scale up with warm orange tint
-        return { opacity: 0, scale: 1.15, filter: 'blur(16px) brightness(1.5) sepia(0.3)' };
-      case 'dawn':
-        // Golden dissolve — fade with warm blur
-        return { opacity: 0, scale: 1.08, filter: 'blur(12px) brightness(1.3) saturate(1.4)' };
-      case 'morning':
-        // Bright flash — quick white flash
-        return { opacity: 0, scale: 1.12, filter: 'blur(8px) brightness(1.8)' };
-      case 'noon':
-        // Golden expand — energetic radial
-        return { opacity: 0, scale: 1.18, filter: 'blur(14px) brightness(1.4) sepia(0.2)' };
-      case 'dusk':
-        // Sunset dissolve — warm fade
-        return { opacity: 0, scale: 1.1, filter: 'blur(12px) brightness(1.2) hue-rotate(-10deg)' };
-      case 'evening':
-        // Aurora fade — soft purple dissolve
-        return { opacity: 0, scale: 1.08, filter: 'blur(14px) brightness(0.9) hue-rotate(20deg)' };
-      default:
-        return { opacity: 0, scale: 1.08, filter: 'blur(12px)' };
-    }
-  }, [tod]);
 
   return (
     <AnimatePresence>
