@@ -379,7 +379,7 @@ function SleepingPhase({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.92, filter: 'blur(8px)' }}
       transition={{ duration: 0.7, ease: EASE_OUT_QUART }}
-      className="flex flex-col items-center"
+      className="flex flex-col items-center relative w-full h-full"
       onClick={handleTap}
     >
       {/* Breathing celestial body — 4-second breathing cycle */}
@@ -437,8 +437,14 @@ function SleepingPhase({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.2, duration: 0.6 }}
-        onClick={(e) => { e.stopPropagation(); onCancel(); }}
-        className="absolute bottom-[env(safe-area-inset-bottom,0px)] bottom-8 text-[11px] text-white/40 hover:text-white/70 transition underline"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onCancel();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg text-[11px] text-white/40 hover:text-white/80 hover:bg-white/5 transition underline"
+        style={{ touchAction: 'manipulation' }}
       >
         Cancel sleep
       </motion.button>
