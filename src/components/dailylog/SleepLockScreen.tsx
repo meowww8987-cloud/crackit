@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSleep } from '@/lib/store/sleep';
 import { useSettings } from '@/lib/store/settings';
+import { useNav } from '@/lib/store/nav';
 import { cn, formatHM, vibrate } from '@/lib/utils';
 
 /**
@@ -128,13 +129,13 @@ export function SleepLockScreen() {
   const wakeUp = useSleep((s) => s.wakeUp);
   const cancelSleep = useSleep((s) => s.cancelSleep);
   const haptics = useSettings((s) => s.haptics);
+  const setTab = useNav((s) => s.setTab);
 
   const [phase, setPhase] = useState<Phase>('sleeping');
   const [, setTick] = useState(0);
   const [tod, setTod] = useState<TimeOfDay>(() => getTimeOfDay(new Date().getHours()));
 
   // Hold the last activeSleep so exit animations can play after wakeUp() is called.
-  // Without this, the component returns null immediately and AnimatePresence exit never runs.
   const [visibleSleep, setVisibleSleep] = useState(activeSleep);
   const [exiting, setExiting] = useState(false);
 
@@ -147,10 +148,13 @@ export function SleepLockScreen() {
       const t = setTimeout(() => {
         setVisibleSleep(null);
         setExiting(false);
+        // === REDIRECT TO STUDY TAB after sleep ends ===
+        // This runs after the exit animation completes (1.4s)
+        setTab('study');
       }, 1400);
       return () => clearTimeout(t);
     }
-  }, [activeSleep, visibleSleep, exiting]);
+  }, [activeSleep, visibleSleep, exiting, setTab]);
 
   // Live timer + time-of-day updater
   useEffect(() => {
@@ -177,14 +181,47 @@ export function SleepLockScreen() {
   const isWakingPhase = phase === 'waking' || phase === 'quality' || phase === 'celebrating';
   const bgGradient = isWakingPhase ? scene.wakingGradient : scene.gradient;
 
+  // === Time-of-day-aware exit animation ===
+  // Each time of day has a unique "wake up" transition that matches the scene:
+  // - night:   sunrise burst (scale up + warm glow, like the sun rising)
+  // - dawn:    golden dissolve (fade + warm blur)
+  // - morning: bright flash (quick white flash, like stepping into sunlight)
+  // - noon:    golden expand (radial expand, energetic)
+  // - dusk:    sunset dissolve (warm fade, like the day ending)
+  // - evening: aurora fade (soft purple/blue dissolve)
+  const exitAnimation = useMemo(() => {
+    switch (tod) {
+      case 'night':
+        // Sunrise burst — scale up with warm orange tint
+        return { opacity: 0, scale: 1.15, filter: 'blur(16px) brightness(1.5) sepia(0.3)' };
+      case 'dawn':
+        // Golden dissolve — fade with warm blur
+        return { opacity: 0, scale: 1.08, filter: 'blur(12px) brightness(1.3) saturate(1.4)' };
+      case 'morning':
+        // Bright flash — quick white flash
+        return { opacity: 0, scale: 1.12, filter: 'blur(8px) brightness(1.8)' };
+      case 'noon':
+        // Golden expand — energetic radial
+        return { opacity: 0, scale: 1.18, filter: 'blur(14px) brightness(1.4) sepia(0.2)' };
+      case 'dusk':
+        // Sunset dissolve — warm fade
+        return { opacity: 0, scale: 1.1, filter: 'blur(12px) brightness(1.2) hue-rotate(-10deg)' };
+      case 'evening':
+        // Aurora fade — soft purple dissolve
+        return { opacity: 0, scale: 1.08, filter: 'blur(14px) brightness(0.9) hue-rotate(20deg)' };
+      default:
+        return { opacity: 0, scale: 1.08, filter: 'blur(12px)' };
+    }
+  }, [tod]);
+
   return (
     <AnimatePresence>
       <motion.div
         key="sleep-lock-screen"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0, scale: 1.08, filter: 'blur(12px)' }}
-        transition={{ duration: 1.2, ease: EASE_SMOOTH }}
+        exit={exitAnimation}
+        transition={{ duration: 1.4, ease: EASE_SMOOTH }}
         className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui"
         style={{
           background: bgGradient,
@@ -309,7 +346,7 @@ export function SleepLockScreen() {
               />
             )}
             {phase === 'celebrating' && (
-              <CelebratingPhase key="celebrating" />
+              <CelebratingPhase key="celebrating" tod={tod} />
             )}
           </AnimatePresence>
         </div>
@@ -731,8 +768,28 @@ function QualityPhase({
   );
 }
 
-// ===== Celebrating Phase — brief confirmation before exit =====
-function CelebratingPhase() {
+// ===== Celebrating Phase — time-of-day-aware confirmation before exit =====
+function CelebratingPhase({ tod }: { tod: TimeOfDay }) {
+  // Time-of-day greeting + emoji
+  const { greeting, emoji, glowColor } = useMemo(() => {
+    switch (tod) {
+      case 'night':
+        return { greeting: 'Good morning!', emoji: '🌅', glowColor: 'rgba(255,180,80,0.8)' };
+      case 'dawn':
+        return { greeting: 'Rise and shine!', emoji: '🌄', glowColor: 'rgba(255,200,100,0.8)' };
+      case 'morning':
+        return { greeting: 'Good morning!', emoji: '☀️', glowColor: 'rgba(255,235,100,0.8)' };
+      case 'noon':
+        return { greeting: 'Good afternoon!', emoji: '🌞', glowColor: 'rgba(255,220,80,0.8)' };
+      case 'dusk':
+        return { greeting: 'Good evening!', emoji: '🌇', glowColor: 'rgba(255,160,60,0.8)' };
+      case 'evening':
+        return { greeting: 'Good evening!', emoji: '🌆', glowColor: 'rgba(165,180,252,0.8)' };
+      default:
+        return { greeting: 'Have a great day!', emoji: '✨', glowColor: 'rgba(255,255,255,0.8)' };
+    }
+  }, [tod]);
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -741,36 +798,51 @@ function CelebratingPhase() {
       transition={{ duration: 0.5, ease: EASE_OUT_QUART }}
       className="text-center"
     >
-      {/* Expanding sparkle */}
+      {/* Time-of-day emoji — rises like the sun */}
       <motion.div
-        initial={{ scale: 0, rotate: -90 }}
-        animate={{ scale: [0, 1.2, 1], rotate: 0 }}
+        initial={{ scale: 0, y: 40, rotate: -20 }}
+        animate={{ scale: [0, 1.3, 1], y: 0, rotate: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-        className="text-6xl mb-3"
-        style={{ filter: 'drop-shadow(0 0 40px rgba(255,255,255,0.8))' }}
+        className="text-7xl mb-3"
+        style={{ filter: `drop-shadow(0 0 40px ${glowColor})` }}
       >
-        ✨
+        {emoji}
       </motion.div>
 
-      {/* Radiating rings */}
+      {/* Radiating rings in time-of-day color */}
       {[0, 0.2, 0.4].map((delay, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full border border-white/20"
-          style={{ width: 60, height: 60, top: '50%', left: '50%', marginLeft: -30, marginTop: -60 }}
+          className="absolute rounded-full"
+          style={{
+            width: 60, height: 60, top: '50%', left: '50%', marginLeft: -30, marginTop: -60,
+            border: `2px solid ${glowColor}`,
+          }}
           initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: [0, 3], opacity: [0.5, 0] }}
-          transition={{ duration: 1.2, ease: EASE_OUT_QUART, delay, repeat: Infinity }}
+          animate={{ scale: [0, 3.5], opacity: [0.6, 0] }}
+          transition={{ duration: 1.4, ease: EASE_OUT_QUART, delay, repeat: Infinity }}
         />
       ))}
 
+      {/* Greeting text — time-of-day appropriate */}
       <motion.p
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
+        transition={{ delay: 0.3, duration: 0.5 }}
         className="text-lg font-light text-white"
+        style={{ textShadow: `0 0 20px ${glowColor}` }}
       >
-        Have a great day!
+        {greeting}
+      </motion.p>
+
+      {/* Subtitle — redirect hint */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.7 }}
+        transition={{ delay: 0.6, duration: 0.5 }}
+        className="text-[10px] text-white/60 mt-1 uppercase tracking-widest"
+      >
+        Taking you to Study →
       </motion.p>
     </motion.div>
   );
