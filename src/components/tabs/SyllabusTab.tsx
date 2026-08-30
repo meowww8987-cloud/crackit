@@ -221,34 +221,44 @@ export function SyllabusTab() {
           >
             <Clock size={15} className="text-muted-foreground" />
           </button>
-          {/* Reorder toggle — pulses when active */}
-          <button
-            onClick={() => { setReorderMode(!reorderMode); vibrate(10); }}
-            className={cn(
-              'shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-95',
-              reorderMode
-                ? 'bg-teal-500 text-black'
-                : 'glass text-muted-foreground hover:bg-foreground/10'
-            )}
-            aria-label={reorderMode ? 'Exit reorder mode' : 'Reorder chapters'}
-            title="Reorder chapters"
-          >
-            <GripVertical size={15} />
-          </button>
-          {/* Build button — primary accent, opens BuildSyllabusSheet */}
-          <button
-            onClick={() => { setShowBuildSheet(true); vibrate(10); }}
-            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg, #14b8a6, #0d9488)',
-              color: '#fff',
-              boxShadow: '0 2px 8px -2px rgba(20,184,166,0.5)',
-            }}
-            aria-label="Build Syllabus"
-            title="Build / Edit Syllabus"
-          >
-            <Sparkles size={15} />
-          </button>
+          {/* Reorder / Done toggle — swaps based on state */}
+          {reorderMode ? (
+            <button
+              onClick={() => { setReorderMode(false); vibrate(15); }}
+              className="shrink-0 h-8 px-3 rounded-lg flex items-center gap-1.5 transition active:scale-95 bg-green-500 text-white font-bold text-[11px]"
+              style={{ boxShadow: '0 2px 8px -2px rgba(34,197,94,0.5)' }}
+              aria-label="Done reordering"
+              title="Done reordering"
+            >
+              <Check size={14} strokeWidth={3} />
+              Done
+            </button>
+          ) : (
+            <button
+              onClick={() => { setReorderMode(true); vibrate(10); }}
+              className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-95 glass text-muted-foreground hover:bg-foreground/10"
+              aria-label="Reorder chapters"
+              title="Reorder chapters"
+            >
+              <GripVertical size={15} />
+            </button>
+          )}
+          {/* Build button — hidden during reorder mode */}
+          {!reorderMode && (
+            <button
+              onClick={() => { setShowBuildSheet(true); vibrate(10); }}
+              className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-95"
+              style={{
+                background: 'linear-gradient(135deg, #14b8a6, #0d9488)',
+                color: '#fff',
+                boxShadow: '0 2px 8px -2px rgba(20,184,166,0.5)',
+              }}
+              aria-label="Build Syllabus"
+              title="Build / Edit Syllabus"
+            >
+              <Sparkles size={15} />
+            </button>
+          )}
         </div>
 
         {/* Row 2: One-line summary — only show if there are lectures */}
@@ -438,13 +448,7 @@ export function SyllabusTab() {
           long-press action sheet (like Free Study + Daily Recall on Study tab).
           This saves vertical space in the Syllabus tab. */}
 
-      {reorderMode && (
-        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/30">
-          <GripVertical size={14} className="text-teal-500 shrink-0" />
-          <span className="text-xs text-teal-600 dark:text-teal-400 font-semibold flex-1">Drag chapters to reorder. Tap ✓ when done.</span>
-          <button onClick={() => { setReorderMode(false); vibrate(10); }} className="w-7 h-7 rounded-lg bg-teal-500 text-black flex items-center justify-center"><Check size={14} /></button>
-        </div>
-      )}
+      {/* Reorder mode banner removed — Done button is now in the header */}
 
       {subjects.length === 0 && (
         <div className="glass rounded-2xl p-10 text-center">
