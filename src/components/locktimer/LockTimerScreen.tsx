@@ -2,12 +2,16 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { useLockTimer, useLockTimerTick } from '@/lib/store/lockTimer';
 import { subjectColor } from '@/lib/colors';
 import { formatHM, vibrate } from '@/lib/utils';
+import { playSound } from '@/lib/sounds';
 
+// Premium easing curves for soothing motion
 const EASE_SMOOTH = [0.4, 0, 0.2, 1] as const;
+const EASE_OUT_QUART = [0.25, 1, 0.5, 1] as const;
+const EASE_IN_OUT_QUINT = [0.83, 0, 0.17, 1] as const;
 
 export function LockTimerScreen() {
   useLockTimerTick(); // re-renders every second
@@ -15,7 +19,6 @@ export function LockTimerScreen() {
   const isCompleted = useLockTimer((s) => s.isCompleted);
   const subject = useLockTimer((s) => s.subject);
   const chapter = useLockTimer((s) => s.chapter);
-  const topic = useLockTimer((s) => s.topic);
   const targetMinutes = useLockTimer((s) => s.targetMinutes);
   const cancel = useLockTimer((s) => s.cancel);
   const complete = useLockTimer((s) => s.complete);
@@ -25,7 +28,9 @@ export function LockTimerScreen() {
   const getProgressPct = useLockTimer((s) => s.getProgressPct);
 
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const lastTapRef = useRef(0);
+  const warned30Ref = useRef(false); // tracks if 30s warning has fired
 
   // Auto-complete when timer reaches 0
   useEffect(() => {
@@ -33,6 +38,24 @@ export function LockTimerScreen() {
       complete();
     }
   }, [isActive, getRemainingSec, complete]);
+
+  // === 30-second warning sound + vibration ===
+  // Fires once when remaining time crosses 30s.
+  // Works in foreground (playSound) + background (vibrate).
+  useEffect(() => {
+    if (!isActive) {
+      warned30Ref.current = false;
+      return;
+    }
+    const remaining = getRemainingSec();
+    if (remaining > 0 && remaining <= 30 && !warned30Ref.current) {
+      warned30Ref.current = true;
+      // Play sound (works if app is in foreground — AudioContext resumes)
+      try { playSound('test1min'); } catch {}
+      // Vibrate (works even if app is backgrounded on mobile)
+      vibrate([200, 100, 200, 100, 200]);
+    }
+  }, [isActive, getRemainingSec]);
 
   if (!isActive && !isCompleted) return null;
 
@@ -43,9 +66,11 @@ export function LockTimerScreen() {
   const remainingStr = formatHM(remainingSec);
   const totalSec = targetMinutes * 60;
   const elapsedStr = formatHM(elapsedSec);
+  const isUrgent = isActive && remainingSec <= 30 && remainingSec > 0;
 
   // Double-tap to cancel
   const handleTap = () => {
+    if (!isActive || isExiting) return;
     const now = Date.now();
     if (now - lastTapRef.current < 350) {
       vibrate([10, 30, 10]);
@@ -56,15 +81,18 @@ export function LockTimerScreen() {
 
   const handleCancelConfirm = () => {
     setShowCancelConfirm(false);
-    cancel();
+    setIsExiting(true);
+    setTimeout(() => cancel(), 400);
   };
 
   const handleDismissComplete = () => {
-    clear();
+    setIsExiting(true);
+    setTimeout(() => clear(), 400);
   };
 
-  // Background gradient — subject-colored
-  const bgGradient = `linear-gradient(180deg, ${color.hex}30 0%, ${color.hex}15 40%, var(--background) 100%)`;
+  // === Fully opaque background — NO app visible behind ===
+  // Two layers: solid dark base (100% opaque) + subject color overlay
+  const bgColor = isCompleted ? '#0a1a0e' : '#0a0b15';
 
   return (
     <AnimatePresence>
@@ -72,28 +100,64 @@ export function LockTimerScreen() {
         key="lock-timer-screen"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0, scale: 1.05, filter: 'blur(12px)' }}
-        transition={{ duration: 0.6, ease: EASE_SMOOTH }}
+        exit={{ opacity: 0, scale: 1.06, filter: 'blur(16px)' }}
+        transition={{ duration: 0.5, ease: EASE_SMOOTH }}
         className="fixed inset-0 z-[9998] overflow-hidden flex flex-col items-center justify-center"
-        style={{ background: bgGradient }}
-        onClick={isActive ? handleTap : undefined}
+        style={{
+          // Solid opaque base — no app showing through
+          background: bgColor,
+          willChange: 'transform, opacity',
+        }}
+        onClick={isActive && !isExiting ? handleTap : undefined}
       >
-        {/* Subject-colored ambient glow */}
+        {/* === Subject-colored gradient overlay (semi-transparent on opaque base) === */}
         <motion.div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `radial-gradient(ellipse at 50% 40%, ${color.hex}25 0%, transparent 60%)`,
+            background: `linear-gradient(180deg, ${color.hex}35 0%, ${color.hex}15 50%, ${color.hex}08 100%)`,
           }}
-          animate={{ opacity: [0.5, 0.8, 0.5] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, ease: EASE_SMOOTH }}
         />
 
-        {/* Subject label */}
+        {/* === Radial ambient glow (breathing) === */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse at 50% 35%, ${color.hex}30 0%, transparent 65%)`,
+          }}
+          animate={{
+            opacity: isUrgent ? [0.6, 1, 0.6] : [0.4, 0.7, 0.4],
+            scale: isUrgent ? [1, 1.05, 1] : [1, 1.02, 1],
+          }}
+          transition={{
+            duration: isUrgent ? 1 : 4,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        />
+
+        {/* === Urgent pulse overlay (last 30s) === */}
+        <AnimatePresence>
+          {isUrgent && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.15, 0] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: color.hex }}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* === Subject label — staggers in from top === */}
+        <motion.div
+          initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="text-center mb-2 z-10"
+          transition={{ delay: 0.2, duration: 0.7, ease: EASE_OUT_QUART }}
+          className="text-center mb-4 z-10 relative"
         >
           <div className="flex items-center justify-center gap-2 mb-1">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: color.hex }} />
@@ -106,23 +170,29 @@ export function LockTimerScreen() {
           )}
         </motion.div>
 
-        {/* Circular progress ring with countdown */}
-        <div className="relative z-10" style={{ width: 260, height: 260 }}>
+        {/* === Circular progress ring with countdown === */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.35, duration: 0.8, ease: EASE_OUT_QUART }}
+          className="relative z-10"
+          style={{ width: 260, height: 260 }}
+        >
           <svg width="260" height="260" viewBox="0 0 260 260" className="-rotate-90">
             {/* Track */}
-            <circle cx="130" cy="130" r="115" fill="none" stroke="var(--bar-track, rgba(255,255,255,0.08))" strokeWidth="8" />
-            {/* Progress — depletes as time runs out (starts full, goes to 0) */}
+            <circle cx="130" cy="130" r="115" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+            {/* Progress — depletes as time runs out */}
             <motion.circle
               cx="130" cy="130" r="115" fill="none"
-              stroke={color.hex}
+              stroke={isUrgent ? '#ef4444' : color.hex}
               strokeWidth="8"
               strokeLinecap="round"
-              initial={false}
+              initial={{ strokeDashoffset: 722.6 }}
               animate={{ strokeDashoffset: 722.6 - (722.6 * progressPct) / 100 }}
               transition={{ type: 'spring', stiffness: 60, damping: 20 }}
               style={{
                 strokeDasharray: 722.6,
-                filter: `drop-shadow(0 0 12px ${color.glow})`,
+                filter: `drop-shadow(0 0 12px ${isUrgent ? 'rgba(239,68,68,0.6)' : color.glow})`,
               }}
             />
           </svg>
@@ -132,18 +202,22 @@ export function LockTimerScreen() {
             {isActive ? (
               <>
                 <motion.div
-                  animate={{ scale: [1, 1.02, 1] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                  animate={isUrgent ? { scale: [1, 1.08, 1] } : { scale: [1, 1.02, 1] }}
+                  transition={{
+                    duration: isUrgent ? 1 : 4,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
                   className="text-6xl font-bold tabular"
                   style={{
-                    color: 'var(--foreground)',
-                    textShadow: `0 0 30px ${color.glow}`,
+                    color: isUrgent ? '#ef4444' : 'var(--foreground, #fff)',
+                    textShadow: `0 0 30px ${isUrgent ? 'rgba(239,68,68,0.5)' : color.glow}`,
                   }}
                 >
                   {remainingStr}
                 </motion.div>
-                <span className="text-[10px] uppercase tracking-widest mt-2" style={{ color: 'var(--muted-foreground)' }}>
-                  remaining
+                <span className="text-[10px] uppercase tracking-widest mt-2" style={{ color: 'var(--muted-foreground, rgba(255,255,255,0.5))' }}>
+                  {isUrgent ? '⚠ time ending' : 'remaining'}
                 </span>
               </>
             ) : (
@@ -152,43 +226,43 @@ export function LockTimerScreen() {
                 <motion.div
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 18 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.2 }}
                   className="text-5xl mb-2"
                   style={{ filter: `drop-shadow(0 0 20px ${color.glow})` }}
                 >
                   ✓
                 </motion.div>
-                <span className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>Complete!</span>
-                <span className="text-[11px] tabular mt-1" style={{ color: 'var(--muted-foreground)' }}>{elapsedStr} studied</span>
+                <span className="text-lg font-bold" style={{ color: 'var(--foreground, #fff)' }}>Complete!</span>
+                <span className="text-[11px] tabular mt-1" style={{ color: 'var(--muted-foreground, rgba(255,255,255,0.5))' }}>{elapsedStr} studied</span>
               </>
             )}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Stats below ring */}
+        {/* === Stats below ring — staggers in from bottom === */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-          className="flex items-center gap-4 mt-6 z-10"
+          transition={{ delay: 0.55, duration: 0.6, ease: EASE_OUT_QUART }}
+          className="flex items-center gap-4 mt-6 z-10 relative"
         >
           <div className="text-center">
-            <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--muted-foreground)' }}>Elapsed</div>
-            <div className="text-sm font-bold tabular" style={{ color: 'var(--foreground)' }}>{elapsedStr}</div>
+            <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--muted-foreground, rgba(255,255,255,0.4))' }}>Elapsed</div>
+            <div className="text-sm font-bold tabular" style={{ color: 'var(--foreground, #fff)' }}>{elapsedStr}</div>
           </div>
-          <div className="w-px h-8" style={{ background: 'var(--border)' }} />
+          <div className="w-px h-8" style={{ background: 'rgba(255,255,255,0.1)' }} />
           <div className="text-center">
-            <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--muted-foreground)' }}>Total</div>
+            <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--muted-foreground, rgba(255,255,255,0.4))' }}>Total</div>
             <div className="text-sm font-bold tabular" style={{ color: color.hex }}>{formatHM(totalSec)}</div>
           </div>
-          <div className="w-px h-8" style={{ background: 'var(--border)' }} />
+          <div className="w-px h-8" style={{ background: 'rgba(255,255,255,0.1)' }} />
           <div className="text-center">
-            <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--muted-foreground)' }}>Progress</div>
-            <div className="text-sm font-bold tabular" style={{ color: 'var(--foreground)' }}>{progressPct}%</div>
+            <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--muted-foreground, rgba(255,255,255,0.4))' }}>Progress</div>
+            <div className="text-sm font-bold tabular" style={{ color: 'var(--foreground, #fff)' }}>{progressPct}%</div>
           </div>
         </motion.div>
 
-        {/* Bottom hint / button */}
+        {/* === Bottom hint / button — fades in last === */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -198,8 +272,8 @@ export function LockTimerScreen() {
           {isActive ? (
             <div className="text-center">
               <div className="flex items-center justify-center gap-1.5 mb-3">
-                <Lock size={11} style={{ color: 'var(--muted-foreground)' }} />
-                <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted-foreground)' }}>
+                <Lock size={11} style={{ color: 'var(--muted-foreground, rgba(255,255,255,0.4))' }} />
+                <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted-foreground, rgba(255,255,255,0.4))' }}>
                   Locked In — double-tap to cancel
                 </span>
               </div>
@@ -207,16 +281,19 @@ export function LockTimerScreen() {
                 onClick={(e) => { e.stopPropagation(); vibrate([10, 30, 10]); setShowCancelConfirm(true); }}
                 className="px-5 py-2 rounded-xl text-[12px] font-bold border transition active:scale-95"
                 style={{
-                  borderColor: 'var(--border)',
-                  color: 'var(--muted-foreground)',
-                  background: 'var(--foreground/5, transparent)',
+                  borderColor: 'rgba(255,255,255,0.1)',
+                  color: 'var(--muted-foreground, rgba(255,255,255,0.5))',
+                  background: 'rgba(255,255,255,0.03)',
                 }}
               >
                 Cancel Early
               </button>
             </div>
           ) : (
-            <button
+            <motion.button
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 20 }}
               onClick={handleDismissComplete}
               className="px-8 py-3 rounded-xl text-[14px] font-bold text-white transition active:scale-95"
               style={{
@@ -225,11 +302,11 @@ export function LockTimerScreen() {
               }}
             >
               Done
-            </button>
+            </motion.button>
           )}
         </motion.div>
 
-        {/* Cancel confirmation modal */}
+        {/* === Cancel confirmation modal === */}
         <AnimatePresence>
           {showCancelConfirm && (
             <motion.div
@@ -245,16 +322,16 @@ export function LockTimerScreen() {
                 exit={{ scale: 0.9, y: 20 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 28 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-[300px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border shadow-2xl p-5"
-                style={{ background: 'var(--popover, rgba(20,22,30,0.96))' }}
+                className="w-[300px] max-w-[calc(100vw-2rem)] rounded-2xl border shadow-2xl p-5"
+                style={{ background: 'var(--popover, rgba(20,22,30,0.96))', borderColor: 'rgba(255,255,255,0.1)' }}
               >
                 <div className="flex items-start gap-3 mb-4">
                   <div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0">
-                    <X size={18} className="text-amber-500" />
+                    <Lock size={18} className="text-amber-500" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>Cancel Lock-In?</h3>
-                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                    <h3 className="text-sm font-bold" style={{ color: 'var(--foreground, #fff)' }}>Cancel Lock-In?</h3>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--muted-foreground, rgba(255,255,255,0.5))' }}>
                       <span className="font-bold tabular" style={{ color: color.hex }}>{elapsedStr}</span> will be counted as study time.
                     </p>
                   </div>
@@ -263,7 +340,7 @@ export function LockTimerScreen() {
                   <button
                     onClick={() => setShowCancelConfirm(false)}
                     className="flex-1 py-2.5 rounded-lg text-[12px] font-semibold transition active:scale-95"
-                    style={{ background: 'var(--foreground/5, rgba(255,255,255,0.05))', color: 'var(--foreground)' }}
+                    style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--foreground, #fff)' }}
                   >
                     Keep Studying
                   </button>
