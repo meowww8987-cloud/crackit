@@ -979,8 +979,11 @@ export function AppShell() {
       <SleepLockScreen />
 
       {/* === Lock-In Timer — full-screen countdown that cannot be paused.
+          Wrapped in AnimatePresence so entry/exit animations play.
           Survives app kills via persisted timestamps. Double-tap to cancel. === */}
-      <LockTimerScreen />
+      <AnimatePresence>
+        {(lockTimerActive || lockTimerCompleted) && <LockTimerScreen key="lock-timer-screen" />}
+      </AnimatePresence>
 
       {/* === Lock-In Timer Setup Sheet — opened from Study tab long-press === */}
       <AnimatePresence>
