@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff, PlayCircle, Brain, ChevronRight, Plus, Sigma, HelpCircle, Target, Trophy, ClipboardList, TrendingUp, Moon } from 'lucide-react';
+import { Home, BookOpen, GraduationCap, History, FileText, BarChart3, Settings as SettingsIcon, Eye, EyeOff, PlayCircle, Brain, ChevronRight, Plus, Sigma, HelpCircle, Target, Trophy, ClipboardList, TrendingUp, Moon, Timer } from 'lucide-react';
 import { useNav, type TabKey, TAB_ORDER } from '@/lib/store/nav';
 import { useSession } from '@/lib/store/session';
 import { cn, vibrate, todayKey, isRevisionOverdue } from '@/lib/utils';
@@ -18,6 +18,9 @@ import { StatsTab } from '@/components/tabs/StatsTab';
 import { SettingsTab } from '@/components/tabs/SettingsTab';
 import { ActiveRecallChallenge } from '@/components/recall/ActiveRecallChallenge';
 import { FreeStudyPicker } from '@/components/study/FreeStudyPicker';
+import { LockTimerSetup } from '@/components/locktimer/LockTimerSetup';
+import { LockTimerScreen } from '@/components/locktimer/LockTimerScreen';
+import { useLockTimer } from '@/lib/store/lockTimer';
 import { BuildSyllabusSheet } from '@/components/syllabus/BuildSyllabusSheet';
 import { FormulaVault } from '@/components/syllabus/FormulaVault';
 import { WeeklyGoalCard } from '@/components/home/WeeklyGoalCard';
@@ -101,6 +104,9 @@ export function AppShell() {
   const [navVisible, setNavVisible] = useState(true);
   const [showRecall, setShowRecall] = useState(false);
   const [showFreeStudy, setShowFreeStudy] = useState(false);
+  const [showLockTimerSetup, setShowLockTimerSetup] = useState(false);
+  const lockTimerActive = useLockTimer((s) => s.isActive);
+  const lockTimerCompleted = useLockTimer((s) => s.isCompleted);
   // New: unified long-press overlay for ALL tabs (home, study, syllabus, history, tests, stats)
   const [longPressTab, setLongPressTab] = useState<InfoTabKey | null>(null);
   // Tutorial info sheet — shown when user taps the ? button in the long-press overlay
@@ -741,7 +747,10 @@ export function AppShell() {
               } : null
             }
             thirdAction={
-              longPressTab === 'history' ? {
+              longPressTab === 'study' ? {
+                icon: Timer, label: 'Lock-In Timer', description: 'Countdown timer that cannot be paused — commit to focused study',
+                color: '#ef4444', onClick: () => { setLongPressTab(null); setShowLockTimerSetup(true); },
+              } : longPressTab === 'history' ? {
                 icon: BookOpen, label: 'Practice History', description: 'Per-question timing, wrong-question revision + concept notes',
                 color: '#3b82f6', onClick: () => { setLongPressTab(null); setShowPracticeHistory(true); },
               } : longPressTab === 'stats' ? {
@@ -966,11 +975,17 @@ export function AppShell() {
       {/* Tutorial Manager — shows coach marks when tutorialMode is ON */}
       <TutorialManager />
 
-      {/* === Sleep Lock Screen — full-screen immersive sleep mode.
-          When activeSleep is non-null, this covers the ENTIRE app with
-          a bluish night scene. Double-tap + solve a math problem to
-          wake up and unlock the app. === */}
+      {/* === Sleep Lock Screen — full-screen immersive sleep mode. === */}
       <SleepLockScreen />
+
+      {/* === Lock-In Timer — full-screen countdown that cannot be paused.
+          Survives app kills via persisted timestamps. Double-tap to cancel. === */}
+      <LockTimerScreen />
+
+      {/* === Lock-In Timer Setup Sheet — opened from Study tab long-press === */}
+      <AnimatePresence>
+        {showLockTimerSetup && <LockTimerSetup key="locktimer-setup" onClose={() => setShowLockTimerSetup(false)} />}
+      </AnimatePresence>
 
       {/* === Tutorial Onboarding — shown when user turns ON the Tutorial toggle.
           Teaches the user to long-press tabs. Covers everything EXCEPT the
