@@ -83,19 +83,35 @@ export function LockTimerScreen() {
   return (
     <motion.div
       key="lock-timer-root"
-      // === ENTRY: Radial reveal — opacity + scale from center ===
-      initial={{ opacity: 0, scale: 0.92 }}
-      animate={{ opacity: 1, scale: 1 }}
-      // === EXIT: Dissolve + blur + gentle zoom ===
-      exit={{ opacity: 0, scale: 1.06, filter: 'blur(16px)' }}
-      transition={{ duration: 0.6, ease: EASE_SMOOTH }}
+      // === ENTRY A — "Sunrise": radial circle expands from center ===
+      // The screen is clipped to a small circle at center, then grows to fill.
+      // Combined with opacity fade for smoothness.
+      initial={{
+        opacity: 0,
+        clipPath: 'circle(0% at 50% 50%)',
+      }}
+      animate={{
+        opacity: 1,
+        clipPath: 'circle(150% at 50% 50%)',
+      }}
+      // === EXIT 2 — "Shrink to center": scale down + fade ===
+      // The whole screen shrinks back into a dot at center.
+      exit={{
+        opacity: 0,
+        scale: 0.85,
+        clipPath: 'circle(0% at 50% 50%)',
+      }}
+      transition={{
+        duration: 0.7,
+        ease: EASE_SMOOTH,
+      }}
       className="fixed inset-0 z-[9998] overflow-hidden flex flex-col items-center justify-center"
       style={{
         // === Theme-aware opaque background ===
         // var(--background) is opaque in all themes (dark=#000, light=#fff, etc.)
         // No app shows through — fully solid base.
         background: 'var(--background, #0a0b15)',
-        willChange: 'transform, opacity',
+        willChange: 'transform, opacity, clip-path',
       }}
       onClick={isActive ? handleTap : undefined}
     >
@@ -107,7 +123,7 @@ export function LockTimerScreen() {
         }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, ease: EASE_SMOOTH, delay: 0.1 }}
+        transition={{ duration: 0.8, ease: EASE_SMOOTH, delay: 0.2 }}
       />
 
       {/* === Radial ambient glow (breathing) === */}
