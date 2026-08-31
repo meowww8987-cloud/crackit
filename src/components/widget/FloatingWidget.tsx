@@ -137,7 +137,6 @@ export function FloatingWidget() {
         style={{
           border: `2px solid ${borderColor}`,
           background: 'var(--card)',
-          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         }}
         className="rounded-2xl"
       >
