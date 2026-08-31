@@ -138,26 +138,19 @@ export function SleepLockScreen() {
   // Hold the last activeSleep so exit animations can play after wakeUp() is called.
   const [visibleSleep, setVisibleSleep] = useState(activeSleep);
   const [exiting, setExiting] = useState(false);
-  // Track whether the exit is from cancel (no redirect) vs wakeUp (redirect to Study)
-  const wasCancelledRef = useRef(false);
 
   useEffect(() => {
     if (activeSleep) {
       setVisibleSleep(activeSleep);
       setExiting(false);
-      wasCancelledRef.current = false;
     } else if (visibleSleep && !exiting) {
       setExiting(true);
       const t = setTimeout(() => {
         setVisibleSleep(null);
         setExiting(false);
         // === REDIRECT TO STUDY TAB after sleep ends ===
-        // Only redirect on wakeUp (natural end), NOT on cancel.
-        // Cancel means the user accidentally started sleep — they should
-        // stay on whatever tab they were on.
-        if (!wasCancelledRef.current) {
-          setTab('study');
-        }
+        // Always redirect — whether the user cancelled or woke up naturally.
+        setTab('study');
       }, 1400);
       return () => clearTimeout(t);
     }
@@ -301,7 +294,6 @@ export function SleepLockScreen() {
                 }}
                 onCancel={() => {
                   if (haptics) vibrate(15);
-                  wasCancelledRef.current = true;  // prevent redirect to Study tab
                   cancelSleep();
                 }}
               />
