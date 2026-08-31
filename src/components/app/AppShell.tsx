@@ -287,12 +287,31 @@ export function AppShell() {
 
   // ====== Tick loop ======
   // Single setInterval that calls tick() every second.
-  // tick() reads FRESH state from store — never closes over changing timestamps.
+  // PAUSED when document is hidden (tab switched / app backgrounded) to save battery.
   useEffect(() => {
-    const interval = setInterval(() => {
-      tick();
-    }, 1000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const start = () => {
+      if (interval) return;
+      interval = setInterval(() => tick(), 1000);
+    };
+    const stop = () => {
+      if (interval) { clearInterval(interval); interval = null; }
+    };
+
+    // Start/stop based on visibility
+    const handleVisibility = () => {
+      if (document.hidden) stop();
+      else start();
+    };
+
+    handleVisibility(); // initial state
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [tick]);
 
   // ====== Auto-detect tab switching / app backgrounding ======
@@ -436,7 +455,7 @@ export function AppShell() {
           Sits above the aurora but below the grid/noise/vignette overlays.
           Returns null when bg3DMode === 'off' (settings-controlled).
           PAUSED when FocusTimer is open (invisible behind black overlay). */}
-      {!focusOpen && !minimalMode && <Scene3D />}
+      {!focusOpen && !minimalMode && activeTab === 'home' && <Scene3D />}
 
       {/* Grid overlay for texture */}
       <div className="fixed inset-0 grid-bg pointer-events-none" style={{ zIndex: 1 }} />
@@ -789,7 +808,7 @@ export function AppShell() {
             className="fixed inset-0 z-[80] flex items-end justify-center"
             onClick={() => setShowFormulaVault(false)}
           >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/85" />
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
@@ -821,7 +840,7 @@ export function AppShell() {
             className="fixed inset-0 z-[80] flex items-end justify-center"
             onClick={() => setShowWeeklyGoals(false)}
           >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/85" />
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
@@ -851,7 +870,7 @@ export function AppShell() {
             className="fixed inset-0 z-[80] flex items-end justify-center"
             onClick={() => setShowTestHistory(false)}
           >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/85" />
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
@@ -881,7 +900,7 @@ export function AppShell() {
             className="fixed inset-0 z-[80] flex items-center justify-center p-4"
             onClick={() => setShowWeeklyReport(false)}
           >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/85" />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}

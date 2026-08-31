@@ -1,4 +1,5 @@
 'use client';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -129,6 +130,9 @@ export function SleepLockScreen() {
   const wakeUp = useSleep((s) => s.wakeUp);
   const cancelSleep = useSleep((s) => s.cancelSleep);
   const haptics = useSettings((s) => s.haptics);
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   const setTab = useNav((s) => s.setTab);
 
   const [phase, setPhase] = useState<Phase>('sleeping');

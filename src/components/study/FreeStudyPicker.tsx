@@ -34,7 +34,7 @@ export function FreeStudyPicker({ onClose }: Props) {
       className="fixed inset-0 z-[100] flex items-center justify-center p-6"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/85" />
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}

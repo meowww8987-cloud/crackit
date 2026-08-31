@@ -39,7 +39,7 @@ export function SleepLogSheet({ onClose }: Props) {
  return (
  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
  className="fixed inset-0 z-[60] flex items-end justify-center" onClick={onClose}>
- <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+ <div className="absolute inset-0 bg-black/85" />
  <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
  transition={{ type: 'spring', stiffness: 400, damping: 35 }} onClick={(e) => e.stopPropagation()}
  className="relative w-full max-w-md glass rounded-t-3xl max-h-[88vh] flex flex-col">

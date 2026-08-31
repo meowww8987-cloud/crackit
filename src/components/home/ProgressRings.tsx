@@ -624,7 +624,7 @@ function DayDetailPopup({ date, title, onClose }: { date: string; title: string;
       className="fixed inset-0 z-[110] flex items-end justify-center"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/85" />
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
@@ -744,7 +744,7 @@ function WeekDetailPopup({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-[110] flex items-end justify-center"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/85" />
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}

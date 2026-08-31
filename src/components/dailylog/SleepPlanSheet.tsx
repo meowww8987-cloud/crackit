@@ -32,7 +32,7 @@ export function SleepPlanSheet({ open, onClose }: SleepPlanSheetProps) {
  className="fixed inset-0 z-[100] flex items-end justify-center"
  onClick={onClose}
  >
- <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+ <div className="absolute inset-0 bg-black/85" />
  <motion.div
  initial={{ y: '100%' }}
  animate={{ y: 0 }}

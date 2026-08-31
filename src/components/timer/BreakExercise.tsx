@@ -69,7 +69,7 @@ export function BreakExercise({ durationSec, onClose }: Props) {
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] flex items-center justify-center p-4"
     >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/90" onClick={onClose} />
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}

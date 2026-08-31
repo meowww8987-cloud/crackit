@@ -852,7 +852,7 @@ export function FocusTimer() {
                 initial={{ opacity: 0, y: 20, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                className="absolute bottom-32 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/15 text-white text-xs font-semibold whitespace-nowrap z-50 pointer-events-none"
+                className="absolute bottom-32 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-xl bg-black/90 border border-white/15 text-white text-xs font-semibold whitespace-nowrap z-50 pointer-events-none"
               >
                 {lockToast}
               </motion.div>

@@ -121,7 +121,7 @@ export function DetailSheet({ target: initialTarget, onClose, onEdit }: Props) {
       className="fixed inset-0 z-[60] flex items-end justify-center"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/85" />
       <motion.div
         initial={{ y: '100%', scale: 0.92, opacity: 0 }}
         animate={{ y: 0, scale: 1, opacity: 1 }}

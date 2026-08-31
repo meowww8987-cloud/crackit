@@ -196,17 +196,26 @@ export function Scene3D() {
     };
     rebuildScene();
 
-    // Check for scene/theme changes every 500ms (cheap, doesn't block rAF)
-    const sceneCheckInterval = setInterval(rebuildScene, 500);
+    // Check for scene/theme changes every 2s (was 500ms — reduced for battery)
+    // Only runs when document is visible
+    const sceneCheckInterval = setInterval(() => {
+      if (!document.hidden) rebuildScene();
+    }, 2000);
 
     // ---- Render loop ----
     const baseTime = Date.now();
     let lastFrameTime = baseTime;
     let frame = 0;
     let running = true;
+    let rafId: number | null = null;
 
     const render = () => {
       if (!running) return;
+      // PAUSE rendering when tab is hidden — saves GPU + battery
+      if (document.hidden) {
+        rafId = requestAnimationFrame(render);
+        return;
+      }
       const now = Date.now();
       const time = (now - baseTime) / 1000;
       const dt = Math.min(0.1, (now - lastFrameTime) / 1000); // cap dt at 100ms

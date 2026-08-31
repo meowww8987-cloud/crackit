@@ -56,7 +56,7 @@ export function PairSheet({ onClose }: Props) {
       className="fixed inset-0 z-50 flex items-end justify-center"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/85" />
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}

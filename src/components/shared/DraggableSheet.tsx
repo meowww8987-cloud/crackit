@@ -53,7 +53,7 @@ export function DraggableSheet({ children, onClose, maxHeightPct = 92, className
       className="fixed inset-0 z-[60] flex items-end justify-center"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/85" />
       <motion.div
         ref={sheetRef}
         initial={{ y: '100%' }}

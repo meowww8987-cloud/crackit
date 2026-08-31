@@ -1240,7 +1240,7 @@ function AddFAB({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 z-[100] bg-black/80"
               onClick={onCloseQuickAdd}
             />
             <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">

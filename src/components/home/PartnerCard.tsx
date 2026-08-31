@@ -24,6 +24,7 @@ import { AnimatedCounter } from '@/components/partner/AnimatedCounter';
 // infinite loop ("getSnapshot should be cached"). Using a module-level
 // constant keeps the reference stable.
 import type { Target as TargetType } from '@/lib/types';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 const EMPTY_TARGETS: TargetType[] = [];
 
 /** Human-readable age from milliseconds — "5s", "3m", "2h", "1d". */
@@ -61,6 +62,9 @@ export function PartnerCard() {
   // the hook count changes and React silently fails to subscribe to practice
   // updates. This is why practice time wasn't showing on the partner card.
   const activePractice = usePractice((s) => s.activePractice);
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   // Reactive targets — select byDate (stable object reference) instead of
   // `byDate[today] || []` which creates a NEW array every render and causes
   // "getSnapshot should be cached" infinite loop. We derive the array below.
@@ -422,7 +426,7 @@ export function PartnerCard() {
                   <span className="inline-flex items-center gap-1">
                     <motion.span
                       animate={{ opacity: [0.4, 1, 0.4] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
+                      transition={{ duration: 1.5, repeat: animate ? Infinity : 0 }}
                       className="inline-block w-1.5 h-1.5 rounded-full"
                       style={{ background: '#16a34a' }}
                     />
@@ -511,7 +515,7 @@ export function PartnerCard() {
                           background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
                         }}
                         animate={{ x: ['-100%', '200%'] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                        transition={{ duration: 2, repeat: animate ? Infinity : 0, ease: 'linear' }}
                       />
                     </motion.div>
                     {/* Goal % marker */}
@@ -578,7 +582,7 @@ export function PartnerCard() {
                           background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
                         }}
                         animate={{ x: ['-100%', '200%'] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                        transition={{ duration: 2, repeat: animate ? Infinity : 0, ease: 'linear' }}
                       />
                     </motion.div>
                     <div className="absolute top-0 bottom-0 flex items-center" style={{ left: 'calc(100% - 0px)', transform: 'translateX(-100%)' }}>
@@ -615,7 +619,7 @@ export function PartnerCard() {
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.3)' }}>
                   <motion.span
                     animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
+                    transition={{ duration: 1.5, repeat: animate ? Infinity : 0 }}
                     className="inline-block w-1.5 h-1.5 rounded-full"
                     style={{ background: '#16a34a' }}
                   />
@@ -647,7 +651,7 @@ export function PartnerCard() {
               >
                 <motion.div
                   animate={{ scale: [1, 1.3, 1] }}
-                  transition={{ duration: 1, repeat: Infinity }}
+                  transition={{ duration: 1, repeat: animate ? Infinity : 0 }}
                   className="w-1.5 h-1.5 rounded-full shrink-0"
                   style={{ background: partnerIsPracticing ? '#2563eb' : '#16a34a' }}
                 />
@@ -755,7 +759,7 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-[60] flex items-end justify-center"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/85" />
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useHistory } from '@/lib/store/history';
 import { todayKey } from '@/lib/utils';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 interface Props {
   streak: number;
@@ -33,6 +34,10 @@ export function StreakFlame({ streak, className }: Props) {
   const [showCelebration, setShowCelebration] = useState(false);
   const prevStreakRef = useRef(streak);
   const sessions = useHistory((s) => s.sessions);
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  // Pause animations when tab hidden OR reduceMotion is on
+  const animate = isVisible && !reduceMotion;
 
   // Check if streak is at risk: past 6 PM and no study today
   useEffect(() => {
@@ -158,7 +163,7 @@ export function StreakFlame({ streak, className }: Props) {
         }
         transition={
           atRisk
-            ? { duration: 1, repeat: Infinity }
+            ? { duration: 1, repeat: animate ? Infinity : 0 }
             : { type: 'spring', stiffness: 400, damping: 20 }
         }
         onClick={() => setShowHistory(true)}
@@ -181,7 +186,7 @@ export function StreakFlame({ streak, className }: Props) {
           }
           transition={{
             duration: atRisk ? 2 : 0.8,
-            repeat: Infinity,
+            repeat: animate ? Infinity : 0,
             ease: 'easeInOut',
           }}
           style={{
@@ -271,7 +276,7 @@ export function StreakFlame({ streak, className }: Props) {
                 }}
                 transition={{
                   duration: 2,
-                  repeat: Infinity,
+                  repeat: animate ? Infinity : 0,
                   delay: i * 0.5,
                   ease: 'easeOut',
                 }}
@@ -424,7 +429,7 @@ function StreakHistoryPopup({
       className="fixed inset-0 z-[150] flex items-end justify-center"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/85" />
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}

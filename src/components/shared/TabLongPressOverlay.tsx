@@ -53,7 +53,7 @@ export function TabLongPressOverlay({ tab, topAction, bottomAction, thirdAction,
       className="fixed inset-0 z-[95] flex flex-col force-dark-ui"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+      <div className="absolute inset-0 bg-black/90" />
 
       {/* Close button — top-right, clearly visible.
           Single tap returns to the tab (closes the overlay). */}

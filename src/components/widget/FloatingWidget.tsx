@@ -1,4 +1,5 @@
 'use client';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, useMotionValue } from 'framer-motion';

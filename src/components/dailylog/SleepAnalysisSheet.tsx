@@ -56,7 +56,7 @@ export function SleepAnalysisSheet({ open, onClose, initialTab = 'weekly' }: Sle
  className="fixed inset-0 z-[100] flex items-end justify-center"
  onClick={onClose}
  >
- <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+ <div className="absolute inset-0 bg-black/90" />
  <motion.div
  initial={{ y: '100%' }}
  animate={{ y: 0 }}

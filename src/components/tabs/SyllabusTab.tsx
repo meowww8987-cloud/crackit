@@ -311,7 +311,7 @@ export function SyllabusTab() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[10001] bg-black/80"
             onClick={() => setShowHeaderMenu(false)}
           />
           <motion.div
@@ -915,7 +915,7 @@ function FilterPill({ active, onClick, children, color, small, count }: { active
 
 function FormulaVaultInline({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] bg-black/85 flex items-end justify-center" onClick={onClose}>
       <div className="w-full max-w-md max-h-[80vh] overflow-y-auto glass-strong rounded-t-3xl p-5 pb-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold">Formula Vault</h2><button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">✕</button></div>
         <FormulaVault />
@@ -984,7 +984,7 @@ function ChapterActionsModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-[10001] bg-black/80"
         onClick={onClose}
       />
       {/* Centered modal wrapper — flexbox centering is more reliable than
@@ -1104,7 +1104,7 @@ function ChapterActionsModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[10003] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[10003] bg-black/85 flex items-center justify-center p-4"
           onClick={() => setShowDeleteConfirm(false)}
         >
           <motion.div

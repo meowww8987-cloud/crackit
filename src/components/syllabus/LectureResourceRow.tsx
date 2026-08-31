@@ -455,7 +455,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[10001] bg-black/80"
             onClick={() => setShowActions(false)}
           />
           <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
@@ -664,7 +664,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[10001] bg-black/80"
             onClick={() => setShowAddToday(false)}
           />
           <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
@@ -752,7 +752,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[10001] bg-black/80"
             onClick={() => setShowResourceAdd(null)}
           />
           <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
@@ -821,7 +821,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10003] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[10003] bg-black/80"
             onClick={() => setShowDeleteConfirm(false)}
           />
           <div className="fixed inset-0 z-[10004] flex items-center justify-center p-4 pointer-events-none">

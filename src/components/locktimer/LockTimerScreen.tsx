@@ -1,4 +1,5 @@
 'use client';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -15,6 +16,9 @@ const EASE_OUT_QUART = [0.25, 1, 0.5, 1] as const;
 export function LockTimerScreen() {
   useLockTimerTick(); // re-renders every second
   const isActive = useLockTimer((s) => s.isActive);
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   const isCompleted = useLockTimer((s) => s.isCompleted);
   const subject = useLockTimer((s) => s.subject);
   const chapter = useLockTimer((s) => s.chapter);
@@ -138,7 +142,7 @@ export function LockTimerScreen() {
         }}
         transition={{
           duration: isUrgent ? 1 : 4,
-          repeat: Infinity,
+          repeat: animate ? Infinity : 0,
           ease: 'easeInOut',
         }}
       />
@@ -148,7 +152,7 @@ export function LockTimerScreen() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 0.12, 0] }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 1, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
           className="absolute inset-0 pointer-events-none"
           style={{ background: color.hex }}
         />
@@ -207,7 +211,7 @@ export function LockTimerScreen() {
                 animate={isUrgent ? { scale: [1, 1.08, 1] } : { scale: [1, 1.02, 1] }}
                 transition={{
                   duration: isUrgent ? 1 : 4,
-                  repeat: Infinity,
+                  repeat: animate ? Infinity : 0,
                   ease: 'easeInOut',
                 }}
                 className="text-6xl font-bold tabular"
@@ -314,7 +318,7 @@ export function LockTimerScreen() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[10001] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[10001] bg-black/85 flex items-center justify-center p-4"
           onClick={() => setShowCancelConfirm(false)}
         >
           <motion.div
