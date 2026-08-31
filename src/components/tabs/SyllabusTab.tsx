@@ -91,27 +91,30 @@ export function SyllabusTab() {
   const todayTargets = useTargets((s) => s.byDate[todayKey()] || EMPTY_TARGETS);
   const activeSession = useSession((s) => s.active);
 
-  const doneCount = lectures.filter((l) => l.done).length;
-  const studyingCount = lectures.filter((l) => {
+  // FIXED: All these .filter() calls ran on EVERY render (even when lectures
+  // hadn't changed). With 100 lectures, that's 500+ checks per render.
+  // Now memoized — only recompute when lectures array actually changes.
+  const doneCount = useMemo(() => lectures.filter((l) => l.done).length, [lectures]);
+  const studyingCount = useMemo(() => lectures.filter((l) => {
     const res = [l.done, l.dppDone, l.notesDone, l.revisionDone].filter(Boolean).length;
     return res > 0 && res < 4;
-  }).length;
-  const nextCount = lectures.filter((l) => {
+  }).length, [lectures]);
+  const nextCount = useMemo(() => lectures.filter((l) => {
     const res = [l.done, l.dppDone, l.notesDone, l.revisionDone].filter(Boolean).length;
     return res === 0;
-  }).length;
-  const overdueCount = lectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt)).length;
+  }).length, [lectures]);
+  const overdueCount = useMemo(() => lectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt)).length, [lectures]);
 
   // === Header stats ===
   const totalLectures = lectures.length;
   const overallPct = totalLectures > 0 ? Math.round((doneCount / totalLectures) * 100) : 0;
   const todayKeyStr = todayKey();
-  const doneTodayCount = lectures.filter((l) => {
+  const doneTodayCount = useMemo(() => lectures.filter((l) => {
     if (!l.doneDate) return false;
     const d = new Date(l.doneDate);
     const dKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return dKey === todayKeyStr;
-  }).length;
+  }).length, [lectures, todayKeyStr]);
   const overallPctColor = overallPct >= 70 ? '#22c55e' : overallPct >= 30 ? '#f59e0b' : '#ef4444';
 
   // === Filter bar stats ===
@@ -1150,6 +1153,8 @@ function ChapterActionsModal({
 
 // Keep ChapterContextMenu as a thin wrapper for backward compatibility
 function ChapterContextMenu({ chapter, onClose }: { chapter: Chapter; onClose: () => void }) {
+  // FIXED: .find() in selector is fine — returns the same object reference
+  // if the subjects array hasn't changed. Zustand compares by reference.
   const subj = useSyllabus((s) => s.subjects.find((su) => su.id === chapter.subjectId));
   const color = subjectColor(subj?.name || 'General');
   return <ChapterActionsModal chapter={chapter} color={color} onClose={onClose} />;

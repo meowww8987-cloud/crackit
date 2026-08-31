@@ -46,7 +46,9 @@ export function HistoryTab() {
     return map;
   }, [timeline]);
 
-  const dates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+  // FIXED: dates array was created on every render via Object.keys().sort()
+  // Now memoized — only recomputes when groups change.
+  const dates = useMemo(() => Object.keys(groups).sort((a, b) => b.localeCompare(a)), [groups]);
 
   return (
     <div className="pt-2 pb-4 space-y-4">
