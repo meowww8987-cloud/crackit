@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Moon, Zap, X, Bed, Sunrise } from 'lucide-react';
 import { useDailyLog } from '@/lib/store/dailyLog';
@@ -14,9 +14,15 @@ export function SleepLogSheet({ onClose }: Props) {
  const [sleepHours, setSleepHours] = useState(7);
  const [energyLevel, setEnergyLevel] = useState(3);
 
- // Real sleep data from the new sleep store
+ // FIXED: Subscribe to raw history + compute average in useMemo.
+ // Previous: useSleep((s) => s.getAverageHours(7)) — called a function
+ // in the selector, creating a new value every render.
  const sleepHistory = useSleep((s) => s.history);
- const avgHours = useSleep((s) => s.getAverageHours(7));
+ const avgHours = useMemo(() => {
+   if (sleepHistory.length === 0) return 0;
+   const last7 = sleepHistory.slice(0, 7);
+   return last7.reduce((a, s) => a + (s.durationSec || 0), 0) / 3600 / Math.min(7, last7.length);
+ }, [sleepHistory]);
 
  // Build last 7 days view
  const last7Days = Array.from({ length: 7 }, (_, i) => {

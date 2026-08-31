@@ -115,7 +115,8 @@ export function LockTimerScreen() {
         // var(--background) is opaque in all themes (dark=#000, light=#fff, etc.)
         // No app shows through — fully solid base.
         background: 'var(--background, #0a0b15)',
-        willChange: 'transform, opacity, clip-path',
+        // willChange removed — only needed during active animation,
+        // modern browsers handle it automatically
       }}
       onClick={isActive ? handleTap : undefined}
     >

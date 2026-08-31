@@ -446,7 +446,8 @@ export function TargetCard({
         transitionProperty: 'border-color, box-shadow, background-color, filter',
         transitionDuration: '300ms',
         transitionTimingFunction: 'ease-out',
-        willChange: 'transform',
+        // willChange removed — modern browsers handle GPU promotion
+        // automatically. Permanent willChange wastes memory.
         borderColor: flashGreen
           ? '#22c55e'
           : isThisActive

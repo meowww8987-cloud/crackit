@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, X, Bell, Wifi, WifiOff, Send, Unlink, ChevronRight } from 'lucide-react';
 import { usePartner } from '@/lib/store/partner';
@@ -13,7 +13,14 @@ export function PartnerCard() {
   const { partner, partnerStatus, shareChapter, setShareChapter, unpair, sendNudge, myName } = usePartner();
   const [showSheet, setShowSheet] = useState(false);
   const [showPair, setShowPair] = useState(false);
-  const myTodaySec = useHistory((s) => s.getTodayStudySeconds());
+  // FIXED: Subscribe to raw sessions array + compute in useMemo.
+  // Previous code: useHistory((s) => s.getTodayStudySeconds()) — called
+  // a function in the selector, creating a new value every render.
+  const allSessions = useHistory((s) => s.sessions);
+  const myTodaySec = useMemo(() => {
+    const today = todayKey();
+    return allSessions.filter(s => s.date === today).reduce((a, s) => a + s.studySeconds, 0);
+  }, [allSessions]);
 
   if (!partner) {
     return (

@@ -523,15 +523,29 @@ function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
   onOpenReport: () => void;
   onOpenPlan: () => void;
 }) {
-  const todayLog = useDailyLog((s) => s.getToday());
-  const pendingDoubts = useDoubts((s) => s.getPendingCount());
-  const resolvedDoubts = useDoubts((s) => s.doubts.filter(d => d.status === 'resolved').length);
-  const todaySleepSec = useSleep((s) => s.getDurationForDate(todayKey()));
-  const avgSleepHours = useSleep((s) => s.getAverageHours(7));
+  // FIXED: Subscribe to raw data (stable references) + compute derived values
+  // in useMemo. Previous code called s.getToday(), s.getDurationForDate(),
+  // s.getAverageHours(), s.doubts.filter() in the selector — these create
+  // NEW values on every render, causing excessive re-renders.
+  const dailyLogState = useDailyLog((s) => s);
+  const todayLog = useMemo(() => dailyLogState.getToday(), [dailyLogState]);
+  const allDoubts = useDoubts((s) => s.doubts);
+  const pendingDoubts = useMemo(() => allDoubts.filter(d => d.status === 'pending').length, [allDoubts]);
+  const resolvedDoubts = useMemo(() => allDoubts.filter(d => d.status === 'resolved').length, [allDoubts]);
   const sleepHistory = useSleep((s) => s.history);
   const activeSleep = useSleep((s) => s.activeSleep);
   const setEnergy = useDailyLog((s) => s.setEnergy);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const todaySleepSec = useMemo(() => {
+    const today = todayKey();
+    return sleepHistory.filter(s => s.date === today).reduce((a, s) => a + (s.durationSec || 0), 0);
+  }, [sleepHistory]);
+  const avgSleepHours = useMemo(() => {
+    if (sleepHistory.length === 0) return 0;
+    const last7 = sleepHistory.slice(0, 7);
+    return last7.reduce((a, s) => a + (s.durationSec || 0), 0) / 3600 / Math.min(7, last7.length);
+  }, [sleepHistory]);
 
   const todaySleepHours = todaySleepSec / 3600;
   const hasTodaySleep = todaySleepSec > 0;
