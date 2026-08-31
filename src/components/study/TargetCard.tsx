@@ -74,9 +74,6 @@ export function TargetCard({
   const haptics = useSettings((s) => s.haptics);
   const reduceAnimations = useSettings((s) => s.reduceAnimations);
   const animationIntensity = useSettings((s) => s.animationIntensity);
-  // Only animate the ACTIVE card — inactive cards use static styles.
-  // This prevents 50 infinite animations when 10 cards are visible.
-  const allowAnim = isThisActive && !reduceAnimations;
 
   const [celebrate, setCelebrate] = useState(false);
   const [flashGreen, setFlashGreen] = useState(false);
@@ -93,6 +90,8 @@ export function TargetCard({
 
   const isThisActive = active?.targetId === target.id;
   const isAnyActive = active !== null && !isThisActive;
+  // Only animate the ACTIVE card — prevents 50 infinite animations with 10 cards
+  const allowAnim = isThisActive && !reduceAnimations;
   const sessionState = isThisActive
     ? active!.paused
       ? 'paused'
