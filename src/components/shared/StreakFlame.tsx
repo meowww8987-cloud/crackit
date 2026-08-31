@@ -276,7 +276,7 @@ export function StreakFlame({ streak, className }: Props) {
                 }}
                 transition={{
                   duration: 2,
-                  repeat: animate ? Infinity : 0,
+                  repeat: 0, // Disabled — sparkles are static (saves GPU)
                   delay: i * 0.5,
                   ease: 'easeOut',
                 }}

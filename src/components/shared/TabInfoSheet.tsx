@@ -168,7 +168,7 @@ export function TabInfoSheet({ tab, onClose }: { tab: TabKey; onClose: () => voi
         className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[85vh] flex flex-col"
       >
         <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+          <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-3" />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <HelpCircle size={18} className="text-teal-400" />
@@ -177,7 +177,7 @@ export function TabInfoSheet({ tab, onClose }: { tab: TabKey; onClose: () => voi
                 <p className="text-[10px] text-t-muted">{info.subtitle}</p>
               </div>
             </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition">
+            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition">
               <X size={16} />
             </button>
           </div>

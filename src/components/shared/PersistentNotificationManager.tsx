@@ -72,8 +72,10 @@ export function PersistentNotificationManager() {
     };
     update();
 
-    // Tick every 60s for live timer
-    const interval = setInterval(update, UPDATE_INTERVAL_MS);
+    // Tick every 60s for live timer — skip when tab hidden (saves CPU)
+    const interval = setInterval(() => {
+      if (!document.hidden) update();
+    }, UPDATE_INTERVAL_MS);
 
     // Listen for NOTIF_ACTION messages from the SW.
     // Only 2 actions exist now: 'sleep' (start sleep) and 'wake' (no-op —

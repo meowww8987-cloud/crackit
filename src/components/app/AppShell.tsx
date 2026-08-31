@@ -131,7 +131,11 @@ export function AppShell() {
   const [showPracticeHistory, setShowPracticeHistory] = useState(false);
   const [activePaperTestId, setActivePaperTestId] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
+  // Skip splash after first launch in this session (sessionStorage)
+  const [showSplash, setShowSplash] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !sessionStorage.getItem('splash-seen');
+  });
   // === Drag-from-Syllabus-to-Study state ===
   const draggedLectureId = useDragState((s) => s.draggedLectureId);
   const isOverStudyTab = useDragState((s) => s.isOverStudyTab);
@@ -435,7 +439,10 @@ export function AppShell() {
       {/* 3D Splash screen — shown on first mount, fades out after ~1.8s.
           Displays rotating atom + NEET 2027 countdown. */}
       {/* === Random Splash Screen — picks one of 5 animations on each launch === */}
-      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+      {showSplash && <SplashScreen onDone={() => {
+        sessionStorage.setItem('splash-seen', '1');
+        setShowSplash(false);
+      }} />}
 
       {/* Aurora 2.0 — animated multi-layer gradient background with parallax
           depth + subject-aware brightness boost when a session is running.

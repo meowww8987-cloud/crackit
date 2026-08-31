@@ -230,8 +230,10 @@ export function SmartNotifications() {
     // on quick glances where the user is already looking at the app.
     startupTimerRef.current = setTimeout(() => {
       checkAndNotify();
-      // Then check every 1 hour (was 15 min — too aggressive for mobile).
-      checkIntervalRef.current = setInterval(checkAndNotify, 60 * 60 * 1000);
+      // Then check every 1 hour — skip when tab hidden (saves CPU)
+      checkIntervalRef.current = setInterval(() => {
+        if (!document.hidden) checkAndNotify();
+      }, 60 * 60 * 1000);
     }, 2 * 60 * 1000);
 
     return () => {

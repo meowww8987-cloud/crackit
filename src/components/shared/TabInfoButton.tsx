@@ -167,7 +167,7 @@ export function TabInfoButton({ tab }: Props) {
       {/* Floating info button — bottom-right, above the nav */}
       <button
         onClick={() => { vibrate(10); setOpen(true); }}
-        className="fixed bottom-24 right-4 z-30 w-10 h-10 rounded-full glass flex items-center justify-center text-t-secondary hover:text-t-primary hover:bg-white/10 transition shadow-lg active:scale-90"
+        className="fixed bottom-24 right-4 z-30 w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition shadow-lg active:scale-90"
         aria-label={`${info.title} info + hidden features`}
         title={`${info.title} info + hidden features`}
       >
@@ -195,7 +195,7 @@ export function TabInfoButton({ tab }: Props) {
             >
               {/* Header */}
               <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+                <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-3" />
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <HelpCircle size={18} className="text-teal-400" />
@@ -204,7 +204,7 @@ export function TabInfoButton({ tab }: Props) {
                       <p className="text-[10px] text-t-muted">{info.subtitle}</p>
                     </div>
                   </div>
-                  <button onClick={() => setOpen(false)} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition">
+                  <button onClick={() => setOpen(false)} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition">
                     <X size={16} />
                   </button>
                 </div>

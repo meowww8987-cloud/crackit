@@ -32,7 +32,8 @@ export function FloatingWidget() {
     return () => clearInterval(i);
   }, [widgetHidden]);
 
-  if (!active) return null;
+  // Early return when not needed — prevents all computations + rendering
+  if (!active || widgetHidden) return null;
 
   const color = subjectColor(active.subject);
   const studySec = getLiveStudySeconds(active);
