@@ -255,11 +255,13 @@ export function AppShell() {
     window.addEventListener('popstate', onPopState);
 
     // Periodically ensure there's always a dummy state on the stack
+    // Only when visible — no need to check when backgrounded
     const ensureState = setInterval(() => {
+      if (document.hidden) return;
       if (window.history.state?.app !== true) {
         window.history.pushState({ app: true }, '');
       }
-    }, 5000);
+    }, 10000); // 10s (was 5s) — less frequent checks
 
     return () => {
       window.removeEventListener('popstate', onPopState);

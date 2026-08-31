@@ -1129,7 +1129,7 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
                       <div className="text-[11px] text-white/70 mb-1">📝 {q.note}</div>
                     )}
                     {q.photo && (
-                      <img src={q.photo} alt={`Q${q.number}`} className="w-full max-h-32 object-contain rounded-md" />
+                      <img src={q.photo} alt={`Q${q.number}`} loading="lazy" className="w-full max-h-32 object-contain rounded-md" />
                     )}
                   </button>
                 );

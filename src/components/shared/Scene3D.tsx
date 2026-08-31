@@ -208,11 +208,22 @@ export function Scene3D() {
     let frame = 0;
     let running = true;
     let rafId: number | null = null;
+    let isScrolling = false;
+    let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    // Detect scrolling — pause 3D during scroll for smooth performance
+    const handleScroll = () => {
+      isScrolling = true;
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      // Resume 200ms after scrolling stops
+      scrollTimeout = setTimeout(() => { isScrolling = false; }, 200);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
 
     const render = () => {
       if (!running) return;
-      // PAUSE rendering when tab is hidden — saves GPU + battery
-      if (document.hidden) {
+      // PAUSE rendering when tab is hidden OR user is scrolling — saves GPU
+      if (document.hidden || isScrolling) {
         rafId = requestAnimationFrame(render);
         return;
       }
@@ -323,12 +334,14 @@ export function Scene3D() {
     return () => {
       running = false;
       window.removeEventListener('resize', resize);
+      window.removeEventListener('scroll', handleScroll, { capture: true } as EventListenerOptions);
       document.removeEventListener('visibilitychange', onVisibility);
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('pointermove', onPointerMove);
       document.removeEventListener('pointerup', onPointerUp);
       document.removeEventListener('pointercancel', onPointerUp);
       clearInterval(sceneCheckInterval);
+      if (scrollTimeout) clearTimeout(scrollTimeout);
       if (frame) cancelAnimationFrame(frame);
     };
   }, [mounted]);

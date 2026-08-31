@@ -76,7 +76,9 @@ export function HomeTab() {
     // Only tick when there's a live activity (focus session OR practice).
     // When idle, no need to re-render every second.
     if (!activeFocusSession && !activePractice) return;
-    const i = setInterval(() => setLiveTick((t) => t + 1), 1000);
+    // 3-second tick for passive displays (progress rings, stats) — saves CPU
+    // Active timers (FocusTimer, LockTimer) have their own 1s tick.
+    const i = setInterval(() => setLiveTick((t) => t + 1), 3000);
     return () => clearInterval(i);
   }, [activeFocusSession, activePractice]);
 

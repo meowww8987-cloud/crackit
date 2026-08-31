@@ -126,7 +126,8 @@ export function StudyTab() {
   const [, setLiveTick] = useState(0);
   useEffect(() => {
     if (!activeFocusSession && !activePractice) return;
-    const i = setInterval(() => setLiveTick((t) => t + 1), 1000);
+    // 3-second tick — the progress card doesn't need second-by-second updates
+    const i = setInterval(() => setLiveTick((t) => t + 1), 3000);
     return () => clearInterval(i);
   }, [activeFocusSession, activePractice]);
 
