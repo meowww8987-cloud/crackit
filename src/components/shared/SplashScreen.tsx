@@ -32,7 +32,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     const steps = 30;
     const stepValue = (start - end) / steps;
     let current = start;
-    const interval = setInterval(() => {
+    const interval = setInterval(() => { if (!document.hidden) 
       current -= stepValue;
       if (current <= end) {
         setDisplayNum(end);

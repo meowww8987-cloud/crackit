@@ -178,7 +178,6 @@ export function TestTimer({ testId, onClose }: Props) {
               className="px-6 py-3 rounded-2xl text-center"
               style={{
                 background: 'rgba(255,255,255,0.08)',
-                backdropFilter: 'blur(20px)',
                 border: '1px solid rgba(255,255,255,0.15)',
               }}
             >
@@ -267,7 +266,7 @@ export function TestTimer({ testId, onClose }: Props) {
           <>
             <button
               onClick={handlePause}
-              className="w-full py-4 rounded-2xl font-bold text-base bg-amber-500/20 text-amber-300 backdrop-blur-md active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl font-bold text-base bg-amber-500/20 text-amber-300  active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <Pause size={20} fill="currentColor" /> Pause
             </button>

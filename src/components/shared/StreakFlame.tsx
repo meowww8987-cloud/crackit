@@ -51,7 +51,7 @@ export function StreakFlame({ streak, className }: Props) {
       setAtRisk(hour >= 18 && !studiedToday && streak > 0);
     };
     check();
-    const interval = setInterval(check, 60000);
+    const interval = setInterval(() => { if (!document.hidden) check(); }, 60000);
     return () => clearInterval(interval);
   }, [sessions, streak]);
 

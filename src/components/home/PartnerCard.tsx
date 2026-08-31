@@ -156,7 +156,7 @@ export function PartnerCard() {
   const _iAmLive = (!!myActiveSession && !myActiveSession.paused) || !!usePractice.getState().activePractice;
   const _tickIntervalMs = (_partnerLive || _iAmLive) ? 1_000 : 5_000;
   useEffect(() => {
-    const t = setInterval(() => setTick((x) => x + 1), _tickIntervalMs);
+    const t = setInterval(() => { if (!document.hidden) setTick((x) => x + 1); }, _tickIntervalMs);
     return () => clearInterval(t);
   }, [_tickIntervalMs]);
 

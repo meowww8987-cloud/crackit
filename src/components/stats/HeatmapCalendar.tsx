@@ -444,7 +444,7 @@ function DayDetailPopup({
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] flex items-center justify-center p-4"
       onClick={onClose}
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.7)' }}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0, y: 20 }}

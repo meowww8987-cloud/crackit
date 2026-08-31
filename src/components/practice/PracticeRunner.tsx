@@ -691,7 +691,7 @@ function PracticeMenu({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 z-[10000] backdrop-blur-md"
+        className="fixed inset-0 z-[10000] "
         style={{ background: 'rgba(0,0,0,0.75)' }}
       />
       {/* Menu sheet — inline style bg so guaranteed dark on ALL themes */}

@@ -91,7 +91,7 @@ export function Tutorial({ tutorialKey, steps, onComplete, children }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[9998] flex items-center justify-center px-6"
-            style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }}
+            style={{ background: 'rgba(0,0,0,0.85)' }}
             onClick={handleSkip}
           >
             <motion.div

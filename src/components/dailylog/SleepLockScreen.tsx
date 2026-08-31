@@ -510,7 +510,7 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
       <motion.div
         animate={status === 'wrong' ? { x: [0, -10, 10, -8, 8, 0] } : {}}
         transition={{ duration: 0.4 }}
-        className="w-full rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-5 mb-4 text-center"
+        className="w-full rounded-2xl bg-white/10  border border-white/20 p-5 mb-4 text-center"
       >
         <div className="text-3xl font-bold tabular text-white mb-3">{problem.question} = ?</div>
         <input
@@ -686,7 +686,7 @@ function QualityPhase({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.6, ease: EASE_OUT_QUART }}
-        className="rounded-2xl bg-white/8 backdrop-blur-md border border-white/15 p-3 mb-4"
+        className="rounded-2xl bg-white/8  border border-white/15 p-3 mb-4"
       >
         {/* Time range: bed → wake */}
         <div className="flex items-center justify-between mb-2.5 text-[11px]">
@@ -744,7 +744,7 @@ function QualityPhase({
             whileHover={{ scale: 1.08, y: -4 }}
             whileTap={{ scale: 0.92 }}
             onClick={() => onSelect(opt.q)}
-            className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 hover:bg-white/20 transition"
+            className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl bg-white/10  border border-white/15 hover:bg-white/20 transition"
             style={{ borderBottom: `3px solid ${opt.color}` }}
           >
             <span className="text-2xl">{opt.emoji}</span>

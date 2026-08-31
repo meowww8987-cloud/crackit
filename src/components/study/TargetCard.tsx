@@ -74,6 +74,9 @@ export function TargetCard({
   const haptics = useSettings((s) => s.haptics);
   const reduceAnimations = useSettings((s) => s.reduceAnimations);
   const animationIntensity = useSettings((s) => s.animationIntensity);
+  // Only animate the ACTIVE card — inactive cards use static styles.
+  // This prevents 50 infinite animations when 10 cards are visible.
+  const allowAnim = isThisActive && !reduceAnimations;
 
   const [celebrate, setCelebrate] = useState(false);
   const [flashGreen, setFlashGreen] = useState(false);
@@ -369,12 +372,12 @@ export function TargetCard({
   // Celebrate (1.03) takes priority over breathing
   const breathingScale = celebrate && !reduceAnimations
     ? 1.03
-    : sessionState === 'studying' && !reduceAnimations
+    : allowAnim
     ? [1, 1.015, 1]
     : 1;
 
   // Status-based card lift — studying cards lift up slightly for emphasis
-  const cardLiftY = sessionState === 'studying' && !reduceAnimations ? -2 : 0;
+  const cardLiftY = allowAnim ? -2 : 0;
 
   // Wasting tilt — card tilts -1deg to feel "off"
   const cardRotate = sessionState === 'wasting' && !reduceAnimations ? -1 : 0;
@@ -434,8 +437,8 @@ export function TargetCard({
         damping: 35,
         mass: 0.6,
         // For breathing, use smoother timing
-        ...(sessionState === 'studying' && !reduceAnimations
-          ? { duration: 4, repeat: Infinity, ease: 'easeInOut' }
+        ...(allowAnim
+          ? { duration: 4, repeat: allowAnim ? Infinity : 0, ease: 'easeInOut' }
           : {}),
         }}
       className={cn(
@@ -756,7 +759,7 @@ export function TargetCard({
                     }}
                     transition={{
                       duration: sessionState === 'studying' ? 2 : 4,
-                      repeat: Infinity,
+                      repeat: allowAnim ? Infinity : 0,
                       ease: 'easeInOut',
                     }}
                   />
@@ -764,7 +767,7 @@ export function TargetCard({
               )}
 
               {/* Shimmer overlay — only when actively studying */}
-              {sessionState === 'studying' && !reduceAnimations && (
+              {allowAnim && (
                 <motion.div
                   className="absolute inset-0"
                   style={{
@@ -772,7 +775,7 @@ export function TargetCard({
                     backgroundSize: '200% 100%',
                   }}
                   animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }}
+                  transition={{ duration: 1.8, repeat: allowAnim ? Infinity : 0, ease: 'linear' }}
                 />
               )}
 
@@ -781,7 +784,7 @@ export function TargetCard({
                 <motion.div
                   className="absolute inset-0 flex items-center justify-center"
                   animate={{ opacity: [0.3, 0.8, 0.3] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                  transition={{ duration: 1.5, repeat: allowAnim ? Infinity : 0, ease: 'easeInOut' }}
                   style={{ fontSize: 8 }}
                 >
                   ✨
@@ -862,7 +865,7 @@ export function TargetCard({
           {liveWasted > 0 && (
             <motion.span
               animate={wastedOverThreshold && !reduceAnimations ? { scale: [1, 1.1, 1] } : {}}
-              transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+              transition={{ duration: 1.2, repeat: allowAnim ? Infinity : 0, ease: 'easeInOut' }}
               className={cn(
                 'text-[10px] tabular flex items-center gap-0.5',
                 wastedOverThreshold ? 'text-red-400 font-bold' : 'text-red-400/80'
@@ -1031,7 +1034,6 @@ export function TargetCard({
               className="w-[280px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
               style={{
                 background: 'var(--popover, rgba(20, 22, 30, 0.96))',
-                backdropFilter: 'blur(6px)',
                 overscrollBehavior: 'contain',
                 WebkitOverflowScrolling: 'touch',
                 touchAction: 'pan-y',

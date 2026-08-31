@@ -61,7 +61,6 @@ export function LockTimerSetup({ onClose }: Props) {
           className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-border shadow-2xl pointer-events-auto"
           style={{
             background: 'var(--popover, rgba(20,22,30,0.96))',
-            backdropFilter: 'blur(6px)',
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-y',

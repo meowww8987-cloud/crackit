@@ -36,7 +36,7 @@ export function SleepBanner() {
  const [, setTick] = useState(0);
  useEffect(() => {
  if (!activeSleep) return;
- const i = setInterval(() => setTick((t) => t + 1), 1000);
+ const i = setInterval(() => { if (!document.hidden) setTick((t) => t + 1); }, 1000);
  return () => clearInterval(i);
  }, [activeSleep]);
 

@@ -697,7 +697,7 @@ export function FocusTimer() {
             if (isPaused) resume();
             else pause();
           }}
-          className="w-full py-4 rounded-2xl font-bold text-base bg-white/20 text-white backdrop-blur-md active:scale-[0.98] transition flex items-center justify-center gap-2"
+          className="w-full py-4 rounded-2xl font-bold text-base bg-white/20 text-white  active:scale-[0.98] transition flex items-center justify-center gap-2"
         >
           {isPaused ? <><Play size={18} fill="currentColor" /> Resume</> : <><Pause size={18} fill="currentColor" /> Pause</>}
         </button>
@@ -927,7 +927,7 @@ function RotateHintToast() {
       initial={{ opacity: 0, y: 20, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.9 }}
-      className="absolute bottom-40 left-1/2 -translate-x-1/2 w-[280px] px-4 py-3 rounded-xl bg-black/90 backdrop-blur-md border border-white/20 text-white z-50"
+      className="absolute bottom-40 left-1/2 -translate-x-1/2 w-[280px] px-4 py-3 rounded-xl bg-black/90  border border-white/20 text-white z-50"
     >
       <div className="text-xs font-bold mb-1.5 flex items-center gap-1.5">
         <RotateCw size={13} className="text-amber-400" /> Rotate Button Tips

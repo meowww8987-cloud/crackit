@@ -38,7 +38,7 @@ export function PartnerComparisonSheet({ onClose }: Props) {
 
   const [, setTick] = useState(0);
   useEffect(() => {
-    const tickInterval = setInterval(() => setTick(t => t + 1), 5000);
+    const tickInterval = setInterval(() => { if (!document.hidden) setTick(t => t + 1); }, 5000);
     return () => clearInterval(tickInterval);
   }, []);
 

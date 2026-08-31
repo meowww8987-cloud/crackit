@@ -146,7 +146,7 @@ export function DailySummaryCard() {
           exit={{ opacity: 0 }}
           onClick={close}
           className="fixed inset-0 z-[9990] flex items-end justify-center"
-          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
+          style={{ background: 'rgba(0,0,0,0.7)' }}
         >
           <motion.div
             initial={{ y: '100%' }}
