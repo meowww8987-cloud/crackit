@@ -113,26 +113,31 @@ export function TargetCard({
   }, [isThisActive, active?.paused]);
 
   // Today's sessions for this target
+  // NOTE: This subscribes to ALL sessions. When any session changes, ALL
+  // TargetCards re-render. This is a known issue — the proper fix is to
+  // pass filtered sessions as props from StudyTab (which already computes
+  // perTarget stats). For now, the useMemo prevents unnecessary recomputation.
   const allSessions = useHistory((s) => s.sessions);
   const sessions = useMemo(
     () => allSessions.filter((s) => s.targetId === target.id && s.date === target.date),
     [allSessions, target.id, target.date]
   );
-  const studiedSec = sessions.reduce((a, s) => a + s.studySeconds, 0);
-  const wastedSec = sessions.reduce((a, s) => a + s.wastedSeconds, 0);
+  const studiedSec = useMemo(() => sessions.reduce((a, s) => a + s.studySeconds, 0), [sessions]);
+  const wastedSec = useMemo(() => sessions.reduce((a, s) => a + s.wastedSeconds, 0), [sessions]);
 
   // All-time sessions for this target (for smart expected-time hint)
-  const allTimeSessions = useMemo(
-    () => allSessions.filter((s) => s.targetId === target.id),
+  const allTimeSessionCount = useMemo(
+    () => allSessions.filter((s) => s.targetId === target.id).length,
     [allSessions, target.id]
   );
 
   // Smart expected-time hint: if avg studied > expected * 1.3 across 3+ sessions, suggest adjust
   const showAdjustHint = useMemo(() => {
-    if (allTimeSessions.length < 3) return false;
-    const avgStudied = allTimeSessions.reduce((a, s) => a + s.studySeconds, 0) / allTimeSessions.length;
+    if (allTimeSessionCount < 3) return false;
+    const mySessions = allSessions.filter((s) => s.targetId === target.id);
+    const avgStudied = mySessions.reduce((a, s) => a + s.studySeconds, 0) / mySessions.length;
     return avgStudied > target.expectedMinutes * 60 * 1.3;
-  }, [allTimeSessions, target.expectedMinutes]);
+  }, [allSessions, allTimeSessionCount, target.expectedMinutes, target.id]);
 
   // Live ticking when this card is active
   const [, setTick] = useState(0);

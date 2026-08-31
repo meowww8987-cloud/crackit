@@ -86,8 +86,13 @@ export function AppShell() {
   const oledBlack = useSettings((s) => s.oledBlack);
 
   // === Tab badge data ===
-  const syllabusLectures = useSyllabusStore((s) => s.lectures);
-  const overdueRevisions = syllabusLectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt)).length;
+  // FIXED: Was subscribing to ALL lectures → AppShell re-rendered every time
+  // ANY lecture changed (toggle done, add, delete). Now only subscribe to
+  // the overdue COUNT (a number — stable reference, only changes when the
+  // count actually changes).
+  const overdueRevisions = useSyllabusStore((s) =>
+    s.lectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt)).length
+  );
   const hasPendingMood = !!pendingMoodSession;
 
   // === Arrival pulse — triggers when activeTab changes ===

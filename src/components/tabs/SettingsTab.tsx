@@ -994,6 +994,7 @@ function DataSection({ s }: { s: Settings }) {
 
   // Version changelog — only last 10 entries
   const CHANGELOG = [
+    { v: 'v3.0.0', text: 'Complete redesign: Study/Syllabus/Stats tabs, Lock-In Timer, nav overhaul, performance optimization' },
     { v: 'v2.20.0', text: 'Sage Mist theme, sleep health redesign, peak study time, partner sync fixes' },
     { v: 'v2.19.0', text: 'Remove fullscreen calls, ScrollAwareSlider, sleep history redesign' },
     { v: 'v2.18.0', text: 'Sleep History long-press, SleepAnalysisSheet with weekly/monthly tabs' },
@@ -1003,7 +1004,6 @@ function DataSection({ s }: { s: Settings }) {
     { v: 'v2.14.0', text: 'Persistent study notification with sleep/wake scenes' },
     { v: 'v2.13.0', text: 'Rose Quartz rebuild, force-dark-ui for Focus/Splash/Sleep' },
     { v: 'v2.12.0', text: 'Per-theme 3D palettes, rose/ocean/forest/gold theme rebuilds' },
-    { v: 'v2.11.0', text: '3-step Add Target wizard, drag-from-syllabus, smart defaults' },
   ];
 
   return (
@@ -1096,7 +1096,7 @@ function DataSection({ s }: { s: Settings }) {
             <span className="text-base">📋</span>
             <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Version</span>
           </div>
-          <span className="font-mono text-xs font-bold" style={{ color: '#0d9488' }}>v2.20.0</span>
+          <span className="font-mono text-xs font-bold" style={{ color: '#0d9488' }}>v3.0.0</span>
         </div>
         <div className="space-y-1.5">
           {CHANGELOG.map((entry, i) => (
