@@ -38,8 +38,34 @@ export function StatsTab() {
     () => retentionTrend.filter((c) => c.completedAt > 0).map((c) => ({ date: c.date, score: c.retentionScore })),
     [retentionTrend]
   );
-  const overdueRevisions = lectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt));
-  const dueRevisions = lectures.filter((l) => l.done && l.nextRevisionAt);
+  // FIXED: All these .filter() calls ran on EVERY render (12+ filters total).
+  // Now memoized — only recompute when lectures array actually changes.
+  const overdueRevisions = useMemo(() => lectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt)), [lectures]);
+  const dueRevisions = useMemo(() => lectures.filter((l) => l.done && l.nextRevisionAt), [lectures]);
+
+  // Resource counts — was 4 separate .filter() calls on every render
+  const resourceCounts = useMemo(() => ({
+    lectures: lectures.filter(l => l.done).length,
+    dpps: lectures.filter(l => l.dppDone).length,
+    notes: lectures.filter(l => l.notesDone).length,
+    revisions: lectures.filter(l => l.revisionDone).length,
+  }), [lectures]);
+
+  // Overall completion — was 8 .filter() calls (4 for text, 4 for bar width)
+  const overallCompletionPct = useMemo(() => {
+    if (lectures.length === 0) return 0;
+    return Math.round(
+      ((resourceCounts.lectures + resourceCounts.dpps + resourceCounts.notes + resourceCounts.revisions) /
+        (lectures.length * 4)) * 100
+    );
+  }, [lectures, resourceCounts]);
+
+  // Spaced repetition counts
+  const spacedRepetition = useMemo(() => ({
+    onTrack: lectures.filter(l => l.done && l.revisionStage >= 0 && !isRevisionOverdue(l.nextRevisionAt)).length,
+    overdue: overdueRevisions.length,
+    totalDue: dueRevisions.length,
+  }), [lectures, overdueRevisions, dueRevisions]);
 
   if (sessions.length === 0) {
     return (
@@ -151,10 +177,10 @@ export function StatsTab() {
       <ChartCard title="Syllabus Resource Completion">
         <div className="grid grid-cols-4 gap-2">
           {[
-            { label: 'Lectures', icon: '📺', done: lectures.filter(l => l.done).length, color: '#14b8a6' },
-            { label: 'DPPs', icon: '📝', done: lectures.filter(l => l.dppDone).length, color: '#22c55e' },
-            { label: 'Notes', icon: '📖', done: lectures.filter(l => l.notesDone).length, color: '#3b82f6' },
-            { label: 'Revisions', icon: '🔄', done: lectures.filter(l => l.revisionDone).length, color: '#f59e0b' },
+            { label: 'Lectures', icon: '📺', done: resourceCounts.lectures, color: '#14b8a6' },
+            { label: 'DPPs', icon: '📝', done: resourceCounts.dpps, color: '#22c55e' },
+            { label: 'Notes', icon: '📖', done: resourceCounts.notes, color: '#3b82f6' },
+            { label: 'Revisions', icon: '🔄', done: resourceCounts.revisions, color: '#f59e0b' },
           ].map((r) => (
             <div key={r.label} className="glass rounded-xl p-2.5 text-center">
               <div className="text-base mb-0.5">{r.icon}</div>
@@ -169,26 +195,14 @@ export function StatsTab() {
             <div className="flex justify-between text-[10px] mb-1">
               <span style={{ color: 'var(--muted-foreground)' }}>Overall completion</span>
               <span className="tabular font-bold" style={{ color: '#14b8a6' }}>
-                {Math.round(
-                  ((lectures.filter(l => l.done).length +
-                    lectures.filter(l => l.dppDone).length +
-                    lectures.filter(l => l.notesDone).length +
-                    lectures.filter(l => l.revisionDone).length) /
-                    (lectures.length * 4)) * 100
-                )}%
+                {overallCompletionPct}%
               </span>
             </div>
             <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
               <div
                 className="h-full bg-gradient-to-r from-teal-500 to-green-500"
                 style={{
-                  width: `${Math.round(
-                    ((lectures.filter(l => l.done).length +
-                      lectures.filter(l => l.dppDone).length +
-                      lectures.filter(l => l.notesDone).length +
-                      lectures.filter(l => l.revisionDone).length) /
-                      (lectures.length * 4)) * 100
-                  )}%`,
+                  width: `${overallCompletionPct}%`,
                 }}
               />
             </div>
@@ -200,15 +214,15 @@ export function StatsTab() {
       <ChartCard title="Spaced Repetition Status">
         <div className="grid grid-cols-3 gap-2">
           <div className="glass rounded-xl p-2.5 text-center">
-            <div className="text-xl font-bold tabular" style={{ color: '#22c55e' }}>{lectures.filter(l => l.done && l.revisionStage >= 0 && !isRevisionOverdue(l.nextRevisionAt)).length}</div>
+            <div className="text-xl font-bold tabular" style={{ color: '#22c55e' }}>{spacedRepetition.onTrack}</div>
             <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>On track</div>
           </div>
           <div className="glass rounded-xl p-2.5 text-center">
-            <div className="text-xl font-bold tabular" style={{ color: '#f59e0b' }}>{overdueRevisions.length}</div>
+            <div className="text-xl font-bold tabular" style={{ color: '#f59e0b' }}>{spacedRepetition.overdue}</div>
             <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>Overdue</div>
           </div>
           <div className="glass rounded-xl p-2.5 text-center">
-            <div className="text-xl font-bold tabular" style={{ color: 'var(--foreground)' }}>{dueRevisions.length}</div>
+            <div className="text-xl font-bold tabular" style={{ color: 'var(--foreground)' }}>{spacedRepetition.totalDue}</div>
             <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>Total due</div>
           </div>
         </div>
