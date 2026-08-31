@@ -53,10 +53,14 @@ export function StudyTab() {
   // === SECTION 10: Reactive selectors (replacing all getState() calls) ===
   const allSessions = useHistory((s) => s.sessions);
   const allDoubts = useDoubts((s) => s.doubts);
-  const pendingDoubts = allDoubts.filter((d) => d.status === 'pending').length;
-  const lastDoubtSubject = allDoubts.length > 0
-    ? [...allDoubts].sort((a, b) => b.createdAt - a.createdAt)[0]?.subject
-    : null;
+  // FIXED: Memoize these — .filter() and .sort() create new arrays
+  // every render, causing the component to re-render even when
+  // allDoubts hasn't actually changed.
+  const pendingDoubts = useMemo(() => allDoubts.filter((d) => d.status === 'pending').length, [allDoubts]);
+  const lastDoubtSubject = useMemo(() => {
+    if (allDoubts.length === 0) return null;
+    return [...allDoubts].sort((a, b) => b.createdAt - a.createdAt)[0]?.subject;
+  }, [allDoubts]);
 
   // Sorted targets
   const sortedTargets = useMemo(
@@ -124,8 +128,9 @@ export function StudyTab() {
     };
   }, [allSessions, sortedTargets, todayKeyStr]);
 
-  // Live ticking for active session
-  const activeFocusSession = useSession((s) => s.active);
+  // Live ticking for active session — reuse activeSession from above
+  // (was: const activeFocusSession = useSession((s) => s.active) — duplicate)
+  const activeFocusSession = activeSession;
   const activePractice = usePractice((s) => s.activePractice);
   const [, setLiveTick] = useState(0);
   useEffect(() => {
