@@ -13,6 +13,7 @@ import { getChaptersForSubject } from '@/lib/neetSyllabus';
 import { pushToast } from '@/components/shared/Toast';
 import type { Test, Subject } from '@/lib/types';
 import { cn, diffDays, todayKey, vibrate } from '@/lib/utils';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 const MOTIVATIONAL_QUOTES = [
   'You\'ve prepared for this. Trust your work.',
@@ -36,6 +37,9 @@ export function NextTestCard() {
   const syllabus = useSyllabus();
   const addTarget = useTargets((s) => s.addTarget);
   const setTab = useNav((s) => s.setTab);
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
 
   const [expanded, setExpanded] = useState(false);
 

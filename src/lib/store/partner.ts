@@ -123,12 +123,12 @@ export const usePartner = create<PartnerStore>()(
           const data = await res.json();
           if (data.error) {
             // eslint-disable-next-line
-            console.warn('[partner] createPair server error:', data.error);
+            if (process.env.NODE_ENV !== "production") console.warn('[partner] createPair server error:', data.error);
             return { error: data.error };
           }
           if (!data.code) {
             // eslint-disable-next-line
-            console.warn('[partner] createPair: no code in response');
+            if (process.env.NODE_ENV !== "production") console.warn('[partner] createPair: no code in response');
             return { error: 'Server returned no code. Try again.' };
           }
           // Clear any previous pair state when creating a fresh pair —
@@ -145,7 +145,7 @@ export const usePartner = create<PartnerStore>()(
           return { code: data.code };
         } catch (e) {
           // eslint-disable-next-line
-            console.warn('[partner] createPair network error:', e);
+            if (process.env.NODE_ENV !== "production") console.warn('[partner] createPair network error:', e);
           return { error: 'Network error. Check your connection and try again.' };
         }
       },
@@ -160,7 +160,7 @@ export const usePartner = create<PartnerStore>()(
           const data = await res.json();
           if (data.error) {
             // eslint-disable-next-line
-            console.warn('[partner] joinPair server error:', data.error);
+            if (process.env.NODE_ENV !== "production") console.warn('[partner] joinPair server error:', data.error);
             return { ok: false, error: data.error };
           }
           // Clear previous state — joining as user B with a new partner.
@@ -180,7 +180,7 @@ export const usePartner = create<PartnerStore>()(
           return { ok: true };
         } catch (e) {
           // eslint-disable-next-line
-            console.warn('[partner] joinPair network error:', e);
+            if (process.env.NODE_ENV !== "production") console.warn('[partner] joinPair network error:', e);
           return { ok: false, error: 'Network error. Check your connection and try again.' };
         }
       },
@@ -387,13 +387,13 @@ export const usePartner = create<PartnerStore>()(
           });
           if (!res.ok) {
             // eslint-disable-next-line
-            console.warn('[partner] syncData POST failed:', res.status, 'for code', state.code);
+            if (process.env.NODE_ENV !== "production") console.warn('[partner] syncData POST failed:', res.status, 'for code', state.code);
           } else {
             set({ lastSyncAt: Date.now() });
           }
         } catch (e) {
           // eslint-disable-next-line
-            console.warn('[partner] syncData network error:', e);
+            if (process.env.NODE_ENV !== "production") console.warn('[partner] syncData network error:', e);
         }
       },
 
@@ -413,18 +413,18 @@ export const usePartner = create<PartnerStore>()(
             // Pair doesn't exist on server anymore — DB was reset, or the
             // code was never valid. Caller should show a "reset" UI.
             // eslint-disable-next-line
-            console.warn('[partner] Pair not found on server for code:', state.code);
+            if (process.env.NODE_ENV !== "production") console.warn('[partner] Pair not found on server for code:', state.code);
             return 'notfound';
           }
           if (!res.ok) {
             // eslint-disable-next-line
-            console.warn('[partner] sync fetch failed:', res.status);
+            if (process.env.NODE_ENV !== "production") console.warn('[partner] sync fetch failed:', res.status);
             return 'error';
           }
           const data = await res.json();
           if (data.error) {
             // eslint-disable-next-line
-            console.warn('[partner] sync returned error:', data.error);
+            if (process.env.NODE_ENV !== "production") console.warn('[partner] sync returned error:', data.error);
             return 'error';
           }
           // Convert server ISO string to epoch ms for client-side age calculation
@@ -443,7 +443,7 @@ export const usePartner = create<PartnerStore>()(
           return 'ok';
         } catch (e) {
           // eslint-disable-next-line
-            console.warn('[partner] sync network error:', e);
+            if (process.env.NODE_ENV !== "production") console.warn('[partner] sync network error:', e);
           return 'error';
         }
       },

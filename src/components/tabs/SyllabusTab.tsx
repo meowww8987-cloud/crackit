@@ -322,7 +322,7 @@ export function SyllabusTab() {
             className="fixed left-1/2 top-1/2 z-[10002] w-[280px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl"
             style={{
               background: 'var(--popover, rgba(20,22,30,0.96))',
-              backdropFilter: 'blur(16px)',
+              backdropFilter: 'blur(6px)',
               transform: 'translate(-50%, -50%)',
               overscrollBehavior: 'contain',
               WebkitOverflowScrolling: 'touch',
@@ -598,7 +598,7 @@ export function SyllabusTab() {
                             transition={{ type: 'spring', stiffness: 60, damping: 20 }}
                             style={{
                               strokeDasharray: 81.68,
-                              filter: `drop-shadow(0 0 4px ${isComplete ? 'rgba(34,197,94,0.5)' : color.glow})`,
+                              boxShadow: `0 0 4px ${isComplete ? 'rgba(34,197,94,0.5)' : color.glow}`,
                             }}
                           />
                         </svg>
@@ -998,7 +998,7 @@ function ChapterActionsModal({
           className="w-[300px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
           style={{
             background: 'var(--popover, rgba(20,22,30,0.96))',
-            backdropFilter: 'blur(16px)',
+            backdropFilter: 'blur(6px)',
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-y',
@@ -1113,7 +1113,7 @@ function ChapterActionsModal({
             exit={{ scale: 0.9 }}
             onClick={(e) => e.stopPropagation()}
             className="relative w-full max-w-[300px] rounded-2xl border border-border shadow-2xl p-4"
-            style={{ background: 'var(--popover, rgba(20,22,30,0.96))', backdropFilter: 'blur(16px)' }}
+            style={{ background: 'var(--popover, rgba(20,22,30,0.96))', backdropFilter: 'blur(6px)' }}
           >
             <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">

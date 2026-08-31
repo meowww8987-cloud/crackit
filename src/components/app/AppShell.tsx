@@ -528,7 +528,7 @@ export function AppShell() {
                 className="rounded-2xl px-1.5 py-1.5 flex items-center justify-between shadow-2xl"
                 style={{
                   background: 'var(--card)',
-                  backdropFilter: 'blur(20px) saturate(180%)',
+                  backdropFilter: 'blur(6px) saturate(140%)',
                   WebkitBackdropFilter: 'blur(20px) saturate(180%)',
                   border: '1px solid var(--border)',
                 }}

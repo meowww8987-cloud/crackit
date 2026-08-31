@@ -191,7 +191,7 @@ export function CountdownCard({
                 whileInView={{ strokeDashoffset: ringOffset }}
                 viewport={{ once: true }}
                 transition={{ duration: 1.2, ease: 'easeOut' }}
-                style={{ filter: `drop-shadow(0 0 3px ${urgency.ringColor}80)` }}
+                style={{ boxShadow: `0 0 3px ${urgency.ringColor}80` }}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">

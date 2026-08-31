@@ -42,12 +42,16 @@ import { SleepPlanSheet } from '@/components/dailylog/SleepPlanSheet';
 import { useSleep } from '@/lib/store/sleep';
 import { useDoubts } from '@/lib/store/doubts';
 import { getSubjectHealthScores } from '@/lib/healthScore';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 export function HomeTab() {
   // Hydration guard — gates rendering of any UI derived from persisted
   // Zustand state (sessions, tests, syllabus) so server and first client
   // render produce identical HTML.
   const mounted = useMounted();
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
 
   // Select raw data (stable references), compute derived values in component
   const sessions = useHistory((s) => s.sessions);
@@ -285,7 +289,7 @@ export function HomeTab() {
                 style={{ color: 'var(--muted-foreground)' }}
                 suppressHydrationWarning
               >
-                <span style={{ filter: `drop-shadow(0 0 3px ${iconColor}80)` }}>{icon}</span>
+                <span style={{ boxShadow: `0 0 3px ${iconColor}80` }}>{icon}</span>
                 <span>{greeting}</span>
               </motion.div>
             );
@@ -314,7 +318,7 @@ export function HomeTab() {
                   background: 'radial-gradient(circle, rgba(20,184,166,0.3) 0%, transparent 70%)',
                 }}
                 animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{ duration: 3, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
               />
               <motion.img
                 src="/logo.svg"

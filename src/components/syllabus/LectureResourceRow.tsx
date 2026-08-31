@@ -467,7 +467,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               className="w-[320px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
               style={{
                 background: 'var(--popover, rgba(20,22,30,0.96))',
-                backdropFilter: 'blur(16px)',
+                backdropFilter: 'blur(6px)',
                 overscrollBehavior: 'contain',
                 WebkitOverflowScrolling: 'touch',
                 touchAction: 'pan-y',
@@ -676,7 +676,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               className="w-[320px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
               style={{
                 background: 'var(--popover, rgba(20,22,30,0.96))',
-                backdropFilter: 'blur(16px)',
+                backdropFilter: 'blur(6px)',
                 overscrollBehavior: 'contain',
                 WebkitOverflowScrolling: 'touch',
                 touchAction: 'pan-y',
@@ -762,7 +762,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 28 }}
               className="w-[300px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border shadow-2xl pointer-events-auto"
-              style={{ background: 'var(--popover, rgba(20,22,30,0.96))', backdropFilter: 'blur(16px)' }}
+              style={{ background: 'var(--popover, rgba(20,22,30,0.96))', backdropFilter: 'blur(6px)' }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -831,7 +831,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 28 }}
               className="w-[300px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border shadow-2xl pointer-events-auto"
-              style={{ background: 'var(--popover, rgba(20,22,30,0.96))', backdropFilter: 'blur(16px)' }}
+              style={{ background: 'var(--popover, rgba(20,22,30,0.96))', backdropFilter: 'blur(6px)' }}
             >
               <div className="p-4">
                 <div className="flex items-start gap-3 mb-4">

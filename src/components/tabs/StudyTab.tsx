@@ -22,6 +22,7 @@ import { TargetCard } from '@/components/study/TargetCard';
 import { AddTargetSheet } from '@/components/study/AddTargetSheet';
 import { DetailSheet } from '@/components/study/DetailSheet';
 import { DoubtSheet } from '@/components/doubts/DoubtSheet';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 const EMPTY_TARGETS: Target[] = [];
 const EASE_SMOOTH = [0.4, 0, 0.2, 1] as const;
@@ -34,6 +35,9 @@ export function StudyTab() {
   const todayTargets = useTargets((s) => s.byDate[todayKeyStr] || EMPTY_TARGETS);
   const reorderToday = useTargets((s) => s.reorderToday);
   const addTarget = useTargets((s) => s.addTarget);
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   const [showAdd, setShowAdd] = useState(false);
   const [editingTarget, setEditingTarget] = useState<Target | null>(null);
   const [detailTarget, setDetailTarget] = useState<Target | null>(null);
@@ -564,7 +568,7 @@ function ProgressCard({
               transition={{ type: 'spring', stiffness: 60, damping: 20, mass: 1 }}
               style={{
                 strokeDasharray: 163.36,
-                filter: `drop-shadow(0 0 6px ${ringColor}80)`,
+                boxShadow: `0 0 6px ${ringColor}80`,
               }}
             />
           </svg>
@@ -593,7 +597,7 @@ function ProgressCard({
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               className="absolute -top-1 -right-1 text-xs"
-              style={{ filter: 'drop-shadow(0 0 4px rgba(34,197,94,0.6))' }}
+              style={{ boxShadow: '0 0 4px rgba(34,197,94,0.6)' }}
             >
               🏆
             </motion.div>
@@ -1253,7 +1257,7 @@ function AddFAB({
               className="w-[300px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
               style={{
                 background: 'var(--popover, rgba(20,22,30,0.96))',
-                backdropFilter: 'blur(16px)',
+                backdropFilter: 'blur(6px)',
                 overscrollBehavior: 'contain',
                 WebkitOverflowScrolling: 'touch',
                 touchAction: 'pan-y',

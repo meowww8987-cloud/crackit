@@ -1025,7 +1025,7 @@ export function TargetCard({
               className="w-[280px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
               style={{
                 background: 'var(--popover, rgba(20, 22, 30, 0.96))',
-                backdropFilter: 'blur(16px)',
+                backdropFilter: 'blur(6px)',
                 overscrollBehavior: 'contain',
                 WebkitOverflowScrolling: 'touch',
                 touchAction: 'pan-y',

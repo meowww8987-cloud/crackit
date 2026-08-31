@@ -9,6 +9,7 @@ import { useSession, getLiveStudySeconds } from '@/lib/store/session';
 import { usePractice } from '@/lib/store/practice';
 import { useSettings } from '@/lib/store/settings';
 import { formatHM, vibrate, cn, todayKey, dateKey, addDays } from '@/lib/utils';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 /**
  * Theme-aware color system for Progress Rings.
@@ -179,6 +180,9 @@ export function ProgressRings({
   const activeSession = useSession((s) => s.active);
   const activePractice = usePractice((s) => s.activePractice);
   const isLive = (!!activeSession && !activeSession.paused) || !!activePractice;
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
 
   // Wasted time today
   const sessions = useHistory((s) => s.sessions);
@@ -226,7 +230,7 @@ export function ProgressRings({
           animate={{
             backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'],
           }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 10, repeat: animate ? Infinity : 0, ease: 'linear' }}
         />
 
         {/* Header */}
@@ -234,7 +238,7 @@ export function ProgressRings({
           <div className="flex items-center gap-2">
             <motion.div
               animate={isLive ? { rotate: 360 } : {}}
-              transition={isLive ? { duration: 3, repeat: Infinity, ease: 'linear' } : {}}
+              transition={isLive ? { duration: 3, repeat: animate ? Infinity : 0, ease: 'linear' } : {}}
             >
               <Activity size={16} style={{ color: isLive ? themeColors.live : themeColors.teal.primary }} />
             </motion.div>
@@ -255,7 +259,7 @@ export function ProgressRings({
               >
                 <motion.div
                   animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
+                  transition={{ duration: 1.5, repeat: animate ? Infinity : 0 }}
                   className="w-1.5 h-1.5 rounded-full"
                   style={{ background: themeColors.live, boxShadow: `0 0 6px ${themeColors.live}` }}
                 />

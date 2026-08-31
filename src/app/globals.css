@@ -207,8 +207,8 @@
   background: #042f2e;
   border: 1px solid rgba(20, 184, 166, 0.30);
   box-shadow: 0 4px 20px -4px rgba(20, 184, 166, 0.12), inset 0 1px 0 rgba(20, 184, 166, 0.08);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
 }
 .ocean .glass-strong {
   background: #022c2b;
@@ -288,8 +288,8 @@
   background: #022c22;
   border: 1px solid rgba(34, 197, 94, 0.30);
   box-shadow: 0 4px 20px -4px rgba(34, 197, 94, 0.12), inset 0 1px 0 rgba(34, 197, 94, 0.08);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
 }
 .forest .glass-strong {
   background: #011f18;
@@ -410,8 +410,8 @@ html.rose .aurora-vignette {
   background: #FFF0F5 !important;
   border: 1px solid rgba(168, 81, 110, 0.24) !important;
   box-shadow: 0 2px 12px -2px rgba(168, 81, 110, 0.14), inset 0 1px 0 rgba(255,255,255,0.7) !important;
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(6px) saturate(140%);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
 }
 .rose .glass-strong {
   background: #FFF0F5 !important;
@@ -654,8 +654,8 @@ html.sage .aurora-vignette {
   background: #F2F0E8 !important;
   border: 1px solid rgba(120, 130, 110, 0.20) !important;
   box-shadow: 0 2px 12px -2px rgba(120, 130, 110, 0.08), inset 0 1px 0 rgba(255,255,255,0.5) !important;
-  backdrop-filter: blur(16px) saturate(120%);
-  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  backdrop-filter: blur(5px) saturate(120%);
+  -webkit-backdrop-filter: blur(5px) saturate(120%);
 }
 .sage .glass-strong {
   background: #F2F0E8 !important;
@@ -889,8 +889,8 @@ html.gold img[src="/logo.svg"] {
   background: #000000;
   border: 1px solid rgba(251, 191, 36, 0.32);
   box-shadow: 0 4px 20px -4px rgba(251, 191, 36, 0.18), inset 0 1px 0 rgba(251, 191, 36, 0.12);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
 }
 .gold .glass-strong {
   background: #000000;
@@ -1086,8 +1086,8 @@ html.gold img[src="/logo.svg"] {
  */
 .glass {
   background: rgba(0, 0, 0, 0.04);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow:
     0 4px 20px -4px rgba(0, 0, 0, 0.08),    /* drop shadow */
@@ -1136,8 +1136,8 @@ html:not(.dark):not(.warm) .glass-strong {
 /* Glass variant — stronger, for modals/sheets */
 .glass-strong {
   background: rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(32px) saturate(200%);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
   border: 1px solid rgba(0, 0, 0, 0.10);
   box-shadow:
     0 12px 48px -8px rgba(0, 0, 0, 0.2),
@@ -1173,8 +1173,8 @@ html:not(.dark):not(.warm) .glass-strong {
 .card-solid {
   position: relative;
   background: rgba(15, 17, 25, 0.92);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(6px) saturate(140%);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
   border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow:
     0 4px 16px -2px rgba(0, 0, 0, 0.4),
@@ -1602,8 +1602,8 @@ button:active:not(:disabled) {
 /* Smooth color transitions on state changes */
 .glass {
   transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(6px) saturate(140%);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
 }
 
 /* === Glassmorphism 2.0 — button micro-shadows ===
