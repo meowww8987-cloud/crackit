@@ -20,6 +20,7 @@ import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifi
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTargets } from '@/lib/store/targets';
 import { useSession } from '@/lib/store/session';
+import { useHistory } from '@/lib/store/history';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
 import type { Subject, Lecture, SubjectEntity, Chapter } from '@/lib/types';
 import { cn, vibrate, isRevisionOverdue, todayKey, formatHM } from '@/lib/utils';
@@ -92,15 +93,83 @@ export function SyllabusTab() {
 
   const todayTargets = useTargets((s) => s.byDate[todayKey()] || EMPTY_TARGETS);
   const activeSession = useSession((s) => s.active);
+  // History sessions — used to detect "recently studied" chapters for the
+  // "In Progress" filter. A chapter only shows in "In Progress" if it has been
+  // touched (any session saved) within the last 15 days. This prevents stale
+  // chapters from cluttering the filter.
+  const allSessions = useHistory((s) => s.sessions);
+
+  // Map: chapterId → most recent session timestamp (ms)
+  // Computed once per sessions change, used by the "studying" filter below.
+  const chapterLastTouchedAt = useMemo(() => {
+    const map: Record<string, number> = {};
+    // Index lectures by chapterId for quick lookup
+    const lecToChapter: Record<string, string> = {};
+    for (const l of lectures) lecToChapter[l.id] = l.chapterId;
+    // Also match by subject+chapter name (for sessions without targetId / practice)
+    const chapByName: Record<string, string> = {};
+    for (const c of chapters) {
+      const subj = subjects.find((s) => s.id === c.subjectId);
+      if (subj) chapByName[`${subj.name}||${c.name}`] = c.id;
+    }
+    for (const s of allSessions) {
+      let chId: string | undefined;
+      if (s.targetId && lecToChapter[s.targetId]) {
+        chId = lecToChapter[s.targetId];
+      } else if (s.chapter) {
+        // Find subject from session — s.subject is the Subject name
+        chId = chapByName[`${s.subject}||${s.chapter}`];
+      }
+      if (chId) {
+        const ts = s.endedAt || s.startedAt;
+        if (!map[chId] || ts > map[chId]) map[chId] = ts;
+      }
+    }
+    return map;
+  }, [allSessions, lectures, chapters, subjects]);
+
+  // 15 days in milliseconds — chapters not touched in this window are "stale"
+  // and excluded from the "In Progress" filter.
+  const STALE_THRESHOLD_MS = 15 * 24 * 60 * 60 * 1000;
+  const staleCutoff = Date.now() - STALE_THRESHOLD_MS;
 
   // FIXED: All these .filter() calls ran on EVERY render (even when lectures
   // hadn't changed). With 100 lectures, that's 500+ checks per render.
   // Now memoized — only recompute when lectures array actually changes.
   const doneCount = useMemo(() => lectures.filter((l) => l.done).length, [lectures]);
-  const studyingCount = useMemo(() => lectures.filter((l) => {
-    const res = [l.done, l.dppDone, l.notesDone, l.revisionDone].filter(Boolean).length;
-    return res > 0 && res < 4;
-  }).length, [lectures]);
+  // "In Progress" count = chapters with partial progress AND touched in last 15 days.
+  // We count lectures belonging to those chapters so the pill count reflects
+  // what the user will actually see when the filter is active.
+  const studyingCount = useMemo(() => {
+    const staleCutoff = Date.now() - 15 * 24 * 60 * 60 * 1000;
+    // Build set of "active" chapter IDs (partial progress + recently touched)
+    const activeChapterIds = new Set<string>();
+    for (const ch of chapters) {
+      const chLectures = lectures.filter((l) => l.chapterId === ch.id);
+      if (chLectures.length === 0) continue;
+      const doneRes = chLectures.filter((l) => l.done).length
+        + chLectures.filter((l) => l.dppDone).length
+        + chLectures.filter((l) => l.notesDone).length
+        + chLectures.filter((l) => l.revisionDone).length;
+      const totalRes = chLectures.length * 4;
+      const pct = totalRes > 0 ? (doneRes / totalRes) * 100 : 0;
+      if (!(doneRes > 0 && pct < 100)) continue; // not in progress
+      // Check touched within 15 days
+      let lastTouched = chapterLastTouchedAt[ch.id] || 0;
+      if (lastTouched === 0) {
+        for (const l of chLectures) {
+          const ts = Math.max(
+            l.doneDate || 0,
+            l.lastRevisedAt || 0,
+            l.timeSpentSec ? l.createdAt + (l.timeSpentSec * 1000) : 0,
+          );
+          if (ts > lastTouched) lastTouched = ts;
+        }
+      }
+      if (lastTouched >= staleCutoff) activeChapterIds.add(ch.id);
+    }
+    return lectures.filter((l) => activeChapterIds.has(l.chapterId)).length;
+  }, [lectures, chapters, chapterLastTouchedAt]);
   const nextCount = useMemo(() => lectures.filter((l) => {
     const res = [l.done, l.dppDone, l.notesDone, l.revisionDone].filter(Boolean).length;
     return res === 0;
@@ -568,7 +637,27 @@ export function SyllabusTab() {
                 const isComplete = pct === 100 && chLectures.length > 0;
                 if (progressFilter === 'done' && pct !== 100) return null;
                 if (progressFilter === 'next' && doneResources > 0) return null;
-                if (progressFilter === 'studying' && !isInProgress) return null;
+                if (progressFilter === 'studying') {
+                  // "In Progress" = chapter has partial progress AND was touched
+                  // within the last 15 days. Chapters the user abandoned are
+                  // hidden from this filter to keep it relevant.
+                  if (!isInProgress) return null;
+                  // Check "last touched" — use the precomputed session map first,
+                  // then fall back to lecture-level timestamps (doneDate,
+                  // lastRevisedAt) for chapters with manual toggles but no sessions.
+                  let lastTouched = chapterLastTouchedAt[ch.id] || 0;
+                  if (lastTouched === 0) {
+                    for (const l of chLectures) {
+                      const ts = Math.max(
+                        l.doneDate || 0,
+                        l.lastRevisedAt || 0,
+                        l.timeSpentSec ? l.createdAt + (l.timeSpentSec * 1000) : 0,
+                      );
+                      if (ts > lastTouched) lastTouched = ts;
+                    }
+                  }
+                  if (lastTouched < staleCutoff) return null;
+                }
                 if (progressFilter === 'overdue' && chOverdue === 0) return null;
                 if (search && !matchesSearch(ch.name) && !chLectures.some((l) => matchesSearch(l.topic))) return null;
                 const chOpen = openChapter === ch.id;

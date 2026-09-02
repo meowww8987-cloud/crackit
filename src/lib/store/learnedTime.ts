@@ -127,32 +127,28 @@ export function recordSessionTime(subject: Subject, activity: ActivityType, stud
  * Reads directly from localStorage to avoid Zustand hydration timing issues.
  */
 export function getLearnedExpectedMinutes(subject: Subject, activity: ActivityType): number {
-  // Try the Zustand store first (fast path — already in memory)
-  const storeVal = useLearnedTime.getState().getLearnedMinutes(subject, activity);
-  if (storeVal !== DEFAULTS[activity]) {
-    return storeVal; // store has learned data
-  }
-
-  // Fallback: read directly from localStorage (handles hydration timing)
+  // 1. Check localStorage FIRST — this is the source of truth (survives page reloads)
   try {
     const raw = localStorage.getItem('neet-learned-times');
-    if (!raw) return DEFAULTS[activity] || 60;
-    const parsed = JSON.parse(raw);
-    const data = parsed?.state?.data;
-    if (!data) return DEFAULTS[activity] || 60;
-    const key = `${subject}:${activity}`;
-    const samples = data[key];
-    if (!samples || !Array.isArray(samples) || samples.length === 0) {
-      return DEFAULTS[activity] || 60;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const data = parsed?.state?.data;
+      if (data) {
+        const key = `${subject}:${activity}`;
+        const samples = data[key];
+        if (samples && Array.isArray(samples) && samples.length > 0) {
+          const sorted = [...samples].sort((a: number, b: number) => a - b);
+          const mid = Math.floor(sorted.length / 2);
+          const med = sorted.length % 2 === 0
+            ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
+            : sorted[mid];
+          return Math.round(Math.max(5, med) / 5) * 5;
+        }
+      }
     }
-    // Compute median
-    const sorted = [...samples].sort((a: number, b: number) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    const med = sorted.length % 2 === 0
-      ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
-      : sorted[mid];
-    return Math.round(Math.max(5, med) / 5) * 5;
-  } catch {
-    return DEFAULTS[activity] || 60;
-  }
+  } catch {}
+
+  // 2. Fall back to Zustand store (may have in-memory data not yet persisted)
+  const storeVal = useLearnedTime.getState().getLearnedMinutes(subject, activity);
+  return storeVal;
 }

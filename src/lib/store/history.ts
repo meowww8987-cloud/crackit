@@ -2,8 +2,9 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { SavedSession } from '@/lib/types';
+import type { SavedSession, Subject, ActivityType } from '@/lib/types';
 import { todayKey, isSameDay } from '@/lib/utils';
+import { useLearnedTime } from './learnedTime';
 
 interface HistoryStore {
   sessions: SavedSession[];
@@ -34,8 +35,11 @@ export const useHistory = create<HistoryStore>()(
       addSession: (s) => {
         set((st) => ({ sessions: [...st.sessions, s] }));
         // === Record learned time for this subject+activity pair ===
-        // Read the target's activity SYNCHRONOUSLY from localStorage
-        // (avoids async dynamic import chain that was failing silently).
+        // This powers the AI that auto-fills expected time when adding new targets.
+        // We look up the target's activity from localStorage (synchronous) and
+        // update BOTH the Zustand store state AND localStorage. Updating the
+        // Zustand state is critical — otherwise the store stays empty and
+        // persist middleware can overwrite localStorage on next hydration.
         if (s.targetId && s.studySeconds >= 180) {
           try {
             // Read targets from localStorage directly (synchronous, no import)
@@ -43,25 +47,34 @@ export const useHistory = create<HistoryStore>()(
             if (raw) {
               const parsed = JSON.parse(raw);
               const byDate = parsed?.state?.byDate || {};
-              let activity: string | null = null;
+              let activity: ActivityType | null = null;
               for (const date of Object.keys(byDate)) {
                 const target = byDate[date]?.find((t: any) => t.id === s.targetId);
-                if (target) { activity = target.activity; break; }
+                if (target) { activity = target.activity as ActivityType; break; }
               }
               if (activity) {
-                // Record synchronously — writes to both Zustand + localStorage
                 const minutes = Math.round(s.studySeconds / 60);
                 if (minutes >= 3 && minutes <= 240) {
-                  // Write directly to localStorage (same format as the store)
-                  const ltRaw = localStorage.getItem('neet-learned-times');
-                  const ltParsed = ltRaw ? JSON.parse(ltRaw) : { state: { data: {} } };
-                  const data = ltParsed?.state?.data || {};
-                  const key = `${s.subject}:${activity}`;
-                  const existing = data[key] || [];
-                  data[key] = [...existing, minutes].slice(-20);
-                  ltParsed.state = ltParsed.state || {};
-                  ltParsed.state.data = data;
-                  localStorage.setItem('neet-learned-times', JSON.stringify(ltParsed));
+                  // 1. Update Zustand store state (reactive + triggers persist write)
+                  useLearnedTime.getState().record(
+                    s.subject as Subject,
+                    activity,
+                    minutes
+                  );
+                  // 2. Also write directly to localStorage as a safety net
+                  // (record() above already triggers persist, but this ensures
+                  // the data is there even if persist is delayed)
+                  try {
+                    const ltRaw = localStorage.getItem('neet-learned-times');
+                    const ltParsed = ltRaw ? JSON.parse(ltRaw) : { state: { data: {} } };
+                    const data = ltParsed?.state?.data || {};
+                    const key = `${s.subject}:${activity}`;
+                    const existing = data[key] || [];
+                    data[key] = [...existing, minutes].slice(-20);
+                    ltParsed.state = ltParsed.state || {};
+                    ltParsed.state.data = data;
+                    localStorage.setItem('neet-learned-times', JSON.stringify(ltParsed));
+                  } catch {}
                 }
               }
             }
