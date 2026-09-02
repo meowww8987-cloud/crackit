@@ -463,7 +463,9 @@ export function SyllabusTab() {
       <div className="space-y-4">
         {filteredSubjects.map((subj) => {
           const color = subjectColor(subj.name);
-          const subjChapters = chapters.filter((c) => c.subjectId === subj.id);
+          // FIXED: Sort by 'order' field so reordering persists in non-reorder mode.
+          // Was: chapters.filter(...) — unsorted, used insertion order.
+          const subjChapters = sortChapters(chapters.filter((c) => c.subjectId === subj.id));
           if (subjectFilter !== 'all' && subj.name !== subjectFilter) return null;
 
           // Per-subject stats
