@@ -19,7 +19,8 @@ interface Props {
   chapter: Chapter;
   subject: SubjectEntity;
   index: number;
-  onEdit: () => void;
+  onEdit: () => void;         // Opens detail sheet
+  onEditLecture: () => void;  // Opens edit modal directly
 }
 
 const RESOURCES: { key: LectureResource; icon: typeof Play; label: string; color: string }[] = [
@@ -40,12 +41,12 @@ const REVISION_COLORS = [
   '#991b1b', // 5+ revisions — deep red
 ];
 
-export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }: Props) {
+export function LectureResourceRow({ lecture, chapter, subject, index, onEdit, onEditLecture }: Props) {
   const toggleResource = useSyllabus((s) => s.toggleLectureResource);
   const updateLecture = useSyllabus((s) => s.updateLecture);
   const deleteLecture = useSyllabus((s) => s.deleteLecture);
   const addTarget = useTargets((s) => s.addTarget);
-  const isAlreadyAdded = useTargets((s) => s.isAlreadyAddedToday);
+  const todayTargets = useTargets((s) => s.byDate[todayKey()] || []);
   const activeSession = useSession((s) => s.active);
 
   // === Total study time across ALL activities for this lecture ===
@@ -89,7 +90,17 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
   const isComplete = progressPct === 100;
   const isInProgress = doneCount > 0 && !isComplete;
 
-  const isAddedToday = isAlreadyAdded(subject.name, chapter.name, 'Lecture', `L${lecture.lecNo}`);
+  // Check which activities are added to today's targets for this lecture
+  const addedActivities = useMemo(() => {
+    const activities = new Set<string>();
+    for (const t of todayTargets) {
+      if (t.lectureId === lecture.id) {
+        activities.add(t.activity);
+      }
+    }
+    return activities;
+  }, [todayTargets, lecture.id]);
+  const hasAnyAdded = addedActivities.size > 0;
   const labelPrefix = lecture.isCustom ? 'C' : 'L';
 
   // Active session detection
@@ -212,13 +223,6 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
     setShowResourceAdd(null);
   };
 
-  const handleAddTodayClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isAddedToday) return;
-    vibrate(8);
-    setShowAddToday(true);
-  };
-
   const handleConfirmAddToday = () => {
     vibrate(12);
     addTarget({
@@ -305,21 +309,22 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
             borderBottom: `2px solid ${isComplete ? 'rgba(34,197,94,0.2)' : `${color.hex}20`}`,
           }}
         >
-          {/* Add to today button */}
-          <button
-            onClick={handleAddTodayClick}
-            disabled={isAddedToday}
-            className={cn(
-              'shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition border active:scale-90',
-              isAddedToday
-                ? 'bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30'
-                : 'bg-foreground/5 text-muted-foreground border-border hover:bg-foreground/10'
+          {/* === Activity-added badge (replaces old + button) ===
+              Shows colored dots for each activity added to today's targets.
+              If nothing added: small gray circle.
+              If activities added: colored dots (teal=Lec, green=DPP, blue=Notes, amber=Rev) */}
+          <div className="flex items-center gap-0.5 shrink-0" title={hasAnyAdded ? `${addedActivities.size} activit${addedActivities.size === 1 ? 'y' : 'ies'} added today` : 'Long-press a resource to add'}>
+            {hasAnyAdded ? (
+              <>
+                {addedActivities.has('Lecture') && <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#14b8a6' }} />}
+                {addedActivities.has('DPP') && <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e' }} />}
+                {addedActivities.has('Notes') && <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3b82f6' }} />}
+                {addedActivities.has('Revision') && <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#f59e0b' }} />}
+              </>
+            ) : (
+              <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--muted-foreground/30)' }} />
             )}
-            aria-label={isAddedToday ? 'Already added to today' : 'Add to today targets'}
-            title={isAddedToday ? 'Already added to today' : 'Add to today targets'}
-          >
-            {isAddedToday ? <Check size={13} strokeWidth={3} /> : <Plus size={13} />}
-          </button>
+          </div>
 
           {/* Lecture number badge */}
           <div
@@ -359,17 +364,6 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
               CUSTOM
             </span>
           )}
-
-          {/* Progress count badge */}
-          <span
-            className="text-[10px] tabular font-bold shrink-0 px-1.5 py-0.5 rounded-md"
-            style={{
-              color: isComplete ? '#22c55e' : doneCount > 0 ? color.hex : 'var(--muted-foreground)',
-              background: isComplete ? 'rgba(34,197,94,0.1)' : doneCount > 0 ? `${color.hex}15` : 'transparent',
-            }}
-          >
-            {doneCount}/4
-          </span>
         </div>
 
         {/* Segmented progress bar */}
@@ -658,7 +652,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
                 </button>
                 {/* Edit Lecture */}
                 <button
-                  onClick={(e) => { e.stopPropagation(); setShowActions(false); onEdit(); }}
+                  onClick={(e) => { e.stopPropagation(); setShowActions(false); onEditLecture(); }}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
                 >
                   <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-blue-500/20 text-blue-600 dark:text-blue-400">

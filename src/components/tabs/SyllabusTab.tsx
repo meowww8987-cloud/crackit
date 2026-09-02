@@ -732,7 +732,7 @@ export function SyllabusTab() {
                         <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                           <div className="px-2.5 pb-2.5 pt-1 space-y-2">
                             {chLectures.length === 0 && (<p className="text-xs text-center py-3" style={{ color: 'var(--muted-foreground)' }}>No lectures yet</p>)}
-                            {chLectures.filter((l) => { if (progressFilter === 'done') return l.done; if (progressFilter === 'next') return !l.done; if (progressFilter === 'studying') return !l.done && l.revisionStage >= 0; if (progressFilter === 'overdue') return l.done && isRevisionOverdue(l.nextRevisionAt); return true; }).filter((l) => !search || matchesSearch(l.topic)).map((lec, lecIndex) => (<LectureResourceRow key={lec.id} lecture={lec} chapter={ch} subject={subj} index={lecIndex} onEdit={() => setDetailLecture({ lecture: lec, chapter: ch, subject: subj })} />))}
+                            {chLectures.filter((l) => { if (progressFilter === 'done') return l.done; if (progressFilter === 'next') return !l.done; if (progressFilter === 'studying') return !l.done && l.revisionStage >= 0; if (progressFilter === 'overdue') return l.done && isRevisionOverdue(l.nextRevisionAt); return true; }).filter((l) => !search || matchesSearch(l.topic)).map((lec, lecIndex) => (<LectureResourceRow key={lec.id} lecture={lec} chapter={ch} subject={subj} index={lecIndex} onEdit={() => setDetailLecture({ lecture: lec, chapter: ch, subject: subj })} onEditLecture={() => setEditingLecture(lec)} />))}
                           </div>
                         </motion.div>
                       )}
