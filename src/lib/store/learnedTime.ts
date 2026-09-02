@@ -99,13 +99,60 @@ export const useLearnedTime = create<LearnedTimeStore>()(
  */
 export function recordSessionTime(subject: Subject, activity: ActivityType, studySeconds: number) {
   const minutes = Math.round(studySeconds / 60);
+  // Ignore tiny sessions (< 3 min) and huge ones (> 4h)
+  if (minutes < 3 || minutes > 240) return;
+
+  // 1. Update Zustand store (for reactive components)
   useLearnedTime.getState().record(subject, activity, minutes);
+
+  // 2. Also write directly to localStorage (for non-reactive reads)
+  // This ensures getLearnedExpectedMinutes can read it even if Zustand
+  // hasn't hydrated yet on next page load.
+  try {
+    const raw = localStorage.getItem('neet-learned-times');
+    const parsed = raw ? JSON.parse(raw) : { state: { data: {} } };
+    const data = parsed?.state?.data || {};
+    const key = `${subject}:${activity}`;
+    const existing = data[key] || [];
+    data[key] = [...existing, minutes].slice(-MAX_SAMPLES);
+    parsed.state = parsed.state || {};
+    parsed.state.data = data;
+    localStorage.setItem('neet-learned-times', JSON.stringify(parsed));
+  } catch {}
 }
 
 /**
  * Convenience function — get learned expected minutes without React hook.
  * Used in non-component code (e.g., quick-add handlers).
+ * Reads directly from localStorage to avoid Zustand hydration timing issues.
  */
 export function getLearnedExpectedMinutes(subject: Subject, activity: ActivityType): number {
-  return useLearnedTime.getState().getLearnedMinutes(subject, activity);
+  // Try the Zustand store first (fast path — already in memory)
+  const storeVal = useLearnedTime.getState().getLearnedMinutes(subject, activity);
+  if (storeVal !== DEFAULTS[activity]) {
+    return storeVal; // store has learned data
+  }
+
+  // Fallback: read directly from localStorage (handles hydration timing)
+  try {
+    const raw = localStorage.getItem('neet-learned-times');
+    if (!raw) return DEFAULTS[activity] || 60;
+    const parsed = JSON.parse(raw);
+    const data = parsed?.state?.data;
+    if (!data) return DEFAULTS[activity] || 60;
+    const key = `${subject}:${activity}`;
+    const samples = data[key];
+    if (!samples || !Array.isArray(samples) || samples.length === 0) {
+      return DEFAULTS[activity] || 60;
+    }
+    // Compute median
+    const sorted = [...samples].sort((a: number, b: number) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const med = sorted.length % 2 === 0
+      ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
+      : sorted[mid];
+    return Math.round(Math.max(5, med) / 5) * 5;
+  } catch {
+    return DEFAULTS[activity] || 60;
+  }
 }

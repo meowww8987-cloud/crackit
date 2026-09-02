@@ -165,7 +165,7 @@ export function AppShell() {
       const subj = subjects.find((s) => s.id === ch?.subjectId);
       if (ch && subj) {
         // Create a target with learned expected time
-        import('@/lib/learnedTime').then(({ getLearnedExpectedMinutes }) => {
+        import('@/lib/store/learnedTime').then(({ getLearnedExpectedMinutes }) => {
           const expectedMin = getLearnedExpectedMinutes(subj.name as any, 'Lecture');
           useTargets.getState().addTarget({
             date: todayKey(),

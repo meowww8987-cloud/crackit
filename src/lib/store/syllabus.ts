@@ -330,6 +330,7 @@ export const useSyllabus = create<SyllabusStore>()(
             const nextStage = Math.min(l.revisionStage + 1, 4);
             return {
               ...l,
+              revisionDone: true,  // FIXED: was missing — button color checks this
               revisionStage: nextStage,
               lastRevisedAt: Date.now(),
               nextRevisionAt: nextRevisionDate(nextStage),
