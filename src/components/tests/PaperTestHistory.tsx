@@ -40,10 +40,10 @@ export function PaperTestHistory({ onOpenTest }: { onOpenTest: (test: Test) => v
     <div className="glass rounded-2xl p-3">
       <div className="flex items-center gap-2 mb-3">
         <History size={14} className="text-purple-400" />
-        <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+        <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
           Paper Test History
         </span>
-        <span className="text-[10px] text-white/40 ml-auto">{pastPaperTests.length}</span>
+        <span className="text-[10px] text-muted-foreground ml-auto">{pastPaperTests.length}</span>
       </div>
 
       <div className="space-y-2 max-h-64 overflow-y-auto scroll-area">
@@ -71,7 +71,7 @@ export function PaperTestHistory({ onOpenTest }: { onOpenTest: (test: Test) => v
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
               onClick={() => onOpenTest(t)}
-              className="w-full p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 transition text-left flex items-center gap-3"
+              className="w-full p-3 rounded-xl bg-foreground/[0.04] hover:bg-foreground/[0.06] border border-border transition text-left flex items-center gap-3"
             >
               {/* Score circle */}
               <div className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
@@ -88,16 +88,16 @@ export function PaperTestHistory({ onOpenTest }: { onOpenTest: (test: Test) => v
                     }}>
                       {marks}
                     </div>
-                    <div className="text-[7px] text-white/40">/ {maxMarks}</div>
+                    <div className="text-[7px] text-muted-foreground">/ {maxMarks}</div>
                   </div>
                 ) : (
-                  <Clock size={16} className="text-white/40" />
+                  <Clock size={16} className="text-muted-foreground" />
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold truncate text-white">{t.name}</div>
-                <div className="text-[10px] text-white/50 flex items-center gap-2 mt-0.5">
+                <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
                   <span>{totalQ} Q</span>
                   <span>·</span>
                   <span className="flex items-center gap-0.5">
@@ -129,7 +129,7 @@ export function PaperTestHistory({ onOpenTest }: { onOpenTest: (test: Test) => v
                 </div>
               </div>
 
-              <ChevronRight size={14} className="text-white/30 shrink-0" />
+              <ChevronRight size={14} className="text-muted-foreground/60 shrink-0" />
             </motion.button>
           );
         })}

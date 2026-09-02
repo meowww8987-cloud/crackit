@@ -55,14 +55,14 @@ export function SessionAnalytics({ studySeconds, wastedSeconds, distractionCount
             <TrendingUp size={18} className="text-teal-400" />
             Session Report
           </h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
             <X size={16} />
           </button>
         </div>
 
         {/* Focus Score — big number */}
         <div className="text-center mb-5">
-          <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Focus Score</div>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Focus Score</div>
           <motion.div
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -89,7 +89,7 @@ export function SessionAnalytics({ studySeconds, wastedSeconds, distractionCount
         {avgStudySec > 0 && (
           <div className="glass rounded-xl p-3 mb-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-white/50">vs Your Average</span>
+              <span className="text-muted-foreground">vs Your Average</span>
               <span
                 className="font-bold tabular"
                 style={{ color: comparison >= 0 ? '#22c55e' : '#ef4444' }}
@@ -97,7 +97,7 @@ export function SessionAnalytics({ studySeconds, wastedSeconds, distractionCount
                 {comparison >= 0 ? '↑' : '↓'} {Math.abs(comparison)}%
               </span>
             </div>
-            <div className="text-[10px] text-white/40 mt-0.5">
+            <div className="text-[10px] text-muted-foreground mt-0.5">
               This session: {formatHM(studySeconds)} · Average: {formatHM(avgStudySec)}
             </div>
           </div>
@@ -105,11 +105,11 @@ export function SessionAnalytics({ studySeconds, wastedSeconds, distractionCount
 
         {/* Efficiency bar */}
         <div className="mb-3">
-          <div className="flex justify-between text-[10px] text-white/40 mb-1">
+          <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
             <span>Efficiency</span>
             <span className="tabular">{Math.round((1 - wasteRatio) * 100)}%</span>
           </div>
-          <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+          <div className="h-2 rounded-full bg-foreground/5 overflow-hidden">
             <motion.div
               className="h-full rounded-full"
               style={{ background: scoreColor }}
@@ -134,7 +134,7 @@ export function SessionAnalytics({ studySeconds, wastedSeconds, distractionCount
 function StatBox({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
   return (
     <div className="glass rounded-xl p-2.5 text-center">
-      <div className="flex items-center justify-center gap-1 text-[9px] text-white/40 mb-1">
+      <div className="flex items-center justify-center gap-1 text-[9px] text-muted-foreground mb-1">
         <span style={{ color }}>{icon}</span>
         {label}
       </div>

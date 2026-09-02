@@ -64,7 +64,7 @@ export function HistoryTab() {
       {/* Past 6 days overview */}
       {sessions.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-white/40 px-1 flex items-center gap-1">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground px-1 flex items-center gap-1">
             <Calendar size={12} /> Past 6 Days
           </h3>
           <div className="space-y-1.5">
@@ -80,14 +80,14 @@ export function HistoryTab() {
               return (
                 <div key={key} className="glass rounded-xl p-2.5 flex items-center gap-3">
                   <div className="text-center min-w-[40px]">
-                    <div className="text-[10px] text-white/40 uppercase">
+                    <div className="text-[10px] text-muted-foreground uppercase">
                       {d.toLocaleDateString('en-US', { weekday: 'short' })}
                     </div>
                     <div className="text-base font-bold tabular">{d.getDate()}</div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs text-white/50">
-                      <span className="text-white/80 font-semibold tabular">{doneCount}</span>/{dayTargets.length} done
+                    <div className="text-xs text-muted-foreground">
+                      <span className="text-foreground font-semibold tabular">{doneCount}</span>/{dayTargets.length} done
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-green-400 tabular">▶ {formatHM(studySec)}</span>
@@ -120,14 +120,14 @@ export function HistoryTab() {
                 onClick={() => setExpandedDay(isExpanded ? null : date)}
                 className="w-full flex items-center gap-2 mb-2 px-1"
               >
-                <span className="text-xs font-bold uppercase text-white/60">
+                <span className="text-xs font-bold uppercase text-muted-foreground">
                   {isToday ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                 </span>
-                <span className="text-xs text-white/40 tabular ml-auto">
+                <span className="text-xs text-muted-foreground tabular ml-auto">
                   ▶ {formatHM(totalStudy)}
                   {totalWasted > 0 && <span className="text-red-400"> · ⚠ {formatHM(totalWasted)}</span>}
                 </span>
-                <ChevronDown size={12} className={`text-white/40 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                <ChevronDown size={12} className={`text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence initial={false}>
@@ -163,7 +163,7 @@ function SessionTimelineCard({ session }: { session: import('@/lib/types').Saved
   return (
     <div className="glass rounded-xl p-3 flex items-center gap-3">
       <div className="text-center min-w-[40px]">
-        <div className="text-[10px] text-white/40 uppercase">
+        <div className="text-[10px] text-muted-foreground uppercase">
           {new Date(session.startedAt).toLocaleDateString('en-US', { month: 'short' })}
         </div>
         <div className="text-base font-bold tabular">{new Date(session.startedAt).getDate()}</div>
@@ -176,7 +176,7 @@ function SessionTimelineCard({ session }: { session: import('@/lib/types').Saved
             <span className="ml-1 text-[9px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">FREE</span>
           )}
         </div>
-        <div className="text-[10px] text-white/40">
+        <div className="text-[10px] text-muted-foreground">
           {new Date(session.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
           {' — '}
           {new Date(session.endedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
@@ -201,7 +201,7 @@ function TestTimelineCard({ test }: { test: Test }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium truncate">{test.name}</div>
-        <div className="text-[10px] text-white/40">
+        <div className="text-[10px] text-muted-foreground">
           {test.type} · {new Date(test.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </div>
       </div>
@@ -209,10 +209,10 @@ function TestTimelineCard({ test }: { test: Test }) {
         {test.totalMarks !== undefined ? (
           <>
             <div className="text-sm text-amber-400 font-bold tabular">{test.totalMarks}</div>
-            <div className="text-[10px] text-white/40">/720</div>
+            <div className="text-[10px] text-muted-foreground">/720</div>
           </>
         ) : (
-          <div className="text-[10px] text-white/40">No result</div>
+          <div className="text-[10px] text-muted-foreground">No result</div>
         )}
       </div>
       {test.hasAnalytics && <Trophy size={12} className="text-purple-400" />}

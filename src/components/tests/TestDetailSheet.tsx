@@ -176,7 +176,7 @@ export function TestDetailSheet({ test, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass rounded-t-3xl p-5 pb-8 max-h-[92vh] overflow-y-auto scroll-area"
       >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-4" />
 
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0">
@@ -184,13 +184,13 @@ export function TestDetailSheet({ test, onClose }: Props) {
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-400">
                 {test.type}
               </span>
-              <span className="text-[10px] text-white/40">
+              <span className="text-[10px] text-muted-foreground">
                 {new Date(test.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
             </div>
             <h2 className="text-lg font-bold">{test.name}</h2>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 shrink-0">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground shrink-0">
             <X size={16} />
           </button>
         </div>
@@ -200,7 +200,7 @@ export function TestDetailSheet({ test, onClose }: Props) {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <Layers size={12} className="text-teal-400" />
-              <span className="text-[10px] font-bold uppercase tracking-wide text-white/60">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                 Syllabus Scope
               </span>
             </div>
@@ -212,7 +212,7 @@ export function TestDetailSheet({ test, onClose }: Props) {
             </button>
           </div>
           {readiness.subjects.length === 0 ? (
-            <div className="text-xs text-white/40">
+            <div className="text-xs text-muted-foreground">
               No syllabus scope set. Tap Edit to define what this test covers.
             </div>
           ) : (
@@ -224,13 +224,13 @@ export function TestDetailSheet({ test, onClose }: Props) {
                     <span className="text-[10px] font-semibold w-16 shrink-0" style={{ color: c.hex }}>
                       {sr.subject.slice(0, 4)}
                     </span>
-                    <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                    <div className="flex-1 h-2 rounded-full bg-foreground/5 overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all"
                         style={{ width: `${sr.pct}%`, background: c.hex }}
                       />
                     </div>
-                    <span className="text-[10px] tabular text-white/60 w-16 text-right">
+                    <span className="text-[10px] tabular text-muted-foreground w-16 text-right">
                       {sr.done}/{sr.total}
                     </span>
                     <span className="text-[10px] tabular font-bold w-8 text-right" style={{ color: c.hex }}>
@@ -239,8 +239,8 @@ export function TestDetailSheet({ test, onClose }: Props) {
                   </div>
                 );
               })}
-              <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-white/10">
-                <span className="text-[10px] text-white/50">Overall readiness</span>
+              <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-border">
+                <span className="text-[10px] text-muted-foreground">Overall readiness</span>
                 <span className="text-xs font-bold tabular text-teal-400">{readiness.overallPct}%</span>
               </div>
             </div>
@@ -254,23 +254,23 @@ export function TestDetailSheet({ test, onClose }: Props) {
             {/* Result entry */}
             <div className="space-y-4 mb-4">
               <div>
-                <label className="text-xs font-semibold text-white/60 mb-2 block">TOTAL MARKS (/720)</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-2 block">TOTAL MARKS (/720)</label>
                 <input
                   type="number"
                   value={totalMarks}
                   onChange={(e) => setTotalMarks(e.target.value)}
                   placeholder="e.g. 580"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
+                  className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-white/60 mb-2 block">SUBJECT-WISE MARKS (/180)</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-2 block">SUBJECT-WISE MARKS (/180)</label>
                 <div className="grid grid-cols-2 gap-2">
                   {testSubjects.map((s) => {
                     const c = subjectColor(s);
                     return (
-                      <div key={s} className="flex items-center gap-2 bg-white/5 rounded-xl px-2 py-1.5">
+                      <div key={s} className="flex items-center gap-2 bg-foreground/5 rounded-xl px-2 py-1.5">
                         <div className="w-2 h-6 rounded" style={{ background: c.hex }} />
                         <input
                           type="number"
@@ -286,32 +286,32 @@ export function TestDetailSheet({ test, onClose }: Props) {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-white/60 mb-2 block">STRONG TOPICS</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-2 block">STRONG TOPICS</label>
                 <textarea
                   value={strongTopics}
                   onChange={(e) => setStrongTopics(e.target.value)}
                   placeholder="Topics you felt confident about..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400/50 min-h-[60px]"
+                  className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400/50 min-h-[60px]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-white/60 mb-2 block">WEAK TOPICS</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-2 block">WEAK TOPICS</label>
                 <textarea
                   value={weakTopics}
                   onChange={(e) => setWeakTopics(e.target.value)}
                   placeholder="Topics you struggled with..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400/50 min-h-[60px]"
+                  className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400/50 min-h-[60px]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-white/60 mb-2 block">NOTES</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-2 block">NOTES</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Any other observations..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400/50 min-h-[60px]"
+                  className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400/50 min-h-[60px]"
                 />
               </div>
 
@@ -336,19 +336,19 @@ export function TestDetailSheet({ test, onClose }: Props) {
                       borderColor: `${rank.color}40`,
                     }}
                   >
-                    <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
                       Predicted NEET Rank
                     </div>
                     <div className="flex items-baseline gap-2 mb-1">
                       <div className="text-3xl font-bold tabular" style={{ color: rank.color }}>
                         ~{rank.rank > 999 ? `${(rank.rank / 1000).toFixed(1)}k` : rank.rank}
                       </div>
-                      <div className="text-xs text-white/50">AIR (approx)</div>
+                      <div className="text-xs text-muted-foreground">AIR (approx)</div>
                     </div>
                     <div className="text-xs font-semibold" style={{ color: rank.color }}>
                       {rank.assessment}
                     </div>
-                    <div className="text-[10px] text-white/40 mt-1">
+                    <div className="text-[10px] text-muted-foreground mt-1">
                       Top {rank.percentile}% · based on 2024 NEET data
                     </div>
                   </motion.div>
@@ -361,7 +361,7 @@ export function TestDetailSheet({ test, onClose }: Props) {
               {/* Deep analytics toggle */}
               <button
                 onClick={() => setShowAnalytics(!showAnalytics)}
-                className="w-full py-2.5 rounded-xl bg-white/5 text-white/70 text-sm font-semibold flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-xl bg-foreground/5 text-muted-foreground text-sm font-semibold flex items-center justify-center gap-2"
               >
                 Deep Analytics
                 {test.hasAnalytics && <span className="text-[9px] px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-400">SAVED</span>}
@@ -374,7 +374,7 @@ export function TestDetailSheet({ test, onClose }: Props) {
                   animate={{ opacity: 1, height: 'auto' }}
                   className="space-y-4"
                 >
-                  <p className="text-[10px] text-white/40">Per-subject deep analysis (optional)</p>
+                  <p className="text-[10px] text-muted-foreground">Per-subject deep analysis (optional)</p>
                   {testSubjects.map((s) => (
                     <SubjectAnalyticsInput
                       key={s}
@@ -460,11 +460,11 @@ function UpcomingView({ test, readinessPct }: { test: Test; readinessPct: number
         <div className="text-4xl font-bold tabular bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent mb-1">
           {days}
         </div>
-        <div className="text-xs text-white/50 mb-4">days away</div>
+        <div className="text-xs text-muted-foreground mb-4">days away</div>
         <div className="glass rounded-xl p-4 text-left">
-          <div className="text-xs text-white/50 mb-1">Syllabus Readiness</div>
+          <div className="text-xs text-muted-foreground mb-1">Syllabus Readiness</div>
           <div className="text-2xl font-bold tabular text-teal-400">{readinessPct}%</div>
-          <p className="text-[10px] text-white/40 mt-2">
+          <p className="text-[10px] text-muted-foreground mt-2">
             Based on lectures completed in the test's syllabus scope. Tap "Edit" above to adjust scope.
           </p>
         </div>
@@ -474,7 +474,7 @@ function UpcomingView({ test, readinessPct }: { test: Test; readinessPct: number
       <div className="glass rounded-2xl p-4 border border-teal-500/20">
         <div className="flex items-center gap-2 mb-3">
           <Clock size={14} className="text-teal-400" />
-          <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
             Test Timer
           </span>
           {test.timerState === 'running' && (
@@ -488,7 +488,7 @@ function UpcomingView({ test, readinessPct }: { test: Test; readinessPct: number
             </span>
           )}
           {test.timerState === 'completed' && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white/60 ml-auto">
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-foreground/10 text-muted-foreground ml-auto">
               ✓ DONE
             </span>
           )}
@@ -496,7 +496,7 @@ function UpcomingView({ test, readinessPct }: { test: Test; readinessPct: number
 
         {/* Timer display */}
         <div className="text-center mb-3">
-          <div className="text-[10px] text-white/40 uppercase tracking-wide">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
             {test.timerState === 'not_started' ? 'Duration' :
              test.timerState === 'completed' ? 'Time taken' : 'Time remaining'}
           </div>
@@ -515,7 +515,7 @@ function UpcomingView({ test, readinessPct }: { test: Test; readinessPct: number
               : `${Math.floor(remainingSec / 3600)}:${String(Math.floor((remainingSec % 3600) / 60)).padStart(2, '0')}:${String(remainingSec % 60).padStart(2, '0')}`}
           </div>
           {test.timerState === 'running' && (
-            <div className="text-[10px] text-white/40 mt-1">
+            <div className="text-[10px] text-muted-foreground mt-1">
               {Math.round((elapsedSec / totalSec) * 100)}% elapsed
             </div>
           )}
@@ -541,7 +541,7 @@ function UpcomingView({ test, readinessPct }: { test: Test; readinessPct: number
               </button>
               <button
                 onClick={() => setShowTimer(true)}
-                className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs active:scale-95"
+                className="flex-1 py-2.5 rounded-xl bg-foreground/10 text-white font-bold text-xs active:scale-95"
               >
                 Open Full Screen
               </button>
@@ -557,7 +557,7 @@ function UpcomingView({ test, readinessPct }: { test: Test; readinessPct: number
               </button>
               <button
                 onClick={() => setShowTimer(true)}
-                className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs active:scale-95"
+                className="flex-1 py-2.5 rounded-xl bg-foreground/10 text-white font-bold text-xs active:scale-95"
               >
                 Open Full Screen
               </button>
@@ -569,7 +569,7 @@ function UpcomingView({ test, readinessPct }: { test: Test; readinessPct: number
             </div>
           )}
         </div>
-        <div className="text-[10px] text-white/40 mt-2 text-center">
+        <div className="text-[10px] text-muted-foreground mt-2 text-center">
           Subject sections: Physics → Chemistry → Botany → Zoology (50 min each)
         </div>
       </div>
@@ -592,13 +592,13 @@ function SubjectAnalyticsInput({ subject, data, onChange }: { subject: Subject; 
         <NumInput label="Time (min)" value={data.timeSpent} onChange={(v) => onChange({ ...data, timeSpent: v })} />
         <NumInput label="Silly mistakes" value={data.sillyMistakes} onChange={(v) => onChange({ ...data, sillyMistakes: v })} />
         <div>
-          <label className="text-[10px] text-white/40 block mb-1">Confidence</label>
+          <label className="text-[10px] text-muted-foreground block mb-1">Confidence</label>
           <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((d) => (
               <button
                 key={d}
                 onClick={() => { onChange({ ...data, confidence: d }); vibrate(6); }}
-                className={cn('w-5 h-5 rounded-full text-[10px] font-bold', d <= data.confidence ? 'bg-teal-500 text-black' : 'bg-white/10 text-white/40')}
+                className={cn('w-5 h-5 rounded-full text-[10px] font-bold', d <= data.confidence ? 'bg-teal-500 text-black' : 'bg-foreground/10 text-muted-foreground')}
               >
                 {d}
               </button>
@@ -613,12 +613,12 @@ function SubjectAnalyticsInput({ subject, data, onChange }: { subject: Subject; 
 function NumInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   return (
     <div>
-      <label className="text-[10px] text-white/40 block mb-1">{label}</label>
+      <label className="text-[10px] text-muted-foreground block mb-1">{label}</label>
       <input
         type="number"
         value={value || ''}
         onChange={(e) => onChange(Number(e.target.value) || 0)}
-        className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-teal-400/50"
+        className="w-full bg-foreground/5 border border-border rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-teal-400/50"
       />
     </div>
   );
@@ -627,7 +627,7 @@ function NumInput({ label, value, onChange }: { label: string; value: number; on
 function ChartBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="glass rounded-xl p-3">
-      <h4 className="text-xs font-bold text-white/70 mb-2">{title}</h4>
+      <h4 className="text-xs font-bold text-muted-foreground mb-2">{title}</h4>
       {children}
     </div>
   );

@@ -196,13 +196,13 @@ export function AddTestSheet({ onClose }: Props) {
           onClick={(e) => e.stopPropagation()}
           className="relative w-full max-w-md glass-strong rounded-t-3xl p-5 pb-8 max-h-[92vh] overflow-y-auto scroll-area"
         >
-          <div className="w-10 h-1 bg-white/30 rounded-full mx-auto mb-4" />
+          <div className="w-10 h-1 bg-foreground/30 rounded-full mx-auto mb-4" />
 
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-bold">Add Test</h2>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60"
+              className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"
             >
               <X size={16} />
             </button>
@@ -215,28 +215,28 @@ export function AddTestSheet({ onClose }: Props) {
               </div>
             )}
             <div>
-              <label className="text-xs font-semibold text-white/60 mb-2 block">TEST NAME *</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-2 block">TEST NAME *</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Allen AITS #3, PW Full Mock #1"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
+                className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
                 autoFocus
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-white/60 mb-2 block">DATE</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-2 block">DATE</label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
+                className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-white/60 mb-2 block">TEST TYPE</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-2 block">TEST TYPE</label>
               <div className="grid grid-cols-2 gap-2">
                 {TYPES.map((t) => (
                   <button
@@ -244,14 +244,14 @@ export function AddTestSheet({ onClose }: Props) {
                     onClick={() => handleTypeChange(t.value)}
                     className={cn(
                       'py-2 rounded-xl text-xs font-semibold transition text-left px-3',
-                      type === t.value ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/60',
+                      type === t.value ? 'bg-teal-500 text-black' : 'bg-foreground/5 text-muted-foreground',
                     )}
                   >
                     <div>{t.label}</div>
                     <div
                       className={cn(
                         'text-[9px] mt-0.5 leading-tight',
-                        type === t.value ? 'text-black/60' : 'text-white/30',
+                        type === t.value ? 'text-black/60' : 'text-muted-foreground/60',
                       )}
                     >
                       {t.desc}
@@ -262,7 +262,7 @@ export function AddTestSheet({ onClose }: Props) {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-white/60 mb-2 block">COACHING SOURCE</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-2 block">COACHING SOURCE</label>
               <div className="flex flex-wrap gap-1.5">
                 {COACHING_SOURCES.map((c) => (
                   <button
@@ -272,7 +272,7 @@ export function AddTestSheet({ onClose }: Props) {
                       'px-2.5 py-1 rounded-full text-[11px] font-medium transition',
                       coaching === c
                         ? 'bg-purple-500 text-white'
-                        : 'bg-white/5 text-white/60 hover:bg-white/10',
+                        : 'bg-foreground/5 text-muted-foreground hover:bg-foreground/10',
                     )}
                   >
                     {c}
@@ -283,7 +283,7 @@ export function AddTestSheet({ onClose }: Props) {
 
             {/* Duration */}
             <div>
-              <label className="text-xs font-semibold text-white/60 mb-2 block flex items-center gap-1">
+              <label className="text-xs font-semibold text-muted-foreground mb-2 block flex items-center gap-1">
                 <Clock size={11} /> DURATION (MINUTES)
               </label>
               <div className="flex items-center gap-3">
@@ -308,7 +308,7 @@ export function AddTestSheet({ onClose }: Props) {
 
             {/* Syllabus scope selector */}
             <div>
-              <label className="text-xs font-semibold text-white/60 mb-2 block">
+              <label className="text-xs font-semibold text-muted-foreground mb-2 block">
                 SYLLABUS SCOPE
                 {isFullSyllabusType && (
                   <span className="text-teal-400 ml-1.5">(auto: all chapters)</span>
@@ -316,7 +316,7 @@ export function AddTestSheet({ onClose }: Props) {
               </label>
               <button
                 onClick={() => { vibrate(8); setShowPicker(true); }}
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-left hover:bg-white/[0.07] transition flex items-center gap-3"
+                className="w-full bg-foreground/5 border border-border rounded-xl p-3 text-left hover:bg-foreground/[0.07] transition flex items-center gap-3"
               >
                 <div className="w-8 h-8 rounded-lg bg-teal-500/15 flex items-center justify-center shrink-0">
                   <Layers size={16} className="text-teal-400" />
@@ -329,13 +329,13 @@ export function AddTestSheet({ onClose }: Props) {
                       ? 'All NEET chapters'
                       : 'Tap to select chapters'}
                   </div>
-                  <div className="text-[10px] text-white/40">
+                  <div className="text-[10px] text-muted-foreground">
                     {isFullSyllabusType
                       ? 'Full Syllabus default — edit to narrow scope'
                       : 'Defines what this test covers · drives Home readiness'}
                   </div>
                 </div>
-                <ChevronRight size={14} className="text-white/30" />
+                <ChevronRight size={14} className="text-muted-foreground/60" />
               </button>
             </div>
 
@@ -346,7 +346,7 @@ export function AddTestSheet({ onClose }: Props) {
                 'w-full py-3 rounded-xl font-bold text-sm transition active:scale-[0.98]',
                 name.trim()
                   ? 'bg-gradient-to-r from-teal-500 to-green-500 text-black'
-                  : 'bg-white/5 text-white/30 cursor-not-allowed',
+                  : 'bg-foreground/5 text-muted-foreground/60 cursor-not-allowed',
               )}
             >
               Add Test

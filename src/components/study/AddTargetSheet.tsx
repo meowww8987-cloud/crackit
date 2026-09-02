@@ -220,7 +220,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
             <div className="flex items-center gap-2">
               {step > 1 && !editing && (
                 <button
-                  onClick={() => { setStep(step - 1); vibrate(8); }}
+                  onClick={() => { setStep((step - 1) as 1 | 2 | 3); vibrate(8); }}
                   className="w-7 h-7 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"
                 >
                   <ChevronLeft size={16} />

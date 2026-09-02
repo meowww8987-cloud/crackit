@@ -85,7 +85,7 @@ export function AddChapterSheet({ subject, onClose, showToast }: Props) {
       >
         {/* Sticky header */}
         <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+          <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-3" />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div
@@ -101,7 +101,7 @@ export function AddChapterSheet({ subject, onClose, showToast }: Props) {
                 </div>
               </div>
             </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-white">
+            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-white">
               <X size={16} />
             </button>
           </div>
@@ -112,13 +112,13 @@ export function AddChapterSheet({ subject, onClose, showToast }: Props) {
 
         {/* Chapter name */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block">CHAPTER NAME *</label>
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block">CHAPTER NAME *</label>
           <input
             value={chapterName}
             onChange={(e) => setChapterName(e.target.value)}
             placeholder="e.g. Kinematics"
             autoFocus
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-teal-400/50"
+            className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-teal-400/50"
             style={chapterName ? { borderColor: `${color.hex}50` } : undefined}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
           />
@@ -127,31 +127,31 @@ export function AddChapterSheet({ subject, onClose, showToast }: Props) {
         {/* Quick-add lectures */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-white/60">QUICK-ADD LECTURES</label>
-            <span className="text-[10px] text-white/40 tabular">{parsedLectures.length} lectures</span>
+            <label className="text-xs font-semibold text-muted-foreground">QUICK-ADD LECTURES</label>
+            <span className="text-[10px] text-muted-foreground tabular">{parsedLectures.length} lectures</span>
           </div>
           <textarea
             value={lecturesText}
             onChange={(e) => setLecturesText(e.target.value)}
             placeholder={'One lecture per line, e.g.\nL1 - Motion in a Straight Line\nL2 - Uniform Acceleration\nL3 - Equations of Motion'}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-teal-400/50 min-h-[90px] font-mono"
+            className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-teal-400/50 min-h-[90px] font-mono"
           />
           <div className="flex gap-1.5 mt-2">
             <button
               onClick={() => handleQuickAdd(5)}
-              className="flex-1 py-1.5 rounded-lg bg-white/5 text-white/70 text-[10px] font-semibold hover:bg-white/10 transition flex items-center justify-center gap-1"
+              className="flex-1 py-1.5 rounded-lg bg-foreground/5 text-muted-foreground text-[10px] font-semibold hover:bg-foreground/10 transition flex items-center justify-center gap-1"
             >
               <Zap size={10} /> +5 Lectures
             </button>
             <button
               onClick={() => handleQuickAdd(10)}
-              className="flex-1 py-1.5 rounded-lg bg-white/5 text-white/70 text-[10px] font-semibold hover:bg-white/10 transition flex items-center justify-center gap-1"
+              className="flex-1 py-1.5 rounded-lg bg-foreground/5 text-muted-foreground text-[10px] font-semibold hover:bg-foreground/10 transition flex items-center justify-center gap-1"
             >
               <Zap size={10} /> +10 Lectures
             </button>
             <button
               onClick={() => setLecturesText('')}
-              className="px-2.5 py-1.5 rounded-lg bg-white/5 text-white/50 text-[10px] font-semibold hover:bg-white/10"
+              className="px-2.5 py-1.5 rounded-lg bg-foreground/5 text-muted-foreground text-[10px] font-semibold hover:bg-foreground/10"
             >
               Clear
             </button>
@@ -160,11 +160,11 @@ export function AddChapterSheet({ subject, onClose, showToast }: Props) {
 
         {/* PYQ count */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block">PYQ COUNT (optional)</label>
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block">PYQ COUNT (optional)</label>
           <div className="flex items-center gap-3">
             <button
               onClick={() => { setPyqCount(Math.max(0, pyqCount - 1)); vibrate(6); }}
-              className="w-9 h-9 rounded-lg bg-white/5 text-white text-lg font-bold flex items-center justify-center"
+              className="w-9 h-9 rounded-lg bg-foreground/5 text-white text-lg font-bold flex items-center justify-center"
             >
               −
             </button>
@@ -173,7 +173,7 @@ export function AddChapterSheet({ subject, onClose, showToast }: Props) {
             </span>
             <button
               onClick={() => { setPyqCount(pyqCount + 1); vibrate(6); }}
-              className="w-9 h-9 rounded-lg bg-white/5 text-white text-lg font-bold flex items-center justify-center"
+              className="w-9 h-9 rounded-lg bg-foreground/5 text-white text-lg font-bold flex items-center justify-center"
             >
               +
             </button>
@@ -183,24 +183,24 @@ export function AddChapterSheet({ subject, onClose, showToast }: Props) {
         {/* Live preview */}
         {(chapterName.trim() || parsedLectures.length > 0) && (
           <div className="mb-4 glass rounded-xl p-3 border" style={{ borderColor: `${color.hex}30` }}>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-white/40 mb-2">Will create:</div>
+            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-2">Will create:</div>
             <div className="space-y-1 text-xs">
               {chapterName.trim() && (
                 <div className="flex items-center gap-1.5">
                   <Check size={11} style={{ color: color.hex }} />
-                  <span className="text-white/80">1 chapter: <strong>{chapterName.trim()}</strong></span>
+                  <span className="text-foreground">1 chapter: <strong>{chapterName.trim()}</strong></span>
                 </div>
               )}
               {parsedLectures.length > 0 && (
                 <div className="flex items-center gap-1.5">
                   <Check size={11} style={{ color: color.hex }} />
-                  <span className="text-white/80"><strong>{parsedLectures.length}</strong> lectures</span>
+                  <span className="text-foreground"><strong>{parsedLectures.length}</strong> lectures</span>
                 </div>
               )}
               {pyqCount > 0 && (
                 <div className="flex items-center gap-1.5">
                   <Check size={11} style={{ color: color.hex }} />
-                  <span className="text-white/80"><strong>{pyqCount}</strong> PYQ count</span>
+                  <span className="text-foreground"><strong>{pyqCount}</strong> PYQ count</span>
                 </div>
               )}
             </div>
@@ -218,7 +218,7 @@ export function AddChapterSheet({ subject, onClose, showToast }: Props) {
               'w-full py-3.5 rounded-xl font-bold text-sm transition active:scale-[0.98] flex items-center justify-center gap-2',
               chapterName.trim()
                 ? 'text-black'
-                : 'bg-white/5 text-white/30 cursor-not-allowed'
+                : 'bg-foreground/5 text-muted-foreground/60 cursor-not-allowed'
             )}
             style={chapterName.trim() ? { background: color.hex } : undefined}
           >

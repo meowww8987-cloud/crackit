@@ -55,7 +55,7 @@ export function SmartEmptyState({ tab, onAction }: Props) {
         {config.icon}
       </div>
       <h3 className="text-base font-bold mb-2">{config.title}</h3>
-      <p className="text-xs text-white/50 mb-4 max-w-xs mx-auto leading-relaxed">{config.desc}</p>
+      <p className="text-xs text-muted-foreground mb-4 max-w-xs mx-auto leading-relaxed">{config.desc}</p>
       {onAction && (
         <button
           onClick={onAction}

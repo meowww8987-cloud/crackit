@@ -850,10 +850,10 @@ export function AppShell() {
               className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[88vh] flex flex-col"
             >
               <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
-                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+                <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-3" />
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold">Formula Vault</h2>
-                  <button onClick={() => setShowFormulaVault(false)} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">✕</button>
+                  <button onClick={() => setShowFormulaVault(false)} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">✕</button>
                 </div>
               </div>
               <div className="overflow-y-auto scroll-area px-5 py-5">
@@ -880,10 +880,10 @@ export function AppShell() {
               className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[88vh] flex flex-col"
             >
               <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
-                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+                <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-3" />
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold">Weekly Goals</h2>
-                  <button onClick={() => setShowWeeklyGoals(false)} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">✕</button>
+                  <button onClick={() => setShowWeeklyGoals(false)} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">✕</button>
                 </div>
               </div>
               <div className="overflow-y-auto scroll-area px-5 py-5">
@@ -910,10 +910,10 @@ export function AppShell() {
               className="relative w-full max-w-md glass-strong rounded-t-3xl max-h-[88vh] flex flex-col"
             >
               <div className="sticky top-0 z-10 px-5 pt-4 pb-3 glass-strong rounded-t-3xl" style={{ borderBottom: '1px solid var(--border)' }}>
-                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+                <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-3" />
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold">Test History</h2>
-                  <button onClick={() => setShowTestHistory(false)} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">✕</button>
+                  <button onClick={() => setShowTestHistory(false)} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">✕</button>
                 </div>
               </div>
               <div className="overflow-y-auto scroll-area px-5 py-5">
@@ -947,7 +947,7 @@ export function AppShell() {
                     </div>
                     <h2 className="text-lg font-bold">Progression Report</h2>
                   </div>
-                  <button onClick={() => setShowWeeklyReport(false)} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">✕</button>
+                  <button onClick={() => setShowWeeklyReport(false)} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">✕</button>
                 </div>
               </div>
               <div className="overflow-y-auto scroll-area px-5 py-5">
@@ -1074,9 +1074,9 @@ function TestHistoryInline({ onClose }: { onClose: () => void }) {
   if (tests.length === 0) {
     return (
       <div className="text-center py-10">
-        <Trophy size={32} className="text-white/20 mx-auto mb-3" />
-        <p className="text-sm text-white/50">No tests logged yet.</p>
-        <p className="text-[10px] text-white/40 mt-1">Long-press the Tests tab to add a test.</p>
+        <Trophy size={32} className="text-muted-foreground/30 mx-auto mb-3" />
+        <p className="text-sm text-muted-foreground">No tests logged yet.</p>
+        <p className="text-[10px] text-muted-foreground mt-1">Long-press the Tests tab to add a test.</p>
       </div>
     );
   }
@@ -1088,7 +1088,7 @@ function TestHistoryInline({ onClose }: { onClose: () => void }) {
             <span className="text-sm font-semibold">{t.name || `${t.subject || 'Test'}`}</span>
             <span className="text-xs tabular font-bold text-teal-400">{t.totalMarks ?? '—'}/{t.maxMarks ?? 720}</span>
           </div>
-          <div className="text-[10px] text-white/40">{t.date} · {t.source}</div>
+          <div className="text-[10px] text-muted-foreground">{t.date} · {t.source}</div>
         </div>
       ))}
     </div>
@@ -1117,7 +1117,7 @@ function WeeklyReportInline() {
     const sDate = new Date(s.endedAt);
     const weekAgo = Date.now() - 7 * 86400000;
     const twoWeeksAgo = Date.now() - 14 * 86400000;
-    return sDate >= twoWeeksAgo && sDate < weekAgo;
+    return sDate.getTime() >= twoWeeksAgo && sDate.getTime() < weekAgo;
   }).reduce((a, s) => a + s.studySeconds, 0);
   const lastWeekTotal = lastWeekSec / 3600;
   const trendPct = lastWeekTotal > 0 ? Math.round(((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100) : thisWeekTotal > 0 ? 100 : 0;
@@ -1163,15 +1163,15 @@ function WeeklyReportInline() {
       {/* === Summary stats === */}
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="glass rounded-xl p-2.5">
-          <div className="text-[9px] uppercase text-white/40 font-semibold">This Week</div>
+          <div className="text-[9px] uppercase text-muted-foreground font-semibold">This Week</div>
           <div className="text-lg font-bold tabular text-teal-400">{thisWeekTotal.toFixed(1)}h</div>
         </div>
         <div className="glass rounded-xl p-2.5">
-          <div className="text-[9px] uppercase text-white/40 font-semibold">Daily Avg</div>
+          <div className="text-[9px] uppercase text-muted-foreground font-semibold">Daily Avg</div>
           <div className="text-lg font-bold tabular text-purple-400">{(thisWeekTotal/7).toFixed(1)}h</div>
         </div>
         <div className="glass rounded-xl p-2.5">
-          <div className="text-[9px] uppercase text-white/40 font-semibold">Sessions</div>
+          <div className="text-[9px] uppercase text-muted-foreground font-semibold">Sessions</div>
           <div className="text-lg font-bold tabular text-amber-400">{sessionsThisWeek}</div>
         </div>
       </div>
@@ -1183,7 +1183,7 @@ function WeeklyReportInline() {
             ↑ {trendPct}% vs last week
           </span>
         ) : trendSame ? (
-          <span className="text-sm font-bold text-white/50 flex items-center gap-1">
+          <span className="text-sm font-bold text-muted-foreground flex items-center gap-1">
             — Same as last week
           </span>
         ) : (
@@ -1195,7 +1195,7 @@ function WeeklyReportInline() {
 
       {/* === Daily bar chart — taller, animated, colored by performance === */}
       <div>
-        <div className="text-xs font-bold text-white/70 mb-2">Daily Study (Last 7 Days)</div>
+        <div className="text-xs font-bold text-muted-foreground mb-2">Daily Study (Last 7 Days)</div>
         <div className="relative h-32">
           {/* Goal line */}
           <div
@@ -1227,7 +1227,7 @@ function WeeklyReportInline() {
                       <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[10px]">✓</span>
                     )}
                   </div>
-                  <span className={`text-[9px] font-bold ${d.isWeekend ? 'text-amber-400' : 'text-white/50'}`}>{d.label}</span>
+                  <span className={`text-[9px] font-bold ${d.isWeekend ? 'text-amber-400' : 'text-muted-foreground'}`}>{d.label}</span>
                 </div>
               );
             })}
@@ -1247,7 +1247,7 @@ function WeeklyReportInline() {
 
       {/* === Weekly bar chart — with date ranges === */}
       <div>
-        <div className="text-xs font-bold text-white/70 mb-2">Weekly Progression (Last 4 Weeks)</div>
+        <div className="text-xs font-bold text-muted-foreground mb-2">Weekly Progression (Last 4 Weeks)</div>
         <div className="flex items-end justify-between gap-2 h-32">
           {last4Weeks.map((d, i) => {
             const heightPct = (d.hours / maxWeekH) * 100;
@@ -1265,8 +1265,8 @@ function WeeklyReportInline() {
                     transition={{ delay: 0.3 + i * 0.08, type: 'spring', stiffness: 100, damping: 15 }}
                   />
                 </div>
-                <span className="text-[8px] text-white/50 font-bold">{d.label}</span>
-                <span className="text-[7px] text-white/30 tabular">{d.range}</span>
+                <span className="text-[8px] text-muted-foreground font-bold">{d.label}</span>
+                <span className="text-[7px] text-muted-foreground/60 tabular">{d.range}</span>
               </div>
             );
           })}

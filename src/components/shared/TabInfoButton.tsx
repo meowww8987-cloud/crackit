@@ -222,7 +222,7 @@ export function TabInfoButton({ tab }: Props) {
                     </div>
                     <div className="space-y-2">
                       {section.items.map((item, ii) => (
-                        <div key={ii} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-white/5">
+                        <div key={ii} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-foreground/5">
                           <span className="text-base shrink-0 mt-0.5">{item.icon.trim()}</span>
                           <p className="text-xs text-t-secondary leading-snug">{item.text}</p>
                         </div>

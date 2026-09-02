@@ -119,12 +119,12 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
               className="relative w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col glass-strong rounded-3xl"
             >
               {/* Top drag indicator */}
-              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-2 shrink-0" />
+              <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mt-3 mb-2 shrink-0" />
 
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition"
+                className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-white hover:bg-foreground/10 transition"
                 aria-label="Close"
               >
                 <X size={16} />
@@ -136,7 +136,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                   <BookOpen size={24} className="text-blue-300" />
                 </div>
                 <h2 className="text-lg font-bold text-white">Practice History</h2>
-                <p className="text-[11px] text-white/60 mt-0.5">
+                <p className="text-[11px] text-muted-foreground mt-0.5">
                   {totalSessions} sessions · {totalQuestions} questions · {overallAccuracy}% accuracy
                 </p>
               </div>
@@ -146,8 +146,8 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                 {history.length === 0 ? (
                   <div className="text-center py-12">
                     <BookOpen size={40} className="text-blue-300/40 mx-auto mb-3" />
-                    <p className="text-white/60 text-sm">No practice sessions yet.</p>
-                    <p className="text-white/40 text-[10px] mt-1">Long-press the Tests tab → Practice Mode to start.</p>
+                    <p className="text-muted-foreground text-sm">No practice sessions yet.</p>
+                    <p className="text-muted-foreground text-[10px] mt-1">Long-press the Tests tab → Practice Mode to start.</p>
                   </div>
                 ) : (
                   <>
@@ -185,16 +185,16 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                 </button>
                                 <div className="flex-1 min-w-0">
                                   <div className="text-xs font-bold text-white truncate">{p.name}</div>
-                                  <div className="text-[10px] text-white/50 flex items-center gap-1.5 mt-0.5">
+                                  <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
                                     <Clock size={9} />
                                     <span className="tabular">{formatHMS(totalElapsed)}</span>
                                     <span className="opacity-40">·</span>
                                     <span>Q{currentQ + 1}{p.questionCount > 0 ? `/${p.questionCount}` : ''}</span>
                                     {answeredCount > 0 && <span className="text-green-400">✓{answeredCount}</span>}
-                                    {skippedCount > 0 && <span className="text-white/40">→{skippedCount}</span>}
+                                    {skippedCount > 0 && <span className="text-muted-foreground">→{skippedCount}</span>}
                                     {reviewCount > 0 && <span className="text-amber-400">⚑{reviewCount}</span>}
                                   </div>
-                                  <div className="text-[9px] text-white/30 mt-0.5">
+                                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">
                                     Paused {timeSincePause(p.pausedAt)}
                                   </div>
                                 </div>
@@ -205,7 +205,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                       deletePausedPractice(p.id);
                                     }
                                   }}
-                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition shrink-0"
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/10 transition shrink-0"
                                   aria-label="Discard paused practice"
                                   title="Discard"
                                 >
@@ -219,12 +219,12 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                     )}
 
                     {/* View toggle */}
-                    <div className="flex gap-1 p-1 rounded-xl bg-white/5 mb-4 sticky top-0 z-10">
+                    <div className="flex gap-1 p-1 rounded-xl bg-foreground/5 mb-4 sticky top-0 z-10">
                       <button
                         onClick={() => setView('sessions')}
                         className={cn(
                           'flex-1 py-2 rounded-lg text-xs font-bold transition',
-                          view === 'sessions' ? 'bg-blue-500/30 text-white' : 'text-white/40'
+                          view === 'sessions' ? 'bg-blue-500/30 text-white' : 'text-muted-foreground'
                         )}
                       >
                         Sessions ({totalSessions})
@@ -233,7 +233,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                         onClick={() => setView('wrong')}
                         className={cn(
                           'flex-1 py-2 rounded-lg text-xs font-bold transition',
-                          view === 'wrong' ? 'bg-red-500/30 text-red-200' : 'text-white/40'
+                          view === 'wrong' ? 'bg-red-500/30 text-red-200' : 'text-muted-foreground'
                         )}
                       >
                         Wrong ({wrongQuestions.length})
@@ -247,7 +247,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                           <div className="text-center py-8">
                             <Check size={28} className="text-green-400/60 mx-auto mb-2" />
                             <p className="text-green-400/60 text-sm">No wrong questions!</p>
-                            <p className="text-white/30 text-[10px] mt-1">All your sessions are clean.</p>
+                            <p className="text-muted-foreground/60 text-[10px] mt-1">All your sessions are clean.</p>
                           </div>
                         ) : (
                           <div className="space-y-2">
@@ -270,18 +270,18 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                       {session.subject.slice(0, 4)} Q{q.number}
                                     </span>
                                     <div className="flex-1 min-w-0">
-                                      <div className="text-[10px] text-white/50 truncate flex items-center gap-1.5">
+                                      <div className="text-[10px] text-muted-foreground truncate flex items-center gap-1.5">
                                         <Clock size={9} />
                                         {formatHMS(q.timeSpentSec)}
                                         <span className="opacity-40">·</span>
                                         <span className="truncate">{session.chapter}</span>
                                       </div>
-                                      <div className="text-[10px] text-white/40 mt-0.5 truncate">
+                                      <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
                                         {session.name}
                                       </div>
                                     </div>
                                     {q.userAnswer && (
-                                      <span className="text-[10px] text-white/70 shrink-0">You:{q.userAnswer}</span>
+                                      <span className="text-[10px] text-muted-foreground shrink-0">You:{q.userAnswer}</span>
                                     )}
                                     {q.correctAnswer && (
                                       <span className="text-[10px] text-red-300 shrink-0">Ans:{q.correctAnswer}</span>
@@ -291,7 +291,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                         SET
                                       </span>
                                     )}
-                                    <ChevronRight size={14} className="text-white/30 shrink-0" />
+                                    <ChevronRight size={14} className="text-muted-foreground/60 shrink-0" />
                                   </div>
                                 </button>
                               );
@@ -326,7 +326,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                               <div className="flex items-center gap-3">
                                 {/* Date pill */}
                                 <div className="text-center min-w-[38px] shrink-0">
-                                  <div className="text-[9px] text-white/40 uppercase">{dateStr.split(' ')[0]}</div>
+                                  <div className="text-[9px] text-muted-foreground uppercase">{dateStr.split(' ')[0]}</div>
                                   <div className="text-sm font-bold">{date.getDate()}</div>
                                 </div>
 
@@ -339,7 +339,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-[10px] text-white/40 flex items-center gap-1.5 mt-0.5">
+                                  <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
                                     <Clock size={9} className="inline" />
                                     {timeStr}
                                     <span className="opacity-40">·</span>
@@ -354,16 +354,16 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                     className="text-base font-bold tabular leading-none"
                                     style={accuracy > 0 ? { color: accColor } : undefined}
                                   >
-                                    <span className={accuracy > 0 ? undefined : 'text-white/40'}>
+                                    <span className={accuracy > 0 ? undefined : 'text-muted-foreground'}>
                                       {accuracy > 0 ? `${accuracy}%` : '—'}
                                     </span>
                                   </div>
-                                  <div className="text-[9px] text-white/40 mt-0.5">
+                                  <div className="text-[9px] text-muted-foreground mt-0.5">
                                     {session.correctCount}/{session.correctCount + session.wrongCount} ✓
                                   </div>
                                 </div>
 
-                                <ChevronRight size={16} className="text-white/30 shrink-0" />
+                                <ChevronRight size={16} className="text-muted-foreground/60 shrink-0" />
                               </div>
 
                               {/* Mini preview strip of question results */}
@@ -385,7 +385,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                                   );
                                 })}
                                 {session.questions.length > 30 && (
-                                  <span className="text-[8px] text-white/40 self-center ml-1">
+                                  <span className="text-[8px] text-muted-foreground self-center ml-1">
                                     +{session.questions.length - 30}
                                   </span>
                                 )}
@@ -396,7 +396,7 @@ export function PracticeHistorySheet({ open, onClose }: Props) {
                       </div>
                     )}
 
-                    <p className="text-[9px] text-white/40 text-center mt-4 leading-relaxed">
+                    <p className="text-[9px] text-muted-foreground text-center mt-4 leading-relaxed">
                       {view === 'sessions'
                         ? 'Tap any session to open its full detail report.'
                         : 'Tap any wrong question to open its session and edit.'}

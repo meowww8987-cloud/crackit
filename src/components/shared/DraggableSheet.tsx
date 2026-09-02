@@ -76,7 +76,7 @@ export function DraggableSheet({ children, onClose, maxHeightPct = 92, className
           className="sticky top-0 z-10 pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none flex justify-center"
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="w-10 h-1 bg-white/30 rounded-full" />
+          <div className="w-10 h-1 bg-foreground/30 rounded-full" />
         </div>
 
         {/* Sheet content — scrollable */}

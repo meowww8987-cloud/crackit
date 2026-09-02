@@ -73,9 +73,9 @@ export function FormulaVault() {
         className="w-full p-3 flex items-center gap-2"
       >
         <BookMarked size={16} className="text-amber-400" />
-        <span className="text-xs font-bold uppercase tracking-wide text-white/60">Formula Vault</span>
-        <span className="text-[10px] text-white/40 ml-auto">{formulas.length} saved</span>
-        <ChevronDown size={14} className={cn('text-white/40 transition-transform', expanded && 'rotate-180')} />
+        <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Formula Vault</span>
+        <span className="text-[10px] text-muted-foreground ml-auto">{formulas.length} saved</span>
+        <ChevronDown size={14} className={cn('text-muted-foreground transition-transform', expanded && 'rotate-180')} />
       </button>
 
       <AnimatePresence>
@@ -90,18 +90,18 @@ export function FormulaVault() {
               {/* Search + add + flashcard toggle */}
               <div className="flex gap-2">
                 <div className="flex-1 relative">
-                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30" />
+                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search formulas..."
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-7 pr-2 py-1.5 text-xs focus:outline-none focus:border-amber-400/50"
+                    className="w-full bg-foreground/5 border border-border rounded-lg pl-7 pr-2 py-1.5 text-xs focus:outline-none focus:border-amber-400/50"
                   />
                 </div>
                 <button
                   onClick={() => { setFlashcardMode(!flashcardMode); vibrate(8); }}
                   className={cn('px-2 py-1.5 rounded-lg text-xs font-bold transition',
-                    flashcardMode ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/60')}
+                    flashcardMode ? 'bg-amber-500 text-black' : 'bg-foreground/5 text-muted-foreground')}
                   title="Flashcard mode"
                 >
                   {flashcardMode ? <EyeOff size={12} /> : <Eye size={12} />}
@@ -119,7 +119,7 @@ export function FormulaVault() {
                 <button
                   onClick={() => setFilterSubject('all')}
                   className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold',
-                    filterSubject === 'all' ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/50')}
+                    filterSubject === 'all' ? 'bg-teal-500 text-black' : 'bg-foreground/5 text-muted-foreground')}
                 >
                   All
                 </button>
@@ -130,7 +130,7 @@ export function FormulaVault() {
                       key={s}
                       onClick={() => setFilterSubject(s)}
                       className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold',
-                        filterSubject === s ? 'text-black' : 'bg-white/5 text-white/50')}
+                        filterSubject === s ? 'text-black' : 'bg-foreground/5 text-muted-foreground')}
                       style={filterSubject === s ? { background: c.hex } : undefined}
                     >
                       {s.slice(0, 4)}
@@ -153,19 +153,19 @@ export function FormulaVault() {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="Formula title (e.g. Ohm's Law)"
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-amber-400/50"
+                        className="w-full bg-foreground/5 border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-amber-400/50"
                       />
                       <textarea
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         placeholder="Formula or concept (e.g. V = IR)"
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-amber-400/50 min-h-[60px] resize-none"
+                        className="w-full bg-foreground/5 border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-amber-400/50 min-h-[60px] resize-none"
                       />
                       <div className="flex gap-2">
                         <select
                           value={subject}
                           onChange={(e) => setSubject(e.target.value as Subject)}
-                          className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs"
+                          className="bg-foreground/5 border border-border rounded-lg px-2 py-1 text-xs"
                         >
                           {testSubjects.map((s) => <option key={s} value={s} className="bg-gray-900">{s}</option>)}
                         </select>
@@ -173,14 +173,14 @@ export function FormulaVault() {
                           value={chapter}
                           onChange={(e) => setChapter(e.target.value)}
                           placeholder="Chapter (optional)"
-                          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs"
+                          className="flex-1 bg-foreground/5 border border-border rounded-lg px-2 py-1 text-xs"
                         />
                       </div>
                       <button
                         onClick={handleAdd}
                         disabled={!title.trim() || !content.trim()}
                         className={cn('w-full py-2 rounded-lg text-xs font-bold',
-                          title.trim() && content.trim() ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/30')}
+                          title.trim() && content.trim() ? 'bg-amber-500 text-black' : 'bg-foreground/5 text-muted-foreground/60')}
                       >
                         Save Formula
                       </button>
@@ -192,7 +192,7 @@ export function FormulaVault() {
               {/* Formula list */}
               {filtered.length === 0 ? (
                 <div className="text-center py-4">
-                  <p className="text-xs text-white/40">
+                  <p className="text-xs text-muted-foreground">
                     {formulas.length === 0 ? 'No formulas saved yet. Tap + to add.' : 'No results.'}
                   </p>
                 </div>
@@ -212,12 +212,12 @@ export function FormulaVault() {
                             {f.subject.slice(0, 4)}
                           </span>
                           {f.reviewCount > 0 && (
-                            <span className="text-[8px] text-white/30">×{f.reviewCount}</span>
+                            <span className="text-[8px] text-muted-foreground/60">×{f.reviewCount}</span>
                           )}
                           <span className="text-xs font-semibold flex-1 truncate">{f.title}</span>
                           <button
                             onClick={() => deleteFormula(f.id)}
-                            className="text-white/20 hover:text-red-400"
+                            className="text-muted-foreground/30 hover:text-red-400"
                           >
                             <Trash2 size={10} />
                           </button>
@@ -228,15 +228,15 @@ export function FormulaVault() {
                             className="w-full text-left"
                           >
                             {isRevealed ? (
-                              <div className="text-xs text-white/80 font-mono">{f.content}</div>
+                              <div className="text-xs text-foreground font-mono">{f.content}</div>
                             ) : (
-                              <div className="text-xs text-white/30 italic">Tap to reveal...</div>
+                              <div className="text-xs text-muted-foreground/60 italic">Tap to reveal...</div>
                             )}
                           </button>
                         ) : (
-                          <div className="text-xs text-white/70 font-mono">{f.content}</div>
+                          <div className="text-xs text-muted-foreground font-mono">{f.content}</div>
                         )}
-                        <div className="text-[8px] text-white/30 mt-0.5">{f.chapter}</div>
+                        <div className="text-[8px] text-muted-foreground/60 mt-0.5">{f.chapter}</div>
                       </div>
                     );
                   })}

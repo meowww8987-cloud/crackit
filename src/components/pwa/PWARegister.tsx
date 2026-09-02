@@ -125,7 +125,7 @@ export function PWARegister() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold">Install for Fullscreen</div>
-                <div className="text-[10px] text-white/50">
+                <div className="text-[10px] text-muted-foreground">
                   {isFullscreenMode
                     ? 'Add to home screen for offline use'
                     : 'No status bar, no browser chrome — zero distractions'}
@@ -139,7 +139,7 @@ export function PWARegister() {
               </button>
               <button
                 onClick={dismissInstall}
-                className="text-white/40 hover:text-white p-1"
+                className="text-muted-foreground hover:text-white p-1"
               >
                 <X size={14} />
               </button>
@@ -171,7 +171,7 @@ export function PWARegister() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-purple-300">Add to Home Screen</div>
-                  <div className="text-[10px] text-white/50">
+                  <div className="text-[10px] text-muted-foreground">
                     For true fullscreen (no status bar) → tap your browser menu → "Add to Home Screen"
                   </div>
                 </div>
@@ -180,7 +180,7 @@ export function PWARegister() {
                     localStorage.setItem('neet-fullscreen-hint-dismissed', '1');
                     setShowInstall(false);
                   }}
-                  className="text-white/40 hover:text-white p-1"
+                  className="text-muted-foreground hover:text-white p-1"
                 >
                   <X size={14} />
                 </button>

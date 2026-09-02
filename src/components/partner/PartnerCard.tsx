@@ -27,16 +27,16 @@ export function PartnerCard() {
       <>
         <button
           onClick={() => setShowPair(true)}
-          className="w-full glass rounded-2xl p-3 flex items-center gap-3 hover:bg-white/[0.07] transition border border-white/5"
+          className="w-full glass rounded-2xl p-3 flex items-center gap-3 hover:bg-foreground/[0.07] transition border border-border"
         >
-          <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-            <Users size={18} className="text-white/40" />
+          <div className="w-10 h-10 rounded-lg bg-foreground/5 flex items-center justify-center shrink-0">
+            <Users size={18} className="text-muted-foreground" />
           </div>
           <div className="flex-1 text-left">
-            <div className="text-sm font-semibold text-white/80">Pair with a study partner</div>
-            <div className="text-[10px] text-white/40">Sync with a friend and study together</div>
+            <div className="text-sm font-semibold text-foreground">Pair with a study partner</div>
+            <div className="text-[10px] text-muted-foreground">Sync with a friend and study together</div>
           </div>
-          <ChevronRight size={16} className="text-white/30" />
+          <ChevronRight size={16} className="text-muted-foreground/60" />
         </button>
         <AnimatePresence>
           {showPair && <PairSheet key="pair" onClose={() => setShowPair(false)} />}
@@ -77,14 +77,14 @@ export function PartnerCard() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold truncate">{partner.name}</div>
-            <div className="text-[10px] text-white/50 flex items-center gap-1">
+            <div className="text-[10px] text-muted-foreground flex items-center gap-1">
               {isOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
               {statusText}
             </div>
           </div>
           <button
             onClick={() => setShowSheet(true)}
-            className="text-white/40 hover:text-white text-xs px-2"
+            className="text-muted-foreground hover:text-white text-xs px-2"
           >
             Manage
           </button>
@@ -92,27 +92,27 @@ export function PartnerCard() {
 
         {/* Partner's current activity */}
         {partnerStudying && partnerStatus?.currentSubject && (
-          <div className="text-[10px] text-white/50 mb-2">
-            Studying: <span className="text-white/80 font-medium">{partnerStatus.currentSubject}</span>
+          <div className="text-[10px] text-muted-foreground mb-2">
+            Studying: <span className="text-foreground font-medium">{partnerStatus.currentSubject}</span>
             {partnerStatus.shareChapter && partnerStatus.currentChapter && (
-              <span className="text-white/40"> · {partnerStatus.currentChapter}</span>
+              <span className="text-muted-foreground"> · {partnerStatus.currentChapter}</span>
             )}
           </div>
         )}
 
         {/* Combined total */}
         <div className="flex items-center justify-between mb-2">
-          <div className="text-xs text-white/50">Together today</div>
+          <div className="text-xs text-muted-foreground">Together today</div>
           <div className="text-lg font-bold tabular bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent">
             {formatHM(combinedSec)}
           </div>
         </div>
 
         {/* Split */}
-        <div className="flex items-center gap-2 text-[10px] text-white/40 mb-2">
-          <span>You: <span className="text-white/60 tabular">{formatHM(myTodaySec)}</span></span>
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground mb-2">
+          <span>You: <span className="text-muted-foreground tabular">{formatHM(myTodaySec)}</span></span>
           <span>·</span>
-          <span>{partner.name}: <span className="text-white/60 tabular">{formatHM(partnerStatus?.todayStudySeconds || 0)}</span></span>
+          <span>{partner.name}: <span className="text-muted-foreground tabular">{formatHM(partnerStatus?.todayStudySeconds || 0)}</span></span>
           {partnerStatus?.streak !== undefined && partnerStatus.streak > 0 && (
             <>
               <span>·</span>
@@ -171,22 +171,22 @@ function PartnerManageSheet({ onClose, shareChapter, setShareChapter, onUnpair, 
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass rounded-t-3xl p-5 pb-8"
       >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-4" />
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold">Partner Settings</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
             <X size={16} />
           </button>
         </div>
 
         <div className="space-y-4">
           <div className="glass rounded-xl p-3">
-            <div className="text-xs text-white/50 mb-1">Paired with</div>
+            <div className="text-xs text-muted-foreground mb-1">Paired with</div>
             <div className="text-sm font-semibold">{partnerName}</div>
           </div>
 
           <div className="glass rounded-xl p-3">
-            <div className="text-xs text-white/50 mb-1">Your name (visible to partner)</div>
+            <div className="text-xs text-muted-foreground mb-1">Your name (visible to partner)</div>
             <div className="text-sm font-semibold">{myName}</div>
           </div>
 
@@ -194,11 +194,11 @@ function PartnerManageSheet({ onClose, shareChapter, setShareChapter, onUnpair, 
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-semibold">Share chapter & activity</div>
-                <div className="text-[10px] text-white/40">When off, partner sees only your subject</div>
+                <div className="text-[10px] text-muted-foreground">When off, partner sees only your subject</div>
               </div>
               <button
                 onClick={() => { setShareChapter(!shareChapter); vibrate(8); }}
-                className={cn('w-12 h-7 rounded-full transition relative', shareChapter ? 'bg-teal-500' : 'bg-white/10')}
+                className={cn('w-12 h-7 rounded-full transition relative', shareChapter ? 'bg-teal-500' : 'bg-foreground/10')}
               >
                 <motion.div
                   layout
@@ -218,11 +218,11 @@ function PartnerManageSheet({ onClose, shareChapter, setShareChapter, onUnpair, 
             </button>
           ) : (
             <div className="glass rounded-xl p-3 border border-red-500/30">
-              <p className="text-xs text-white/60 mb-2">Are you sure? Both users will lose access immediately.</p>
+              <p className="text-xs text-muted-foreground mb-2">Are you sure? Both users will lose access immediately.</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowUnlink(false)}
-                  className="flex-1 py-2 rounded-xl bg-white/10 text-white text-sm font-semibold"
+                  className="flex-1 py-2 rounded-xl bg-foreground/10 text-white text-sm font-semibold"
                 >
                   Cancel
                 </button>

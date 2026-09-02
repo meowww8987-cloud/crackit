@@ -80,7 +80,7 @@ export function LectureRow({ lecture, chapter, subject, onEdit }: Props) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className={cn(
-        'flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] relative',
+        'flex items-center gap-2 p-2 rounded-lg bg-foreground/[0.03] relative',
         isOverdue && 'border border-amber-500/30'
       )}
       onTouchStart={handleLongPressStart}
@@ -100,13 +100,13 @@ export function LectureRow({ lecture, chapter, subject, onEdit }: Props) {
       </button>
 
       {/* Label */}
-      <span className="text-[10px] font-bold text-white/40 tabular shrink-0 w-6">
+      <span className="text-[10px] font-bold text-muted-foreground tabular shrink-0 w-6">
         {labelPrefix}{lecture.lecNo}
       </span>
 
       {/* Topic + date */}
       <div className="flex-1 min-w-0">
-        <div className={cn('text-xs truncate', lecture.done && 'line-through text-white/40')}>
+        <div className={cn('text-xs truncate', lecture.done && 'line-through text-muted-foreground')}>
           {lecture.topic}
           {lecture.isCustom && (
             <span className="ml-1.5 text-[8px] font-bold px-1 py-0.5 rounded bg-purple-500/30 text-purple-300">
@@ -115,7 +115,7 @@ export function LectureRow({ lecture, chapter, subject, onEdit }: Props) {
           )}
         </div>
         {lecture.date && (
-          <div className="text-[9px] text-white/30">
+          <div className="text-[9px] text-muted-foreground/60">
             {new Date(lecture.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </div>
         )}
@@ -143,7 +143,7 @@ export function LectureRow({ lecture, chapter, subject, onEdit }: Props) {
             <Star
               size={10}
               className={cn(
-                level <= lecture.hardness ? 'text-amber-400' : 'text-white/15'
+                level <= lecture.hardness ? 'text-amber-400' : 'text-muted-foreground/20'
               )}
               fill={level <= lecture.hardness ? 'currentColor' : 'none'}
             />
@@ -159,7 +159,7 @@ export function LectureRow({ lecture, chapter, subject, onEdit }: Props) {
           'shrink-0 px-2 py-1 rounded-md text-[10px] font-bold transition',
           isAddedToday
             ? 'bg-green-500/20 text-green-400'
-            : 'bg-white/10 text-white hover:bg-white/15'
+            : 'bg-foreground/10 text-white hover:bg-foreground/15'
         )}
       >
         {isAddedToday ? (
@@ -178,7 +178,7 @@ export function LectureRow({ lecture, chapter, subject, onEdit }: Props) {
         >
           <button
             onClick={(e) => { e.stopPropagation(); setShowActions(false); onEdit(); }}
-            className="p-1.5 rounded hover:bg-white/10 text-white/70"
+            className="p-1.5 rounded hover:bg-foreground/10 text-muted-foreground"
           >
             <Pencil size={12} />
           </button>

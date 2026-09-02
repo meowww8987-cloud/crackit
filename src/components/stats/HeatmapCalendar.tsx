@@ -235,7 +235,7 @@ export function HeatmapCalendar({ embedded = false }: { embedded?: boolean }) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Calendar size={14} className="text-green-400" />
-          <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
             Study Heatmap
           </span>
         </div>
@@ -243,15 +243,15 @@ export function HeatmapCalendar({ embedded = false }: { embedded?: boolean }) {
           <button
             onClick={() => { if (canGoPrev) { vibrate(8); setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)); } }}
             disabled={!canGoPrev}
-            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:bg-white/10 disabled:opacity-30 transition active:scale-90"
+            className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground hover:bg-foreground/10 disabled:opacity-30 transition active:scale-90"
           >
             <ChevronLeft size={16} />
           </button>
-          <span className="text-sm font-bold text-white/80 min-w-[120px] text-center">{monthLabel}</span>
+          <span className="text-sm font-bold text-foreground min-w-[120px] text-center">{monthLabel}</span>
           <button
             onClick={() => { if (canGoNext) { vibrate(8); setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)); } }}
             disabled={!canGoNext}
-            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:bg-white/10 disabled:opacity-30 transition active:scale-90"
+            className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground hover:bg-foreground/10 disabled:opacity-30 transition active:scale-90"
           >
             <ChevronRight size={16} />
           </button>
@@ -331,7 +331,7 @@ export function HeatmapCalendar({ embedded = false }: { embedded?: boolean }) {
       {/* Weekday header */}
       <div className="grid grid-cols-7 gap-1 mb-1">
         {weekdays.map((wd, i) => (
-          <div key={i} className="text-[9px] text-white/60 text-center font-bold uppercase">{wd}</div>
+          <div key={i} className="text-[9px] text-muted-foreground text-center font-bold uppercase">{wd}</div>
         ))}
       </div>
 
@@ -352,7 +352,7 @@ export function HeatmapCalendar({ embedded = false }: { embedded?: boolean }) {
               }}
               className={cn(
                 'aspect-square rounded-md flex items-center justify-center text-[11px] font-bold transition active:scale-90 relative',
-                cell.intensity > 0 ? 'text-white' : 'text-white/60'
+                cell.intensity > 0 ? 'text-white' : 'text-muted-foreground'
               )}
               style={{
                 background: intensityColors[cell.intensity],
@@ -371,7 +371,7 @@ export function HeatmapCalendar({ embedded = false }: { embedded?: boolean }) {
       </div>
 
       {/* Legend + hint */}
-      <div className="flex items-center justify-between mt-3 text-[8px] text-white/60">
+      <div className="flex items-center justify-between mt-3 text-[8px] text-muted-foreground">
         <span>← swipe to navigate →</span>
         <div className="flex items-center gap-1">
           <span>Less</span>
@@ -470,7 +470,7 @@ function DayDetailPopup({
         </button>
 
         {/* === Header: Date + Total Study + Total Wasted === */}
-        <div className="shrink-0 px-4 pt-5 pb-3 border-b border-white/10">
+        <div className="shrink-0 px-4 pt-5 pb-3 border-b border-border">
           <div className="text-sm font-bold text-foreground pr-8">{dateStr}</div>
           <div className="flex items-center gap-4 mt-2">
             <div className="flex items-center gap-1.5">
@@ -573,7 +573,7 @@ function DayDetailPopup({
             </div>
           ) : (
             <div className="text-center py-6">
-              <p className="text-[10px] text-white/50">No sessions recorded this day.</p>
+              <p className="text-[10px] text-muted-foreground">No sessions recorded this day.</p>
             </div>
           )}
         </div>

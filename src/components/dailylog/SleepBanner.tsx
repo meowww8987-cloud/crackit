@@ -70,7 +70,7 @@ export function SleepBanner() {
  }
  startSleep();
  }}
- className="w-full glass rounded-2xl p-3 flex items-center gap-3 border border-indigo-500/20 hover:bg-white/[0.07] transition active:scale-[0.99]"
+ className="w-full glass rounded-2xl p-3 flex items-center gap-3 border border-indigo-500/20 hover:bg-foreground/[0.07] transition active:scale-[0.99]"
  >
  <div className="w-9 h-9 rounded-lg bg-indigo-500/15 flex items-center justify-center shrink-0">
  <Bed size={18} className="text-indigo-400" />

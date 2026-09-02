@@ -203,14 +203,14 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
         className="relative w-full max-w-md glass rounded-3xl p-5 pb-8 max-h-[85vh] overflow-y-auto scroll-area"
         style={selectedSubject ? { borderTop: `3px solid ${subjectColor(selectedSubject).hex}` } : undefined}
       >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-4" />
 
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Layers size={18} className="text-teal-400" />
             <h2 className="text-lg font-bold">Build Syllabus</h2>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
             <X size={16} />
           </button>
         </div>
@@ -220,7 +220,7 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
           {[1, 2, 3].map((s) => (
             <div
               key={s}
-              className={cn('h-1 flex-1 rounded-full transition', step >= s ? 'bg-teal-500' : 'bg-white/10')}
+              className={cn('h-1 flex-1 rounded-full transition', step >= s ? 'bg-teal-500' : 'bg-foreground/10')}
             />
           ))}
         </div>
@@ -228,7 +228,7 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
         {/* STEP 1: Pick Subject */}
         {step === 1 && (
           <div className="space-y-3">
-            <p className="text-xs font-semibold text-white/60 mb-2">STEP 1: PICK SUBJECT</p>
+            <p className="text-xs font-semibold text-muted-foreground mb-2">STEP 1: PICK SUBJECT</p>
             <div className="space-y-2">
               {neetSubjects.map((subj) => {
                 const c = subjectColor(subj);
@@ -246,11 +246,11 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
                     <div className="w-3 h-10 rounded" style={{ background: c.hex }} />
                     <div className="flex-1 text-left">
                       <div className="text-sm font-bold" style={{ color: c.hex }}>{subj}</div>
-                      <div className="text-[10px] text-white/40">
+                      <div className="text-[10px] text-muted-foreground">
                         {chapterCount} chapters {exists && '· already in your syllabus'}
                       </div>
                     </div>
-                    <ChevronRight size={16} className="text-white/30" />
+                    <ChevronRight size={16} className="text-muted-foreground/60" />
                   </motion.button>
                 );
               })}
@@ -262,26 +262,26 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
         {step === 2 && selectedSubject && (
           <div className="space-y-3">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-white/60">
+              <p className="text-xs font-semibold text-muted-foreground">
                 STEP 2: PICK CHAPTERS · <span style={{ color: subjectColor(selectedSubject).hex }}>{selectedSubject}</span>
               </p>
-              <button onClick={() => { setStep(1); setSelectedChapterIds(new Set()); }} className="text-[10px] text-white/40">
+              <button onClick={() => { setStep(1); setSelectedChapterIds(new Set()); }} className="text-[10px] text-muted-foreground">
                 ← Back
               </button>
             </div>
 
             {/* Search */}
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search chapters..."
-                className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:border-teal-400/50"
+                className="w-full bg-foreground/5 border border-border rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:border-teal-400/50"
               />
             </div>
 
-            <div className="text-[10px] text-white/40">
+            <div className="text-[10px] text-muted-foreground">
               Selected: <span className="font-bold text-teal-400 tabular">{selectedChapterIds.size}</span> chapters
             </div>
 
@@ -289,7 +289,7 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
             <div className="space-y-3 max-h-[45vh] overflow-y-auto scroll-area">
               {Object.entries(groupedChapters).map(([category, chs]) => (
                 <div key={category}>
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-white/30 mb-1.5 px-1">{category}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground/60 mb-1.5 px-1">{category}</div>
                   <div className="space-y-1">
                     {chs.map((ch) => {
                       const isSelected = selectedChapterIds.has(ch.id);
@@ -300,7 +300,7 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
                           onClick={() => toggleChapter(ch.id)}
                           className={cn(
                             'w-full p-2.5 rounded-xl flex items-center gap-2.5 transition border',
-                            isSelected ? 'border-2' : 'border border-white/5 bg-white/[0.03] hover:bg-white/[0.05]'
+                            isSelected ? 'border-2' : 'border border-border bg-foreground/[0.04] hover:bg-foreground/[0.07]'
                           )}
                           style={isSelected ? { background: `${c.hex}15`, borderColor: c.hex } : undefined}
                         >
@@ -312,7 +312,7 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
                           </div>
                           <div className="flex-1 text-left min-w-0">
                             <div className="text-xs font-medium truncate">{ch.name}</div>
-                            <div className="text-[9px] text-white/30">{ch.lectures.length} lectures</div>
+                            <div className="text-[9px] text-muted-foreground/60">{ch.lectures.length} lectures</div>
                           </div>
                         </button>
                       );
@@ -338,13 +338,13 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
         {step === 3 && selectedSubject && (
           <div className="space-y-3">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-white/60">
+              <p className="text-xs font-semibold text-muted-foreground">
                 STEP 3: PICK LECTURES · <span className="tabular">{selectedLectureCount}</span> selected
               </p>
-              <button onClick={() => setStep(2)} className="text-[10px] text-white/40">← Back</button>
+              <button onClick={() => setStep(2)} className="text-[10px] text-muted-foreground">← Back</button>
             </div>
 
-            <p className="text-[10px] text-white/40 mb-2">
+            <p className="text-[10px] text-muted-foreground mb-2">
               Tap lectures to add them to today's targets. Skip this step to add all default lectures to syllabus only.
             </p>
 
@@ -367,7 +367,7 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
                           {selectedInChapter} selected
                         </span>
                       )}
-                      <ChevronDown size={12} className={cn('text-white/40 transition-transform', isExpanded && 'rotate-180')} />
+                      <ChevronDown size={12} className={cn('text-muted-foreground transition-transform', isExpanded && 'rotate-180')} />
                     </button>
                     {isExpanded && (
                       <motion.div
@@ -390,7 +390,7 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
                               onClick={() => toggleLecture(ch.id, lec.lecNo)}
                               className={cn(
                                 'w-full p-2 rounded-lg flex items-center gap-2 transition',
-                                isSelected ? 'bg-teal-500/15' : 'bg-white/[0.02] hover:bg-white/[0.05]'
+                                isSelected ? 'bg-teal-500/15' : 'bg-foreground/[0.03] hover:bg-foreground/[0.07]'
                               )}
                             >
                               <div
@@ -399,8 +399,8 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
                               >
                                 {isSelected && <Check size={10} className="text-black" strokeWidth={3} />}
                               </div>
-                              <span className="text-[10px] font-bold text-white/40 tabular w-6">L{lec.lecNo}</span>
-                              <span className={cn('text-xs truncate', isSelected ? 'text-white' : 'text-white/60')}>{lec.topic}</span>
+                              <span className="text-[10px] font-bold text-muted-foreground tabular w-6">L{lec.lecNo}</span>
+                              <span className={cn('text-xs truncate', isSelected ? 'text-white' : 'text-muted-foreground')}>{lec.topic}</span>
                             </button>
                           );
                         })}
@@ -415,11 +415,11 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
             <div className="glass rounded-xl p-3 flex items-center justify-between">
               <div>
                 <div className="text-xs font-semibold">Add selected to today</div>
-                <div className="text-[10px] text-white/40">Creates today targets for selected lectures</div>
+                <div className="text-[10px] text-muted-foreground">Creates today targets for selected lectures</div>
               </div>
               <button
                 onClick={() => { setAddToToday(!addToToday); vibrate(8); }}
-                className={cn('w-12 h-7 rounded-full transition relative', addToToday ? 'bg-teal-500' : 'bg-white/10')}
+                className={cn('w-12 h-7 rounded-full transition relative', addToToday ? 'bg-teal-500' : 'bg-foreground/10')}
               >
                 <motion.div
                   layout
@@ -431,8 +431,8 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
 
             {/* Live preview */}
             <div className="glass rounded-xl p-3 border border-teal-500/20">
-              <div className="text-[10px] font-bold uppercase text-white/40 mb-1.5">Will add:</div>
-              <div className="space-y-0.5 text-xs text-white/70">
+              <div className="text-[10px] font-bold uppercase text-muted-foreground mb-1.5">Will add:</div>
+              <div className="space-y-0.5 text-xs text-muted-foreground">
                 <div>• <strong className="text-white">{selectedChapterIds.size}</strong> chapters ({selectedSubject})</div>
                 <div>• <strong className="text-white">{selectedLectureCount || 'all default'}</strong> lectures per chapter</div>
                 {addToToday && selectedLectureCount > 0 && (

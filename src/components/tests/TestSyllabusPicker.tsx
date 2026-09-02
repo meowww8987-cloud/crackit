@@ -248,7 +248,7 @@ export function TestSyllabusPicker({
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass rounded-t-3xl p-5 pb-8 max-h-[90vh] flex flex-col"
       >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-4" />
 
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -257,7 +257,7 @@ export function TestSyllabusPicker({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60"
+            className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"
           >
             <X size={16} />
           </button>
@@ -265,17 +265,17 @@ export function TestSyllabusPicker({
 
         {/* Search + quick actions */}
         <div className="relative mb-3">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search chapters..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:border-teal-400/50"
+            className="w-full bg-foreground/5 border border-border rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:border-teal-400/50"
           />
         </div>
 
         <div className="flex items-center justify-between mb-3">
-          <div className="text-[10px] text-white/40">
+          <div className="text-[10px] text-muted-foreground">
             Selected: <span className="font-bold text-teal-400 tabular">{selectedCount}</span> chapters
             {totalWeightage > 0 && (
               <span className="ml-2">· ~{totalWeightage} marks weight</span>
@@ -285,8 +285,8 @@ export function TestSyllabusPicker({
             <button onClick={selectAll} className="text-[10px] text-teal-400 hover:text-teal-300">
               All
             </button>
-            <span className="text-white/20">·</span>
-            <button onClick={clearAll} className="text-[10px] text-white/40 hover:text-white/60">
+            <span className="text-muted-foreground/30">·</span>
+            <button onClick={clearAll} className="text-[10px] text-muted-foreground hover:text-muted-foreground">
               Clear
             </button>
           </div>
@@ -333,13 +333,13 @@ export function TestSyllabusPicker({
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleSubjectAll(subj); }}
-                    className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-white/60 hover:bg-white/20"
+                    className="text-[9px] px-1.5 py-0.5 rounded bg-foreground/10 text-muted-foreground hover:bg-foreground/20"
                   >
                     {selectedInSubject === allChs.length && selectedInSubject > 0 ? 'None' : 'All'}
                   </button>
                   <ChevronDown
                     size={12}
-                    className={cn('text-white/40 transition-transform', isExpanded && 'rotate-180')}
+                    className={cn('text-muted-foreground transition-transform', isExpanded && 'rotate-180')}
                   />
                 </div>
                 {isExpanded && (
@@ -356,7 +356,7 @@ export function TestSyllabusPicker({
                           onClick={() => toggleChapter(ch.id)}
                           className={cn(
                             'w-full p-2 rounded-lg flex items-center gap-2 transition',
-                            isSelected ? 'bg-teal-500/15' : 'bg-white/[0.02] hover:bg-white/[0.05]',
+                            isSelected ? 'bg-teal-500/15' : 'bg-foreground/[0.03] hover:bg-foreground/[0.07]',
                           )}
                         >
                           <div
@@ -368,7 +368,7 @@ export function TestSyllabusPicker({
                           <span
                             className={cn(
                               'text-xs truncate flex-1 text-left',
-                              isSelected ? 'text-white' : 'text-white/70',
+                              isSelected ? 'text-white' : 'text-muted-foreground',
                             )}
                           >
                             {ch.name}
@@ -401,7 +401,7 @@ export function TestSyllabusPicker({
             'w-full py-3.5 rounded-xl font-bold text-sm active:scale-[0.98] mt-3 flex items-center justify-center gap-2 transition',
             selectedCount > 0
               ? 'bg-gradient-to-r from-teal-500 to-green-500 text-black'
-              : 'bg-white/5 text-white/30 cursor-not-allowed',
+              : 'bg-foreground/5 text-muted-foreground/60 cursor-not-allowed',
           )}
         >
           {selectedCount === 0 ? (

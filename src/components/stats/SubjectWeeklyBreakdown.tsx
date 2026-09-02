@@ -45,7 +45,7 @@ export function SubjectWeeklyBreakdown() {
     <div className="glass rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <BarChart3 size={16} className="text-teal-400" />
-        <span className="text-xs font-bold text-white/70">7-Day Subject Breakdown</span>
+        <span className="text-xs font-bold text-muted-foreground">7-Day Subject Breakdown</span>
       </div>
 
       {/* Stacked bar chart — one bar per day */}
@@ -83,21 +83,21 @@ export function SubjectWeeklyBreakdown() {
                 })}
               </div>
               {/* Day label */}
-              <span className="text-[9px] text-white/60">{day.label}</span>
+              <span className="text-[9px] text-muted-foreground">{day.label}</span>
             </div>
           );
         })}
       </div>
 
       {/* Subject legend with weekly totals */}
-      <div className="space-y-1.5 pt-2 border-t border-white/5">
+      <div className="space-y-1.5 pt-2 border-t border-border">
         {SUBJECTS.filter(subj => data.totals[subj].study > 0 || data.totals[subj].wasted > 0).map((subj) => {
           const c = subjectColor(subj);
           const t = data.totals[subj];
           return (
             <div key={subj} className="flex items-center gap-2 text-xs">
               <div className="w-2.5 h-2.5 rounded-full" style={{ background: c.hex }} />
-              <span className="text-white/70 flex-1">{subj}</span>
+              <span className="text-muted-foreground flex-1">{subj}</span>
               <span className="tabular font-semibold" style={{ color: c.hex }}>
                 {formatHM(t.study)}
               </span>
@@ -110,7 +110,7 @@ export function SubjectWeeklyBreakdown() {
           );
         })}
         {SUBJECTS.every(subj => data.totals[subj].study === 0) && (
-          <p className="text-xs text-white/50 text-center py-2">No study data this week yet</p>
+          <p className="text-xs text-muted-foreground text-center py-2">No study data this week yet</p>
         )}
       </div>
     </div>

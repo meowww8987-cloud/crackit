@@ -221,22 +221,22 @@ export function TutorialOnboarding({ onClose }: Props) {
             🎓
           </motion.div>
           <h2 className="text-lg font-bold text-white mb-2">Tutorial Mode On!</h2>
-          <p className="text-sm text-white/70 mb-3 leading-snug">
+          <p className="text-sm text-muted-foreground mb-3 leading-snug">
             <strong className="text-purple-300">Long-press any tab</strong> in the bottom nav
             to discover its quick actions + the <HelpCircle size={12} className="inline text-teal-400" /> tutorial button.
           </p>
-          <p className="text-xs text-white/50 mb-4">
+          <p className="text-xs text-muted-foreground mb-4">
             Try long-pressing the <strong className="text-purple-300 capitalize">{targetTab}</strong> tab below 👇
             <br />
-            <span className="text-[10px] text-white/40">(Hold for 0.5 seconds)</span>
+            <span className="text-[10px] text-muted-foreground">(Hold for 0.5 seconds)</span>
           </p>
           <button
             onClick={() => { vibrate(10); onClose(); }}
-            className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-semibold transition active:scale-95"
+            className="px-6 py-2.5 rounded-xl bg-foreground/10 hover:bg-foreground/15 text-white text-sm font-semibold transition active:scale-95"
           >
             I understood
           </button>
-          <p className="text-[10px] text-white/40 mt-3">
+          <p className="text-[10px] text-muted-foreground mt-3">
             You can turn tutorials off anytime with the Tutorial toggle in Settings.
           </p>
         </motion.div>

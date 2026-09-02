@@ -157,12 +157,12 @@ export function DailySummaryCard() {
             className="relative w-full max-w-md glass-strong rounded-t-3xl p-6 pb-8 max-h-[88vh] overflow-y-auto scroll-area"
           >
             {/* Drag handle */}
-            <div className="w-10 h-1 bg-white/30 rounded-full mx-auto mb-4" />
+            <div className="w-10 h-1 bg-foreground/30 rounded-full mx-auto mb-4" />
 
             {/* Close */}
             <button
               onClick={close}
-              className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60"
+              className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"
             >
               <X size={16} />
             </button>
@@ -180,7 +180,7 @@ export function DailySummaryCard() {
               <h2 className="text-xl font-bold">
                 {summary.beatYesterday ? 'Great day!' : 'Today\'s Recap'}
               </h2>
-              <p className="text-xs text-white/50 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {summary.beatYesterday
                   ? `You beat yesterday by ${formatHM(summary.totalSec - summary.yesterdaySec)}`
                   : 'Here\'s how your study day went'}
@@ -189,13 +189,13 @@ export function DailySummaryCard() {
 
             {/* Big stat */}
             <div className="glass rounded-2xl p-4 mb-4 text-center">
-              <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
                 Total Studied
               </div>
               <div className="text-4xl font-bold tabular bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent">
                 {formatHM(summary.totalSec)}
               </div>
-              <div className="text-[10px] text-white/40 mt-1">
+              <div className="text-[10px] text-muted-foreground mt-1">
                 Goal: {dailyGoal}h ·{' '}
                 <span style={{ color: summary.totalSec >= dailyGoal * 3600 ? '#22c55e' : '#f59e0b' }}>
                   {Math.round((summary.totalSec / (dailyGoal * 3600)) * 100)}%
@@ -206,7 +206,7 @@ export function DailySummaryCard() {
             {/* Subject breakdown */}
             {summary.subjects.length > 0 && (
               <div className="mb-4">
-                <div className="text-[10px] uppercase tracking-widest text-white/40 mb-2">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
                   Subject Breakdown
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -225,9 +225,9 @@ export function DailySummaryCard() {
                           <div className="text-[10px] font-bold" style={{ color: c.hex }}>
                             {s.subject}
                           </div>
-                          <div className="text-xs tabular text-white/80">{formatHM(s.sec)}</div>
+                          <div className="text-xs tabular text-foreground">{formatHM(s.sec)}</div>
                         </div>
-                        <div className="text-[9px] text-white/40 tabular">{s.pct}%</div>
+                        <div className="text-[9px] text-muted-foreground tabular">{s.pct}%</div>
                       </motion.div>
                     );
                   })}
@@ -242,7 +242,7 @@ export function DailySummaryCard() {
                   <Sparkles size={11} className="text-green-400" />
                   <span className="text-[9px] font-bold uppercase text-green-400">Win</span>
                 </div>
-                <div className="text-xs text-white/80 leading-snug">
+                <div className="text-xs text-foreground leading-snug">
                   Longest focus block: <strong className="text-white">{formatHM(summary.longestSession)}</strong>
                 </div>
               </div>
@@ -251,7 +251,7 @@ export function DailySummaryCard() {
                   <TrendingUp size={11} className="text-amber-400" />
                   <span className="text-[9px] font-bold uppercase text-amber-400">Tomorrow</span>
                 </div>
-                <div className="text-xs text-white/80 leading-snug">
+                <div className="text-xs text-foreground leading-snug">
                   Focus on: <strong className="text-white">{summary.weakestSubject || 'Consistency'}</strong>
                 </div>
               </div>

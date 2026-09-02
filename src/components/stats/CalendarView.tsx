@@ -74,13 +74,13 @@ export function CalendarView() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <CalIcon size={14} className="text-green-400" />
-          <span className="text-xs font-bold uppercase tracking-wide text-white/60">{monthName}</span>
+          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{monthName}</span>
         </div>
         <div className="flex gap-1">
-          <button onClick={prevMonth} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:bg-white/10">
+          <button onClick={prevMonth} className="w-7 h-7 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground hover:bg-foreground/10">
             <ChevronLeft size={14} />
           </button>
-          <button onClick={nextMonth} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:bg-white/10">
+          <button onClick={nextMonth} className="w-7 h-7 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground hover:bg-foreground/10">
             <ChevronRight size={14} />
           </button>
         </div>
@@ -89,7 +89,7 @@ export function CalendarView() {
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 mb-1">
         {weekdays.map((d, i) => (
-          <div key={i} className="text-center text-[9px] font-bold text-white/30 uppercase">{d}</div>
+          <div key={i} className="text-center text-[9px] font-bold text-muted-foreground/60 uppercase">{d}</div>
         ))}
       </div>
 
@@ -126,7 +126,7 @@ export function CalendarView() {
         <motion.div
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-3 pt-3 border-t border-white/10"
+          className="mt-3 pt-3 border-t border-border"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold">
@@ -138,23 +138,23 @@ export function CalendarView() {
             <div className="space-y-1 max-h-32 overflow-y-auto scroll-area">
               {selectedSessions.map((s) => (
                 <div key={s.id} className="flex items-center gap-2 text-[10px]">
-                  <span className="text-white/40 tabular">
+                  <span className="text-muted-foreground tabular">
                     {new Date(s.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                   </span>
-                  <span className="text-white/60 truncate flex-1">{s.subject} · {s.chapter}</span>
+                  <span className="text-muted-foreground truncate flex-1">{s.subject} · {s.chapter}</span>
                   <span className="text-green-400 tabular">{formatHM(s.studySeconds)}</span>
                   {s.wastedSeconds > 0 && <span className="text-red-400 tabular">⚠ {formatHM(s.wastedSeconds)}</span>}
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-white/40">No study sessions on this day.</p>
+            <p className="text-[10px] text-muted-foreground">No study sessions on this day.</p>
           )}
         </motion.div>
       )}
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-1 mt-2 text-[8px] text-white/30">
+      <div className="flex items-center justify-center gap-1 mt-2 text-[8px] text-muted-foreground/60">
         <span>Less</span>
         {[0.1, 0.2, 0.4, 0.6, 0.9].map((o) => (
           <div key={o} className="w-2.5 h-2.5 rounded-sm" style={{ background: `rgba(34,197,94,${o})` }} />

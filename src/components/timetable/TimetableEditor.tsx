@@ -58,7 +58,7 @@ export function TimetableEditor() {
             onClick={() => { setSelectedDay(d.num); vibrate(6); }}
             className={cn(
               'px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition shrink-0',
-              selectedDay === d.num ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/60'
+              selectedDay === d.num ? 'bg-amber-500 text-black' : 'bg-foreground/5 text-muted-foreground'
             )}
           >
             {d.name}
@@ -67,7 +67,7 @@ export function TimetableEditor() {
       </div>
 
       {/* Day name */}
-      <div className="text-xs text-white/50">
+      <div className="text-xs text-muted-foreground">
         {DAYS.find((d) => d.num === selectedDay)?.full}
         {selectedDay === new Date().getDay() && (
           <span className="ml-2 text-amber-400">· Today</span>
@@ -77,7 +77,7 @@ export function TimetableEditor() {
       {/* Slots for selected day */}
       <div className="space-y-1.5">
         {daySlots.length === 0 && (
-          <div className="glass rounded-xl p-4 text-center text-xs text-white/40">
+          <div className="glass rounded-xl p-4 text-center text-xs text-muted-foreground">
             No slots for this day
           </div>
         )}
@@ -89,8 +89,8 @@ export function TimetableEditor() {
               className="glass rounded-xl p-2.5 flex items-center gap-2"
               style={{ borderLeft: `3px solid ${color.hex}` }}
             >
-              <Clock size={14} className="text-white/40 shrink-0" />
-              <span className="text-xs tabular text-white/70">
+              <Clock size={14} className="text-muted-foreground shrink-0" />
+              <span className="text-xs tabular text-muted-foreground">
                 {slot.startHour}:00 - {slot.endHour}:00
               </span>
               <span className="text-xs font-medium" style={{ color: color.hex }}>
@@ -98,7 +98,7 @@ export function TimetableEditor() {
               </span>
               <button
                 onClick={() => { deleteSlot(slot.id); vibrate(8); }}
-                className="ml-auto text-white/30 hover:text-red-400"
+                className="ml-auto text-muted-foreground/60 hover:text-red-400"
               >
                 <Trash2 size={12} />
               </button>
@@ -111,7 +111,7 @@ export function TimetableEditor() {
       {!showAdd ? (
         <button
           onClick={() => setShowAdd(true)}
-          className="w-full py-2.5 rounded-xl border border-dashed border-white/15 text-white/60 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-white/5"
+          className="w-full py-2.5 rounded-xl border border-dashed border-border text-muted-foreground text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-foreground/5"
         >
           <Plus size={14} /> Add Time Slot
         </button>
@@ -122,15 +122,15 @@ export function TimetableEditor() {
           className="glass rounded-xl p-3 space-y-3"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/70">New Time Slot</span>
-            <button onClick={() => setShowAdd(false)} className="text-white/40">
+            <span className="text-xs font-semibold text-muted-foreground">New Time Slot</span>
+            <button onClick={() => setShowAdd(false)} className="text-muted-foreground">
               <X size={14} />
             </button>
           </div>
 
           {/* Subject */}
           <div>
-            <label className="text-[10px] text-white/40 mb-1 block">SUBJECT</label>
+            <label className="text-[10px] text-muted-foreground mb-1 block">SUBJECT</label>
             <div className="flex gap-1 flex-wrap">
               {SUBJECTS.map((s) => {
                 const c = subjectColor(s);
@@ -140,7 +140,7 @@ export function TimetableEditor() {
                     onClick={() => { setNewSubject(s); vibrate(6); }}
                     className={cn(
                       'px-2 py-1 rounded-md text-[10px] font-semibold',
-                      newSubject === s ? 'text-black' : 'text-white/60'
+                      newSubject === s ? 'text-black' : 'text-muted-foreground'
                     )}
                     style={newSubject === s ? { background: c.hex } : { background: 'rgba(255,255,255,0.05)' }}
                   >
@@ -153,7 +153,7 @@ export function TimetableEditor() {
 
           {/* Start hour */}
           <div>
-            <label className="text-[10px] text-white/40 mb-1 block">START HOUR: {newStart}:00</label>
+            <label className="text-[10px] text-muted-foreground mb-1 block">START HOUR: {newStart}:00</label>
             <ScrollAwareSlider>
               <input
                 type="range"
@@ -168,7 +168,7 @@ export function TimetableEditor() {
 
           {/* End hour */}
           <div>
-            <label className="text-[10px] text-white/40 mb-1 block">END HOUR: {newEnd}:00</label>
+            <label className="text-[10px] text-muted-foreground mb-1 block">END HOUR: {newEnd}:00</label>
             <ScrollAwareSlider>
               <input
                 type="range"
@@ -192,7 +192,7 @@ export function TimetableEditor() {
 
       {/* Summary */}
       {slots.length > 0 && (
-        <div className="text-[10px] text-white/40 text-center pt-1">
+        <div className="text-[10px] text-muted-foreground text-center pt-1">
           {slots.length} total slots across all days
         </div>
       )}

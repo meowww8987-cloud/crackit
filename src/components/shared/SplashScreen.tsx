@@ -81,7 +81,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="text-xs uppercase tracking-[0.3em] text-white/40 font-semibold mt-1"
+            className="text-xs uppercase tracking-[0.3em] text-muted-foreground font-semibold mt-1"
           >
             Days to NEET
           </motion.div>
@@ -109,7 +109,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.4 }}
               transition={{ delay: 1.2 }}
-              className="text-[10px] font-bold tracking-[0.4em] text-white/40 mt-1"
+              className="text-[10px] font-bold tracking-[0.4em] text-muted-foreground mt-1"
             >
               NEET 2027
             </motion.div>

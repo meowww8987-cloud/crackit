@@ -77,7 +77,7 @@ export function ScorePredictionCard() {
     <div className="glass rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp size={16} className="text-teal-400" />
-        <span className="text-xs font-bold text-white/70">Projected NEET Score</span>
+        <span className="text-xs font-bold text-muted-foreground">Projected NEET Score</span>
       </div>
       <div className="flex items-end gap-2 mb-3">
         <motion.span
@@ -86,12 +86,12 @@ export function ScorePredictionCard() {
         >
           {displayScore}
         </motion.span>
-        <span className="text-sm text-white/40 mb-1">/ 720</span>
-        <span className="ml-auto text-[10px] text-white/40">
+        <span className="text-sm text-muted-foreground mb-1">/ 720</span>
+        <span className="ml-auto text-[10px] text-muted-foreground">
           Target: {targetScore}
         </span>
       </div>
-      <div className="h-2 rounded-full bg-white/5 overflow-hidden mb-2">
+      <div className="h-2 rounded-full bg-foreground/5 overflow-hidden mb-2">
         <motion.div
           className="h-full rounded-full"
           style={{ background: scoreColor }}
@@ -100,7 +100,7 @@ export function ScorePredictionCard() {
           transition={{ duration: 1, ease: 'easeOut' }}
         />
       </div>
-      <div className="flex items-center justify-between text-[10px] text-white/40 mb-2">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
         <span>Syllabus: {prediction.syllabusPct}%</span>
         <span>Study: {Math.round(prediction.totalStudyHours)}h</span>
         <span>Streak: {prediction.streak}d</span>

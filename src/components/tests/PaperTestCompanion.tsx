@@ -332,20 +332,20 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
     >
       {/* === Top bar === */}
       <div className="flex items-center justify-between text-xs">
-        <div className="text-white/40 uppercase tracking-widest">
+        <div className="text-muted-foreground uppercase tracking-widest">
           {pt.isPaused ? '⏸ Paused' : '● Test in progress'}
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setView(view === 'grid' ? 'question' : 'grid')}
-            className="text-white/60 hover:text-white p-1"
+            className="text-muted-foreground hover:text-white p-1"
             aria-label="Toggle grid"
           >
             <Grid3x3 size={16} />
           </button>
           <button
             onClick={onClose}
-            className="text-white/40 hover:text-white text-[10px]"
+            className="text-muted-foreground hover:text-white text-[10px]"
           >
             Exit
           </button>
@@ -358,7 +358,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
         <div className="text-3xl font-bold tabular mt-1" style={{ color: pt.isPaused ? '#f59e0b' : '#fff' }}>
           {formatClock(totalElapsed)}
         </div>
-        <div className="text-[10px] text-white/40">total elapsed</div>
+        <div className="text-[10px] text-muted-foreground">total elapsed</div>
       </div>
 
       {/* === Section progress dots === */}
@@ -376,7 +376,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
               onClick={() => jumpToQuestion(testId, sStart)}
               className={cn(
                 'px-2.5 py-1 rounded-full text-[10px] font-bold transition',
-                isCurrent ? 'text-black' : 'text-white/60'
+                isCurrent ? 'text-black' : 'text-muted-foreground'
               )}
               style={{
                 background: isCurrent ? sc.hex : `${sc.hex}20`,
@@ -458,7 +458,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
             {/* Question number + time on this question */}
             <div className="text-center mb-6">
               <div className="flex items-center justify-center gap-2 mb-1">
-                <div className="text-xs text-white/40 uppercase tracking-widest">
+                <div className="text-xs text-muted-foreground uppercase tracking-widest">
                   Question
                 </div>
                 {/* Note/photo button — opens QuestionNoteSheet for this question */}
@@ -467,7 +467,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
                   onPointerDown={(e) => e.stopPropagation()}
                   className={cn(
                     'w-6 h-6 rounded-md flex items-center justify-center transition',
-                    (currentQ.note || currentQ.photo) ? 'bg-blue-500/30 text-blue-300' : 'bg-white/5 text-white/40'
+                    (currentQ.note || currentQ.photo) ? 'bg-blue-500/30 text-blue-300' : 'bg-foreground/5 text-muted-foreground'
                   )}
                   title="Add note or photo"
                 >
@@ -476,7 +476,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
               </div>
               <div className="text-5xl font-bold tabular text-white mb-1">
                 {currentQ.number}
-                <span className="text-2xl text-white/30"> / {pt.questions.length}</span>
+                <span className="text-2xl text-muted-foreground/60"> / {pt.questions.length}</span>
               </div>
               <div
                 className="inline-block px-3 py-0.5 rounded-full text-[10px] font-bold"
@@ -488,7 +488,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
               {/* Show question text if exists (preview, tap to edit) */}
               {currentQ.questionText && (
                 <div
-                  className="mt-2 mx-auto max-w-xs text-[11px] text-white/80 bg-white/5 rounded-lg px-2 py-1.5 border border-white/10 cursor-pointer"
+                  className="mt-2 mx-auto max-w-xs text-[11px] text-foreground bg-foreground/5 rounded-lg px-2 py-1.5 border border-border cursor-pointer"
                   onClick={() => setShowNoteSheet(true)}
                 >
                   <span className="text-[9px] text-teal-400 font-bold uppercase">Q Text:</span>{' '}
@@ -516,7 +516,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
 
               {/* Time on this question — per-Q timer with main + extra phases */}
               <div className="mt-4">
-                <div className="text-[10px] text-white/40 uppercase tracking-wide mb-1">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
                   {qPhase === 'out'
                     ? '⏰ Time up — tap Next'
                     : qPhase === 'extra'
@@ -542,13 +542,13 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
                   </span>
                   {extraAdded > 0 && (
                     <>
-                      <span className="text-white/20">→</span>
+                      <span className="text-muted-foreground/30">→</span>
                       <span style={{ color: qPhase === 'extra' ? '#f59e0b' : '#ffffff40', fontWeight: qPhase === 'extra' ? 700 : 400 }}>
                         +{extraAdded}s extra
                       </span>
                     </>
                   )}
-                  <span className="text-white/20">→</span>
+                  <span className="text-muted-foreground/30">→</span>
                   <span style={{ color: qPhase === 'out' ? '#ef4444' : '#ffffff40', fontWeight: qPhase === 'out' ? 700 : 400 }}>
                     Done
                   </span>
@@ -563,7 +563,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
                   className={cn(
                     'mt-3 px-6 py-2.5 rounded-xl text-sm font-bold transition active:scale-95',
                     pt.isPaused
-                      ? 'bg-white/5 text-white/30'
+                      ? 'bg-foreground/5 text-muted-foreground/60'
                       : 'bg-amber-500/25 text-amber-300 hover:bg-amber-500/35 border border-amber-500/30',
                   )}
                 >
@@ -590,7 +590,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
                     className={cn(
                       'py-3.5 rounded-2xl text-xl font-bold transition active:scale-95',
                       pt.isPaused && 'opacity-40',
-                      isSelected ? 'text-black' : 'bg-white/5 text-white/80'
+                      isSelected ? 'text-black' : 'bg-foreground/5 text-foreground'
                     )}
                     style={isSelected ? { background: c.hex } : undefined}
                   >
@@ -608,7 +608,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
                 onPointerDown={(e) => e.stopPropagation()}
                 className={cn(
                   'w-10 h-10 rounded-xl flex items-center justify-center transition active:scale-90',
-                  currentQ.flagged ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/60'
+                  currentQ.flagged ? 'bg-amber-500 text-black' : 'bg-foreground/5 text-muted-foreground'
                 )}
                 aria-label="Flag for review"
               >
@@ -619,7 +619,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
                 onClick={handlePrev}
                 disabled={pt.currentIdx === 0}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="w-10 h-10 rounded-xl bg-white/5 text-white flex items-center justify-center active:scale-90 disabled:opacity-30"
+                className="w-10 h-10 rounded-xl bg-foreground/5 text-white flex items-center justify-center active:scale-90 disabled:opacity-30"
               >
                 <ChevronLeft size={18} />
               </button>
@@ -639,7 +639,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
             <div className="flex gap-2">
               <button
                 onClick={handlePause}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 text-white/70 text-xs font-semibold flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 rounded-xl bg-foreground/5 text-muted-foreground text-xs font-semibold flex items-center justify-center gap-1.5"
               >
                 {pt.isPaused ? <><Play size={12} fill="currentColor" /> Resume</> : <><Pause size={12} fill="currentColor" /> Pause</>}
               </button>
@@ -666,15 +666,15 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
             <div className="flex justify-around text-center mb-4 text-xs">
               <div>
                 <div className="text-lg font-bold tabular text-green-400">{totalAnswered}</div>
-                <div className="text-[9px] text-white/40 uppercase">Answered</div>
+                <div className="text-[9px] text-muted-foreground uppercase">Answered</div>
               </div>
               <div>
                 <div className="text-lg font-bold tabular text-amber-400">{totalFlagged}</div>
-                <div className="text-[9px] text-white/40 uppercase">Flagged</div>
+                <div className="text-[9px] text-muted-foreground uppercase">Flagged</div>
               </div>
               <div>
-                <div className="text-lg font-bold tabular text-white/60">{180 - totalAnswered}</div>
-                <div className="text-[9px] text-white/40 uppercase">Remaining</div>
+                <div className="text-lg font-bold tabular text-muted-foreground">{180 - totalAnswered}</div>
+                <div className="text-[9px] text-muted-foreground uppercase">Remaining</div>
               </div>
             </div>
 
@@ -691,7 +691,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
                     <span className="text-xs font-bold" style={{ color: sc.hex }}>
                       {subj}
                     </span>
-                    <span className="text-[10px] text-white/40 tabular">
+                    <span className="text-[10px] text-muted-foreground tabular">
                       {formatHM(sectionTime)} · {sectionQs.filter(q => q.answer).length}/{sectionQs.length}
                     </span>
                   </div>
@@ -728,7 +728,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
             })}
 
             {/* Legend */}
-            <div className="flex justify-center gap-3 text-[9px] text-white/40 mt-2 mb-4">
+            <div className="flex justify-center gap-3 text-[9px] text-muted-foreground mt-2 mb-4">
               <span className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#22c55e' }} /> Answered
               </span>
@@ -736,7 +736,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
                 <span className="w-2.5 h-2.5 rounded-sm bg-amber-500" /> Flagged
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-sm bg-white/10" /> Unanswered
+                <span className="w-2.5 h-2.5 rounded-sm bg-foreground/10" /> Unanswered
               </span>
               <span className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-sm ring-1 ring-white" /> Current
@@ -765,7 +765,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
             >
               <div className="text-4xl mb-3">📝</div>
               <h3 className="text-lg font-bold mb-2">Submit the test?</h3>
-              <p className="text-xs text-white/60 mb-4">
+              <p className="text-xs text-muted-foreground mb-4">
                 You've answered <strong className="text-white">{totalAnswered}/{pt.questions.length}</strong> questions.
                 {totalAnswered < pt.questions.length && ` ${pt.questions.length - totalAnswered} will be marked as skipped.`}
                 {totalFlagged > 0 && ` ${totalFlagged} flagged for review.`}
@@ -773,7 +773,7 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowEndConfirm(false)}
-                  className="flex-1 py-3 rounded-xl bg-white/5 text-white font-semibold text-sm"
+                  className="flex-1 py-3 rounded-xl bg-foreground/5 text-white font-semibold text-sm"
                 >
                   Keep Going
                 </button>
@@ -888,12 +888,12 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
             🎯
           </motion.div>
           <h2 className="text-xl font-bold">Test Complete</h2>
-          <p className="text-xs text-white/50 mt-1">{test.name}</p>
+          <p className="text-xs text-muted-foreground mt-1">{test.name}</p>
         </div>
 
         {/* Total time */}
         <div className="glass rounded-2xl p-5 mb-4 text-center">
-          <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Total Time</div>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Total Time</div>
           <div className="text-4xl font-bold tabular bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent">
             {formatClock(totalTime)}
           </div>
@@ -908,21 +908,21 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="glass rounded-xl p-3 text-center">
             <div className="text-2xl font-bold tabular text-green-400">{totalAnswered}</div>
-            <div className="text-[9px] text-white/40 uppercase">Answered</div>
+            <div className="text-[9px] text-muted-foreground uppercase">Answered</div>
           </div>
           <div className="glass rounded-xl p-3 text-center">
             <div className="text-2xl font-bold tabular text-amber-400">{totalFlagged}</div>
-            <div className="text-[9px] text-white/40 uppercase">Flagged</div>
+            <div className="text-[9px] text-muted-foreground uppercase">Flagged</div>
           </div>
           <div className="glass rounded-xl p-3 text-center">
             <div className="text-2xl font-bold tabular text-white">{Math.round(avgPerQ)}s</div>
-            <div className="text-[9px] text-white/40 uppercase">Avg/Q</div>
+            <div className="text-[9px] text-muted-foreground uppercase">Avg/Q</div>
           </div>
         </div>
 
         {/* Section breakdown */}
         <div className="glass rounded-2xl p-4 mb-4">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-white/60 mb-3">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
             Section Breakdown
           </h3>
           <div className="space-y-2">
@@ -932,7 +932,7 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
               return (
                 <div key={s.subject} className="flex items-center gap-2 text-xs">
                   <span className="w-16 font-bold" style={{ color: sc.hex }}>{s.subject}</span>
-                  <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                  <div className="flex-1 h-2 rounded-full bg-foreground/5 overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{
@@ -941,8 +941,8 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
                       }}
                     />
                   </div>
-                  <span className="text-white/60 tabular w-12 text-right">{s.answered}/{sectionTotal}</span>
-                  <span className="text-white/40 tabular w-12 text-right">{formatHM(s.time)}</span>
+                  <span className="text-muted-foreground tabular w-12 text-right">{s.answered}/{sectionTotal}</span>
+                  <span className="text-muted-foreground tabular w-12 text-right">{formatHM(s.time)}</span>
                 </div>
               );
             })}
@@ -966,14 +966,14 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
                 </span>
               ))}
             </div>
-            <p className="text-[10px] text-white/40 mt-2">Review these questions first when checking your answers.</p>
+            <p className="text-[10px] text-muted-foreground mt-2">Review these questions first when checking your answers.</p>
           </div>
         )}
 
         {/* Slowest questions */}
         {slowest.length > 0 && (
           <div className="glass rounded-2xl p-4 mb-4">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-white/60 mb-2 flex items-center gap-1">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
               <Clock size={11} /> Slowest Questions
             </h3>
             <div className="space-y-1">
@@ -981,11 +981,11 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
                 const sc = subjectColor(q.subject);
                 return (
                   <div key={q.number} className="flex items-center gap-2 text-xs">
-                    <span className="w-8 text-white/50">Q{q.number}</span>
+                    <span className="w-8 text-muted-foreground">Q{q.number}</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: `${sc.hex}20`, color: sc.hex }}>
                       {q.subject.slice(0, 4)}
                     </span>
-                    <span className="flex-1 text-white/70">
+                    <span className="flex-1 text-muted-foreground">
                       {q.answer ? `Answer: ${q.answer}` : 'Skipped'}
                     </span>
                     <span className="tabular text-red-400">{formatHM(q.timeSpentSec)}</span>
@@ -1002,7 +1002,7 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
           <div className="glass rounded-2xl p-4 mb-4 border border-teal-500/30">
             <div className="flex items-center gap-2 mb-3">
               <Trophy size={14} className="text-amber-400" />
-              <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+              <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Your Score
               </span>
               <button
@@ -1016,30 +1016,30 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
               <div className="text-5xl font-bold tabular bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent">
                 {totalMarks}
               </div>
-              <div className="text-xs text-white/50">/ {totalQ * marksPerCorrect} marks</div>
+              <div className="text-xs text-muted-foreground">/ {totalQ * marksPerCorrect} marks</div>
             </div>
             <div className="grid grid-cols-3 gap-2 mb-3">
               <div className="text-center">
                 <div className="text-lg font-bold tabular text-green-400">{totalCorrect}</div>
-                <div className="text-[9px] text-white/40 uppercase">Correct (+4)</div>
+                <div className="text-[9px] text-muted-foreground uppercase">Correct (+4)</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-bold tabular text-red-400">{totalWrong}</div>
-                <div className="text-[9px] text-white/40 uppercase">Wrong (−1)</div>
+                <div className="text-[9px] text-muted-foreground uppercase">Wrong (−1)</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold tabular text-white/60">{totalSkipped}</div>
-                <div className="text-[9px] text-white/40 uppercase">Skipped (0)</div>
+                <div className="text-lg font-bold tabular text-muted-foreground">{totalSkipped}</div>
+                <div className="text-[9px] text-muted-foreground uppercase">Skipped (0)</div>
               </div>
             </div>
             {/* Per-subject marks */}
-            <div className="space-y-1.5 pt-2 border-t border-white/10">
+            <div className="space-y-1.5 pt-2 border-t border-border">
               {sectionStats.map((s) => {
                 const sc = subjectColor(s.subject);
                 return (
                   <div key={s.subject} className="flex items-center gap-2 text-xs">
                     <span className="w-16 font-bold" style={{ color: sc.hex }}>{s.subject}</span>
-                    <span className="tabular text-white/60 ml-auto">{s.correct}/{s.correct + s.wrong} correct</span>
+                    <span className="tabular text-muted-foreground ml-auto">{s.correct}/{s.correct + s.wrong} correct</span>
                     <span className="tabular font-bold w-12 text-right" style={{ color: s.marks >= 0 ? '#22c55e' : '#ef4444' }}>
                       {s.marks >= 0 ? '+' : ''}{s.marks}
                     </span>
@@ -1052,11 +1052,11 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
           <div className="glass rounded-2xl p-4 mb-4 border border-purple-500/20">
             <div className="flex items-center gap-2 mb-2">
               <Clipboard size={14} className="text-purple-400" />
-              <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+              <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Score Your Test
               </span>
             </div>
-            <p className="text-[11px] text-white/50 leading-snug mb-3">
+            <p className="text-[11px] text-muted-foreground leading-snug mb-3">
               Enter the correct answer key to auto-calculate your marks. NEET: +4 correct, −1 wrong, 0 skipped.
             </p>
             <button
@@ -1081,14 +1081,14 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
                   <button
                     key={q.number}
                     onClick={() => setReviewQuestionIdx(pt.questions.indexOf(q))}
-                    className="w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded-lg hover:bg-white/5 transition"
+                    className="w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded-lg hover:bg-foreground/5 transition"
                   >
-                    <span className="w-8 text-white/50">Q{q.number}</span>
+                    <span className="w-8 text-muted-foreground">Q{q.number}</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: `${sc.hex}20`, color: sc.hex }}>
                       {q.subject.slice(0, 4)}
                     </span>
                     <span className="text-red-400 tabular">✗ {q.answer}</span>
-                    <span className="text-white/30">→</span>
+                    <span className="text-muted-foreground/60">→</span>
                     <span className="text-green-400 tabular">✓ {q.correctAnswer}</span>
                     {(q.note || q.photo) && <StickyNote size={10} className="text-blue-400 ml-auto" />}
                   </button>
@@ -1111,7 +1111,7 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
                   <button
                     key={q.number}
                     onClick={() => setReviewQuestionIdx(pt.questions.indexOf(q))}
-                    className="w-full text-left rounded-lg p-2 bg-white/[0.03] hover:bg-white/5 transition"
+                    className="w-full text-left rounded-lg p-2 bg-foreground/[0.04] hover:bg-foreground/5 transition"
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-bold text-white">Q{q.number}</span>
@@ -1121,12 +1121,12 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
                       {q.flagged && <Flag size={9} className="text-amber-400" fill="currentColor" />}
                     </div>
                     {q.questionText && (
-                      <div className="text-[11px] text-white/80 mb-1 bg-white/5 rounded px-2 py-1 border border-white/5">
+                      <div className="text-[11px] text-foreground mb-1 bg-foreground/5 rounded px-2 py-1 border border-border">
                         <span className="text-[8px] text-teal-400 font-bold uppercase">Q:</span> {q.questionText}
                       </div>
                     )}
                     {q.note && (
-                      <div className="text-[11px] text-white/70 mb-1">📝 {q.note}</div>
+                      <div className="text-[11px] text-muted-foreground mb-1">📝 {q.note}</div>
                     )}
                     {q.photo && (
                       <img src={q.photo} alt={`Q${q.number}`} loading="lazy" className="w-full max-h-32 object-contain rounded-md" />
@@ -1145,7 +1145,7 @@ function PaperTestSummary({ testId, onDone }: { testId: string; onDone: () => vo
         >
           Done
         </button>
-        <p className="text-[10px] text-white/40 text-center">
+        <p className="text-[10px] text-muted-foreground text-center">
           {hasScore
             ? `Score saved: ${totalMarks}/${totalQ * marksPerCorrect} · ${totalCorrect} correct · ${totalWrong} wrong`
             : 'Your answers + timing have been saved. Enter the answer key to score.'}

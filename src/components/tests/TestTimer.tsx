@@ -181,7 +181,7 @@ export function TestTimer({ testId, onClose }: Props) {
                 border: '1px solid rgba(255,255,255,0.15)',
               }}
             >
-              <div className="text-[10px] uppercase tracking-widest text-white/50 mb-1">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
                 Switch to
               </div>
               <div className="text-xl font-bold text-white">{showSectionAlert}</div>
@@ -192,7 +192,7 @@ export function TestTimer({ testId, onClose }: Props) {
 
       {/* Top: test name + section indicator */}
       <div className="text-center w-full max-w-sm">
-        <div className="text-xs text-white/40 uppercase tracking-widest mb-1">
+        <div className="text-xs text-muted-foreground uppercase tracking-widest mb-1">
           {test.timerState === 'not_started' ? 'Ready to start' :
            test.timerState === 'running' ? 'Test in progress' :
            test.timerState === 'paused' ? 'Paused' : 'Test completed'}
@@ -211,7 +211,7 @@ export function TestTimer({ testId, onClose }: Props) {
                     ? 'bg-white text-black scale-110'
                     : i < currentSectionIdx
                     ? 'bg-green-500/20 text-green-400'
-                    : 'bg-white/5 text-white/40'
+                    : 'bg-foreground/5 text-muted-foreground'
                 )}
               >
                 {sec}
@@ -237,13 +237,13 @@ export function TestTimer({ testId, onClose }: Props) {
           {formatClock(remainingSec)}
         </motion.div>
 
-        <div className="mt-3 text-sm text-white/50 tabular">
+        <div className="mt-3 text-sm text-muted-foreground tabular">
           of {Math.floor(totalSec / 3600)}h {Math.floor((totalSec % 3600) / 60)}m
         </div>
 
         {test.timerState === 'running' && (
           <div className="mt-4 text-center">
-            <div className="text-xs text-white/40 mb-1">Current section: {currentSection}</div>
+            <div className="text-xs text-muted-foreground mb-1">Current section: {currentSection}</div>
             <div className="text-sm font-semibold tabular" style={{ color: timeColor }}>
               {Math.floor(sectionRemaining / 60)}m {sectionRemaining % 60}s left in section
             </div>
@@ -299,13 +299,13 @@ export function TestTimer({ testId, onClose }: Props) {
         {test.timerState === 'completed' && (
           <div className="text-center">
             <div className="text-2xl font-bold text-green-400 mb-2">✓ Test Complete</div>
-            <div className="text-sm text-white/60 mb-4 tabular">
+            <div className="text-sm text-muted-foreground mb-4 tabular">
               Time taken: {Math.floor(elapsedSec / 60)}m {elapsedSec % 60}s
               {test.timerPausedSec ? ` · paused ${Math.floor(test.timerPausedSec / 60)}m` : ''}
             </div>
             <button
               onClick={onClose}
-              className="w-full py-4 rounded-2xl font-bold text-base bg-white/10 text-white active:scale-[0.98]"
+              className="w-full py-4 rounded-2xl font-bold text-base bg-foreground/10 text-white active:scale-[0.98]"
             >
               Enter Results →
             </button>
@@ -316,7 +316,7 @@ export function TestTimer({ testId, onClose }: Props) {
         {test.timerState !== 'running' && (
           <button
             onClick={onClose}
-            className="w-full py-2 text-xs text-white/40 hover:text-white/70"
+            className="w-full py-2 text-xs text-muted-foreground hover:text-muted-foreground"
           >
             Close timer
           </button>
@@ -324,7 +324,7 @@ export function TestTimer({ testId, onClose }: Props) {
       </div>
 
       {/* Footer info */}
-      <div className="text-[10px] text-white/30 flex items-center gap-1 mt-4">
+      <div className="text-[10px] text-muted-foreground/60 flex items-center gap-1 mt-4">
         <Clock size={10} /> NEET standard: 3h 20m · 180 questions · 720 marks
       </div>
     </motion.div>

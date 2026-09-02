@@ -148,13 +148,13 @@ export function AnswerKeyEntrySheet({ testId, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass-strong rounded-t-3xl p-5 pb-8 max-h-[92vh] overflow-y-auto scroll-area"
       >
-        <div className="w-10 h-1 bg-white/30 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/30 rounded-full mx-auto mb-4" />
 
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">Answer Key</h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60"
+            className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"
           >
             <X size={16} />
           </button>
@@ -163,32 +163,32 @@ export function AnswerKeyEntrySheet({ testId, onClose }: Props) {
         {/* === Mode: choose === */}
         {mode === 'choose' && (
           <div className="space-y-3">
-            <p className="text-xs text-white/50 leading-snug">
+            <p className="text-xs text-muted-foreground leading-snug">
               Enter correct answers to auto-score your test. Scoring: +{marksPerCorrect} correct, −{negativePerWrong} wrong, 0 skipped.
             </p>
 
             {/* Current score preview if any answers set */}
             {scoring.scored > 0 && (
               <div className="glass rounded-xl p-3 border border-teal-500/20">
-                <div className="text-[10px] uppercase tracking-wide text-white/40 mb-2">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">
                   Current Score
                 </div>
                 <div className="grid grid-cols-4 gap-2 text-center">
                   <div>
                     <div className="text-lg font-bold tabular text-green-400">{scoring.correct}</div>
-                    <div className="text-[8px] text-white/40 uppercase">Correct</div>
+                    <div className="text-[8px] text-muted-foreground uppercase">Correct</div>
                   </div>
                   <div>
                     <div className="text-lg font-bold tabular text-red-400">{scoring.wrong}</div>
-                    <div className="text-[8px] text-white/40 uppercase">Wrong</div>
+                    <div className="text-[8px] text-muted-foreground uppercase">Wrong</div>
                   </div>
                   <div>
-                    <div className="text-lg font-bold tabular text-white/60">{scoring.skipped}</div>
-                    <div className="text-[8px] text-white/40 uppercase">Skipped</div>
+                    <div className="text-lg font-bold tabular text-muted-foreground">{scoring.skipped}</div>
+                    <div className="text-[8px] text-muted-foreground uppercase">Skipped</div>
                   </div>
                   <div>
                     <div className="text-lg font-bold tabular text-teal-400">{scoring.totalMarks}</div>
-                    <div className="text-[8px] text-white/40 uppercase">Marks</div>
+                    <div className="text-[8px] text-muted-foreground uppercase">Marks</div>
                   </div>
                 </div>
                 {scoring.scored === 180 && (
@@ -204,34 +204,34 @@ export function AnswerKeyEntrySheet({ testId, onClose }: Props) {
 
             <button
               onClick={() => { vibrate(8); setMode('paste'); }}
-              className="w-full p-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3 text-left hover:bg-white/[0.07] transition"
+              className="w-full p-3 rounded-xl bg-foreground/5 border border-border flex items-center gap-3 text-left hover:bg-foreground/[0.07] transition"
             >
               <div className="w-9 h-9 rounded-lg bg-teal-500/15 flex items-center justify-center shrink-0">
                 <Clipboard size={16} className="text-teal-400" />
               </div>
               <div className="flex-1">
                 <div className="text-sm font-semibold">Paste Answer Key</div>
-                <div className="text-[10px] text-white/40">
+                <div className="text-[10px] text-muted-foreground">
                   Paste 180 chars (ABCDDCBA...) from coaching PDF · Fastest
                 </div>
               </div>
-              <ChevronRight size={14} className="text-white/30" />
+              <ChevronRight size={14} className="text-muted-foreground/60" />
             </button>
 
             <button
               onClick={() => { vibrate(8); setMode('oneByOne'); setOneByOneIdx(0); }}
-              className="w-full p-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3 text-left hover:bg-white/[0.07] transition"
+              className="w-full p-3 rounded-xl bg-foreground/5 border border-border flex items-center gap-3 text-left hover:bg-foreground/[0.07] transition"
             >
               <div className="w-9 h-9 rounded-lg bg-purple-500/15 flex items-center justify-center shrink-0">
                 <Edit3 size={16} className="text-purple-400" />
               </div>
               <div className="flex-1">
                 <div className="text-sm font-semibold">Enter One-by-One</div>
-                <div className="text-[10px] text-white/40">
+                <div className="text-[10px] text-muted-foreground">
                   Step through each Q, tap correct option · Slower but accurate
                 </div>
               </div>
-              <ChevronRight size={14} className="text-white/30" />
+              <ChevronRight size={14} className="text-muted-foreground/60" />
             </button>
 
             {scoring.scored > 0 && scoring.scored < 180 && (
@@ -248,13 +248,13 @@ export function AnswerKeyEntrySheet({ testId, onClose }: Props) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setMode('choose')}
-                className="text-[10px] text-white/40"
+                className="text-[10px] text-muted-foreground"
               >
                 ← Back
               </button>
               <span className="text-xs font-semibold text-teal-400">Paste Mode</span>
             </div>
-            <p className="text-[11px] text-white/50 leading-snug">
+            <p className="text-[11px] text-muted-foreground leading-snug">
               Paste the answer key from your coaching's PDF or website. Format: 180 letters
               (A/B/C/D), one per question in order. Spaces/commas/newlines are auto-removed.
             </p>
@@ -262,10 +262,10 @@ export function AnswerKeyEntrySheet({ testId, onClose }: Props) {
               value={pasteValue}
               onChange={(e) => setPasteValue(e.target.value)}
               placeholder="ABCDDCBAABCD..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm font-mono tabular focus:outline-none focus:border-teal-400/50 min-h-[120px] resize-none"
+              className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm font-mono tabular focus:outline-none focus:border-teal-400/50 min-h-[120px] resize-none"
               autoFocus
             />
-            <div className="text-[10px] text-white/40 tabular">
+            <div className="text-[10px] text-muted-foreground tabular">
               {pasteValue.toUpperCase().replace(/[^ABCD]/g, '').length}/180 valid answers
             </div>
             <button
@@ -273,7 +273,7 @@ export function AnswerKeyEntrySheet({ testId, onClose }: Props) {
               disabled={pasteValue.toUpperCase().replace(/[^ABCD]/g, '').length === 0}
               className={cn(
                 'w-full py-3 rounded-xl font-bold text-sm active:scale-[0.98]',
-                pasteValue ? 'bg-gradient-to-r from-teal-500 to-green-500 text-black' : 'bg-white/5 text-white/30'
+                pasteValue ? 'bg-gradient-to-r from-teal-500 to-green-500 text-black' : 'bg-foreground/5 text-muted-foreground/60'
               )}
             >
               Parse & Save
@@ -287,19 +287,19 @@ export function AnswerKeyEntrySheet({ testId, onClose }: Props) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setMode('choose')}
-                className="text-[10px] text-white/40"
+                className="text-[10px] text-muted-foreground"
               >
                 ← Back
               </button>
               <span className="text-xs font-semibold text-purple-400">One-by-One Mode</span>
-              <span className="text-[10px] text-white/40 ml-auto tabular">
+              <span className="text-[10px] text-muted-foreground ml-auto tabular">
                 {oneByOneIdx + 1}/180
               </span>
             </div>
 
             {/* Question header */}
             <div className="text-center py-3">
-              <div className="text-[10px] text-white/40 uppercase">Correct answer for</div>
+              <div className="text-[10px] text-muted-foreground uppercase">Correct answer for</div>
               <div className="text-4xl font-bold tabular text-white">Q{currentQ.number}</div>
               <div
                 className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mt-1"
@@ -308,7 +308,7 @@ export function AnswerKeyEntrySheet({ testId, onClose }: Props) {
                 {currentSubject}
               </div>
               {currentQ.answer && (
-                <div className="text-[10px] text-white/50 mt-1">
+                <div className="text-[10px] text-muted-foreground mt-1">
                   Your answer: <span className="font-bold text-white">{currentQ.answer}</span>
                 </div>
               )}
@@ -324,7 +324,7 @@ export function AnswerKeyEntrySheet({ testId, onClose }: Props) {
                     onClick={() => handleOneByOneAnswer(opt)}
                     className={cn(
                       'py-4 rounded-xl text-xl font-bold transition active:scale-95',
-                      isSet ? 'text-black' : 'bg-white/5 text-white/80'
+                      isSet ? 'text-black' : 'bg-foreground/5 text-foreground'
                     )}
                     style={isSet ? { background: c.hex } : undefined}
                   >
@@ -338,11 +338,11 @@ export function AnswerKeyEntrySheet({ testId, onClose }: Props) {
             {/* Skip + auto-next info */}
             <button
               onClick={handleSkipOneByOne}
-              className="w-full py-2 rounded-xl bg-white/5 text-white/50 text-xs font-semibold"
+              className="w-full py-2 rounded-xl bg-foreground/5 text-muted-foreground text-xs font-semibold"
             >
               Skip (no correct answer)
             </button>
-            <p className="text-[10px] text-white/40 text-center">
+            <p className="text-[10px] text-muted-foreground text-center">
               Auto-advances to next question on tap
             </p>
           </div>

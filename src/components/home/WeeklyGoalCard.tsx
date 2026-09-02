@@ -45,16 +45,16 @@ export function WeeklyGoalCard() {
       <>
         <button
           onClick={() => setShowSetter(true)}
-          className="w-full glass rounded-2xl p-3 flex items-center gap-3 hover:bg-white/[0.07] transition border border-teal-500/20"
+          className="w-full glass rounded-2xl p-3 flex items-center gap-3 hover:bg-foreground/[0.07] transition border border-teal-500/20"
         >
           <div className="w-9 h-9 rounded-lg bg-teal-500/20 flex items-center justify-center shrink-0">
             <Target size={18} className="text-teal-400" />
           </div>
           <div className="flex-1 text-left">
             <div className="text-sm font-semibold text-teal-300">Set Weekly Goals</div>
-            <div className="text-[10px] text-white/40">Define what you want to achieve this week</div>
+            <div className="text-[10px] text-muted-foreground">Define what you want to achieve this week</div>
           </div>
-          <ChevronRight size={16} className="text-white/30" />
+          <ChevronRight size={16} className="text-muted-foreground/60" />
         </button>
         <AnimatePresence>
           {showSetter && <GoalSetter onClose={() => setShowSetter(false)} studyHours={studyHours} setStudyHours={setStudyHours} lectures={lectures} setLectures={setLectures} dpps={dpps} setDpps={setDpps} onSave={() => { setWeeklyGoals({ studyHours, lectures, dpps }); setShowSetter(false); }} />}
@@ -72,7 +72,7 @@ export function WeeklyGoalCard() {
       <div className="glass rounded-2xl p-3">
         <div className="flex items-center gap-2 mb-3">
           <Target size={14} className="text-teal-400" />
-          <span className="text-xs font-bold text-white/70">This Week's Goals</span>
+          <span className="text-xs font-bold text-muted-foreground">This Week's Goals</span>
           <button onClick={() => setShowSetter(true)} className="ml-auto text-[10px] text-teal-400 hover:underline">
             Edit
           </button>
@@ -94,12 +94,12 @@ function GoalBar({ label, done, goal, pct, color }: { label: string; done: strin
   return (
     <div className="mb-2 last:mb-0">
       <div className="flex items-center justify-between text-[10px] mb-1">
-        <span className="text-white/50">{label}</span>
+        <span className="text-muted-foreground">{label}</span>
         <span className="tabular" style={{ color: pct >= 100 ? '#22c55e' : 'rgba(255,255,255,0.4)' }}>
           {done} / {goal} {pct >= 100 && '✓'}
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+      <div className="h-1.5 rounded-full bg-foreground/5 overflow-hidden">
         <motion.div
           className="h-full rounded-full"
           style={{ background: pct >= 100 ? '#22c55e' : color }}
@@ -136,13 +136,13 @@ function GoalSetter({ onClose, studyHours, setStudyHours, lectures, setLectures,
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass rounded-t-3xl p-5 pb-8"
       >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-4" />
         <h2 className="text-lg font-bold mb-5">Set Weekly Goals</h2>
 
         <div className="space-y-5">
           <div>
             <div className="flex justify-between mb-2">
-              <label className="text-xs font-semibold text-white/60">Study Hours</label>
+              <label className="text-xs font-semibold text-muted-foreground">Study Hours</label>
               <span className="text-sm font-bold tabular text-teal-400">{studyHours}h</span>
             </div>
             <ScrollAwareSlider>
@@ -152,7 +152,7 @@ function GoalSetter({ onClose, studyHours, setStudyHours, lectures, setLectures,
 
           <div>
             <div className="flex justify-between mb-2">
-              <label className="text-xs font-semibold text-white/60">Lectures to Complete</label>
+              <label className="text-xs font-semibold text-muted-foreground">Lectures to Complete</label>
               <span className="text-sm font-bold tabular text-green-400">{lectures}</span>
             </div>
             <ScrollAwareSlider>
@@ -162,7 +162,7 @@ function GoalSetter({ onClose, studyHours, setStudyHours, lectures, setLectures,
 
           <div>
             <div className="flex justify-between mb-2">
-              <label className="text-xs font-semibold text-white/60">DPPs to Solve</label>
+              <label className="text-xs font-semibold text-muted-foreground">DPPs to Solve</label>
               <span className="text-sm font-bold tabular text-blue-400">{dpps}</span>
             </div>
             <ScrollAwareSlider>

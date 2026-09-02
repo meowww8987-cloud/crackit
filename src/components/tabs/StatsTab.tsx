@@ -75,8 +75,8 @@ export function StatsTab() {
           Stats
         </h1>
         <div className="glass rounded-2xl p-8 text-center">
-          <BarChart3 size={40} className="text-white/40 mx-auto mb-3" />
-          <p className="text-white/60 text-sm">Complete study sessions to see analytics here.</p>
+          <BarChart3 size={40} className="text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">Complete study sessions to see analytics here.</p>
         </div>
         <ProgressTimelineSection />
       </div>

@@ -177,7 +177,7 @@ export function SmartInsights({ analytics }: { analytics: Record<Subject, Subjec
 
   if (insights.length === 0) {
     return (
-      <div className="glass rounded-xl p-3 text-center text-xs text-white/40">
+      <div className="glass rounded-xl p-3 text-center text-xs text-muted-foreground">
         No insights — add more analytics data to see findings.
       </div>
     );
@@ -208,7 +208,7 @@ export function SillyMistakesTally({ analytics }: { analytics: Record<Subject, S
 
   return (
     <div>
-      <div className="text-xs text-white/50 mb-2">Total silly mistakes: <span className="text-red-400 font-bold tabular">{total}</span></div>
+      <div className="text-xs text-muted-foreground mb-2">Total silly mistakes: <span className="text-red-400 font-bold tabular">{total}</span></div>
       <div className="grid grid-cols-2 gap-2">
         {data.map((s) => {
           const count = analytics[s].sillyMistakes;
@@ -217,7 +217,7 @@ export function SillyMistakesTally({ analytics }: { analytics: Record<Subject, S
             <div key={s} className="glass rounded-xl p-2.5 flex items-center gap-2">
               <div className="w-2 h-8 rounded" style={{ background: color }} />
               <div>
-                <div className="text-[10px] text-white/50">{s}</div>
+                <div className="text-[10px] text-muted-foreground">{s}</div>
                 <div className="text-lg font-bold tabular text-red-400">{count}</div>
               </div>
             </div>

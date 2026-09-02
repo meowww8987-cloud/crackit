@@ -77,7 +77,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
             <Brain size={20} className="text-purple-400" />
             <span className="text-sm font-bold">Daily Recall Challenge</span>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
             <X size={16} />
           </button>
         </div>
@@ -90,7 +90,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
           >
             <Sparkles size={32} className="text-purple-400 mx-auto mb-2" />
             <h2 className="text-lg font-bold mb-1">Test your memory</h2>
-            <p className="text-xs text-white/50">
+            <p className="text-xs text-muted-foreground">
               Recall key points from topics you studied in the past week.
               Self-rate how well you remember each one.
             </p>
@@ -98,7 +98,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
 
           {topics.length === 0 ? (
             <div className="glass rounded-2xl p-6 text-center">
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-muted-foreground">
                 No topics available for recall yet. Mark some lectures as done in the Syllabus tab first.
               </p>
               <button
@@ -110,7 +110,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
             </div>
           ) : (
             <>
-              <div className="text-xs text-white/40 mb-2">Today's {topics.length} topics:</div>
+              <div className="text-xs text-muted-foreground mb-2">Today's {topics.length} topics:</div>
               <div className="space-y-1.5 mb-6 max-h-[40vh] overflow-y-auto scroll-area">
                 {topics.map((t, i) => {
                   const ch = syllabus.chapters.find((c) => c.id === t.chapterId);
@@ -118,7 +118,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
                   const color = subj ? subjectColor(subj.name) : null;
                   return (
                     <div key={t.id} className="glass rounded-xl p-2.5 flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-white/40 tabular">{i + 1}</span>
+                      <span className="text-[10px] font-bold text-muted-foreground tabular">{i + 1}</span>
                       {color && <div className="w-2 h-2 rounded-full" style={{ background: color.hex }} />}
                       <span className="text-xs flex-1 truncate">{t.topic}</span>
                     </div>
@@ -160,13 +160,13 @@ export function ActiveRecallChallenge({ onClose }: Props) {
       >
         {/* Progress bar */}
         <div className="mb-6">
-          <div className="flex items-center justify-between text-xs text-white/40 mb-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
             <span>Question {currentIndex + 1} of {topics.length}</span>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
               <X size={16} />
             </button>
           </div>
-          <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+          <div className="h-1.5 rounded-full bg-foreground/5 overflow-hidden">
             <motion.div
               className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
               animate={{ width: `${((currentIndex) / topics.length) * 100}%` }}
@@ -188,16 +188,16 @@ export function ActiveRecallChallenge({ onClose }: Props) {
                 <div className="flex items-center gap-1.5 mb-3">
                   <div className="w-2 h-2 rounded-full" style={{ background: color.hex }} />
                   <span className="text-[10px] font-bold uppercase" style={{ color: color.hex }}>{subj.name}</span>
-                  {ch && <span className="text-[10px] text-white/40">· {ch.name}</span>}
+                  {ch && <span className="text-[10px] text-muted-foreground">· {ch.name}</span>}
                 </div>
               )}
               <h2 className="text-xl font-bold leading-tight mb-3">{topic.topic}</h2>
-              <p className="text-xs text-white/50">
+              <p className="text-xs text-muted-foreground">
                 Take a moment to recall the key points, formulas, and concepts.
                 Then rate how well you remembered it.
               </p>
               {topic.notes && (
-                <div className="mt-3 p-2 rounded-lg bg-white/5 text-xs text-white/60">
+                <div className="mt-3 p-2 rounded-lg bg-foreground/5 text-xs text-muted-foreground">
                   {topic.notes}
                 </div>
               )}
@@ -205,7 +205,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
           </AnimatePresence>
 
           <div className="space-y-2">
-            <p className="text-xs text-white/50 text-center mb-3">How well did you remember?</p>
+            <p className="text-xs text-muted-foreground text-center mb-3">How well did you remember?</p>
             <button
               onClick={() => handleRate('remembered')}
               className="w-full py-3.5 rounded-2xl bg-green-500 text-black font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
@@ -226,7 +226,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
             </button>
             <button
               onClick={handleSkip}
-              className="w-full py-2 text-xs text-white/40 hover:text-white/70"
+              className="w-full py-2 text-xs text-muted-foreground hover:text-muted-foreground"
             >
               Skip →
             </button>
@@ -253,7 +253,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
           <Brain size={20} className="text-purple-400" />
           <span className="text-sm font-bold">Results</span>
         </div>
-        <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+        <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
           <X size={16} />
         </button>
       </div>
@@ -264,7 +264,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
           animate={{ scale: 1, opacity: 1 }}
           className="glass rounded-2xl p-6 mb-6 text-center"
         >
-          <div className="text-xs text-white/40 uppercase tracking-widest mb-2">Retention Score</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Retention Score</div>
           <motion.div
             initial={{ scale: 0.5 }}
             animate={{ scale: 1 }}
@@ -274,7 +274,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
           >
             {finalScore}%
           </motion.div>
-          <p className="text-xs text-white/50">
+          <p className="text-xs text-muted-foreground">
             {finalScore >= 70 ? 'Excellent recall!' : finalScore >= 40 ? 'Decent — keep practicing.' : 'Review these topics soon.'}
           </p>
         </motion.div>
@@ -289,7 +289,7 @@ export function ActiveRecallChallenge({ onClose }: Props) {
         {/* Forgotten topics (re-queued) */}
         {forgotten.length > 0 && (
           <div className="glass rounded-2xl p-4 mb-6">
-            <h3 className="text-xs font-bold text-white/70 mb-2">Re-queued for tomorrow:</h3>
+            <h3 className="text-xs font-bold text-muted-foreground mb-2">Re-queued for tomorrow:</h3>
             <div className="space-y-1.5 max-h-[30vh] overflow-y-auto scroll-area">
               {forgotten.map((t) => {
                 const ch = syllabus.chapters.find((c) => c.id === t.chapterId);
@@ -298,8 +298,8 @@ export function ActiveRecallChallenge({ onClose }: Props) {
                 return (
                   <div key={t.id} className="flex items-center gap-2 text-xs">
                     {color && <div className="w-2 h-2 rounded-full" style={{ background: color.hex }} />}
-                    <span className="flex-1 truncate text-white/70">{t.topic}</span>
-                    <span className="text-[10px] text-white/40">{results[t.id]}</span>
+                    <span className="flex-1 truncate text-muted-foreground">{t.topic}</span>
+                    <span className="text-[10px] text-muted-foreground">{results[t.id]}</span>
                   </div>
                 );
               })}
@@ -322,7 +322,7 @@ function ResultStat({ label, count, color }: { label: string; count: number; col
   return (
     <div className="glass rounded-xl p-2.5 text-center">
       <div className="text-xl font-bold tabular" style={{ color }}>{count}</div>
-      <div className="text-[9px] text-white/40">{label}</div>
+      <div className="text-[9px] text-muted-foreground">{label}</div>
     </div>
   );
 }

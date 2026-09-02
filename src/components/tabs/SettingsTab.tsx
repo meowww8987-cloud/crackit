@@ -711,6 +711,23 @@ function AppearanceSection({ s, update }: { s: Settings; update: <K extends keyo
           <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Animations</span>
         </div>
 
+        {/* === Low-End Device Mode — one-tap performance boost === */}
+        <div className="flex items-center justify-between py-2.5 px-3 rounded-xl mb-2" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}>
+          <div>
+            <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>🔥 Low-End Device Mode</span>
+            <div className="text-[10px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>Disables 3D, blur, animations, glows — keeps phone cool</div>
+          </div>
+          <Toggle value={s.reduceAnimations} onChange={(v) => {
+            update('reduceAnimations', v);
+            if (v) {
+              // Also disable 3D + set OLED black for maximum savings
+              update('bg3DMode', 'off');
+              update('prefer2D', true);
+              vibrate([10, 20, 10]);
+            }
+          }} />
+        </div>
+
         <div className="flex items-center justify-between py-1.5">
           <div>
             <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Reduce animations</span>

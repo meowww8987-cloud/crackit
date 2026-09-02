@@ -260,7 +260,7 @@ export function SleepLockScreen() {
               className="absolute top-0 left-0 right-0 pt-[env(safe-area-inset-top,0px)] pt-6 z-10"
             >
               <div className="text-center">
-                <div className="text-[10px] uppercase tracking-[0.3em] text-white/60 font-semibold mb-1">
+                <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-semibold mb-1">
                   {scene.label} · since {bedTimeStr}
                 </div>
                 <motion.div
@@ -275,7 +275,7 @@ export function SleepLockScreen() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 1.5, duration: 0.8 }}
-                  className="text-[9px] text-white/40 mt-1 uppercase tracking-wider"
+                  className="text-[9px] text-muted-foreground mt-1 uppercase tracking-wider"
                 >
                   {elapsedSec < 1800 ? 'Falling asleep...' : elapsedSec < 5400 ? 'Deep sleep' : elapsedSec < 21600 ? 'Restful sleep' : 'Long sleep'}
                 </motion.div>
@@ -398,7 +398,7 @@ function SleepingPhase({
           opacity: [0.3, 0, 0.3],
         }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute rounded-full border-2 border-white/20"
+        className="absolute rounded-full border-2 border-border"
         style={{ width: 120, height: 120, top: '35%' }}
       />
 
@@ -406,7 +406,7 @@ function SleepingPhase({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: [0.5, 0.9, 0.5], y: 0 }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
-        className="text-2xl font-light text-white/90 mb-2 tracking-wide"
+        className="text-2xl font-light text-foreground mb-2 tracking-wide"
       >
         {sceneLabel}
       </motion.div>
@@ -415,7 +415,7 @@ function SleepingPhase({
         initial={{ opacity: 0 }}
         animate={{ opacity: [0.3, 0.7, 0.3] }}
         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
-        className="text-sm text-white/60 font-medium mb-1"
+        className="text-sm text-muted-foreground font-medium mb-1"
       >
         Double-tap anywhere to wake up
       </motion.div>
@@ -424,7 +424,7 @@ function SleepingPhase({
         initial={{ opacity: 0 }}
         animate={{ opacity: [0.2, 0.5, 0.2] }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.9 }}
-        className="text-[10px] text-white/30 uppercase tracking-widest"
+        className="text-[10px] text-muted-foreground/60 uppercase tracking-widest"
       >
         Breathe with the rhythm
       </motion.div>
@@ -439,7 +439,7 @@ function SleepingPhase({
           onCancel();
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg text-[11px] text-white/40 hover:text-white/80 hover:bg-white/5 transition underline"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg text-[11px] text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition underline"
         style={{ touchAction: 'manipulation' }}
       >
         Cancel sleep
@@ -505,12 +505,12 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
         ☀️
       </motion.div>
       <h2 className="text-xl font-bold text-white mb-1">Good morning!</h2>
-      <p className="text-sm text-white/70 mb-6 text-center">Solve this to prove you're awake</p>
+      <p className="text-sm text-muted-foreground mb-6 text-center">Solve this to prove you're awake</p>
 
       <motion.div
         animate={status === 'wrong' ? { x: [0, -10, 10, -8, 8, 0] } : {}}
         transition={{ duration: 0.4 }}
-        className="w-full rounded-2xl bg-white/10  border border-white/20 p-5 mb-4 text-center"
+        className="w-full rounded-2xl bg-foreground/10  border border-border p-5 mb-4 text-center"
       >
         <div className="text-3xl font-bold tabular text-white mb-3">{problem.question} = ?</div>
         <input
@@ -522,8 +522,8 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
           onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
           placeholder="?"
           className={cn(
-            'w-24 text-center text-2xl font-bold tabular bg-white/10 border-2 rounded-xl py-2 text-white placeholder:text-white/30 focus:outline-none transition',
-            status === 'wrong' ? 'border-red-400 bg-red-500/10' : status === 'correct' ? 'border-green-400 bg-green-500/10' : 'border-white/20 focus:border-indigo-300'
+            'w-24 text-center text-2xl font-bold tabular bg-foreground/10 border-2 rounded-xl py-2 text-white placeholder:text-muted-foreground/60 focus:outline-none transition',
+            status === 'wrong' ? 'border-red-400 bg-red-500/10' : status === 'correct' ? 'border-green-400 bg-green-500/10' : 'border-border focus:border-indigo-300'
           )}
         />
         <div className="h-5 mt-2">
@@ -539,7 +539,7 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
       </motion.div>
 
       <button onClick={handleSubmit} className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold text-sm active:scale-[0.98] transition mb-2">Unlock</button>
-      <button onClick={onBack} className="text-xs text-white/50 hover:text-white/80 transition underline">Back to sleep</button>
+      <button onClick={onBack} className="text-xs text-muted-foreground hover:text-foreground transition underline">Back to sleep</button>
     </motion.div>
   );
 }
@@ -667,7 +667,7 @@ function QualityPhase({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.35, duration: 0.5 }}
-          className="text-sm text-white/70 mb-1"
+          className="text-sm text-muted-foreground mb-1"
         >
           How was your sleep quality?
         </motion.p>
@@ -686,13 +686,13 @@ function QualityPhase({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.6, ease: EASE_OUT_QUART }}
-        className="rounded-2xl bg-white/8  border border-white/15 p-3 mb-4"
+        className="rounded-2xl bg-foreground/10  border border-border p-3 mb-4"
       >
         {/* Time range: bed → wake */}
         <div className="flex items-center justify-between mb-2.5 text-[11px]">
           <div className="flex items-center gap-1.5">
-            <span className="text-white/40">🌙</span>
-            <span className="text-white/70 font-medium tabular">{bedTimeStr}</span>
+            <span className="text-muted-foreground">🌙</span>
+            <span className="text-muted-foreground font-medium tabular">{bedTimeStr}</span>
           </div>
           <div className="flex-1 mx-2 h-px bg-gradient-to-r from-white/20 via-white/40 to-white/20 relative">
             <motion.div
@@ -703,19 +703,19 @@ function QualityPhase({
             />
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-white/70 font-medium tabular">{wakeTimeStr}</span>
-            <span className="text-white/40">☀️</span>
+            <span className="text-muted-foreground font-medium tabular">{wakeTimeStr}</span>
+            <span className="text-muted-foreground">☀️</span>
           </div>
         </div>
 
         {/* Metrics: cycles / score / stage */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
-            <div className="text-[8px] uppercase tracking-wider text-white/40 mb-0.5">Cycles</div>
+            <div className="text-[8px] uppercase tracking-wider text-muted-foreground mb-0.5">Cycles</div>
             <div className="text-sm font-bold text-white tabular">{metrics.sleepCycles}</div>
           </div>
-          <div className="border-x border-white/10">
-            <div className="text-[8px] uppercase tracking-wider text-white/40 mb-0.5">Score</div>
+          <div className="border-x border-border">
+            <div className="text-[8px] uppercase tracking-wider text-muted-foreground mb-0.5">Score</div>
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
@@ -727,8 +727,8 @@ function QualityPhase({
             </motion.div>
           </div>
           <div>
-            <div className="text-[8px] uppercase tracking-wider text-white/40 mb-0.5">Stage</div>
-            <div className="text-[10px] font-semibold text-white/90 leading-tight pt-0.5">{metrics.stageLabel}</div>
+            <div className="text-[8px] uppercase tracking-wider text-muted-foreground mb-0.5">Stage</div>
+            <div className="text-[10px] font-semibold text-foreground leading-tight pt-0.5">{metrics.stageLabel}</div>
           </div>
         </div>
       </motion.div>
@@ -744,11 +744,11 @@ function QualityPhase({
             whileHover={{ scale: 1.08, y: -4 }}
             whileTap={{ scale: 0.92 }}
             onClick={() => onSelect(opt.q)}
-            className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl bg-white/10  border border-white/15 hover:bg-white/20 transition"
+            className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl bg-foreground/10  border border-border hover:bg-foreground/20 transition"
             style={{ borderBottom: `3px solid ${opt.color}` }}
           >
             <span className="text-2xl">{opt.emoji}</span>
-            <span className="text-[8px] text-white/60 font-medium">{opt.label}</span>
+            <span className="text-[8px] text-muted-foreground font-medium">{opt.label}</span>
           </motion.button>
         ))}
       </div>
@@ -758,7 +758,7 @@ function QualityPhase({
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.5 }}
         onClick={onSkip}
-        className="w-full py-2.5 rounded-xl bg-white/5 text-white/50 text-xs font-medium hover:bg-white/10 transition"
+        className="w-full py-2.5 rounded-xl bg-foreground/5 text-muted-foreground text-xs font-medium hover:bg-foreground/10 transition"
       >
         Skip rating
       </motion.button>
@@ -838,7 +838,7 @@ function CelebratingPhase({ tod }: { tod: TimeOfDay }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.7 }}
         transition={{ delay: 0.6, duration: 0.5 }}
-        className="text-[10px] text-white/60 mt-1 uppercase tracking-widest"
+        className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest"
       >
         Taking you to Study →
       </motion.p>

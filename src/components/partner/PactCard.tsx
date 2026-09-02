@@ -53,7 +53,7 @@ export function PactCard() {
       <>
         <button
           onClick={() => { vibrate(10); setShowSetup(true); }}
-          className="w-full glass rounded-2xl p-3 flex items-center gap-3 border border-pink-500/20 hover:bg-white/[0.07] transition active:scale-[0.99]"
+          className="w-full glass rounded-2xl p-3 flex items-center gap-3 border border-pink-500/20 hover:bg-foreground/[0.07] transition active:scale-[0.99]"
         >
           <div className="w-9 h-9 rounded-lg bg-pink-500/15 flex items-center justify-center shrink-0">
             <Handshake size={18} className="text-pink-400" />
@@ -114,7 +114,7 @@ export function PactCard() {
                 {formatHM(myTodaySec)} / {todayPact.targetHours}h
               </span>
             </div>
-            <div className="h-2.5 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-2.5 rounded-full bg-foreground/5 overflow-hidden">
               <motion.div
                 animate={{ width: `${myPct}%` }}
                 transition={{ duration: 0.5 }}
@@ -130,7 +130,7 @@ export function PactCard() {
                 {formatHM(partnerSec)} / {todayPact.targetHours}h
               </span>
             </div>
-            <div className="h-2.5 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-2.5 rounded-full bg-foreground/5 overflow-hidden">
               <motion.div
                 animate={{ width: `${partnerPct}%` }}
                 transition={{ duration: 0.5 }}
@@ -202,13 +202,13 @@ function PactSetupSheet({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass-strong rounded-t-3xl p-6 pb-8"
       >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-4" />
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
             <Handshake size={18} className="text-pink-400" />
             <h2 className="text-lg font-bold">Study Pact</h2>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
             <X size={16} />
           </button>
         </div>
@@ -231,7 +231,7 @@ function PactSetupSheet({ onClose }: { onClose: () => void }) {
                 onClick={() => { setHours(h); vibrate(6); }}
                 className={cn(
                   'py-2.5 rounded-lg text-sm font-bold transition',
-                  hours === h ? 'bg-pink-500 text-white' : 'bg-white/5 text-white/50'
+                  hours === h ? 'bg-pink-500 text-white' : 'bg-foreground/5 text-muted-foreground'
                 )}
               >
                 {h}h
@@ -243,16 +243,16 @@ function PactSetupSheet({ onClose }: { onClose: () => void }) {
         {/* Recurring toggle */}
         <button
           onClick={() => { setRecurring(!recurring); vibrate(8); }}
-          className="w-full mb-5 p-3 rounded-xl bg-white/5 flex items-center justify-between hover:bg-white/10 transition"
+          className="w-full mb-5 p-3 rounded-xl bg-foreground/5 flex items-center justify-between hover:bg-foreground/10 transition"
         >
           <div className="flex items-center gap-2">
-            <Zap size={14} className={recurring ? 'text-pink-400' : 'text-white/30'} />
+            <Zap size={14} className={recurring ? 'text-pink-400' : 'text-muted-foreground/60'} />
             <div className="text-left">
               <div className="text-sm font-semibold">Auto-renew daily</div>
               <div className="text-[10px] text-t-muted">Same target every day until cancelled</div>
             </div>
           </div>
-          <div className={cn('w-10 h-6 rounded-full transition relative', recurring ? 'bg-pink-500' : 'bg-white/10')}>
+          <div className={cn('w-10 h-6 rounded-full transition relative', recurring ? 'bg-pink-500' : 'bg-foreground/10')}>
             <div className={cn('absolute top-1 w-4 h-4 rounded-full bg-white transition-all', recurring ? 'left-5' : 'left-1')} />
           </div>
         </button>
@@ -267,7 +267,7 @@ function PactSetupSheet({ onClose }: { onClose: () => void }) {
         {pact.activeTargetHours && (
           <button
             onClick={handleCancel}
-            className="w-full mt-2 py-2.5 rounded-xl bg-white/5 text-red-400 text-sm font-medium hover:bg-white/10 transition"
+            className="w-full mt-2 py-2.5 rounded-xl bg-foreground/5 text-red-400 text-sm font-medium hover:bg-foreground/10 transition"
           >
             Cancel pact
           </button>

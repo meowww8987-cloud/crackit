@@ -85,16 +85,16 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass-strong rounded-t-3xl p-5 pb-8 max-h-[92vh] overflow-y-auto scroll-area"
       >
-        <div className="w-10 h-1 bg-white/30 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/30 rounded-full mx-auto mb-4" />
 
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold">Setup Paper Test</h2>
-            <p className="text-[10px] text-white/40 mt-0.5 truncate max-w-[260px]">{testName}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-[260px]">{testName}</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60"
+            className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"
           >
             <X size={16} />
           </button>
@@ -102,7 +102,7 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
 
         {/* Presets */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block">QUICK PRESETS</label>
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block">QUICK PRESETS</label>
           <div className="grid grid-cols-2 gap-2">
             {PRESETS.map((p) => (
               <button
@@ -112,11 +112,11 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
                   'p-2.5 rounded-xl text-left transition',
                   activePreset === p.label
                     ? 'bg-teal-500 text-black'
-                    : 'bg-white/5 text-white/70 hover:bg-white/10',
+                    : 'bg-foreground/5 text-muted-foreground hover:bg-foreground/10',
                 )}
               >
                 <div className="text-xs font-bold">{p.label}</div>
-                <div className={cn('text-[9px] mt-0.5', activePreset === p.label ? 'text-black/60' : 'text-white/40')}>
+                <div className={cn('text-[9px] mt-0.5', activePreset === p.label ? 'text-black/60' : 'text-muted-foreground')}>
                   {p.desc}
                 </div>
               </button>
@@ -126,7 +126,7 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
 
         {/* Custom question count */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block flex items-center gap-1">
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block flex items-center gap-1">
             <ListOrdered size={11} /> QUESTION COUNT
           </label>
           <div className="flex items-center gap-3">
@@ -143,14 +143,14 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
             </ScrollAwareSlider>
             <span className="text-sm font-bold tabular text-teal-400 w-12 text-right">{questionCount}</span>
           </div>
-          <p className="text-[10px] text-white/40 mt-1">
+          <p className="text-[10px] text-muted-foreground mt-1">
             <span className="tabular text-teal-400 font-bold">{questionCount / 4}</span> questions per subject (always multiples of 4 for equal distribution)
           </p>
         </div>
 
         {/* Custom duration */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block flex items-center gap-1">
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block flex items-center gap-1">
             <Clock size={11} /> DURATION (MINUTES)
           </label>
           <div className="flex items-center gap-3">
@@ -175,10 +175,10 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
 
         {/* Default time per question */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block">
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block">
             TIME PER QUESTION
           </label>
-          <p className="text-[10px] text-white/40 mb-2 leading-snug">
+          <p className="text-[10px] text-muted-foreground mb-2 leading-snug">
             Every question starts with this timer. During the test, tap "+30s" to
             extend a SPECIFIC question that needs more time (not carried to next Q).
           </p>
@@ -191,7 +191,7 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
                   'px-3 py-1.5 rounded-lg text-xs font-bold tabular transition',
                   useCustomPerQ && defaultSecPerQ === sec
                     ? 'bg-teal-500 text-black'
-                    : 'bg-white/5 text-white/60 hover:bg-white/10',
+                    : 'bg-foreground/5 text-muted-foreground hover:bg-foreground/10',
                 )}
               >
                 {sec}s
@@ -203,7 +203,7 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
                 'px-3 py-1.5 rounded-lg text-xs font-bold transition',
                 !useCustomPerQ
                   ? 'bg-teal-500 text-black'
-                  : 'bg-white/5 text-white/60 hover:bg-white/10',
+                  : 'bg-foreground/5 text-muted-foreground hover:bg-foreground/10',
               )}
             >
               Auto ({autoPerQ}s)
@@ -213,7 +213,7 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
 
         {/* Sections toggle */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block flex items-center gap-1">
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block flex items-center gap-1">
             <Layers size={11} /> SUBJECT SECTION ALERTS
           </label>
           <div className="flex gap-2">
@@ -221,7 +221,7 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
               onClick={() => { setSectionsEnabled(true); vibrate(6); }}
               className={cn(
                 'flex-1 py-2 rounded-lg text-xs font-bold transition',
-                sectionsEnabled ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/60',
+                sectionsEnabled ? 'bg-teal-500 text-black' : 'bg-foreground/5 text-muted-foreground',
               )}
             >
               ON (auto alerts)
@@ -230,7 +230,7 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
               onClick={() => { setSectionsEnabled(false); vibrate(6); }}
               className={cn(
                 'flex-1 py-2 rounded-lg text-xs font-bold transition',
-                !sectionsEnabled ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/60',
+                !sectionsEnabled ? 'bg-teal-500 text-black' : 'bg-foreground/5 text-muted-foreground',
               )}
             >
               OFF
@@ -240,30 +240,30 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
 
         {/* Marking scheme (collapsed) */}
         <details className="mb-4">
-          <summary className="text-xs font-semibold text-white/60 cursor-pointer mb-2">
+          <summary className="text-xs font-semibold text-muted-foreground cursor-pointer mb-2">
             MARKING SCHEME (+{marksPerCorrect}/−{negativePerWrong})
           </summary>
           <div className="grid grid-cols-2 gap-2 mt-2">
             <div>
-              <label className="text-[10px] text-white/40 block mb-1">Per correct</label>
+              <label className="text-[10px] text-muted-foreground block mb-1">Per correct</label>
               <input
                 type="number"
                 min={1}
                 max={10}
                 value={marksPerCorrect}
                 onChange={(e) => setMarksPerCorrect(Number(e.target.value) || 4)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs"
+                className="w-full bg-foreground/5 border border-border rounded-lg px-2 py-1.5 text-xs"
               />
             </div>
             <div>
-              <label className="text-[10px] text-white/40 block mb-1">Per wrong</label>
+              <label className="text-[10px] text-muted-foreground block mb-1">Per wrong</label>
               <input
                 type="number"
                 min={0}
                 max={5}
                 value={negativePerWrong}
                 onChange={(e) => setNegativePerWrong(Number(e.target.value) || 1)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs"
+                className="w-full bg-foreground/5 border border-border rounded-lg px-2 py-1.5 text-xs"
               />
             </div>
           </div>
@@ -271,11 +271,11 @@ export function PaperTestSetupSheet({ testName, onClose, onStart }: Props) {
 
         {/* Summary + start */}
         <div className="glass rounded-xl p-3 mb-3 text-center">
-          <div className="text-[10px] text-white/40 uppercase tracking-wide mb-1">Test Summary</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Test Summary</div>
           <div className="text-sm font-bold text-white">
             {questionCount} questions · {Math.floor(durationMin / 60) > 0 ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m` : `${durationMin}m`}
           </div>
-          <div className="text-[10px] text-white/50 mt-1">
+          <div className="text-[10px] text-muted-foreground mt-1">
             <span className="tabular text-teal-400 font-bold">{effectivePerQ}s</span> per question · tap +30s during test to extend
           </div>
         </div>

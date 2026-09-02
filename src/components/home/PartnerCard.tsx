@@ -768,13 +768,13 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass-strong rounded-t-3xl p-5 pb-8"
       >
-        <div className="w-10 h-1 bg-white/30 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/30 rounded-full mx-auto mb-4" />
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Users size={18} className="text-purple-400" />
             <h2 className="text-lg font-bold">Study with Friend</h2>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
             <X size={16} />
           </button>
         </div>
@@ -803,7 +803,7 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
               )}
             </div>
             {!partner.partnerName && (
-              <div className="text-[10px] text-t-muted bg-white/5 rounded-lg p-2 text-center">
+              <div className="text-[10px] text-t-muted bg-foreground/5 rounded-lg p-2 text-center">
                 {partner.isUserB
                   ? "Connected to a pair. Waiting for the creator's data..."
                   : "Share your code with a friend. They tap 'Join with a code' on their device."}
@@ -812,7 +812,7 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => { setMode('join'); setError(''); }}
-                className="py-2.5 rounded-xl bg-white/5 border border-white/10 text-t-primary font-semibold text-xs"
+                className="py-2.5 rounded-xl bg-foreground/5 border border-border text-t-primary font-semibold text-xs"
               >
                 Join a different code
               </button>
@@ -835,7 +835,7 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-400/50"
+                className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-400/50"
               />
             </div>
 
@@ -846,14 +846,14 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
                   className="w-full p-3 rounded-xl bg-purple-500/15 border border-purple-500/20 text-left"
                 >
                   <div className="text-sm font-bold text-purple-300">Create a pair</div>
-                  <div className="text-[10px] text-white/40">Get a code to share with your friend</div>
+                  <div className="text-[10px] text-muted-foreground">Get a code to share with your friend</div>
                 </button>
                 <button
                   onClick={() => setMode('join')}
-                  className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-left"
+                  className="w-full p-3 rounded-xl bg-foreground/5 border border-border text-left"
                 >
                   <div className="text-sm font-bold">Join with a code</div>
-                  <div className="text-[10px] text-white/40">Enter your friend's 6-char code</div>
+                  <div className="text-[10px] text-muted-foreground">Enter your friend's 6-char code</div>
                 </button>
               </div>
             )}
@@ -865,11 +865,11 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
                   onClick={handleCreate}
                   disabled={!name.trim() || loading}
                   className={cn('w-full py-3 rounded-xl font-bold text-sm',
-                    name.trim() && !loading ? 'bg-purple-500 text-white' : 'bg-white/5 text-white/30')}
+                    name.trim() && !loading ? 'bg-purple-500 text-white' : 'bg-foreground/5 text-muted-foreground/60')}
                 >
                   {loading ? 'Creating...' : 'Generate Code'}
                 </button>
-                <button onClick={() => setMode('menu')} className="w-full text-xs text-white/40">← Back</button>
+                <button onClick={() => setMode('menu')} className="w-full text-xs text-muted-foreground">← Back</button>
               </div>
             )}
 
@@ -880,20 +880,20 @@ function PartnerSetupSheet({ onClose }: { onClose: () => void }) {
                   onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                   placeholder="ENTER CODE"
                   maxLength={6}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm font-bold tracking-widest text-center uppercase focus:outline-none focus:border-purple-400/50"
+                  className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm font-bold tracking-widest text-center uppercase focus:outline-none focus:border-purple-400/50"
                 />
                 {error && <div className="text-xs text-red-500 dark:text-red-400 text-center bg-red-500/10 rounded-lg px-3 py-2">{error}</div>}
                 <button
                   onClick={handleJoin}
                   disabled={!name.trim() || !joinCode.trim() || loading}
                   className={cn('w-full py-3 rounded-xl font-bold text-sm',
-                    name.trim() && joinCode.trim() && !loading ? 'bg-purple-500 text-white' : 'bg-white/5 text-white/30')}
+                    name.trim() && joinCode.trim() && !loading ? 'bg-purple-500 text-white' : 'bg-foreground/5 text-muted-foreground/60')}
                 >
                   {loading ? 'Joining...' : 'Join Pair'}
                 </button>
                 <button
                   onClick={() => { setMode(partner.code ? 'menu' : 'menu'); setError(''); }}
-                  className="w-full text-xs text-white/40"
+                  className="w-full text-xs text-muted-foreground"
                 >
                   ← Back
                 </button>

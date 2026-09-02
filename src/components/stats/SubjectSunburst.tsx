@@ -89,7 +89,7 @@ export function SubjectSunburst() {
     <div className="glass rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-sm">☀️</span>
-        <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+        <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
           Subject Sunburst
         </span>
       </div>
@@ -136,11 +136,11 @@ export function SubjectSunburst() {
 
           {/* Center label */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <div className="text-[8px] uppercase tracking-wide text-white/40">Total</div>
+            <div className="text-[8px] uppercase tracking-wide text-muted-foreground">Total</div>
             <div className="text-sm font-bold tabular text-white">
               {formatHM(data.totalAll)}
             </div>
-            <div className="text-[8px] text-white/30">all-time</div>
+            <div className="text-[8px] text-muted-foreground/60">all-time</div>
           </div>
         </div>
 
@@ -149,14 +149,14 @@ export function SubjectSunburst() {
           {slices.map((s) => (
             <div key={s.subject} className="flex items-center gap-2 text-xs">
               <div className="w-2.5 h-2.5 rounded-sm" style={{ background: s.color }} />
-              <span className="text-white/80 flex-1 truncate">{s.subject}</span>
-              <span className="tabular text-white/60">{formatHM(s.allTime)}</span>
-              <span className="tabular text-white/40 text-[10px] w-8 text-right">
+              <span className="text-foreground flex-1 truncate">{s.subject}</span>
+              <span className="tabular text-muted-foreground">{formatHM(s.allTime)}</span>
+              <span className="tabular text-muted-foreground text-[10px] w-8 text-right">
                 {Math.round(s.allTimePct)}%
               </span>
             </div>
           ))}
-          <div className="pt-2 mt-2 border-t border-white/10 text-[10px] text-white/40">
+          <div className="pt-2 mt-2 border-t border-border text-[10px] text-muted-foreground">
             <div className="flex justify-between">
               <span>This week:</span>
               <span className="tabular text-teal-400">{formatHM(data.totalWeek)}</span>

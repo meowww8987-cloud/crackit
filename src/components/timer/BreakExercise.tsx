@@ -86,7 +86,7 @@ export function BreakExercise({ durationSec, onClose }: Props) {
               Break · {Math.ceil(remaining / 60)}m left
             </span>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-white hover:bg-foreground/10 transition">
             <X size={16} />
           </button>
         </div>
@@ -94,7 +94,7 @@ export function BreakExercise({ durationSec, onClose }: Props) {
         {/* Title + description */}
         <div className="text-center mb-6">
           <div className="text-2xl font-bold mb-1">{exercise.title}</div>
-          <p className="text-xs text-white/55 leading-snug px-2">{exercise.desc}</p>
+          <p className="text-xs text-muted-foreground leading-snug px-2">{exercise.desc}</p>
         </div>
 
         {/* Exercise content */}
@@ -105,7 +105,7 @@ export function BreakExercise({ durationSec, onClose }: Props) {
         {/* Skip button */}
         <button
           onClick={onClose}
-          className="w-full mt-6 py-3 rounded-xl bg-white/5 text-white/70 text-sm font-semibold hover:bg-white/10 transition flex items-center justify-center gap-2"
+          className="w-full mt-6 py-3 rounded-xl bg-foreground/5 text-muted-foreground text-sm font-semibold hover:bg-foreground/10 transition flex items-center justify-center gap-2"
         >
           <SkipForward size={14} /> Skip exercise
         </button>
@@ -157,7 +157,7 @@ function BoxBreathing() {
           <div className="text-3xl font-bold tabular text-white">{phaseSec}</div>
         </div>
       </div>
-      <p className="text-[10px] text-white/45">4-4-4-4 cycle · calms the nervous system</p>
+      <p className="text-[10px] text-muted-foreground">4-4-4-4 cycle · calms the nervous system</p>
     </div>
   );
 }
@@ -184,11 +184,11 @@ function EyeRest({ durationSec }: { durationSec: number }) {
       </motion.div>
       <div className="text-center">
         <div className="text-2xl font-bold tabular text-blue-300">{remaining}s</div>
-        <p className="text-xs text-white/55 mt-1 max-w-[200px]">
+        <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
           Look at something <strong className="text-blue-300">20 feet away</strong> — out a window, down the hallway, or across the room.
         </p>
       </div>
-      <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+      <div className="w-full h-1.5 rounded-full bg-foreground/10 overflow-hidden">
         <div
           className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-1000"
           style={{ width: `${((durationSec - remaining) / durationSec) * 100}%` }}
@@ -231,17 +231,17 @@ function StretchSequence() {
       </motion.div>
       <div className="text-center">
         <div className="text-3xl font-bold tabular text-amber-300">{stepSec}s</div>
-        <p className="text-sm text-white/80 mt-1 font-medium">{step.text}</p>
+        <p className="text-sm text-foreground mt-1 font-medium">{step.text}</p>
       </div>
       <div className="flex gap-1.5">
         {STRETCH_STEPS.map((_, i) => (
           <div
             key={i}
-            className={cn('h-1.5 rounded-full transition-all', i === stepIdx ? 'w-6 bg-amber-400' : 'w-1.5 bg-white/15')}
+            className={cn('h-1.5 rounded-full transition-all', i === stepIdx ? 'w-6 bg-amber-400' : 'w-1.5 bg-foreground/15')}
           />
         ))}
       </div>
-      <p className="text-[10px] text-white/45">Step {stepIdx + 1} of {STRETCH_STEPS.length}</p>
+      <p className="text-[10px] text-muted-foreground">Step {stepIdx + 1} of {STRETCH_STEPS.length}</p>
     </div>
   );
 }

@@ -185,7 +185,7 @@ export function Splash3D({ onDone }: { onDone: () => void }) {
             <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-300 via-teal-300 to-purple-300 bg-clip-text text-transparent">
               NEET 2027
             </h1>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 mt-1">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mt-1">
               Study Tracker
             </p>
           </motion.div>
@@ -199,13 +199,13 @@ export function Splash3D({ onDone }: { onDone: () => void }) {
           >
             {daysLeft !== null && (
               <>
-                <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
                   NEET 2027 in
                 </div>
                 <div className="text-5xl font-bold tabular bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent">
                   {daysLeft}
                 </div>
-                <div className="text-xs text-white/50 mt-1">days · May 2, 2027</div>
+                <div className="text-xs text-muted-foreground mt-1">days · May 2, 2027</div>
               </>
             )}
           </motion.div>
@@ -232,7 +232,7 @@ export function Splash3D({ onDone }: { onDone: () => void }) {
                 />
               ))}
             </div>
-            <div className="text-[9px] text-white/30 uppercase tracking-wider">
+            <div className="text-[9px] text-muted-foreground/60 uppercase tracking-wider">
               Loading your study universe
             </div>
           </motion.div>

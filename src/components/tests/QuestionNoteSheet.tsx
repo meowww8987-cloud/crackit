@@ -123,7 +123,7 @@ export function QuestionNoteSheet({ testId, questionIdx, questionNumber, subject
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass-strong rounded-t-3xl p-5 pb-8 max-h-[88vh] overflow-y-auto scroll-area"
       >
-        <div className="w-10 h-1 bg-white/30 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/30 rounded-full mx-auto mb-4" />
 
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -137,7 +137,7 @@ export function QuestionNoteSheet({ testId, questionIdx, questionNumber, subject
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60"
+            className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"
           >
             <X size={16} />
           </button>
@@ -145,16 +145,16 @@ export function QuestionNoteSheet({ testId, questionIdx, questionNumber, subject
 
         {/* Question text section — type or paste the actual question */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block">
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block">
             QUESTION TEXT (OPTIONAL)
           </label>
           <textarea
             value={questionText}
             onChange={(e) => setQuestionTextState(e.target.value)}
             placeholder="Type or paste the question text here for future reference..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50 min-h-[80px] resize-none"
+            className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50 min-h-[80px] resize-none"
           />
-          <p className="text-[10px] text-white/40 mt-1">
+          <p className="text-[10px] text-muted-foreground mt-1">
             Useful for reviewing wrong answers later — you can see the exact question
             without needing the photo or paper.
           </p>
@@ -162,7 +162,7 @@ export function QuestionNoteSheet({ testId, questionIdx, questionNumber, subject
 
         {/* Photo section */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block">
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block">
             QUESTION PHOTO
           </label>
           {photo ? (
@@ -183,14 +183,14 @@ export function QuestionNoteSheet({ testId, questionIdx, questionNumber, subject
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => cameraInputRef.current?.click()}
-                className="py-4 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center gap-1 text-xs text-white/70 hover:bg-white/10 transition"
+                className="py-4 rounded-xl bg-foreground/5 border border-border flex flex-col items-center gap-1 text-xs text-muted-foreground hover:bg-foreground/10 transition"
               >
                 <Camera size={18} className="text-teal-400" />
                 Take Photo
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="py-4 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center gap-1 text-xs text-white/70 hover:bg-white/10 transition"
+                className="py-4 rounded-xl bg-foreground/5 border border-border flex flex-col items-center gap-1 text-xs text-muted-foreground hover:bg-foreground/10 transition"
               >
                 <Camera size={18} className="text-purple-400" />
                 Upload
@@ -212,7 +212,7 @@ export function QuestionNoteSheet({ testId, questionIdx, questionNumber, subject
             onChange={handleFileSelect}
             className="hidden"
           />
-          <p className="text-[10px] text-white/40 mt-1.5 leading-snug">
+          <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">
             Snap a photo of the question paper so you can review it later.
             Auto-compressed to ~50KB.
           </p>
@@ -220,14 +220,14 @@ export function QuestionNoteSheet({ testId, questionIdx, questionNumber, subject
 
         {/* Note section */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block">
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block">
             NOTE
           </label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="e.g. Used formula v² = u² + 2as · Tricky concept · Guessed · Revision needed"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50 min-h-[80px] resize-none"
+            className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50 min-h-[80px] resize-none"
             autoFocus
           />
         </div>

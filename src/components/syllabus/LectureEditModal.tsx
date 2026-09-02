@@ -46,33 +46,33 @@ export function LectureEditModal({ lecture, onClose }: Props) {
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">Edit Lecture</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
             <X size={16} />
           </button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-semibold text-white/60 mb-2 block">TOPIC</label>
+            <label className="text-xs font-semibold text-muted-foreground mb-2 block">TOPIC</label>
             <input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
+              className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-white/60 mb-2 block">DATE</label>
+            <label className="text-xs font-semibold text-muted-foreground mb-2 block">DATE</label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
+              className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-white/60 mb-2 block">HARDNESS</label>
+            <label className="text-xs font-semibold text-muted-foreground mb-2 block">HARDNESS</label>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((level) => (
                 <button
@@ -82,7 +82,7 @@ export function LectureEditModal({ lecture, onClose }: Props) {
                 >
                   <Star
                     size={20}
-                    className={cn(level <= hardness ? 'text-amber-400' : 'text-white/15')}
+                    className={cn(level <= hardness ? 'text-amber-400' : 'text-muted-foreground/20')}
                     fill={level <= hardness ? 'currentColor' : 'none'}
                   />
                 </button>

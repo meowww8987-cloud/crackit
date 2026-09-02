@@ -105,7 +105,7 @@ export function Tutorial({ tutorialKey, steps, onComplete, children }: Props) {
               {/* Skip button */}
               <button
                 onClick={handleSkip}
-                className="absolute top-3 right-3 text-[10px] text-white/40 hover:text-white/70"
+                className="absolute top-3 right-3 text-[10px] text-muted-foreground hover:text-muted-foreground"
               >
                 Skip
               </button>
@@ -116,7 +116,7 @@ export function Tutorial({ tutorialKey, steps, onComplete, children }: Props) {
                   <div
                     key={i}
                     className={`h-1 rounded-full transition-all ${
-                      i === stepIdx ? 'w-6 bg-teal-400' : i < stepIdx ? 'w-2 bg-teal-500/50' : 'w-2 bg-white/15'
+                      i === stepIdx ? 'w-6 bg-teal-400' : i < stepIdx ? 'w-2 bg-teal-500/50' : 'w-2 bg-foreground/15'
                     }`}
                   />
                 ))}
@@ -136,7 +136,7 @@ export function Tutorial({ tutorialKey, steps, onComplete, children }: Props) {
                   </motion.div>
                 )}
                 <h2 className="text-lg font-bold mb-2">{step.title}</h2>
-                <p className="text-sm text-white/60 leading-relaxed mb-6">{step.body}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-6">{step.body}</p>
               </div>
 
               {/* Navigation */}
@@ -144,7 +144,7 @@ export function Tutorial({ tutorialKey, steps, onComplete, children }: Props) {
                 {stepIdx > 0 && (
                   <button
                     onClick={handlePrev}
-                    className="w-10 h-10 rounded-xl bg-white/5 text-white/60 flex items-center justify-center"
+                    className="w-10 h-10 rounded-xl bg-foreground/5 text-muted-foreground flex items-center justify-center"
                   >
                     <ChevronLeft size={16} />
                   </button>
@@ -162,7 +162,7 @@ export function Tutorial({ tutorialKey, steps, onComplete, children }: Props) {
               </div>
 
               {/* Step counter */}
-              <div className="text-[10px] text-white/30 text-center mt-3">
+              <div className="text-[10px] text-muted-foreground/60 text-center mt-3">
                 {stepIdx + 1} of {steps.length}
               </div>
             </motion.div>

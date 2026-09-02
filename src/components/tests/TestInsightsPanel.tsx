@@ -41,7 +41,7 @@ export function TestInsightsPanel() {
         <div className="glass rounded-2xl p-3">
           <div className="flex items-center gap-2 mb-3">
             <Trophy size={14} className="text-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+            <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Personal Best by Type
             </span>
           </div>
@@ -54,7 +54,7 @@ export function TestInsightsPanel() {
                 ) : leader.trend === 'down' ? (
                   <TrendingDown size={11} className="text-red-400" />
                 ) : (
-                  <Minus size={11} className="text-white/30" />
+                  <Minus size={11} className="text-muted-foreground/60" />
                 );
               return (
                 <div key={leader.type} className="flex items-center gap-2">
@@ -67,14 +67,14 @@ export function TestInsightsPanel() {
                         ? 'bg-slate-400 text-black'
                         : i === 2
                         ? 'bg-amber-700 text-white'
-                        : 'bg-white/10 text-white/40',
+                        : 'bg-foreground/10 text-muted-foreground',
                     )}
                   >
                     {i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold truncate">{leader.type}</div>
-                    <div className="text-[9px] text-white/40 truncate">
+                    <div className="text-[9px] text-muted-foreground truncate">
                       Best: {leader.bestTestName} · {leader.count} test{leader.count === 1 ? '' : 's'}
                     </div>
                   </div>
@@ -82,11 +82,11 @@ export function TestInsightsPanel() {
                     <div className="text-sm font-bold tabular text-teal-400">
                       {leader.bestScore}
                     </div>
-                    <div className="text-[9px] text-white/40">avg {leader.avgScore}</div>
+                    <div className="text-[9px] text-muted-foreground">avg {leader.avgScore}</div>
                   </div>
                   <div className="flex flex-col items-center gap-0.5 shrink-0 w-8">
                     {trendIcon}
-                    <span className="text-[9px] tabular text-white/40">{leader.latestScore}</span>
+                    <span className="text-[9px] tabular text-muted-foreground">{leader.latestScore}</span>
                   </div>
                 </div>
               );
@@ -100,7 +100,7 @@ export function TestInsightsPanel() {
         <div className="glass rounded-2xl p-3">
           <div className="flex items-center gap-2 mb-3">
             <Lightbulb size={14} className="text-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+            <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Behavior Patterns
             </span>
           </div>
@@ -116,7 +116,7 @@ export function TestInsightsPanel() {
                     ? 'bg-green-500/10 border border-green-500/20'
                     : ins.type === 'warning'
                     ? 'bg-amber-500/10 border border-amber-500/20'
-                    : 'bg-white/5 border border-white/10',
+                    : 'bg-foreground/5 border border-border',
                 )}
               >
                 <span className="text-lg leading-none mt-0.5">{ins.emoji}</span>
@@ -128,12 +128,12 @@ export function TestInsightsPanel() {
                         ? 'text-green-300'
                         : ins.type === 'warning'
                         ? 'text-amber-300'
-                        : 'text-white/80',
+                        : 'text-foreground',
                     )}
                   >
                     {ins.title}
                   </div>
-                  <div className="text-[10px] text-white/50 mt-0.5 leading-snug">{ins.detail}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{ins.detail}</div>
                 </div>
               </motion.div>
             ))}
@@ -145,10 +145,10 @@ export function TestInsightsPanel() {
       <div className="glass rounded-2xl p-3">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-sm">🏅</span>
-          <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
             Test Achievements
           </span>
-          <span className="text-[10px] text-white/40 ml-auto">
+          <span className="text-[10px] text-muted-foreground ml-auto">
             {unlockedBadges.length}/{badges.length}
           </span>
         </div>
@@ -171,17 +171,17 @@ export function TestInsightsPanel() {
 
         {lockedBadges.length > 0 && (
           <>
-            <div className="text-[10px] text-white/30 mb-2">Locked</div>
+            <div className="text-[10px] text-muted-foreground/60 mb-2">Locked</div>
             <div className="grid grid-cols-4 gap-2">
               {lockedBadges.slice(0, 8).map((b) => (
                 <div
                   key={b.id}
-                  className="rounded-xl p-2 flex flex-col items-center text-center bg-white/[0.02] border border-white/5 opacity-50"
+                  className="rounded-xl p-2 flex flex-col items-center text-center bg-foreground/[0.03] border border-border opacity-50"
                 >
                   <span className="text-xl mb-0.5 grayscale">{b.emoji}</span>
-                  <span className="text-[8px] text-white/40 leading-tight">{b.label}</span>
+                  <span className="text-[8px] text-muted-foreground leading-tight">{b.label}</span>
                   {b.progress && (
-                    <span className="text-[8px] text-white/30 mt-0.5 tabular">
+                    <span className="text-[8px] text-muted-foreground/60 mt-0.5 tabular">
                       {b.progress.current}/{b.progress.target}
                     </span>
                   )}

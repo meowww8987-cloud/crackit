@@ -20,6 +20,10 @@ interface HistoryStore {
   getLastWeekStudySeconds: () => number;
   // Returns streak (consecutive days with at least 1 session), 0 if none
   getStreak: () => number;
+  // Streak freeze — earned weekly, max 2 stored
+  getFreezes: () => number;
+  addFreeze: () => void;
+  useFreeze: () => boolean;
 }
 
 export const useHistory = create<HistoryStore>()(
@@ -30,24 +34,37 @@ export const useHistory = create<HistoryStore>()(
       addSession: (s) => {
         set((st) => ({ sessions: [...st.sessions, s] }));
         // === Record learned time for this subject+activity pair ===
-        // Look up the target to get the activity type, then record the
-        // study time so future targets can use it as a smart default.
-        if (s.targetId && s.studySeconds >= 180) { // only if ≥3 min studied
+        // Read the target's activity SYNCHRONOUSLY from localStorage
+        // (avoids async dynamic import chain that was failing silently).
+        if (s.targetId && s.studySeconds >= 180) {
           try {
-            // Dynamic import to avoid circular dependency
-            import('@/lib/store/targets').then(({ useTargets }) => {
-              const state = useTargets.getState();
+            // Read targets from localStorage directly (synchronous, no import)
+            const raw = localStorage.getItem('neet-targets');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              const byDate = parsed?.state?.byDate || {};
               let activity: string | null = null;
-              for (const date of Object.keys(state.byDate)) {
-                const target = state.byDate[date]?.find((t) => t.id === s.targetId);
+              for (const date of Object.keys(byDate)) {
+                const target = byDate[date]?.find((t: any) => t.id === s.targetId);
                 if (target) { activity = target.activity; break; }
               }
               if (activity) {
-                import('@/lib/store/learnedTime').then(({ recordSessionTime }) => {
-                  recordSessionTime(s.subject, activity as any, s.studySeconds);
-                });
+                // Record synchronously — writes to both Zustand + localStorage
+                const minutes = Math.round(s.studySeconds / 60);
+                if (minutes >= 3 && minutes <= 240) {
+                  // Write directly to localStorage (same format as the store)
+                  const ltRaw = localStorage.getItem('neet-learned-times');
+                  const ltParsed = ltRaw ? JSON.parse(ltRaw) : { state: { data: {} } };
+                  const data = ltParsed?.state?.data || {};
+                  const key = `${s.subject}:${activity}`;
+                  const existing = data[key] || [];
+                  data[key] = [...existing, minutes].slice(-20);
+                  ltParsed.state = ltParsed.state || {};
+                  ltParsed.state.data = data;
+                  localStorage.setItem('neet-learned-times', JSON.stringify(ltParsed));
+                }
               }
-            });
+            }
           } catch {}
         }
       },
@@ -118,8 +135,18 @@ export const useHistory = create<HistoryStore>()(
           if (s.studySeconds >= 60) days.add(s.date);
         }
         if (days.size === 0) return 0;
+
+        // === Streak Freeze ===
+        // Read freezes from localStorage (max 2 stored)
+        let freezesAvailable = 0;
+        try {
+          freezesAvailable = parseInt(localStorage.getItem('neet-streak-freezes') || '0', 10);
+          if (isNaN(freezesAvailable)) freezesAvailable = 0;
+        } catch {}
+
         // Count back from today
         let streak = 0;
+        let freezesUsed = 0;
         const d = new Date();
         // If today not in set but yesterday is — still count from yesterday
         const todayKeyStr = todayKey();
@@ -131,9 +158,41 @@ export const useHistory = create<HistoryStore>()(
           if (days.has(key)) {
             streak++;
             d.setDate(d.getDate() - 1);
-          } else break;
+          } else {
+            // Gap day — check if we have a freeze available
+            if (freezesUsed < freezesAvailable) {
+              freezesUsed++;
+              streak++;
+              d.setDate(d.getDate() - 1);
+            } else {
+              break;
+            }
+          }
         }
         return streak;
+      },
+
+      // === Streak Freeze management ===
+      getFreezes: () => {
+        try {
+          return Math.min(2, parseInt(localStorage.getItem('neet-streak-freezes') || '0', 10) || 0);
+        } catch { return 0; }
+      },
+      addFreeze: () => {
+        try {
+          const current = parseInt(localStorage.getItem('neet-streak-freezes') || '0', 10) || 0;
+          localStorage.setItem('neet-streak-freezes', String(Math.min(2, current + 1)));
+        } catch {}
+      },
+      useFreeze: () => {
+        try {
+          const current = parseInt(localStorage.getItem('neet-streak-freezes') || '0', 10) || 0;
+          if (current > 0) {
+            localStorage.setItem('neet-streak-freezes', String(current - 1));
+            return true;
+          }
+        } catch {}
+        return false;
       },
     }),
     { name: 'neet-history' }

@@ -85,9 +85,9 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
           onClick={onClose}
         >
           <div className="text-center">
-            <AlertCircle size={32} className="text-white/40 mx-auto mb-2" />
-            <p className="text-white/60 text-sm">Session not found.</p>
-            <p className="text-white/40 text-[10px] mt-1">It may have been deleted.</p>
+            <AlertCircle size={32} className="text-muted-foreground mx-auto mb-2" />
+            <p className="text-muted-foreground text-sm">Session not found.</p>
+            <p className="text-muted-foreground text-[10px] mt-1">It may have been deleted.</p>
           </div>
         </motion.div>
       </AnimatePresence>
@@ -172,7 +172,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
         style={{ background: 'var(--bg-app, #0a0b15)' }}
       >
         {/* ============ Top App Bar ============ */}
-        <div className="shrink-0 px-3 pt-4 pb-3 border-b border-white/5">
+        <div className="shrink-0 px-3 pt-4 pb-3 border-b border-border">
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -183,7 +183,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                   onClose();
                 }
               }}
-              className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-white/80 hover:bg-white/10 transition shrink-0"
+              className="w-9 h-9 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground hover:bg-foreground/10 transition shrink-0"
               aria-label="Back"
             >
               <ChevronLeft size={20} />
@@ -203,7 +203,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                   </span>
                 )}
               </div>
-              <div className="text-[10px] text-white/40 mt-0.5 truncate">
+              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
                 {session.subject} · {session.chapter}
               </div>
             </div>
@@ -242,11 +242,11 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                 className="text-3xl font-bold tabular leading-none"
                 style={accuracy > 0 ? { color: accColor } : undefined}
               >
-                <span className={accuracy > 0 ? undefined : 'text-white/40'}>
+                <span className={accuracy > 0 ? undefined : 'text-muted-foreground'}>
                   {accuracy > 0 ? `${accuracy}%` : '—'}
                 </span>
               </div>
-              <div className="text-[9px] text-white/40 uppercase tracking-wide mt-1">Accuracy</div>
+              <div className="text-[9px] text-muted-foreground uppercase tracking-wide mt-1">Accuracy</div>
             </div>
             <div className="flex-1 grid grid-cols-2 gap-y-1.5 gap-x-3 text-[10px]">
               <Meta icon={Calendar} label={dateStr} />
@@ -304,14 +304,14 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
 
           {/* Filter indicator + clear button */}
           {filter && (
-            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-[10px]">
-              <span className="text-white/70">
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-foreground/5 border border-border text-[10px]">
+              <span className="text-muted-foreground">
                 Showing <span className="font-bold text-white">{visibleQuestionIndices.length}</span> of{' '}
                 {session.questions.length} questions ({filter})
               </span>
               <button
                 onClick={() => { vibrate(6); setFilter(null); }}
-                className="flex items-center gap-1 text-white/50 hover:text-white text-[10px] font-semibold active:scale-95 transition"
+                className="flex items-center gap-1 text-muted-foreground hover:text-white text-[10px] font-semibold active:scale-95 transition"
               >
                 <X size={11} /> Clear
               </button>
@@ -322,8 +322,8 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
           <div className="space-y-2">
             {visibleQuestionIndices.length === 0 ? (
               <div className="text-center py-8">
-                <AlertCircle size={24} className="text-white/40 mx-auto mb-2" />
-                <p className="text-white/50 text-xs">No questions in this category.</p>
+                <AlertCircle size={24} className="text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground text-xs">No questions in this category.</p>
               </div>
             ) : (
               visibleQuestionIndices.flatMap((qi) => {
@@ -360,9 +360,9 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                         key={`${qi}-${si}`}
                         ref={isFocus && si === 0 ? focusRef : null}
                         className={cn(
-                          'rounded-xl overflow-hidden bg-white/5 border border-white/10 transition',
+                          'rounded-xl overflow-hidden bg-foreground/5 border border-border transition',
                           isFocus && si === 0 && 'ring-2 ring-amber-400/60',
-                          isEditing && 'bg-white/10'
+                          isEditing && 'bg-foreground/10'
                         )}
                         style={{ borderLeft: `3px solid ${subColor}` }}
                       >
@@ -375,24 +375,24 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                             Q{q.number}.{si + 1}
                           </span>
 
-                          <span className="text-[10px] text-white/50 tabular flex items-center gap-1 shrink-0">
+                          <span className="text-[10px] text-muted-foreground tabular flex items-center gap-1 shrink-0">
                             <Clock size={9} /> {formatHMS(q.timeSpentSec)}
                           </span>
 
                           {/* User answer */}
                           {userAns ? (
-                            <span className="text-[10px] text-white/70">
+                            <span className="text-[10px] text-muted-foreground">
                               You: <span className="font-bold" style={{ color: OPTION_COLORS[userAns] || '#fff' }}>{userAns}</span>
                             </span>
                           ) : (
-                            <span className="text-[10px] text-white/40 italic">No answer</span>
+                            <span className="text-[10px] text-muted-foreground italic">No answer</span>
                           )}
 
                           <div className="flex-1" />
 
                           {/* Correct answer (read-only when not editing) */}
                           {!isEditing && correctAns && (
-                            <span className="text-[10px] text-white/70">
+                            <span className="text-[10px] text-muted-foreground">
                               Ans: <span className="font-bold" style={{ color: subColor }}>{correctAns}</span>
                             </span>
                           )}
@@ -427,7 +427,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                                   ? 'bg-amber-500/20 text-amber-400'
                                   : hasNotes
                                     ? 'bg-amber-500/15 text-amber-400/90 hover:bg-amber-500/25'
-                                    : 'bg-white/5 text-amber-400/70 hover:bg-amber-500/15 border border-amber-500/20'
+                                    : 'bg-foreground/5 text-amber-400/70 hover:bg-amber-500/15 border border-amber-500/20'
                               )}
                               aria-label="Toggle notes editor"
                             >
@@ -452,7 +452,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                                   }}
                                   className={cn(
                                     'w-7 h-7 rounded text-[10px] font-bold transition border',
-                                    isSubCorrect ? 'text-white' : 'text-white/60 bg-white/5 border-white/10'
+                                    isSubCorrect ? 'text-white' : 'text-muted-foreground bg-foreground/5 border-border'
                                   )}
                                   style={isSubCorrect
                                     ? { background: OPTION_COLORS[opt], borderColor: OPTION_COLORS[opt] }
@@ -483,7 +483,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                                       }))
                                     }
                                     placeholder="Write the concept behind this question…"
-                                    className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-14 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10"
+                                    className="w-full p-2 rounded-lg bg-foreground/5 text-white text-[11px] h-14 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-border"
                                   />
                                 </div>
                                 <div>
@@ -499,7 +499,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                                       }))
                                     }
                                     placeholder="Write the formula(e) used…"
-                                    className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-12 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10"
+                                    className="w-full p-2 rounded-lg bg-foreground/5 text-white text-[11px] h-12 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-border"
                                   />
                                 </div>
                                 <button
@@ -512,7 +512,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                             ) : (
                               <>
                                 {q.conceptNotes && (
-                                  <div className="text-[11px] text-white/80 leading-relaxed">
+                                  <div className="text-[11px] text-foreground leading-relaxed">
                                     <div className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold mb-0.5 flex items-center gap-1">
                                       <BookText size={10} /> Concept
                                     </div>
@@ -520,7 +520,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                                   </div>
                                 )}
                                 {q.formulaNotes && (
-                                  <div className="text-[11px] text-white/80 leading-relaxed">
+                                  <div className="text-[11px] text-foreground leading-relaxed">
                                     <div className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold mb-0.5 flex items-center gap-1">
                                       <BookText size={10} /> Formula
                                     </div>
@@ -528,7 +528,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                                   </div>
                                 )}
                                 {!q.conceptNotes && !q.formulaNotes && (
-                                  <p className="text-[10px] text-white/40 italic">No notes recorded.</p>
+                                  <p className="text-[10px] text-muted-foreground italic">No notes recorded.</p>
                                 )}
                               </>
                             )}
@@ -552,26 +552,26 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
 
                   return (
                     <div key={qi} ref={isFocus ? focusRef : null}
-                      className={cn('rounded-xl overflow-hidden bg-white/5 border border-white/10 transition',
-                        isFocus && 'ring-2 ring-amber-400/60', isEditing && 'bg-white/10')}
+                      className={cn('rounded-xl overflow-hidden bg-foreground/5 border border-border transition',
+                        isFocus && 'ring-2 ring-amber-400/60', isEditing && 'bg-foreground/10')}
                       style={{ borderLeft: `3px solid ${qColor}` }}>
                       <div className="p-3 flex items-center gap-2.5">
                         <span className="text-xs font-bold w-8 shrink-0 tabular" style={{ color: qColor }}>Q{q.number}</span>
-                        <span className="text-[10px] text-white/50 tabular flex items-center gap-1 shrink-0">
+                        <span className="text-[10px] text-muted-foreground tabular flex items-center gap-1 shrink-0">
                           <Clock size={9} /> {formatHMS(q.timeSpentSec)}
                         </span>
                         {/* User answer */}
                         {userArr.some(Boolean) ? (
-                          <span className="text-[10px] text-white/70">
+                          <span className="text-[10px] text-muted-foreground">
                             You: {userArr.map((v, i) => v ? String.fromCharCode(65 + i) : null).filter(Boolean).join(',')}
                           </span>
                         ) : (
-                          <span className="text-[10px] text-white/40 italic">No answer</span>
+                          <span className="text-[10px] text-muted-foreground italic">No answer</span>
                         )}
                         <div className="flex-1" />
                         {/* Correct answer (read-only) */}
                         {!isEditing && corrArr.some(Boolean) && (
-                          <span className="text-[10px] text-white/70">
+                          <span className="text-[10px] text-muted-foreground">
                             Ans: {corrArr.map((v, i) => v ? String.fromCharCode(65 + i) : null).filter(Boolean).join(',')}
                           </span>
                         )}
@@ -588,7 +588,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                             className={cn('shrink-0 flex items-center gap-1 px-2 h-6 rounded text-[10px] font-bold transition active:scale-95',
                               isNoteOpenMC ? 'bg-amber-500/20 text-amber-400'
                                 : hasNotesMC ? 'bg-amber-500/15 text-amber-400/90 hover:bg-amber-500/25'
-                                  : 'bg-white/5 text-amber-400/70 hover:bg-amber-500/15 border border-amber-500/20')}
+                                  : 'bg-foreground/5 text-amber-400/70 hover:bg-amber-500/15 border border-amber-500/20')}
                             aria-label="Toggle notes editor">
                             <BookText size={11} />
                             <span>{isNoteOpenMC ? 'Hide' : hasNotesMC ? 'Edit Notes' : 'Add Notes'}</span>
@@ -605,7 +605,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                               <button key={opt}
                                 onClick={() => { vibrate(8); toggleMultiCorrectAnswer(session.id, qi, oi); }}
                                 className={cn('w-7 h-7 rounded text-[10px] font-bold transition border',
-                                  isCorrect ? 'text-white' : 'text-white/60 bg-white/5 border-white/10')}
+                                  isCorrect ? 'text-white' : 'text-muted-foreground bg-foreground/5 border-border')}
                                 style={isCorrect
                                   ? { background: OPTION_COLORS[opt], borderColor: OPTION_COLORS[opt] }
                                   : isUserSelected
@@ -623,10 +623,10 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                             <>
                               <textarea value={draft.concept}
                                 onChange={(e) => setDraftNotes((p) => ({ ...p, [qi]: { ...p[qi], concept: e.target.value } }))}
-                                placeholder="Concept notes…" className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-14 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10" />
+                                placeholder="Concept notes…" className="w-full p-2 rounded-lg bg-foreground/5 text-white text-[11px] h-14 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-border" />
                               <textarea value={draft.formula}
                                 onChange={(e) => setDraftNotes((p) => ({ ...p, [qi]: { ...p[qi], formula: e.target.value } }))}
-                                placeholder="Formula…" className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-12 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10" />
+                                placeholder="Formula…" className="w-full p-2 rounded-lg bg-foreground/5 text-white text-[11px] h-12 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-border" />
                               <button onClick={() => { persistNotes(qi); vibrate(10); }}
                                 className="w-full py-1.5 rounded-lg bg-amber-500/15 text-amber-400 text-[10px] font-semibold flex items-center justify-center gap-1 active:scale-95 transition">
                                 <Save size={11} /> Save Notes
@@ -635,21 +635,21 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                           ) : (
                             <>
                               {q.conceptNotes && (
-                                <div className="text-[11px] text-white/80 leading-relaxed">
+                                <div className="text-[11px] text-foreground leading-relaxed">
                                   <div className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold mb-0.5 flex items-center gap-1">
                                     <BookText size={10} /> Concept
                                   </div>{q.conceptNotes}
                                 </div>
                               )}
                               {q.formulaNotes && (
-                                <div className="text-[11px] text-white/80 leading-relaxed">
+                                <div className="text-[11px] text-foreground leading-relaxed">
                                   <div className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold mb-0.5 flex items-center gap-1">
                                     <BookText size={10} /> Formula
                                   </div>{q.formulaNotes}
                                 </div>
                               )}
                               {!q.conceptNotes && !q.formulaNotes && (
-                                <p className="text-[10px] text-white/40 italic">No notes recorded.</p>
+                                <p className="text-[10px] text-muted-foreground italic">No notes recorded.</p>
                               )}
                             </>
                           )}
@@ -669,9 +669,9 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                     key={qi}
                     ref={isFocus ? focusRef : null}
                     className={cn(
-                      'rounded-xl overflow-hidden bg-white/5 border border-white/10 transition',
+                      'rounded-xl overflow-hidden bg-foreground/5 border border-border transition',
                       isFocus && 'ring-2 ring-amber-400/60',
-                      isEditing && 'bg-white/10'
+                      isEditing && 'bg-foreground/10'
                     )}
                     style={{ borderLeft: `3px solid ${qColor}` }}
                   >
@@ -684,26 +684,26 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                         Q{q.number}
                       </span>
 
-                      <span className="text-[10px] text-white/50 tabular flex items-center gap-1 shrink-0">
+                      <span className="text-[10px] text-muted-foreground tabular flex items-center gap-1 shrink-0">
                         <Clock size={9} /> {formatHMS(q.timeSpentSec)}
                       </span>
 
                       {/* User answer */}
                       {q.userAnswer ? (
-                        <span className="text-[10px] text-white/70">
+                        <span className="text-[10px] text-muted-foreground">
                           You: <span className="font-bold" style={{ color: OPTION_COLORS[q.userAnswer] }}>{q.userAnswer}</span>
                         </span>
                       ) : qMode === 'written' ? (
                         <span className="text-[10px] text-amber-400/70 italic">Written</span>
                       ) : (
-                        <span className="text-[10px] text-white/40 italic">No answer</span>
+                        <span className="text-[10px] text-muted-foreground italic">No answer</span>
                       )}
 
                       <div className="flex-1" />
 
                       {/* Correct answer (read-only when not editing) */}
                       {!isEditing && q.correctAnswer && (
-                        <span className="text-[10px] text-white/70">
+                        <span className="text-[10px] text-muted-foreground">
                           Ans: <span className="font-bold" style={{ color: qColor }}>{q.correctAnswer}</span>
                         </span>
                       )}
@@ -738,7 +738,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                               ? 'bg-amber-500/20 text-amber-400'
                               : hasNotes
                                 ? 'bg-amber-500/15 text-amber-400/90 hover:bg-amber-500/25'
-                                : 'bg-white/5 text-amber-400/70 hover:bg-amber-500/15 border border-amber-500/20'
+                                : 'bg-foreground/5 text-amber-400/70 hover:bg-amber-500/15 border border-amber-500/20'
                           )}
                           aria-label="Toggle notes editor"
                         >
@@ -763,7 +763,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                               }}
                               className={cn(
                                 'flex-1 py-2 rounded-lg text-[11px] font-bold transition border',
-                                isSelected ? 'text-white' : 'text-white/60 bg-white/5 border-white/10'
+                                isSelected ? 'text-white' : 'text-muted-foreground bg-foreground/5 border-border'
                               )}
                               style={
                                 isSelected
@@ -798,7 +798,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                                   }))
                                 }
                                 placeholder="Write the concept behind this question…"
-                                className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-16 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10"
+                                className="w-full p-2 rounded-lg bg-foreground/5 text-white text-[11px] h-16 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-border"
                               />
                             </div>
                             <div>
@@ -814,7 +814,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                                   }))
                                 }
                                 placeholder="Write the formula(e) used…"
-                                className="w-full p-2 rounded-lg bg-white/5 text-white text-[11px] h-14 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-white/10"
+                                className="w-full p-2 rounded-lg bg-foreground/5 text-white text-[11px] h-14 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-border"
                               />
                             </div>
                             <button
@@ -827,7 +827,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                         ) : (
                           <>
                             {q.conceptNotes && (
-                              <div className="text-[11px] text-white/80 leading-relaxed">
+                              <div className="text-[11px] text-foreground leading-relaxed">
                                 <div className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold mb-0.5 flex items-center gap-1">
                                   <BookText size={10} /> Concept
                                 </div>
@@ -835,7 +835,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                               </div>
                             )}
                             {q.formulaNotes && (
-                              <div className="text-[11px] text-white/80 leading-relaxed">
+                              <div className="text-[11px] text-foreground leading-relaxed">
                                 <div className="text-[9px] uppercase tracking-wide text-amber-400/70 font-bold mb-0.5 flex items-center gap-1">
                                   <BookText size={10} /> Formula
                                 </div>
@@ -843,7 +843,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
                               </div>
                             )}
                             {!q.conceptNotes && !q.formulaNotes && (
-                              <p className="text-[10px] text-white/40 italic">No notes recorded.</p>
+                              <p className="text-[10px] text-muted-foreground italic">No notes recorded.</p>
                             )}
                           </>
                         )}
@@ -855,7 +855,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
             )}
           </div>
 
-          <p className="text-[9px] text-white/40 text-center pt-2 leading-relaxed">
+          <p className="text-[9px] text-muted-foreground text-center pt-2 leading-relaxed">
             {isEditing
               ? 'Changes save when you tap A/B/C/D or Save Notes. Tap Done to exit edit mode.'
               : filter
@@ -868,7 +868,7 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
 
         {/* ============ Sticky bottom action (only when editing) ============ */}
         {isEditing && (
-          <div className="shrink-0 p-3 border-t border-white/10 glass">
+          <div className="shrink-0 p-3 border-t border-border glass">
             <button
               onClick={exitEditMode}
               className="w-full py-2.5 rounded-xl bg-green-500/20 text-green-400 text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition"
@@ -886,8 +886,8 @@ export function PracticeSessionDetail({ sessionId, focusQIndex, onClose }: Props
 
 function Meta({ icon: Icon, label }: { icon: typeof Calendar; label: string }) {
   return (
-    <div className="flex items-center gap-1.5 text-white/70 min-w-0">
-      <Icon size={10} className="shrink-0 text-white/40" />
+    <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+      <Icon size={10} className="shrink-0 text-muted-foreground" />
       <span className="truncate text-[10px]">{label}</span>
     </div>
   );
@@ -920,7 +920,7 @@ function FilterChip({
       }}
     >
       <div className="text-base font-bold tabular leading-none" style={{ color }}>{value}</div>
-      <div className="text-[8px] text-white/50 mt-0.5 uppercase tracking-wide">{label}</div>
+      <div className="text-[8px] text-muted-foreground mt-0.5 uppercase tracking-wide">{label}</div>
     </button>
   );
 }

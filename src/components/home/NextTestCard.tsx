@@ -135,15 +135,15 @@ export function NextTestCard() {
       {/* Collapsed header — always visible */}
       <button
         onClick={() => { vibrate(8); setExpanded(!expanded); }}
-        className="w-full p-3 flex items-center gap-3 text-left hover:bg-white/[0.03] transition"
+        className="w-full p-3 flex items-center gap-3 text-left hover:bg-foreground/[0.04] transition"
       >
         <div className="w-10 h-10 rounded-lg bg-teal-500/20 flex items-center justify-center shrink-0">
           <FileText size={18} className="text-teal-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] uppercase tracking-wide text-white/40">Next Test</div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Next Test</div>
           <div className="text-sm font-semibold truncate">{nextTest.name}</div>
-          <div className="text-[10px] text-white/50">
+          <div className="text-[10px] text-muted-foreground">
             {nextTest.type} ·{' '}
             {days === 0
               ? 'Today'
@@ -156,11 +156,11 @@ export function NextTestCard() {
           <div className="text-lg font-bold tabular text-teal-400">
             {readiness.overallPct}%
           </div>
-          <div className="text-[9px] text-white/40">ready</div>
+          <div className="text-[9px] text-muted-foreground">ready</div>
         </div>
         <ChevronDown
           size={16}
-          className={cn('text-white/30 transition-transform shrink-0', expanded && 'rotate-180')}
+          className={cn('text-muted-foreground/60 transition-transform shrink-0', expanded && 'rotate-180')}
         />
       </button>
 
@@ -174,11 +174,11 @@ export function NextTestCard() {
             transition={{ duration: 0.25 }}
             className="overflow-hidden"
           >
-            <div className="px-3 pb-3 pt-1 space-y-3 border-t border-white/5">
+            <div className="px-3 pb-3 pt-1 space-y-3 border-t border-border">
               {/* Per-subject readiness bars */}
               {readiness.subjects.length > 0 && (
                 <div className="space-y-1.5 pt-2">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-white/40 mb-1">
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">
                     Subject Readiness
                   </div>
                   {readiness.subjects.map((sr) => {
@@ -191,7 +191,7 @@ export function NextTestCard() {
                         >
                           {sr.subject.slice(0, 4)}
                         </span>
-                        <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                        <div className="flex-1 h-2 rounded-full bg-foreground/5 overflow-hidden">
                           <motion.div
                             className="h-full rounded-full"
                             style={{ background: c.hex }}
@@ -200,7 +200,7 @@ export function NextTestCard() {
                             transition={{ duration: 0.6 }}
                           />
                         </div>
-                        <span className="text-[10px] tabular text-white/60 w-14 text-right">
+                        <span className="text-[10px] tabular text-muted-foreground w-14 text-right">
                           {sr.done}/{sr.total}
                         </span>
                         <span
@@ -235,7 +235,7 @@ export function NextTestCard() {
                           >
                             {gap.subject.slice(0, 3)}
                           </span>
-                          <span className="text-white/70 truncate flex-1">
+                          <span className="text-muted-foreground truncate flex-1">
                             {gap.chapterName}
                           </span>
                           <span className="text-[9px] text-amber-400 font-bold shrink-0">
@@ -333,11 +333,11 @@ export function TestDayMode() {
 
         {/* Test name + countdown */}
         <h2 className="text-xl font-bold mb-1">{test.name}</h2>
-        <div className="text-xs text-white/60 mb-4">{test.type}</div>
+        <div className="text-xs text-muted-foreground mb-4">{test.type}</div>
 
         {!hasStarted ? (
           <div className="mb-4">
-            <div className="text-[10px] text-white/40 mb-1">Test starts in</div>
+            <div className="text-[10px] text-muted-foreground mb-1">Test starts in</div>
             <div className="text-4xl font-bold tabular bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent">
               {hoursUntilStart > 1
                 ? `${Math.floor(hoursUntilStart)}h ${Math.round((hoursUntilStart % 1) * 60)}m`
@@ -347,7 +347,7 @@ export function TestDayMode() {
         ) : (
           <div className="mb-4 p-3 rounded-xl bg-teal-500/15 text-center">
             <div className="text-sm font-bold text-teal-300">Test in progress</div>
-            <div className="text-[10px] text-white/50 mt-0.5">
+            <div className="text-[10px] text-muted-foreground mt-0.5">
               Log your result afterwards from the Tests tab
             </div>
           </div>
@@ -357,10 +357,10 @@ export function TestDayMode() {
         {avgScore !== null && (
           <div className="glass rounded-xl p-3 mb-3 flex items-center justify-between">
             <div>
-              <div className="text-[10px] text-white/40">Last 3 tests avg</div>
-              <div className="text-xl font-bold tabular text-teal-400">{avgScore}<span className="text-xs text-white/40">/720</span></div>
+              <div className="text-[10px] text-muted-foreground">Last 3 tests avg</div>
+              <div className="text-xl font-bold tabular text-teal-400">{avgScore}<span className="text-xs text-muted-foreground">/720</span></div>
             </div>
-            <div className="text-[10px] text-white/40 text-right">
+            <div className="text-[10px] text-muted-foreground text-right">
               Today's goal:<br />
               <span className="text-green-400 font-bold">beat {avgScore}</span>
             </div>
@@ -369,22 +369,22 @@ export function TestDayMode() {
 
         {/* Motivational quote */}
         <div className="glass rounded-xl p-3 mb-3 text-center">
-          <div className="text-xs italic text-white/80">"{quote}"</div>
+          <div className="text-xs italic text-foreground">"{quote}"</div>
         </div>
 
         {/* Reminders row */}
         <div className="grid grid-cols-3 gap-2">
           <div className="glass rounded-xl p-2 flex flex-col items-center gap-0.5">
             <Droplet size={14} className="text-blue-400" />
-            <span className="text-[9px] text-white/60">Hydrate</span>
+            <span className="text-[9px] text-muted-foreground">Hydrate</span>
           </div>
           <div className="glass rounded-xl p-2 flex flex-col items-center gap-0.5">
             <Wind size={14} className="text-teal-400" />
-            <span className="text-[9px] text-white/60">Breathe</span>
+            <span className="text-[9px] text-muted-foreground">Breathe</span>
           </div>
           <div className="glass rounded-xl p-2 flex flex-col items-center gap-0.5">
             <Zap size={14} className="text-amber-400" />
-            <span className="text-[9px] text-white/60">Focus</span>
+            <span className="text-[9px] text-muted-foreground">Focus</span>
           </div>
         </div>
 

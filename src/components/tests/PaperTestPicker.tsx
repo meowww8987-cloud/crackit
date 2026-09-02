@@ -89,7 +89,7 @@ export function PaperTestPicker({ onClose, onSelectTest }: Props) {
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass-strong rounded-t-3xl p-5 pb-8 max-h-[80vh] flex flex-col"
       >
-        <div className="w-10 h-1 bg-white/30 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/30 rounded-full mx-auto mb-4" />
 
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -97,13 +97,13 @@ export function PaperTestPicker({ onClose, onSelectTest }: Props) {
               <FileText size={18} className="text-teal-400" />
               Paper Test Mode
             </h2>
-            <p className="text-[10px] text-white/40 mt-0.5">
+            <p className="text-[10px] text-muted-foreground mt-0.5">
               Long-press Tests tab to start · fully customizable
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60"
+            className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground"
           >
             <X size={16} />
           </button>
@@ -131,7 +131,7 @@ export function PaperTestPicker({ onClose, onSelectTest }: Props) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold truncate text-white">{t.name}</div>
-                      <div className="text-[10px] text-white/50">
+                      <div className="text-[10px] text-muted-foreground">
                         {answered}/{pt.questions.length} answered · {formatHM(elapsed)} elapsed
                       </div>
                     </div>
@@ -143,15 +143,15 @@ export function PaperTestPicker({ onClose, onSelectTest }: Props) {
           )}
 
           {/* Upcoming tests */}
-          <div className="text-[10px] font-bold uppercase tracking-wide text-white/40 mb-1.5">
+          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
             Upcoming Tests
           </div>
 
           {upcoming.length === 0 ? (
             <div className="glass rounded-xl p-6 text-center">
-              <FileText size={32} className="text-white/20 mx-auto mb-2" />
-              <p className="text-xs text-white/50 mb-2">No upcoming tests.</p>
-              <p className="text-[10px] text-white/40">
+              <FileText size={32} className="text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground mb-2">No upcoming tests.</p>
+              <p className="text-[10px] text-muted-foreground">
                 Add a test first, then long-press Tests tab to start paper mode.
               </p>
             </div>
@@ -162,7 +162,7 @@ export function PaperTestPicker({ onClose, onSelectTest }: Props) {
                 onClick={() => handleSelect(t.id, t.name, !!t.paperTest)}
                 className={cn(
                   'w-full p-3 rounded-xl flex items-center gap-3 text-left active:scale-[0.98] transition',
-                  t.paperTest ? 'bg-white/[0.03] border border-white/5' : 'glass'
+                  t.paperTest ? 'bg-foreground/[0.04] border border-border' : 'glass'
                 )}
               >
                 <div className="w-9 h-9 rounded-lg bg-teal-500/15 flex items-center justify-center shrink-0">
@@ -172,7 +172,7 @@ export function PaperTestPicker({ onClose, onSelectTest }: Props) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold truncate text-white">{t.name}</div>
-                  <div className="text-[10px] text-white/50">
+                  <div className="text-[10px] text-muted-foreground">
                     {formatDate(t.date)} · {t.type}
                     {t.coachingSource && t.coachingSource !== 'Self' && ` · ${t.coachingSource}`}
                   </div>
@@ -181,14 +181,14 @@ export function PaperTestPicker({ onClose, onSelectTest }: Props) {
                   <div className="text-[9px] text-teal-400 font-bold uppercase">
                     {t.paperTest ? 'Resume' : 'Setup & Start'}
                   </div>
-                  <ChevronRight size={14} className="text-white/30" />
+                  <ChevronRight size={14} className="text-muted-foreground/60" />
                 </div>
               </button>
             ))
           )}
         </div>
 
-        <div className="mt-3 pt-3 border-t border-white/10 text-[10px] text-white/40 text-center">
+        <div className="mt-3 pt-3 border-t border-border text-[10px] text-muted-foreground text-center">
           Customize: question count · duration · extra time · marking scheme · sections
         </div>
       </motion.div>

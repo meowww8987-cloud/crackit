@@ -92,7 +92,7 @@ export function PracticeRunner() {
     if (justEnded) {
       const studySubject = (justEnded.subject === 'Mixed' ? 'General' : justEnded.subject) as any;
       useHistory.getState().addSession({
-        targetId: null, subject: studySubject, chapter: justEnded.chapter, lecture: '',
+        id: '', targetId: null, subject: studySubject, chapter: justEnded.chapter, lecture: '',
         topic: justEnded.name, mode: 'free', studySeconds: justEnded.totalTimeSec, wastedSeconds: 0,
         startedAt: justEnded.startedAt, endedAt: justEnded.endedAt || Date.now(), date: todayKey(), mood: 'neutral' as any,
       });
@@ -324,7 +324,7 @@ export function PracticeRunner() {
   const hamburgerBtn = (
     <button
       onClick={() => { if (haptics) vibrate(8); setMenuOpen(true); }}
-      className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 active:scale-90 transition"
+      className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-foreground/20 active:scale-90 transition"
       style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff' }}
       aria-label="Practice menu">
       <Menu size={20} />
@@ -416,7 +416,7 @@ export function PracticeRunner() {
             setDeleteMode(false);
             setPendingDelete(null);
           }}
-          className="ml-1 px-2 h-5 rounded-md bg-white/10 text-white/60 text-[8px] font-bold flex items-center active:scale-90 transition"
+          className="ml-1 px-2 h-5 rounded-md bg-foreground/10 text-muted-foreground text-[8px] font-bold flex items-center active:scale-90 transition"
         >
           ✕ Exit
         </button>
@@ -598,7 +598,7 @@ export function PracticeRunner() {
         {/* Hamburger top-right */}
         <button
           onClick={() => { if (haptics) vibrate(8); setMenuOpen(true); }}
-          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 active:scale-90 transition"
+          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-foreground/20 active:scale-90 transition"
           style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff' }}
           aria-label="Practice menu">
           <Menu size={20} />
@@ -1294,7 +1294,7 @@ function RenameButton({ currentName, onRename, haptics }: {
             }
           }}
           placeholder="Practice name…"
-          className="flex-1 bg-transparent text-white text-xs font-semibold outline-none border-b border-white/20 pb-1"
+          className="flex-1 bg-transparent text-white text-xs font-semibold outline-none border-b border-border pb-1"
           style={{ color: '#ffffff' }}
         />
         <button

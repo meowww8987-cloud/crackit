@@ -120,7 +120,7 @@ export function AchievementCinematic({ data, onClose }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1 }}
-            className="text-sm text-white/60 mt-1 text-center max-w-xs px-4"
+            className="text-sm text-muted-foreground mt-1 text-center max-w-xs px-4"
           >
             {data.description}
           </motion.div>
@@ -130,7 +130,7 @@ export function AchievementCinematic({ data, onClose }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: [0, 0.5, 1, 0.5] }}
             transition={{ delay: 1.5, duration: 1.5, repeat: Infinity }}
-            className="text-[10px] text-white/40 mt-8 uppercase tracking-wider"
+            className="text-[10px] text-muted-foreground mt-8 uppercase tracking-wider"
           >
             Tap to continue
           </motion.div>

@@ -76,7 +76,7 @@ export function TestsTab() {
             onClick={() => { setFilter(f); vibrate(6); }}
             className={cn(
               'px-3 py-1.5 rounded-full text-xs font-medium capitalize transition',
-              filter === f ? 'bg-teal-500 text-black' : 'bg-white/5 text-white/60'
+              filter === f ? 'bg-teal-500 text-black' : 'bg-foreground/5 text-muted-foreground'
             )}
           >
             {f}
@@ -89,8 +89,8 @@ export function TestsTab() {
       )}
       {filtered.length === 0 && tests.length > 0 && (
         <div className="glass rounded-2xl p-8 text-center">
-          <FileText size={40} className="text-white/20 mx-auto mb-3" />
-          <p className="text-white/60 text-sm">No {filter} tests.</p>
+          <FileText size={40} className="text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">No {filter} tests.</p>
         </div>
       )}
 
@@ -110,11 +110,11 @@ export function TestsTab() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ type: 'spring', stiffness: 500, damping: 35 }}
               onClick={() => { setSelectedTest(test); vibrate(8); }}
-              className="w-full card-solid rounded-2xl p-3 flex items-center gap-3 text-left hover:bg-white/[0.04] transition active:scale-[0.98]"
+              className="w-full card-solid rounded-2xl p-3 flex items-center gap-3 text-left hover:bg-foreground/[0.04] transition active:scale-[0.98]"
             >
               {/* Date block */}
               <div className="text-center min-w-[44px] shrink-0">
-                <div className="text-[9px] text-white/50 uppercase">
+                <div className="text-[9px] text-muted-foreground uppercase">
                   {new Date(test.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' })}
                 </div>
                 <div className="text-xl font-bold tabular text-white">
@@ -123,7 +123,7 @@ export function TestsTab() {
               </div>
 
               {/* Vertical divider */}
-              <div className="w-px h-12 bg-white/10 shrink-0" />
+              <div className="w-px h-12 bg-foreground/10 shrink-0" />
 
               {/* Main content */}
               <div className="flex-1 min-w-0">
@@ -162,7 +162,7 @@ export function TestsTab() {
                     </span>
                   )}
                   {timerState === 'completed' && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white/70 flex items-center gap-0.5">
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-foreground/10 text-muted-foreground flex items-center gap-0.5">
                       <CheckCircle size={8} /> Done
                     </span>
                   )}
@@ -172,7 +172,7 @@ export function TestsTab() {
                 <div className="text-sm font-semibold truncate text-white">{test.name}</div>
 
                 {/* Date/days + duration */}
-                <div className="text-[10px] text-white/50 flex items-center gap-1.5">
+                <div className="text-[10px] text-muted-foreground flex items-center gap-1.5">
                   {isUpcoming ? (
                     days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days} days away`
                   ) : (
@@ -199,14 +199,14 @@ export function TestsTab() {
                     <div className="text-lg font-bold tabular text-teal-400">
                       {test.totalMarks !== undefined ? Math.round((test.totalMarks / 720) * 100) : 0}%
                     </div>
-                    <div className="text-[9px] text-white/40">readiness</div>
+                    <div className="text-[9px] text-muted-foreground">readiness</div>
                   </>
                 ) : (
                   <>
                     <div className="text-lg font-bold tabular text-green-400">
                       {test.totalMarks !== undefined ? test.totalMarks : '—'}
                     </div>
-                    <div className="text-[9px] text-white/40">/720</div>
+                    <div className="text-[9px] text-muted-foreground">/720</div>
                   </>
                 )}
                 {rankInfo && !isUpcoming && (

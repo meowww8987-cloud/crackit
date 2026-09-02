@@ -65,14 +65,14 @@ export function PairSheet({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md glass rounded-t-3xl p-5 pb-8"
       >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-4" />
 
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <Users size={18} className="text-teal-400" />
             Pair with Partner
           </h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
             <X size={16} />
           </button>
         </div>
@@ -80,36 +80,36 @@ export function PairSheet({ onClose }: Props) {
         {mode === 'choose' && (
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-white/60 mb-2 block">YOUR NAME</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-2 block">YOUR NAME</label>
               <input
                 value={myName}
                 onChange={(e) => setMyName(e.target.value)}
                 placeholder="Your name"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
+                className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400/50"
               />
             </div>
 
             <button
               onClick={handleGenerate}
-              className="w-full p-4 rounded-xl glass border border-teal-500/30 text-left hover:bg-white/[0.07] transition"
+              className="w-full p-4 rounded-xl glass border border-teal-500/30 text-left hover:bg-foreground/[0.07] transition"
             >
               <div className="text-sm font-semibold text-teal-300 mb-1">Generate a pairing code</div>
-              <div className="text-[10px] text-white/40">Your partner enters this code to pair with you</div>
+              <div className="text-[10px] text-muted-foreground">Your partner enters this code to pair with you</div>
             </button>
 
             <button
               onClick={() => setMode('enter')}
-              className="w-full p-4 rounded-xl glass border border-white/10 text-left hover:bg-white/[0.07] transition"
+              className="w-full p-4 rounded-xl glass border border-border text-left hover:bg-foreground/[0.07] transition"
             >
-              <div className="text-sm font-semibold text-white/80 mb-1">Enter a pairing code</div>
-              <div className="text-[10px] text-white/40">You have a 6-digit code from your partner</div>
+              <div className="text-sm font-semibold text-foreground mb-1">Enter a pairing code</div>
+              <div className="text-[10px] text-muted-foreground">You have a 6-digit code from your partner</div>
             </button>
           </div>
         )}
 
         {mode === 'generate' && myPairCode && (
           <div className="space-y-4 text-center">
-            <p className="text-xs text-white/50">Share this code with your partner:</p>
+            <p className="text-xs text-muted-foreground">Share this code with your partner:</p>
             <div className="glass rounded-2xl p-6">
               <div className="text-5xl font-bold tabular tracking-[0.3em] bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent">
                 {myPairCode}
@@ -121,13 +121,13 @@ export function PairSheet({ onClose }: Props) {
             >
               {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy Code</>}
             </button>
-            <p className="text-[10px] text-white/40">
+            <p className="text-[10px] text-muted-foreground">
               Keep this app open. Your partner enters the code on their device to pair.
               Status updates share every 5 seconds.
             </p>
             <button
               onClick={onClose}
-              className="w-full py-2 text-xs text-white/50"
+              className="w-full py-2 text-xs text-muted-foreground"
             >
               Done
             </button>
@@ -137,12 +137,12 @@ export function PairSheet({ onClose }: Props) {
         {mode === 'enter' && (
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-white/60 mb-2 block">PARTNER'S 6-DIGIT CODE</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-2 block">PARTNER'S 6-DIGIT CODE</label>
               <input
                 value={enterCode}
                 onChange={(e) => setEnterCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="123456"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-center text-2xl font-bold tabular tracking-[0.3em] focus:outline-none focus:border-teal-400/50"
+                className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-3 text-center text-2xl font-bold tabular tracking-[0.3em] focus:outline-none focus:border-teal-400/50"
                 maxLength={6}
                 inputMode="numeric"
               />
@@ -155,14 +155,14 @@ export function PairSheet({ onClose }: Props) {
                 'w-full py-3 rounded-xl font-bold text-sm transition active:scale-[0.98]',
                 enterCode.length === 6
                   ? 'bg-gradient-to-r from-teal-500 to-green-500 text-black'
-                  : 'bg-white/5 text-white/30 cursor-not-allowed'
+                  : 'bg-foreground/5 text-muted-foreground/60 cursor-not-allowed'
               )}
             >
               Pair Now
             </button>
             <button
               onClick={() => setMode('choose')}
-              className="w-full py-2 text-xs text-white/50"
+              className="w-full py-2 text-xs text-muted-foreground"
             >
               ← Back
             </button>

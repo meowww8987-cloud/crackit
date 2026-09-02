@@ -39,8 +39,8 @@ export function TestComparisonView() {
   if (pastTests.length < 2) {
     return (
       <div className="glass rounded-2xl p-4 text-center">
-        <GitCompare size={24} className="text-white/30 mx-auto mb-2" />
-        <p className="text-xs text-white/50">
+        <GitCompare size={24} className="text-muted-foreground/60 mx-auto mb-2" />
+        <p className="text-xs text-muted-foreground">
           Need at least 2 completed tests to compare. You have {pastTests.length}.
         </p>
       </div>
@@ -59,7 +59,7 @@ export function TestComparisonView() {
     <div className="glass rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <GitCompare size={14} className="text-purple-400" />
-        <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+        <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
           Compare Tests
         </span>
       </div>
@@ -67,11 +67,11 @@ export function TestComparisonView() {
       {/* Test pickers */}
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div>
-          <label className="text-[10px] text-white/40 mb-1 block">Test A (newer)</label>
+          <label className="text-[10px] text-muted-foreground mb-1 block">Test A (newer)</label>
           <select
             value={idA}
             onChange={(e) => setIdA(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-purple-400/50"
+            className="w-full bg-foreground/5 border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-purple-400/50"
           >
             {pastTests.map((t) => (
               <option key={t.id} value={t.id} className="bg-gray-900">
@@ -81,11 +81,11 @@ export function TestComparisonView() {
           </select>
         </div>
         <div>
-          <label className="text-[10px] text-white/40 mb-1 block">Test B (older)</label>
+          <label className="text-[10px] text-muted-foreground mb-1 block">Test B (older)</label>
           <select
             value={idB}
             onChange={(e) => setIdB(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-purple-400/50"
+            className="w-full bg-foreground/5 border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-purple-400/50"
           >
             {pastTests.map((t) => (
               <option key={t.id} value={t.id} className="bg-gray-900">
@@ -162,9 +162,9 @@ export function TestComparisonView() {
             <motion.div
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-3 pt-3 border-t border-white/10 text-center"
+              className="mt-3 pt-3 border-t border-border text-center"
             >
-              <div className="text-[10px] uppercase tracking-wide text-white/40 mb-1">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
                 Overall Change
               </div>
               <div
@@ -175,7 +175,7 @@ export function TestComparisonView() {
               >
                 {totalDelta > 0 ? '+' : ''}{totalDelta} marks
               </div>
-              <div className="text-[10px] text-white/50 mt-0.5">
+              <div className="text-[10px] text-muted-foreground mt-0.5">
                 {totalDelta > 5
                   ? 'Significant improvement — keep it up!'
                   : totalDelta > 0
@@ -225,10 +225,10 @@ function ComparisonRow({
         {label}
       </span>
       <span className="tabular text-white font-bold w-12 text-right">{a}</span>
-      <span className="text-white/30 text-[10px] w-12 text-center">
+      <span className="text-muted-foreground/60 text-[10px] w-12 text-center">
         vs
       </span>
-      <span className="tabular text-white/60 w-12 text-left">{b}</span>
+      <span className="tabular text-muted-foreground w-12 text-left">{b}</span>
       <span
         className="tabular font-bold w-14 text-right"
         style={{
@@ -358,7 +358,7 @@ export function RevisionPlanGenerator({ test }: { test: Test }) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Sparkles size={14} className="text-amber-400" />
-          <span className="text-xs font-bold uppercase tracking-wide text-white/60">
+          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
             7-Day Revision Plan
           </span>
         </div>
@@ -373,7 +373,7 @@ export function RevisionPlanGenerator({ test }: { test: Test }) {
       </div>
 
       {!plan && (
-        <p className="text-[11px] text-white/50 leading-snug">
+        <p className="text-[11px] text-muted-foreground leading-snug">
           Auto-builds a 7-day plan from this test's weak topics. Distributes topics
           across days with subject alternation to avoid fatigue.
         </p>
@@ -397,7 +397,7 @@ export function RevisionPlanGenerator({ test }: { test: Test }) {
                 }}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-bold text-white/80">
+                  <span className="text-xs font-bold text-foreground">
                     Day {day.day + 1}
                   </span>
                   {isAdded ? (
@@ -422,8 +422,8 @@ export function RevisionPlanGenerator({ test }: { test: Test }) {
                           className="w-1.5 h-1.5 rounded-full shrink-0"
                           style={{ background: c.hex }}
                         />
-                        <span className="text-white/70 truncate flex-1">{t.topic}</span>
-                        <span className="text-white/40 text-[10px]">{t.minutes}m</span>
+                        <span className="text-muted-foreground truncate flex-1">{t.topic}</span>
+                        <span className="text-muted-foreground text-[10px]">{t.minutes}m</span>
                       </div>
                     );
                   })}

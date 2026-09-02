@@ -122,7 +122,7 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
         className="relative w-full max-w-md glass rounded-3xl p-5 pb-8 max-h-[85vh] overflow-y-auto scroll-area"
         style={{ borderTop: `3px solid ${color.hex}` }}
       >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+        <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-4" />
 
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
@@ -131,10 +131,10 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
             </div>
             <div>
               <h2 className="text-lg font-bold leading-tight">Add Lecture</h2>
-              <div className="text-[10px] text-white/40 truncate">{chapter.name}</div>
+              <div className="text-[10px] text-muted-foreground truncate">{chapter.name}</div>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground">
             <X size={16} />
           </button>
         </div>
@@ -142,7 +142,7 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
         {/* Lecture number selection — checkboxes for L4, L5, L6, L7, L8 */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-white/60">SELECT LECTURES</label>
+            <label className="text-xs font-semibold text-muted-foreground">SELECT LECTURES</label>
             <button onClick={selectAllLecNums} className="text-[10px] text-teal-400">
               {selectedLecNums.size === selectableLecNums.length ? 'Deselect All' : 'Select All'}
             </button>
@@ -156,7 +156,7 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
                   onClick={() => toggleLecNum(num)}
                   className={cn(
                     'px-3 py-2 rounded-xl text-xs font-bold transition border',
-                    sel ? 'text-black border-0' : 'border border-white/10 bg-white/[0.03] text-white/60'
+                    sel ? 'text-black border-0' : 'border border-border bg-foreground/[0.04] text-muted-foreground'
                   )}
                   style={sel ? { background: color.hex } : undefined}
                 >
@@ -165,7 +165,7 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
               );
             })}
           </div>
-          <p className="text-[10px] text-white/30 mt-1.5">
+          <p className="text-[10px] text-muted-foreground/60 mt-1.5">
             {selectedLecNums.size > 0
               ? `${selectedLecNums.size} selected · will create L${Array.from(selectedLecNums).sort((a,b)=>a-b).map(n => `L${n}`).join(', ')}`
               : `Tap to select. If none selected, L${nextLecNo} will be created.`
@@ -175,21 +175,21 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
 
         {/* Topic input (optional, applies to all selected) */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block">
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block">
             TOPIC NAME (optional)
           </label>
           <input
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             placeholder={`Leave empty for auto "Lecture N"`}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-teal-400/50"
+            className="w-full bg-foreground/5 border border-border rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-teal-400/50"
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           />
         </div>
 
         {/* Resource inclusions */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-white/60 mb-2 block">
+          <label className="text-xs font-semibold text-muted-foreground mb-2 block">
             RESOURCES TO TRACK
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -201,12 +201,12 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
                   onClick={() => toggleResource(res.key)}
                   className={cn(
                     'p-2.5 rounded-xl flex items-center gap-2 transition border',
-                    included ? 'border-2' : 'border border-white/5 bg-white/[0.03]'
+                    included ? 'border-2' : 'border border-border bg-foreground/[0.04]'
                   )}
                   style={included ? { background: `${res.color}15`, borderColor: res.color } : undefined}
                 >
                   <span className="text-base">{res.icon}</span>
-                  <span className={cn('text-xs font-semibold flex-1 text-left', included ? 'text-white' : 'text-white/40')}>
+                  <span className={cn('text-xs font-semibold flex-1 text-left', included ? 'text-white' : 'text-muted-foreground')}>
                     {res.label}
                   </span>
                   {included && (
@@ -218,7 +218,7 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
               );
             })}
           </div>
-          <p className="text-[10px] text-white/30 mt-1.5">
+          <p className="text-[10px] text-muted-foreground/60 mt-1.5">
             Uncheck resources this lecture doesn't have
           </p>
         </div>
@@ -227,11 +227,11 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
         <div className="mb-4 glass rounded-xl p-3 flex items-center justify-between">
           <div>
             <div className="text-xs font-semibold">Add to today's targets</div>
-            <div className="text-[10px] text-white/40">Creates a 60-min target for today</div>
+            <div className="text-[10px] text-muted-foreground">Creates a 60-min target for today</div>
           </div>
           <button
             onClick={() => { setAddToToday(!addToToday); vibrate(8); }}
-            className={cn('w-12 h-7 rounded-full transition relative', addToToday ? 'bg-teal-500' : 'bg-white/10')}
+            className={cn('w-12 h-7 rounded-full transition relative', addToToday ? 'bg-teal-500' : 'bg-foreground/10')}
           >
             <motion.div
               layout

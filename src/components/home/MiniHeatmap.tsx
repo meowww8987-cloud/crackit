@@ -34,8 +34,8 @@ export function MiniHeatmap() {
     <div className="glass rounded-2xl p-3">
       <div className="flex items-center gap-2 mb-2">
         <Calendar size={14} className="text-teal-400" />
-        <span className="text-xs font-bold text-white/70">Last 7 Days</span>
-        <span className="text-[10px] text-white/40 ml-auto tabular">avg {avgHours.toFixed(1)}h/day</span>
+        <span className="text-xs font-bold text-muted-foreground">Last 7 Days</span>
+        <span className="text-[10px] text-muted-foreground ml-auto tabular">avg {avgHours.toFixed(1)}h/day</span>
       </div>
       <div className="flex gap-1.5">
         {last7Days.map((day, i) => (
@@ -57,7 +57,7 @@ export function MiniHeatmap() {
                 </span>
               )}
             </div>
-            <span className="text-[8px] text-white/30">{day.label}</span>
+            <span className="text-[8px] text-muted-foreground/60">{day.label}</span>
           </motion.div>
         ))}
       </div>
