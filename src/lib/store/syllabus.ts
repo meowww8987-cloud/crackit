@@ -420,3 +420,41 @@ export const useSyllabus = create<SyllabusStore>()(
     }
   )
 );
+
+// === Global event listener for target-done sync ===
+// Listens for 'target-done-sync' events from the targets store.
+// This avoids circular dependency between targets.ts and syllabus.ts.
+// Must be AFTER useSyllabus is defined to avoid TDZ (temporal dead zone).
+if (typeof window !== 'undefined') {
+  window.addEventListener('target-done-sync', ((e: CustomEvent) => {
+    const { lectureId, activity } = e.detail;
+    const syllabus = useSyllabus.getState();
+    const lecture = syllabus.lectures.find((l) => l.id === lectureId);
+    if (!lecture) return;
+
+    if (activity === 'Lecture' && !lecture.done) {
+      syllabus.toggleLectureResource(lectureId, 'lecture');
+    } else if (activity === 'DPP' && !lecture.dppDone) {
+      syllabus.toggleLectureResource(lectureId, 'dpp');
+    } else if (activity === 'Notes' && !lecture.notesDone) {
+      syllabus.toggleLectureResource(lectureId, 'notes');
+    } else if (activity === 'Revision') {
+      syllabus.advanceRevision(lectureId);
+    }
+  }) as EventListener);
+
+  window.addEventListener('target-undone-sync', ((e: CustomEvent) => {
+    const { lectureId, activity } = e.detail;
+    const syllabus = useSyllabus.getState();
+    const lecture = syllabus.lectures.find((l) => l.id === lectureId);
+    if (!lecture) return;
+
+    if (activity === 'Lecture' && lecture.done) {
+      syllabus.toggleLectureResource(lectureId, 'lecture');
+    } else if (activity === 'DPP' && lecture.dppDone) {
+      syllabus.toggleLectureResource(lectureId, 'dpp');
+    } else if (activity === 'Notes' && lecture.notesDone) {
+      syllabus.toggleLectureResource(lectureId, 'notes');
+    }
+  }) as EventListener);
+}
