@@ -61,7 +61,11 @@ export function AddTargetSheet({ editing, onClose }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(editing ? 3 : 1);
   const [subject, setSubject] = useState<Subject>(smartDefaultSubject);
   const [activity, setActivity] = useState<ActivityType>(editing?.activity || 'Lecture');
-  const [expectedMinutes, setExpectedMinutes] = useState(editing?.expectedMinutes || 60);
+  // Initialize expectedMinutes with learned time for the default subject+activity.
+  // This avoids a flicker from 60 → learned value on first render.
+  const [expectedMinutes, setExpectedMinutes] = useState(
+    editing?.expectedMinutes || getLearnedExpectedMinutes(smartDefaultSubject, editing?.activity || 'Lecture')
+  );
   const [selectedChapterId, setSelectedChapterId] = useState<string>(editing?.chapterId || '');
   const [selectedLectureIds, setSelectedLectureIds] = useState<Set<string>>(
     new Set(editing?.lectureId ? [editing.lectureId] : [])

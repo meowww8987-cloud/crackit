@@ -14,6 +14,7 @@ import { useTargets } from '@/lib/store/targets';
 import { subjectColor } from '@/lib/colors';
 import type { Lecture, Chapter, SubjectEntity } from '@/lib/types';
 import { cn, formatHM, vibrate, isRevisionOverdue, todayKey } from '@/lib/utils';
+import { getLearnedExpectedMinutes } from '@/lib/store/learnedTime';
 
 interface Props {
   lecture: Lecture;
@@ -96,6 +97,9 @@ export function LectureDetailSheet({ lecture, chapter, subject, onClose, onEdit 
   // === Quick Actions ===
   const handleStartStudy = () => {
     vibrate(12);
+    // Use learned expected time for this subject + Lecture activity.
+    // Falls back to 45 min default if no history.
+    const learnedMin = getLearnedExpectedMinutes(subject.name, 'Lecture');
     addTarget({
       date: todayKey(),
       subject: subject.name,
@@ -103,7 +107,7 @@ export function LectureDetailSheet({ lecture, chapter, subject, onClose, onEdit 
       chapter: chapter.name,
       lecture: `L${lecture.lecNo}`,
       topic: lecture.topic,
-      expectedMinutes: 45,
+      expectedMinutes: learnedMin,
       lectureId: lecture.id,
       chapterId: chapter.id,
     });
@@ -114,13 +118,16 @@ export function LectureDetailSheet({ lecture, chapter, subject, onClose, onEdit 
       lecture: `L${lecture.lecNo}`,
       topic: lecture.topic,
       mode: 'focus',
-      expectedMinutes: 45,
+      expectedMinutes: learnedMin,
     });
     onClose();
   };
 
   const handleAddRevision = () => {
     vibrate(12);
+    // Use learned expected time for this subject + Revision activity.
+    // Falls back to 20 min default if no history.
+    const learnedMin = getLearnedExpectedMinutes(subject.name, 'Revision');
     addTarget({
       date: todayKey(),
       subject: subject.name,
@@ -128,7 +135,7 @@ export function LectureDetailSheet({ lecture, chapter, subject, onClose, onEdit 
       chapter: chapter.name,
       lecture: `L${lecture.lecNo}`,
       topic: lecture.topic,
-      expectedMinutes: 20,
+      expectedMinutes: learnedMin,
       lectureId: lecture.id,
       chapterId: chapter.id,
     });
@@ -139,7 +146,7 @@ export function LectureDetailSheet({ lecture, chapter, subject, onClose, onEdit 
       lecture: `L${lecture.lecNo}`,
       topic: lecture.topic,
       mode: 'focus',
-      expectedMinutes: 20,
+      expectedMinutes: learnedMin,
     });
     onClose();
   };

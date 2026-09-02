@@ -2,8 +2,9 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Target } from '@/lib/types';
+import type { Target, Subject, ActivityType } from '@/lib/types';
 import { todayKey, uid, isToday } from '@/lib/utils';
+import { useLearnedTime } from './learnedTime';
 
 interface TargetsStore {
   // keyed by date string YYYY-MM-DD
@@ -37,6 +38,43 @@ export const useTargets = create<TargetsStore>()(
         set((s) => ({
           byDate: { ...s.byDate, [date]: [...list, newTarget] },
         }));
+
+        // === Record expected time to the learned-time store ===
+        // This powers the AI auto-fill: when the user sets an expected time for
+        // (subject + activity), we remember it. Next time the user adds a target
+        // with the same subject + activity (any lecture, any chapter), the
+        // expected time auto-fills with the learned value.
+        //
+        // We record SYNCHRONOUSLY (Zustand state + localStorage) so the value
+        // is immediately available for the next addTarget call, even within the
+        // same session.
+        //
+        // We accept any reasonable expected time (5–240 min). The store keeps
+        // the last 20 samples per (subject, activity) pair and uses the median,
+        // so occasional outliers don't skew the auto-fill.
+        if (t.expectedMinutes >= 5 && t.expectedMinutes <= 240) {
+          try {
+            useLearnedTime.getState().record(
+              t.subject as Subject,
+              t.activity as ActivityType,
+              t.expectedMinutes
+            );
+          } catch {}
+          // Also write directly to localStorage as a safety net (in case the
+          // Zustand persist middleware hasn't flushed yet)
+          try {
+            const ltRaw = localStorage.getItem('neet-learned-times');
+            const ltParsed = ltRaw ? JSON.parse(ltRaw) : { state: { data: {} } };
+            const data = ltParsed?.state?.data || {};
+            const key = `${t.subject}:${t.activity}`;
+            const existing = data[key] || [];
+            data[key] = [...existing, t.expectedMinutes].slice(-20);
+            ltParsed.state = ltParsed.state || {};
+            ltParsed.state.data = data;
+            localStorage.setItem('neet-learned-times', JSON.stringify(ltParsed));
+          } catch {}
+        }
+
         return id;
       },
 
