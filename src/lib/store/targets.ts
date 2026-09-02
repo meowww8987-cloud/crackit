@@ -91,13 +91,45 @@ export const useTargets = create<TargetsStore>()(
           });
         }
 
-        // Bi-directional sync: if target is linked to a syllabus lecture, sync its 'done' (📺 lecture watched)
+        // Bi-directional sync: if target is linked to a syllabus lecture,
+        // sync the CORRECT resource based on the target's activity type.
+        // - Lecture target → toggle lecture.done (📺)
+        // - DPP target → toggle lecture.dppDone (📝)
+        // - Notes target → toggle lecture.notesDone (📖)
+        // - Revision target → INCREMENT revision (not toggle — revision counts up)
         if (target?.lectureId && !target.isChapterTarget) {
           import('./syllabus').then(({ useSyllabus }) => {
             const syllabus = useSyllabus.getState();
             const lecture = syllabus.lectures.find((l) => l.id === target.lectureId);
-            if (lecture && lecture.done !== newDone) {
-              syllabus.toggleLectureResource(target.lectureId!, 'lecture');
+            if (!lecture) return;
+
+            const activity = target.activity;
+
+            if (newDone) {
+              // Marking target as DONE → sync the matching resource
+              if (activity === 'Lecture' && !lecture.done) {
+                syllabus.toggleLectureResource(target.lectureId!, 'lecture');
+              } else if (activity === 'DPP' && !lecture.dppDone) {
+                syllabus.toggleLectureResource(target.lectureId!, 'dpp');
+              } else if (activity === 'Notes' && !lecture.notesDone) {
+                syllabus.toggleLectureResource(target.lectureId!, 'notes');
+              } else if (activity === 'Revision') {
+                // Revision INCREMENTS — each time you mark a revision target done,
+                // the revision count goes up by 1 (1st revision, 2nd revision, etc.)
+                syllabus.advanceRevision(target.lectureId!);
+              }
+            } else {
+              // Marking target as UNDONE → undo the resource
+              if (activity === 'Lecture' && lecture.done) {
+                syllabus.toggleLectureResource(target.lectureId!, 'lecture');
+              } else if (activity === 'DPP' && lecture.dppDone) {
+                syllabus.toggleLectureResource(target.lectureId!, 'dpp');
+              } else if (activity === 'Notes' && lecture.notesDone) {
+                syllabus.toggleLectureResource(target.lectureId!, 'notes');
+              } else if (activity === 'Revision') {
+                // Can't easily "undo" a revision increment — leave it as is.
+                // The user would need to use "Reset Revision Count" in the lecture popup.
+              }
             }
           });
         }
