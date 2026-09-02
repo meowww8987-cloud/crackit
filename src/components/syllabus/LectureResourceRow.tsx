@@ -225,16 +225,16 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
     }
   };
 
-  // Short tap → open detail sheet (not long-press, not on a button)
+  // Short tap → do nothing (long-press opens detail/edit)
+  // Previously: single tap opened detail sheet. Now removed per user request.
+  // Long-press (500ms) → opens actions popup with Edit + Delete.
   const handleCardClick = (e: React.MouseEvent) => {
-    // Only handle if long-press didn't fire
     if (longPressFiredRef.current) {
       longPressFiredRef.current = false;
       return;
     }
+    // Short tap — do nothing. User must long-press to open detail.
     e.stopPropagation();
-    vibrate(8);
-    onEdit(); // This opens the detail sheet (passed from SyllabusTab)
   };
 
   const handleDeleteConfirm = () => {
