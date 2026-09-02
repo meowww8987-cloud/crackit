@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GraduationCap, Plus, Search, ChevronDown, ChevronRight, Calendar, Clock, Sigma,
-  GripVertical, Check, X, CheckCircle2, RotateCcw, Trash2, Sparkles, BookMarked, FlaskConical,
+  GripVertical, Check, X, CheckCircle2, RotateCcw, Trash2, Sparkles, BookMarked, FlaskConical, Play,
 } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -22,9 +22,10 @@ import { useTargets } from '@/lib/store/targets';
 import { useSession } from '@/lib/store/session';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
 import type { Subject, Lecture, SubjectEntity, Chapter } from '@/lib/types';
-import { cn, vibrate, isRevisionOverdue, todayKey } from '@/lib/utils';
+import { cn, vibrate, isRevisionOverdue, todayKey, formatHM } from '@/lib/utils';
 import { LectureResourceRow } from '@/components/syllabus/LectureResourceRow';
 import { LectureEditModal } from '@/components/syllabus/LectureEditModal';
+import { LectureDetailSheet } from '@/components/syllabus/LectureDetailSheet';
 import { AddChapterSheet } from '@/components/syllabus/AddChapterSheet';
 import { BuildSyllabusSheet } from '@/components/syllabus/BuildSyllabusSheet';
 import { FormulaVault } from '@/components/syllabus/FormulaVault';
@@ -62,6 +63,7 @@ export function SyllabusTab() {
 
   const [openChapter, setOpenChapter] = useState<string | null>(null);
   const [editingLecture, setEditingLecture] = useState<Lecture | null>(null);
+  const [detailLecture, setDetailLecture] = useState<{ lecture: Lecture; chapter: Chapter; subject: SubjectEntity } | null>(null);
   const [addChapterFor, setAddChapterFor] = useState<SubjectEntity | null>(null);
   const [addLectureFor, setAddLectureFor] = useState<{ chapter: import('@/lib/types').Chapter; subject: SubjectEntity } | null>(null);
   const [showBuildSheet, setShowBuildSheet] = useState(false);
@@ -104,6 +106,11 @@ export function SyllabusTab() {
     return res === 0;
   }).length, [lectures]);
   const overdueCount = useMemo(() => lectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt)).length, [lectures]);
+
+  // === Header stats (Phase 1: total study time + revisions) ===
+  const totalStudiedSec = useMemo(() => lectures.reduce((a, l) => a + (l.timeSpentSec || 0), 0), [lectures]);
+  const totalWastedSec = useMemo(() => lectures.reduce((a, l) => a + (l.timeWastedSec || 0), 0), [lectures]);
+  const totalRevisions = useMemo(() => lectures.filter(l => l.revisionStage >= 0).length, [lectures]);
 
   // === Header stats ===
   const totalLectures = lectures.length;
@@ -300,6 +307,25 @@ export function SyllabusTab() {
                 >
                   +{doneTodayCount} today
                 </button>
+              </>
+            )}
+            {/* Total study time */}
+            {totalStudiedSec > 0 && (
+              <>
+                <span>·</span>
+                <span className="font-semibold text-green-600 dark:text-green-400">
+                  {formatHM(totalStudiedSec)}
+                </span>
+                <span>studied</span>
+              </>
+            )}
+            {/* Total revisions */}
+            {totalRevisions > 0 && (
+              <>
+                <span>·</span>
+                <span className="font-semibold" style={{ color: '#f59e0b' }}>
+                  {totalRevisions} rev
+                </span>
               </>
             )}
           </div>
@@ -704,13 +730,42 @@ export function SyllabusTab() {
                       </div>
                     )}
 
+                    {/* === Chapter time stats === */}
+                    {chLectures.length > 0 && (() => {
+                      const chStudied = chLectures.reduce((a, l) => a + (l.timeSpentSec || 0), 0);
+                      const chWasted = chLectures.reduce((a, l) => a + (l.timeWastedSec || 0), 0);
+                      const incompleteCount = chLectures.filter(l => !l.done).length;
+                      return (chStudied > 0 || incompleteCount > 0) ? (
+                        <div className="flex items-center gap-3 px-3.5 py-1.5 text-[10px] tabular" style={{ borderTop: '1px solid var(--border)' }}>
+                          {chStudied > 0 && (
+                            <span className="flex items-center gap-0.5">
+                              <Play size={8} className="text-green-500" fill="currentColor" />
+                              <span className="text-green-600 dark:text-green-400 font-semibold">{formatHM(chStudied)}</span>
+                              <span className="text-muted-foreground">studied</span>
+                            </span>
+                          )}
+                          {chWasted > 0 && (
+                            <span className="flex items-center gap-0.5">
+                              <span className="text-red-500">⚠</span>
+                              <span className="text-red-500 font-semibold">{formatHM(chWasted)}</span>
+                            </span>
+                          )}
+                          {incompleteCount > 0 && (
+                            <span className="ml-auto text-muted-foreground">
+                              ~{incompleteCount} lecture{incompleteCount === 1 ? '' : 's'} left
+                            </span>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
+
                     {/* Expanded lecture list */}
                     <AnimatePresence initial={false}>
                       {chOpen && (
                         <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                           <div className="px-2.5 pb-2.5 pt-1 space-y-2">
                             {chLectures.length === 0 && (<p className="text-xs text-center py-3" style={{ color: 'var(--muted-foreground)' }}>No lectures yet</p>)}
-                            {chLectures.filter((l) => { if (progressFilter === 'done') return l.done; if (progressFilter === 'next') return !l.done; if (progressFilter === 'studying') return !l.done && l.revisionStage >= 0; if (progressFilter === 'overdue') return l.done && isRevisionOverdue(l.nextRevisionAt); return true; }).filter((l) => !search || matchesSearch(l.topic)).map((lec, lecIndex) => (<LectureResourceRow key={lec.id} lecture={lec} chapter={ch} subject={subj} index={lecIndex} onEdit={() => setEditingLecture(lec)} />))}
+                            {chLectures.filter((l) => { if (progressFilter === 'done') return l.done; if (progressFilter === 'next') return !l.done; if (progressFilter === 'studying') return !l.done && l.revisionStage >= 0; if (progressFilter === 'overdue') return l.done && isRevisionOverdue(l.nextRevisionAt); return true; }).filter((l) => !search || matchesSearch(l.topic)).map((lec, lecIndex) => (<LectureResourceRow key={lec.id} lecture={lec} chapter={ch} subject={subj} index={lecIndex} onEdit={() => setDetailLecture({ lecture: lec, chapter: ch, subject: subj })} />))}
                           </div>
                         </motion.div>
                       )}
@@ -727,6 +782,18 @@ export function SyllabusTab() {
       </div>
 
       {editingLecture && (<LectureEditModal lecture={editingLecture} onClose={() => setEditingLecture(null)} />)}
+      {detailLecture && (
+        <LectureDetailSheet
+          lecture={detailLecture.lecture}
+          chapter={detailLecture.chapter}
+          subject={detailLecture.subject}
+          onClose={() => setDetailLecture(null)}
+          onEdit={() => {
+            setEditingLecture(detailLecture.lecture);
+            setDetailLecture(null);
+          }}
+        />
+      )}
       {addChapterFor && (<AddChapterSheet subject={addChapterFor} onClose={() => setAddChapterFor(null)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {showBuildSheet && (<BuildSyllabusSheet onClose={() => setShowBuildSheet(false)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {addLectureFor && (<AddLectureSheet chapter={addLectureFor.chapter} subject={addLectureFor.subject} onClose={() => setAddLectureFor(null)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
