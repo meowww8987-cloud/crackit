@@ -10,7 +10,7 @@ import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
 import type { Subject, ActivityType, Target } from '@/lib/types';
 import { cn, todayKey, vibrate } from '@/lib/utils';
-import { getLearnedExpectedMinutes } from '@/lib/learnedTime';
+import { getLearnedExpectedMinutes } from '@/lib/store/learnedTime';
 
 interface Props {
   editing?: Target | null;

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { X, Lock, AlertTriangle } from 'lucide-react';
 import { useLockTimer } from '@/lib/store/lockTimer';
 import { useSyllabus } from '@/lib/store/syllabus';
+import { getLearnedExpectedMinutes } from '@/lib/store/learnedTime';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
 import type { Subject } from '@/lib/types';
 import { cn, vibrate } from '@/lib/utils';
@@ -24,6 +25,12 @@ export function LockTimerSetup({ onClose }: Props) {
   const [targetMinutes, setTargetMinutes] = useState(45);
   const syllabusSubjects = useSyllabus((s) => s.subjects);
   const syllabusChapters = useSyllabus((s) => s.chapters);
+
+  // Auto-fill expected time from learned patterns when subject changes
+  useEffect(() => {
+    const learned = getLearnedExpectedMinutes(subject, 'Lecture');
+    setTargetMinutes(learned);
+  }, [subject]);
 
   // Filter chapters by selected subject
   const subjectChapters = syllabusChapters.filter((c) => {

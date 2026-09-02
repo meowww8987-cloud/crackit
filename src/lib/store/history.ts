@@ -27,7 +27,30 @@ export const useHistory = create<HistoryStore>()(
     (set, get) => ({
       sessions: [],
 
-      addSession: (s) => set((st) => ({ sessions: [...st.sessions, s] })),
+      addSession: (s) => {
+        set((st) => ({ sessions: [...st.sessions, s] }));
+        // === Record learned time for this subject+activity pair ===
+        // Look up the target to get the activity type, then record the
+        // study time so future targets can use it as a smart default.
+        if (s.targetId && s.studySeconds >= 180) { // only if ≥3 min studied
+          try {
+            // Dynamic import to avoid circular dependency
+            import('@/lib/store/targets').then(({ useTargets }) => {
+              const state = useTargets.getState();
+              let activity: string | null = null;
+              for (const date of Object.keys(state.byDate)) {
+                const target = state.byDate[date]?.find((t) => t.id === s.targetId);
+                if (target) { activity = target.activity; break; }
+              }
+              if (activity) {
+                import('@/lib/store/learnedTime').then(({ recordSessionTime }) => {
+                  recordSessionTime(s.subject, activity as any, s.studySeconds);
+                });
+              }
+            });
+          } catch {}
+        }
+      },
 
       deleteSession: (id) =>
         set((st) => ({ sessions: st.sessions.filter((x) => x.id !== id) })),

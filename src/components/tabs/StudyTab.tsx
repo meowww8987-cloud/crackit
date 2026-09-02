@@ -23,6 +23,7 @@ import { AddTargetSheet } from '@/components/study/AddTargetSheet';
 import { DetailSheet } from '@/components/study/DetailSheet';
 import { DoubtSheet } from '@/components/doubts/DoubtSheet';
 import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
+import { getLearnedExpectedMinutes } from '@/lib/store/learnedTime';
 
 const EMPTY_TARGETS: Target[] = [];
 const EASE_SMOOTH = [0.4, 0, 0.2, 1] as const;
@@ -250,7 +251,8 @@ export function StudyTab() {
 
   const handleQuickAdd = useCallback((activity: ActivityType) => {
     if (mounted) vibrate(12);
-    const defaultMinutes = activity === 'DPP' ? 30 : activity === 'Notes' ? 25 : activity === 'Revision' ? 20 : 45;
+    // Use learned time for this subject+activity, fall back to defaults
+    const defaultMinutes = getLearnedExpectedMinutes(quickAddSubject, activity);
     addTarget({
       date: todayKeyStr,
       subject: quickAddSubject,

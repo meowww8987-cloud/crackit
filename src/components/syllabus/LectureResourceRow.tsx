@@ -10,6 +10,7 @@ import { useSession } from '@/lib/store/session';
 import { subjectColor } from '@/lib/colors';
 import type { Lecture, Chapter, SubjectEntity, LectureResource, ActivityType } from '@/lib/types';
 import { cn, todayKey, vibrate, formatHM, nextRevisionDate } from '@/lib/utils';
+import { getLearnedExpectedMinutes } from '@/lib/store/learnedTime';
 import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 
 interface Props {
@@ -131,8 +132,8 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
       revision: 'Revision',
     };
     setActivity(activityMap[resource]);
-    // Default times per resource
-    const defaultTime = resource === 'dpp' ? 30 : resource === 'notes' ? 25 : resource === 'revision' ? 20 : 45;
+    // Use learned time for this subject+activity, fall back to defaults
+    const defaultTime = getLearnedExpectedMinutes(subject.name, activityMap[resource]);
     setResourceExpectedMinutes(defaultTime);
     setShowResourceAdd({ resource, label });
     vibrate(20);
