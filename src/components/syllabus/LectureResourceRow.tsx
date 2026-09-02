@@ -225,6 +225,18 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
     }
   };
 
+  // Short tap → open detail sheet (not long-press, not on a button)
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Only handle if long-press didn't fire
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      return;
+    }
+    e.stopPropagation();
+    vibrate(8);
+    onEdit(); // This opens the detail sheet (passed from SyllabusTab)
+  };
+
   const handleDeleteConfirm = () => {
     vibrate([10, 30, 10]);
     deleteLecture(lecture.id);
@@ -252,6 +264,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
         onPointerUp={(e) => handleLongPressEnd(e)}
         onPointerLeave={() => handleLongPressEnd()}
         onPointerCancel={() => handleLongPressEnd()}
+        onClick={handleCardClick}
       >
         {/* === Colored header row — subject color background ===
             The ENTIRE header row (lec# + topic name) has a subject-color
