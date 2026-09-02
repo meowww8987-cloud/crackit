@@ -51,6 +51,7 @@ import { SleepAnalysisSheet } from '@/components/dailylog/SleepAnalysisSheet';
 import { PracticeSetupSheet } from '@/components/practice/PracticeSetupSheet';
 import { PracticeRunner } from '@/components/practice/PracticeRunner';
 import { PracticeHistorySheet } from '@/components/practice/PracticeHistorySheet';
+import { usePractice } from '@/lib/store/practice';
 import { TabLongPressOverlay } from '@/components/shared/TabLongPressOverlay';
 import { TabInfoSheet, type TabKey as InfoTabKey } from '@/components/shared/TabInfoSheet';
 import { TutorialOnboarding } from '@/components/shared/TutorialOnboarding';
@@ -82,6 +83,7 @@ const TABS: { key: TabKey; label: string; icon: typeof Home; color: string }[] =
 export function AppShell() {
   const { activeTab, setTab, swipeToTab } = useNav();
   const { active, focusOpen, pendingMoodSession, tick } = useSession();
+  const activePractice = usePractice((s) => s.activePractice);
   const minimalMode = useSettings((s) => s.minimalMode);
   const oledBlack = useSettings((s) => s.oledBlack);
 
@@ -298,32 +300,40 @@ export function AppShell() {
 
   // ====== Tick loop ======
   // Single setInterval that calls tick() every second.
-  // PAUSED when document is hidden (tab switched / app backgrounded) to save battery.
+  // PAUSED when: document hidden (tab switched / app backgrounded)
+  //          OR full-screen overlay is active (focus/test/practice — they have
+  //             their own tick, AppShell tick is redundant + causes re-renders)
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
+    // Check if any full-screen session is active
+    const isFullScreenSession = () =>
+      focusOpen || !!activePaperTestId || !!activePractice;
 
     const start = () => {
-      if (interval) return;
+      if (interval || isFullScreenSession()) return;
       interval = setInterval(() => tick(), 1000);
     };
     const stop = () => {
       if (interval) { clearInterval(interval); interval = null; }
     };
 
-    // Start/stop based on visibility
+    // Start/stop based on visibility + full-screen state
     const handleVisibility = () => {
-      if (document.hidden) stop();
+      if (document.hidden || isFullScreenSession()) stop();
       else start();
     };
 
     handleVisibility(); // initial state
     document.addEventListener('visibilitychange', handleVisibility);
 
+    // Also react to full-screen session changes (focus open/close, test start/stop)
+    if (isFullScreenSession()) stop();
+
     return () => {
       stop();
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [tick]);
+  }, [tick, focusOpen, activePaperTestId, activePractice]);
 
   // ====== Auto-detect tab switching / app backgrounding ======
   useEffect(() => {
@@ -446,15 +456,15 @@ export function AppShell() {
 
       {/* Aurora 2.0 — animated multi-layer gradient background with parallax
           depth + subject-aware brightness boost when a session is running.
-          PAUSED when FocusTimer is open (hidden behind solid black overlay —
-          rendering 5 full-screen gradients per frame is pure waste). */}
-      {!focusOpen && !minimalMode && <GradientMesh />}
+          HIDDEN during focus/test/practice (invisible behind solid overlay). */}
+      {!focusOpen && !minimalMode && !activePaperTestId && !activePractice && <GradientMesh />}
 
       {/* === Adaptive Subject Glow ===
           When a session is active, adds a subtle colored tint to the entire screen
           based on the current subject (Physics=blue, Chem=purple, Botany=green, Zoology=red).
-          Barely visible — like a mood light. */}
-      {active && !active.paused && (
+          Barely visible — like a mood light.
+          HIDDEN during full-screen overlays (focus/test/practice) — invisible behind them. */}
+      {active && !active.paused && !focusOpen && !activePaperTestId && !activePractice && (
         <div
           className="fixed inset-0 pointer-events-none transition-opacity duration-1000"
           style={{
@@ -468,16 +478,25 @@ export function AppShell() {
       {/* 3D NEET scene — atoms / DNA / molecules / cells, subject-aware.
           Sits above the aurora but below the grid/noise/vignette overlays.
           Returns null when bg3DMode === 'off' (settings-controlled).
-          PAUSED when FocusTimer is open (invisible behind black overlay). */}
-      {!focusOpen && !minimalMode && activeTab === 'home' && <Scene3D />}
+          HIDDEN during focus/test/practice (invisible behind overlay). */}
+      {!focusOpen && !minimalMode && activeTab === 'home' && !activePaperTestId && !activePractice && <Scene3D />}
 
-      {/* Grid overlay for texture */}
-      <div className="fixed inset-0 grid-bg pointer-events-none" style={{ zIndex: 1 }} />
+      {/* Grid overlay for texture
+          HIDDEN during full-screen overlays — invisible behind them, saves GPU compositing. */}
+      {(!focusOpen && !activePaperTestId && !activePractice) && (
+        <div className="fixed inset-0 grid-bg pointer-events-none" style={{ zIndex: 1 }} />
+      )}
 
-      {/* Aurora noise + vignette overlays — layered above the canvas but below
-          all content. Noise kills gradient banding; vignette focuses the eye. */}
-      <div className="aurora-noise" aria-hidden />
-      <div className="aurora-vignette" aria-hidden />
+      {/* Aurora noise + vignette overlays
+          HIDDEN during full-screen overlays — mix-blend-mode: overlay is the most
+          expensive CSS property for mobile GPU. No point rendering it behind a
+          solid black focus/test/practice screen. */}
+      {(!focusOpen && !activePaperTestId && !activePractice) && (
+        <>
+          <div className="aurora-noise" aria-hidden />
+          <div className="aurora-vignette" aria-hidden />
+        </>
+      )}
 
       {/* Top bar removed — the green NEET logo in the top-left corner was
           redundant with the Home tab's header. Removed per user request. */}
@@ -533,7 +552,7 @@ export function AppShell() {
       {/* Bottom nav — always rendered, slides with CSS transform (no spring bounce) */}
       <nav
         className="absolute bottom-0 left-0 right-0 z-40 safe-bottom transition-transform duration-300 ease-out"
-        style={{ transform: navVisible ? 'translateY(0)' : 'translateY(120%)' }}
+        style={{ transform: (navVisible && !focusOpen && !activePaperTestId && !activePractice) ? 'translateY(0)' : 'translateY(120%)' }}
       >
             <div className="mx-auto max-w-md px-3 pb-2 pt-1">
               <div
