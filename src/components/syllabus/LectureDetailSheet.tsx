@@ -80,7 +80,13 @@ export function LectureDetailSheet({ lecture, chapter, subject, onClose, onEdit 
     : null;
 
   // === Comparison with other lectures in same chapter ===
-  const allChapterLectures = useSyllabus((s) => s.lectures.filter(l => l.chapterId === chapter.id));
+  // Select the raw lectures array (stable reference unless lectures change)
+  // and filter with useMemo to avoid infinite re-render from new array refs.
+  const allLectures = useSyllabus((s) => s.lectures);
+  const allChapterLectures = useMemo(
+    () => allLectures.filter(l => l.chapterId === chapter.id),
+    [allLectures, chapter.id]
+  );
   const avgStudyTime = allChapterLectures.length > 0
     ? allChapterLectures.reduce((a, l) => a + (l.timeSpentSec || 0), 0) / allChapterLectures.length
     : 0;
