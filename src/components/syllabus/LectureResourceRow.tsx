@@ -100,7 +100,6 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit, o
     }
     return activities;
   }, [todayTargets, lecture.id]);
-  const hasAnyAdded = addedActivities.size > 0;
   const labelPrefix = lecture.isCustom ? 'C' : 'L';
 
   // Active session detection
@@ -309,23 +308,6 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit, o
             borderBottom: `2px solid ${isComplete ? 'rgba(34,197,94,0.2)' : `${color.hex}20`}`,
           }}
         >
-          {/* === Activity-added badge (replaces old + button) ===
-              Shows colored dots for each activity added to today's targets.
-              If nothing added: small gray circle.
-              If activities added: colored dots (teal=Lec, green=DPP, blue=Notes, amber=Rev) */}
-          <div className="flex items-center gap-0.5 shrink-0" title={hasAnyAdded ? `${addedActivities.size} activit${addedActivities.size === 1 ? 'y' : 'ies'} added today` : 'Long-press a resource to add'}>
-            {hasAnyAdded ? (
-              <>
-                {addedActivities.has('Lecture') && <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#14b8a6' }} />}
-                {addedActivities.has('DPP') && <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e' }} />}
-                {addedActivities.has('Notes') && <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3b82f6' }} />}
-                {addedActivities.has('Revision') && <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#f59e0b' }} />}
-              </>
-            ) : (
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--muted-foreground/30)' }} />
-            )}
-          </div>
-
           {/* Lecture number badge */}
           <div
             className={cn(
@@ -398,13 +380,22 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit, o
           </div>
         </div>
 
-        {/* Resource toggle buttons — long-press to add as target */}
+        {/* Resource toggle buttons — long-press to add as target
+            Each button has 3 visual states:
+              1. DONE       → solid color bg + white icon + ✓
+              2. ADDED TODAY (not done) → tinted bg + colored border (2px) + colored icon + label
+              3. NEITHER    → visible gray bg + muted icon + label (clearly visible in all themes) */}
         <div className="grid grid-cols-4 gap-1.5 p-3">
           {RESOURCES.map((res) => {
             const isDone = res.key === 'lecture' ? lecture.done
               : res.key === 'dpp' ? lecture.dppDone
               : res.key === 'notes' ? lecture.notesDone
               : lecture.revisionDone;
+            const activityName = res.key === 'lecture' ? 'Lecture'
+              : res.key === 'dpp' ? 'DPP'
+              : res.key === 'notes' ? 'Notes'
+              : 'Revision';
+            const isAdded = !isDone && addedActivities.has(activityName);
             const Icon = res.icon;
             // Revision gets special color based on count
             const btnColor = res.key === 'revision' && revisionCount > 0 ? revisionColor : res.color;
@@ -419,11 +410,19 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit, o
                   'py-2 px-1 rounded-lg flex flex-col items-center justify-center gap-0.5 transition border active:scale-95 relative',
                   isDone
                     ? 'text-white border-transparent'
-                    : 'border-border bg-foreground/[0.03] text-muted-foreground hover:bg-foreground/[0.07]'
+                    : isAdded
+                    ? 'border-2'
+                    : 'border bg-foreground/[0.08] text-muted-foreground hover:bg-foreground/[0.14]'
                 )}
-                style={isDone ? { background: btnColor, boxShadow: `0 0 8px ${btnColor}60` } : undefined}
-                aria-label={`${res.label} — ${isDone ? 'done' : 'not done'}. Long-press to add as today's target.`}
-                title={`${res.label} — tap to toggle, long-press to add to today`}
+                style={
+                  isDone
+                    ? { background: btnColor, boxShadow: `0 0 8px ${btnColor}60`, borderColor: 'transparent' }
+                    : isAdded
+                    ? { background: `${btnColor}1a`, borderColor: btnColor, color: btnColor, boxShadow: `0 0 6px ${btnColor}30` }
+                    : { color: 'var(--muted-foreground)' }
+                }
+                aria-label={`${res.label} — ${isDone ? 'done' : isAdded ? 'added to today' : 'not done'}. Long-press to add as today's target.`}
+                title={`${res.label} — ${isDone ? 'done' : isAdded ? 'in today\'s targets — long-press to add again' : 'tap to toggle, long-press to add to today'}`}
               >
                 <Icon size={14} fill={isDone ? 'currentColor' : 'none'} />
                 <span className="text-[8px] font-semibold uppercase tracking-wide">
