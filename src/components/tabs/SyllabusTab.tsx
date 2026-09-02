@@ -614,30 +614,30 @@ export function SyllabusTab() {
                     />
 
                     <button onClick={() => setOpenChapter(chOpen ? null : ch.id)} className="w-full p-3.5 pt-4 flex items-center gap-3 text-left relative">
-                      {/* Progress ring (28px SVG) replaces the circle number */}
-                      <div className="shrink-0 relative" style={{ width: 32, height: 32 }}>
-                        <svg width="32" height="32" viewBox="0 0 32 32" className="-rotate-90">
-                          <circle cx="16" cy="16" r="13" fill="none" stroke="var(--bar-track, rgba(255,255,255,0.08))" strokeWidth="3" />
+                      {/* Progress ring — bigger (44px), % inside */}
+                      <div className="shrink-0 relative" style={{ width: 44, height: 44 }}>
+                        <svg width="44" height="44" viewBox="0 0 44 44" className="-rotate-90">
+                          <circle cx="22" cy="22" r="18" fill="none" stroke="var(--bar-track, rgba(255,255,255,0.08))" strokeWidth="4" />
                           <motion.circle
-                            cx="16" cy="16" r="13" fill="none"
+                            cx="22" cy="22" r="18" fill="none"
                             stroke={isComplete ? '#22c55e' : color.hex}
-                            strokeWidth="3"
+                            strokeWidth="4"
                             strokeLinecap="round"
                             initial={false}
-                            animate={{ strokeDashoffset: 81.68 - (81.68 * pct) / 100 }}
+                            animate={{ strokeDashoffset: 113.1 - (113.1 * pct) / 100 }}
                             transition={{ type: 'spring', stiffness: 60, damping: 20 }}
                             style={{
-                              strokeDasharray: 81.68,
-                              boxShadow: `0 0 4px ${isComplete ? 'rgba(34,197,94,0.5)' : color.glow}`,
+                              strokeDasharray: 113.1,
+                              filter: `drop-shadow(0 0 4px ${isComplete ? 'rgba(34,197,94,0.5)' : color.glow})`,
                             }}
                           />
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center">
                           {isComplete ? (
-                            <Check size={14} strokeWidth={3} color="#22c55e" />
+                            <Check size={16} strokeWidth={3} color="#22c55e" />
                           ) : (
-                            <span className="text-[9px] font-bold tabular" style={{ color: isInProgress ? color.hex : 'var(--muted-foreground)' }}>
-                              {pct}
+                            <span className="text-[11px] font-bold tabular" style={{ color: isInProgress ? color.hex : 'var(--muted-foreground)' }}>
+                              {pct}%
                             </span>
                           )}
                         </div>
@@ -670,46 +670,13 @@ export function SyllabusTab() {
                         </div>
                       </div>
 
-                      {/* % + chevron */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-sm font-bold tabular" style={{ color: isComplete ? '#22c55e' : isInProgress ? color.hex : 'var(--muted-foreground)' }}>
-                          {pct}%
-                        </span>
-                        <motion.div animate={{ rotate: chOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
-                          <ChevronDown size={16} className="text-muted-foreground" />
-                        </motion.div>
-                      </div>
+                      {/* Chevron only — % is now inside the ring */}
+                      <motion.div animate={{ rotate: chOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
+                        <ChevronDown size={16} className="text-muted-foreground" />
+                      </motion.div>
                     </button>
 
-                    {/* Segmented liquid progress bar — matches TargetCard */}
-                    <div className="px-3.5">
-                      <div className="relative h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}>
-                        <motion.div
-                          className="absolute inset-y-0 left-0 rounded-full overflow-hidden"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${pct}%` }}
-                          transition={{ type: 'spring', stiffness: 120, damping: 20 }}
-                        >
-                          <div
-                            className="absolute inset-0"
-                            style={{
-                              background: isComplete
-                                ? 'linear-gradient(90deg, #22c55e, #16a34a)'
-                                : `linear-gradient(90deg, ${color.hex}, ${color.hex}cc)`,
-                              boxShadow: `0 0 6px ${isComplete ? 'rgba(34,197,94,0.4)' : color.glow}`,
-                            }}
-                          />
-                        </motion.div>
-                        {/* Segment dividers at 25/50/75% */}
-                        {[25, 50, 75].map((pos) => (
-                          <div
-                            key={pos}
-                            className="absolute top-0 bottom-0 w-px pointer-events-none"
-                            style={{ left: `${pos}%`, background: 'var(--border, rgba(255,255,255,0.12))' }}
-                          />
-                        ))}
-                      </div>
-                    </div>
+                    {/* Horizontal progress bar REMOVED — ring shows progress now */}
 
                     {/* Resource row — cleaner spacing */}
                     {chLectures.length > 0 && (

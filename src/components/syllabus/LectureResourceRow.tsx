@@ -3,10 +3,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { Plus, Check, Pencil, Trash2, Play, FileText, BookOpen, RotateCw, RotateCcw, X, Clock } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTargets } from '@/lib/store/targets';
 import { useSession } from '@/lib/store/session';
+import { useHistory } from '@/lib/store/history';
 import { subjectColor } from '@/lib/colors';
 import type { Lecture, Chapter, SubjectEntity, LectureResource, ActivityType } from '@/lib/types';
 import { cn, todayKey, vibrate, formatHM, nextRevisionDate } from '@/lib/utils';
@@ -46,6 +47,31 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
   const addTarget = useTargets((s) => s.addTarget);
   const isAlreadyAdded = useTargets((s) => s.isAlreadyAddedToday);
   const activeSession = useSession((s) => s.active);
+
+  // === Total study time across ALL activities for this lecture ===
+  // Includes: focus sessions linked to this lecture + practice sessions
+  // matching subject+chapter+topic + lecture's accumulated timeSpentSec
+  const allSessions = useHistory((s) => s.sessions);
+  const totalStudyTime = useMemo(() => {
+    // 1. Lecture's accumulated time (from syllabus store)
+    let total = lecture.timeSpentSec || 0;
+    // 2. Find ALL history sessions matching this lecture's subject+chapter+topic
+    // This catches practice sessions, free study, etc. that aren't linked
+    // via targetId but still relate to this lecture
+    const matchingSessions = allSessions.filter(s =>
+      s.subject === subject.name &&
+      s.chapter === chapter.name &&
+      s.topic === lecture.topic
+    );
+    // Add any sessions not already counted in timeSpentSec
+    // (timeSpentSec is accumulated via addLectureStats, which only fires
+    // for sessions with a targetId linked to this lecture. Practice sessions
+    // don't have targetId, so they're not counted in timeSpentSec.)
+    const sessionTotal = matchingSessions.reduce((a, s) => a + s.studySeconds, 0);
+    // Use the larger of the two (avoid double-counting)
+    total = Math.max(total, sessionTotal);
+    return total;
+  }, [lecture.timeSpentSec, allSessions, subject.name, chapter.name, lecture.topic]);
 
   const color = subjectColor(subject.name);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -423,27 +449,26 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
           })}
         </div>
 
-        {/* Time/wasted/confidence/date row */}
-        {((lecture.timeSpentSec && lecture.timeSpentSec > 0) || lecture.doneDate) && (
-          <div className="flex items-center gap-3 px-3 pb-2.5 text-[11px] tabular flex-wrap" style={{ color: 'var(--muted-foreground)' }}>
-            {lecture.timeSpentSec && lecture.timeSpentSec > 0 && (
-              <span className="flex items-center gap-1">
-                <Play size={10} className="text-green-600 dark:text-green-400" fill="currentColor" />
-                <span className="text-foreground font-medium">{formatHM(lecture.timeSpentSec)}</span>
-              </span>
-            )}
+        {/* === Total study time row — shows ALL time across all activities === */}
+        {totalStudyTime > 0 && (
+          <div className="flex items-center gap-2 px-3 pb-2 text-[10px] tabular" style={{ borderTop: '1px solid var(--border)' }}>
+            <span className="flex items-center gap-1 pt-1.5">
+              <Play size={9} className="text-green-600 dark:text-green-400" fill="currentColor" />
+              <span className="text-green-600 dark:text-green-400 font-bold">{formatHM(totalStudyTime)}</span>
+              <span className="text-muted-foreground">total study time</span>
+            </span>
             {lecture.timeWastedSec && lecture.timeWastedSec > 0 && (
-              <span className="flex items-center gap-1">
-                <span className="text-red-500 dark:text-red-400">⚠</span>
-                <span className="text-red-500 dark:text-red-400 font-medium">{formatHM(lecture.timeWastedSec)}</span>
+              <span className="flex items-center gap-0.5 pt-1.5">
+                <span className="text-red-500">⚠</span>
+                <span className="text-red-500 font-medium">{formatHM(lecture.timeWastedSec)}</span>
               </span>
             )}
             {lecture.confidence && lecture.confidence > 0 && (
-              <span className="flex items-center gap-1" title={`Confidence: ${lecture.confidence}/5`}>
+              <span className="flex items-center gap-1 pt-1.5 ml-auto" title={`Confidence: ${lecture.confidence}/5`}>
                 {[1, 2, 3, 4, 5].map((d) => (
                   <span
                     key={d}
-                    className="inline-block w-2 h-2 rounded-full"
+                    className="inline-block w-1.5 h-1.5 rounded-full"
                     style={{
                       background: d <= lecture.confidence!
                         ? (lecture.confidence! >= 4 ? '#22c55e' : lecture.confidence! >= 3 ? '#f59e0b' : '#ef4444')
@@ -451,11 +476,6 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
                     }}
                   />
                 ))}
-              </span>
-            )}
-            {lecture.doneDate && (
-              <span className="ml-auto" style={{ color: 'var(--muted-foreground)' }}>
-                {new Date(lecture.doneDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </span>
             )}
           </div>
@@ -623,6 +643,20 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit }:
 
               {/* === Actions === */}
               <div className="py-1">
+                {/* View Details — opens the full detail sheet */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowActions(false); onEdit(); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
+                >
+                  <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-teal-500/20 text-teal-600 dark:text-teal-400">
+                    <BookOpen size={14} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium text-foreground">View Details</div>
+                    <div className="text-[10px] text-muted-foreground">Time stats, revision schedule, session history + more</div>
+                  </div>
+                </button>
+                {/* Edit Lecture */}
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowActions(false); onEdit(); }}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
