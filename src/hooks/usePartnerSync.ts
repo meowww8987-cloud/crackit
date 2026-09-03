@@ -60,9 +60,12 @@ export function usePartnerSync() {
   // === Immediate sync on ANY relevant state change (debounced 300ms) ===
   // Fires when: session starts/pauses/resumes/stops, target added/done,
   // session saved, test logged, practice starts/pauses/resumes/ends.
+  // === HEAT FIX: Skip when tab is hidden — onWake will sync on return ===
   useEffect(() => {
     if (!partnerCode) return;
+    if (document.hidden) return; // Skip — will sync on return via onWake
     const t = setTimeout(() => {
+      if (document.hidden) return; // Re-check in case tab went hidden during 300ms
       syncData();
       fetchPartnerData();
     }, 300);
@@ -86,7 +89,15 @@ export function usePartnerSync() {
     // Adaptive sync interval — faster when user is studying/practicing.
     // When hasActive changes, this effect re-runs (clearing old interval
     // and starting a new one at the new speed).
+    //
+    // === HEAT FIX: Skip sync cycles when tab is hidden ===
+    // When the app is backgrounded (screen off / switched apps), skip the
+    // sync cycle. The visibilitychange listener below (onWake) will fire
+    // an immediate sync when the user returns, so no data is lost.
+    // This prevents the radio + CPU from waking every 10-30s while the
+    // phone is in the user's pocket — major heat reduction on charging.
     const i = setInterval(() => {
+      if (document.hidden) return; // Skip — will sync on return via onWake
       syncData();
       fetchPartnerData();
     }, syncIntervalMs);

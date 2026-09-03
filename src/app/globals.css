@@ -1447,13 +1447,35 @@ html:not(.dark) .fill-white\/40 { fill: var(--muted-foreground, #6b7280) !import
   display: inline-block;
 }
 
-/* Outer glow for running cards */
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 24px -4px var(--glow-color, rgba(34,197,94,0.4)); }
-  50% { box-shadow: 0 0 36px 0 var(--glow-color, rgba(34,197,94,0.55)); }
-}
+/* Outer glow for running cards
+ * === HEAT FIX: Replaced animated box-shadow with opacity animation ===
+ * Animating box-shadow forces a full repaint of the element every frame
+ * (the shadow has to be re-rendered by the GPU). With 5+ active cards
+ * each running glow-pulse, that's 5 repaints/frame just for shadows.
+ *
+ * New approach: a static box-shadow on the element + a ::after pseudo-
+ * element with the same shadow that animates opacity 0.5 → 1 → 0.5.
+ * Opacity is composited on the GPU (cheap), no repaint needed.
+ */
 .glow-pulse {
-  animation: glow-pulse 2.5s ease-in-out infinite;
+  position: relative;
+  /* Static shadow — always present, never re-painted */
+  box-shadow: 0 0 24px -4px var(--glow-color, rgba(34,197,94,0.4));
+}
+.glow-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  /* Pulsing layer — only opacity animates (GPU-composited, cheap) */
+  box-shadow: 0 0 36px 0 var(--glow-color, rgba(34,197,94,0.55));
+  opacity: 0;
+  animation: glow-pulse-opacity 2.5s ease-in-out infinite;
+}
+@keyframes glow-pulse-opacity {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
 }
 
 /* Subtle fade-in */
@@ -1670,8 +1692,11 @@ button:active:not(:disabled) {
 }
 
 /* === Subject Ambient Glow ===
- * A very faint radial glow in the subject's color, positioned top-right.
- * Breathing animation (opacity 0.03 → 0.08 → 0.03 over 8s).
+ * === HEAT FIX: REMOVED 60px blur + infinite animation ===
+ * A 50vw×50vh element with filter: blur(60px) animating infinitely is one of
+ * the most expensive GPU operations on mobile. Even at 0.05 opacity, the GPU
+ * still has to composite a 60px-blurred layer every frame.
+ * Replaced with a static radial gradient — same visual effect, zero GPU work.
  */
 .ambient-glow {
   position: fixed;
@@ -1682,13 +1707,10 @@ button:active:not(:disabled) {
   pointer-events: none;
   z-index: 0;
   border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.05;
-  animation: ambient-breathe 8s ease-in-out infinite;
-}
-@keyframes ambient-breathe {
-  0%, 100% { opacity: 0.03; }
-  50% { opacity: 0.08; }
+  /* Static radial gradient replaces blur(60px) + animation */
+  background: radial-gradient(circle at center, var(--glow-color, rgba(99, 102, 241, 0.06)) 0%, transparent 70%);
+  opacity: 0.6;
+  /* No animation, no filter — pure CSS gradient, basically free */
 }
 
 /* OLED Black mode — pure #000000 backgrounds for battery saving */

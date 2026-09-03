@@ -488,12 +488,15 @@ export function AppShell() {
       )}
 
       {/* Aurora noise + vignette overlays
-          HIDDEN during full-screen overlays — mix-blend-mode: overlay is the most
-          expensive CSS property for mobile GPU. No point rendering it behind a
-          solid black focus/test/practice screen. */}
+          === HEAT FIX: REMOVED aurora-noise, kept aurora-vignette ===
+          aurora-noise uses mix-blend-mode: overlay on a full-viewport fractal
+          noise texture — the most expensive CSS property for mobile GPU.
+          It runs constant compositing work on every visible tab.
+          aurora-vignette is just a radial gradient overlay (cheap), so we
+          keep it for the edge-darkening effect.
+          HIDDEN during full-screen overlays anyway. */}
       {(!focusOpen && !activePaperTestId && !activePractice) && (
         <>
-          <div className="aurora-noise" aria-hidden />
           <div className="aurora-vignette" aria-hidden />
         </>
       )}

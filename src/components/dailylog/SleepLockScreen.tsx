@@ -161,13 +161,34 @@ export function SleepLockScreen() {
   }, [activeSleep, visibleSleep, exiting, setTab]);
 
   // Live timer + time-of-day updater
+  // === HEAT FIX: Skip tick when tab is hidden ===
+  // When the screen is off / app backgrounded, the 1s tick still fires on
+  // charging (Android doesn't throttle). Each tick re-renders the entire
+  // sleep screen with 20+ infinite animations → GPU never sleeps all night.
+  // When the user returns, the visibilitychange listener fires an immediate
+  // catch-up tick + onWake syncs.
   useEffect(() => {
     if (!visibleSleep) return;
     const i = setInterval(() => {
+      if (document.hidden) return; // Skip — will catch up on return
       setTick((t) => t + 1);
       setTod(getTimeOfDay(new Date().getHours()));
     }, 1000);
     return () => clearInterval(i);
+  }, [visibleSleep]);
+
+  // === Catch-up tick when tab becomes visible again ===
+  // Ensures the timer shows the correct time after returning from background.
+  useEffect(() => {
+    if (!visibleSleep) return;
+    const onVisible = () => {
+      if (!document.hidden) {
+        setTick((t) => t + 1);
+        setTod(getTimeOfDay(new Date().getHours()));
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [visibleSleep]);
 
   // Reset to sleeping phase when sleep is cleared
@@ -863,15 +884,19 @@ function TimeScenery({ tod }: { tod: TimeOfDay }) {
 
 // ===== Night / Evening scenery — stars, moon, clouds, shooting stars, hills =====
 function NightEveningScenery({ showMoon }: { showMoon: boolean }) {
-  const stars = useMemo(() => Array.from({ length: 40 }, (_, i) => ({
+  // === HEAT FIX: Reduced from 40 → 8 stars ===
+  // 40 twinkling stars = 40 simultaneous infinite animations all night.
+  // 8 is enough to convey a starry night without cooking the GPU.
+  const stars = useMemo(() => Array.from({ length: 8 }, (_, i) => ({
     id: i, x: Math.random() * 100, y: Math.random() * 60,
     size: 1 + Math.random() * 2, delay: Math.random() * 4, duration: 2 + Math.random() * 3,
   })), []);
 
+  // === HEAT FIX: Reduced from 3 → 1 cloud ===
+  // Clouds animate across 100vw linearly for 60-80s each — 3 of them means
+  // a constant linear animation always in flight. 1 is enough.
   const clouds = useMemo(() => [
     { id: 1, top: '15%', duration: 60, delay: 0, scale: 1 },
-    { id: 2, top: '25%', duration: 80, delay: 20, scale: 0.7 },
-    { id: 3, top: '8%', duration: 70, delay: 40, scale: 0.85 },
   ], []);
 
   return (
@@ -934,7 +959,8 @@ function NightEveningScenery({ showMoon }: { showMoon: boolean }) {
 
 // ===== Dawn scenery — fading stars + warm horizon glow =====
 function DawnScenery() {
-  const stars = useMemo(() => Array.from({ length: 15 }, (_, i) => ({
+  // === HEAT FIX: Reduced from 15 → 5 stars ===
+  const stars = useMemo(() => Array.from({ length: 5 }, (_, i) => ({
     id: i, x: Math.random() * 100, y: Math.random() * 40,
     size: 1 + Math.random() * 1.5, delay: Math.random() * 3, duration: 2 + Math.random() * 2,
   })), []);
@@ -980,10 +1006,9 @@ function DawnScenery() {
 
 // ===== Day scenery (morning / noon) — sun + clouds + bright sky =====
 function DayScenery({ bright }: { bright: boolean }) {
+  // === HEAT FIX: Reduced from 3 → 1 cloud ===
   const clouds = useMemo(() => [
     { id: 1, top: '12%', duration: 50, delay: 0, scale: 1 },
-    { id: 2, top: '22%', duration: 70, delay: 15, scale: 0.7 },
-    { id: 3, top: '6%', duration: 60, delay: 30, scale: 0.85 },
   ], []);
 
   return (

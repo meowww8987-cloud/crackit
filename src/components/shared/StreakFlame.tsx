@@ -39,6 +39,21 @@ export function StreakFlame({ streak, className }: Props) {
   // Pause animations when tab hidden OR reduceMotion is on
   const animate = isVisible && !reduceMotion;
 
+  // === HEAT FIX: Freeze flame flicker after 3 seconds ===
+  // The flame flicker animation (scale + rotate + skewX) runs infinitely on
+  // the Home tab whenever streak > 0 (always). After 3 seconds, the user has
+  // already seen the flame "alive" — we freeze it to a static state to save
+  // GPU. The flame still shows, just doesn't flicker. Re-animates for 3s
+  // whenever the component re-mounts (e.g., returning to Home tab).
+  const [flickerActive, setFlickerActive] = useState(true);
+  useEffect(() => {
+    setFlickerActive(true); // Re-activate on mount / visibility return
+    const t = setTimeout(() => setFlickerActive(false), 3000);
+    return () => clearTimeout(t);
+  }, [isVisible]); // Re-run when tab becomes visible again
+  // Combine: only flicker if visible + motion allowed + within 3s window
+  const flickerAnimate = animate && flickerActive;
+
   // Check if streak is at risk: past 6 PM and no study today
   useEffect(() => {
     const check = () => {
@@ -171,7 +186,9 @@ export function StreakFlame({ streak, className }: Props) {
         {/* SVG Flame — with dark outline for light-theme visibility */}
         <motion.div
           animate={
-            atRisk
+            !flickerAnimate
+              ? {} // Frozen — no animation after 3s (HEAT FIX)
+              : atRisk
               ? {
                   // Cold/dying — weak flicker
                   scale: [1, 0.92, 1.05, 0.95, 1],
@@ -184,11 +201,15 @@ export function StreakFlame({ streak, className }: Props) {
                   skewX: [0, 2, -1, 1, 0],
                 }
           }
-          transition={{
-            duration: atRisk ? 2 : 0.8,
-            repeat: animate ? Infinity : 0,
-            ease: 'easeInOut',
-          }}
+          transition={
+            !flickerAnimate
+              ? { duration: 0 }
+              : {
+                  duration: atRisk ? 2 : 0.8,
+                  repeat: animate ? Infinity : 0,
+                  ease: 'easeInOut',
+                }
+          }
           style={{
             width: c.size,
             height: c.size,
