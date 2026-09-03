@@ -103,27 +103,33 @@ export function SyllabusTab() {
   // Computed once per sessions change, used by the "studying" filter below.
   const chapterLastTouchedAt = useMemo(() => {
     const map: Record<string, number> = {};
+    // Defensive: ensure all data is valid arrays (handles hydration edge cases)
+    const safeLectures = Array.isArray(lectures) ? lectures : [];
+    const safeChapters = Array.isArray(chapters) ? chapters : [];
+    const safeSubjects = Array.isArray(subjects) ? subjects : [];
+    const safeSessions = Array.isArray(allSessions) ? allSessions : [];
     // Index lectures by chapterId for quick lookup
     const lecToChapter: Record<string, string> = {};
-    for (const l of lectures) lecToChapter[l.id] = l.chapterId;
+    for (const l of safeLectures) lecToChapter[l.id] = l.chapterId;
     // Also match by subject+chapter name (for sessions without targetId / practice)
     const chapByName: Record<string, string> = {};
-    for (const c of chapters) {
-      const subj = subjects.find((s) => s.id === c.subjectId);
+    for (const c of safeChapters) {
+      const subj = safeSubjects.find((s) => s.id === c.subjectId);
       if (subj) chapByName[`${subj.name}||${c.name}`] = c.id;
     }
-    for (const s of allSessions) {
-      let chId: string | undefined;
-      if (s.targetId && lecToChapter[s.targetId]) {
-        chId = lecToChapter[s.targetId];
-      } else if (s.chapter) {
-        // Find subject from session — s.subject is the Subject name
-        chId = chapByName[`${s.subject}||${s.chapter}`];
-      }
-      if (chId) {
-        const ts = s.endedAt || s.startedAt;
-        if (!map[chId] || ts > map[chId]) map[chId] = ts;
-      }
+    for (const s of safeSessions) {
+      try {
+        let chId: string | undefined;
+        if (s.targetId && lecToChapter[s.targetId]) {
+          chId = lecToChapter[s.targetId];
+        } else if (s.chapter) {
+          chId = chapByName[`${s.subject}||${s.chapter}`];
+        }
+        if (chId) {
+          const ts = s.endedAt || s.startedAt;
+          if (!map[chId] || ts > map[chId]) map[chId] = ts;
+        }
+      } catch {}
     }
     return map;
   }, [allSessions, lectures, chapters, subjects]);

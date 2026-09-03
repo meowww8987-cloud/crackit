@@ -4,7 +4,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Target, Subject, ActivityType } from '@/lib/types';
 import { todayKey, uid, isToday } from '@/lib/utils';
-import { useLearnedTime } from './learnedTime';
+
+// NOTE: useLearnedTime is imported lazily inside addTarget() to avoid any
+// potential module loading order issues. The import is done via a cached
+// dynamic require pattern that's safe for both SSR and client.
 
 interface TargetsStore {
   // keyed by date string YYYY-MM-DD
@@ -45,33 +48,32 @@ export const useTargets = create<TargetsStore>()(
         // with the same subject + activity (any lecture, any chapter), the
         // expected time auto-fills with the learned value.
         //
-        // We record SYNCHRONOUSLY (Zustand state + localStorage) so the value
-        // is immediately available for the next addTarget call, even within the
-        // same session.
-        //
-        // We accept any reasonable expected time (5–240 min). The store keeps
-        // the last 20 samples per (subject, activity) pair and uses the median,
-        // so occasional outliers don't skew the auto-fill.
+        // We use a lazy import to avoid any module loading order issues.
         if (t.expectedMinutes >= 5 && t.expectedMinutes <= 240) {
           try {
-            useLearnedTime.getState().record(
-              t.subject as Subject,
-              t.activity as ActivityType,
-              t.expectedMinutes
-            );
+            // Lazy import — safe for SSR (only called from event handlers)
+            const { useLearnedTime } = require('./learnedTime');
+            if (useLearnedTime && useLearnedTime.getState) {
+              useLearnedTime.getState().record(
+                t.subject as Subject,
+                t.activity as ActivityType,
+                t.expectedMinutes
+              );
+            }
           } catch {}
-          // Also write directly to localStorage as a safety net (in case the
-          // Zustand persist middleware hasn't flushed yet)
+          // Also write directly to localStorage as a safety net
           try {
-            const ltRaw = localStorage.getItem('neet-learned-times');
-            const ltParsed = ltRaw ? JSON.parse(ltRaw) : { state: { data: {} } };
-            const data = ltParsed?.state?.data || {};
-            const key = `${t.subject}:${t.activity}`;
-            const existing = data[key] || [];
-            data[key] = [...existing, t.expectedMinutes].slice(-20);
-            ltParsed.state = ltParsed.state || {};
-            ltParsed.state.data = data;
-            localStorage.setItem('neet-learned-times', JSON.stringify(ltParsed));
+            if (typeof localStorage !== 'undefined') {
+              const ltRaw = localStorage.getItem('neet-learned-times');
+              const ltParsed = ltRaw ? JSON.parse(ltRaw) : { state: { data: {} } };
+              const data = ltParsed?.state?.data || {};
+              const key = `${t.subject}:${t.activity}`;
+              const existing = data[key] || [];
+              data[key] = [...existing, t.expectedMinutes].slice(-20);
+              ltParsed.state = ltParsed.state || {};
+              ltParsed.state.data = data;
+              localStorage.setItem('neet-learned-times', JSON.stringify(ltParsed));
+            }
           } catch {}
         }
 

@@ -4,7 +4,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { SavedSession, Subject, ActivityType } from '@/lib/types';
 import { todayKey, isSameDay } from '@/lib/utils';
-import { useLearnedTime } from './learnedTime';
+
+// NOTE: useLearnedTime is imported lazily inside addSession() to avoid any
+// potential module loading order issues.
 
 interface HistoryStore {
   sessions: SavedSession[];
@@ -37,11 +39,10 @@ export const useHistory = create<HistoryStore>()(
         // === Record learned time for this subject+activity pair ===
         // This powers the AI that auto-fills expected time when adding new targets.
         // We look up the target's activity from localStorage (synchronous) and
-        // update BOTH the Zustand store state AND localStorage. Updating the
-        // Zustand state is critical — otherwise the store stays empty and
-        // persist middleware can overwrite localStorage on next hydration.
+        // update BOTH the Zustand store state AND localStorage.
         if (s.targetId && s.studySeconds >= 180) {
           try {
+            if (typeof localStorage === 'undefined') return;
             // Read targets from localStorage directly (synchronous, no import)
             const raw = localStorage.getItem('neet-targets');
             if (raw) {
@@ -55,15 +56,18 @@ export const useHistory = create<HistoryStore>()(
               if (activity) {
                 const minutes = Math.round(s.studySeconds / 60);
                 if (minutes >= 3 && minutes <= 240) {
-                  // 1. Update Zustand store state (reactive + triggers persist write)
-                  useLearnedTime.getState().record(
-                    s.subject as Subject,
-                    activity,
-                    minutes
-                  );
+                  // 1. Update Zustand store state via lazy import
+                  try {
+                    const { useLearnedTime } = require('./learnedTime');
+                    if (useLearnedTime && useLearnedTime.getState) {
+                      useLearnedTime.getState().record(
+                        s.subject as Subject,
+                        activity,
+                        minutes
+                      );
+                    }
+                  } catch {}
                   // 2. Also write directly to localStorage as a safety net
-                  // (record() above already triggers persist, but this ensures
-                  // the data is there even if persist is delayed)
                   try {
                     const ltRaw = localStorage.getItem('neet-learned-times');
                     const ltParsed = ltRaw ? JSON.parse(ltRaw) : { state: { data: {} } };

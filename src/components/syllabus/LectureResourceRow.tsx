@@ -54,12 +54,14 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit, o
   // matching subject+chapter+topic + lecture's accumulated timeSpentSec
   const allSessions = useHistory((s) => s.sessions);
   const totalStudyTime = useMemo(() => {
+    // Defensive: ensure allSessions is an array (handles hydration edge cases)
+    const sessions = Array.isArray(allSessions) ? allSessions : [];
     // 1. Lecture's accumulated time (from syllabus store)
     let total = lecture.timeSpentSec || 0;
     // 2. Find ALL history sessions matching this lecture's subject+chapter+topic
     // This catches practice sessions, free study, etc. that aren't linked
     // via targetId but still relate to this lecture
-    const matchingSessions = allSessions.filter(s =>
+    const matchingSessions = sessions.filter(s =>
       s.subject === subject.name &&
       s.chapter === chapter.name &&
       s.topic === lecture.topic
@@ -93,8 +95,10 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit, o
   // Check which activities are added to today's targets for this lecture
   const addedActivities = useMemo(() => {
     const activities = new Set<string>();
-    for (const t of todayTargets) {
-      if (t.lectureId === lecture.id) {
+    // Defensive: ensure todayTargets is an array
+    const targets = Array.isArray(todayTargets) ? todayTargets : [];
+    for (const t of targets) {
+      if (t && t.lectureId === lecture.id) {
         activities.add(t.activity);
       }
     }
