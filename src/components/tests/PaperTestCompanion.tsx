@@ -77,8 +77,12 @@ export function PaperTestCompanion({ testId, onClose }: Props) {
   }, [testId, test, initPaperTest]);
 
   // Live ticking — 500ms for smooth display
+  // === HEAT FIX: Skip when tab hidden ===
   useEffect(() => {
-    const i = setInterval(() => setTick((t) => t + 1), 500);
+    const i = setInterval(() => {
+      if (document.hidden) return;
+      setTick((t) => t + 1);
+    }, 500);
     return () => clearInterval(i);
   }, []);
 

@@ -275,6 +275,10 @@ export function NextTestCard() {
 export function TestDayMode() {
   const tests = useTests((s) => s.tests);
   const setTab = useNav((s) => s.setTab);
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
 
   const todayInfo = useMemo(() => getTestToday(tests), [tests]);
   if (!todayInfo) return null;
@@ -318,7 +322,7 @@ export function TestDayMode() {
       {/* Background pulse */}
       <motion.div
         animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.05, 0.2] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 4, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
         className="absolute -right-10 -top-10 w-32 h-32 rounded-full bg-teal-500/20 blur-2xl pointer-events-none"
       />
 

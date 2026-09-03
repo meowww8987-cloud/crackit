@@ -374,6 +374,16 @@ export function AppShell() {
     document.addEventListener('freeze', onFreeze);
     document.addEventListener('resume', onResume);
 
+    // === HEAT FIX: Toggle `hidden-anim` class on <html> when tab visibility changes ===
+    // Combined with CSS in globals.css, this pauses ALL CSS infinite animations
+    // (pulse-slow, pulse-fast, skeleton, etc.) when the tab is hidden.
+    // Single chokepoint — zero UX impact, animations resume on return.
+    const toggleAnimClass = () => {
+      document.documentElement.classList.toggle('hidden-anim', document.hidden);
+    };
+    toggleAnimClass(); // Set initial state
+    document.addEventListener('visibilitychange', toggleAnimClass);
+
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('blur', onBlur);
@@ -382,6 +392,7 @@ export function AppShell() {
       window.removeEventListener('pageshow', onPageShow);
       document.removeEventListener('freeze', onFreeze);
       document.removeEventListener('resume', onResume);
+      document.removeEventListener('visibilitychange', toggleAnimClass);
     };
   }, []);
 

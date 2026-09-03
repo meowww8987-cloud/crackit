@@ -6,6 +6,7 @@ import { X, Moon, Star } from 'lucide-react';
 import { useSleep } from '@/lib/store/sleep';
 import { classifySleep, verdictColor } from '@/lib/sleepHealth';
 import { formatHM } from '@/lib/utils';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 import { SleepAnalysisSheet } from './SleepAnalysisSheet';
 
 interface SleepHistorySheetProps {
@@ -28,6 +29,10 @@ export function SleepHistorySheet({ open, onClose }: SleepHistorySheetProps) {
  const history = useSleep((s) => s.history);
  const [showAnalysis, setShowAnalysis] = useState(false);
  const [analysisTab, setAnalysisTab] = useState<'weekly' | 'monthly'>('weekly');
+ // === HEAT FIX: Gate animations when tab hidden ===
+ const isVisible = useVisibility();
+ const reduceMotion = useReducedMotion();
+ const animate = isVisible && !reduceMotion;
 
  // Group by date
  const grouped = useMemo(() => {
@@ -87,7 +92,7 @@ export function SleepHistorySheet({ open, onClose }: SleepHistorySheetProps) {
  height: 1 + (i % 3),
  }}
  animate={{ opacity: [0.2, 0.8, 0.2] }}
- transition={{ duration: 2 + (i % 3), repeat: Infinity, delay: i * 0.3 }}
+ transition={{ duration: 2 + (i % 3), repeat: animate ? Infinity : 0, delay: i * 0.3 }}
  />
  ))}
 
@@ -105,7 +110,7 @@ export function SleepHistorySheet({ open, onClose }: SleepHistorySheetProps) {
  <div className="relative flex items-center gap-3">
  <motion.div
  animate={{ scale: [1, 1.1, 1], opacity: [0.8, 1, 0.8] }}
- transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+ transition={{ duration: 4, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
  className="text-4xl"
  style={{ filter: 'drop-shadow(0 0 20px rgba(165,180,252,0.6))' }}
  >

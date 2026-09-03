@@ -45,15 +45,23 @@ export function TestTimer({ testId, onClose }: Props) {
   const wakeLockRef = useRef<any>(null);
 
   // Live ticking — 500ms for smooth display
+  // === HEAT FIX: Skip when tab hidden — timer is Date-diff based ===
   useEffect(() => {
-    const i = setInterval(() => setTick((t) => t + 1), 500);
+    const i = setInterval(() => {
+      if (document.hidden) return;
+      setTick((t) => t + 1);
+    }, 500);
     return () => clearInterval(i);
   }, []);
 
   // Periodic commit (every 30s) — persists elapsed in case app crashes
+  // === HEAT FIX: Skip when tab hidden — beforeunload handler saves on kill ===
   useEffect(() => {
     if (!test || test.timerState !== 'running') return;
-    const i = setInterval(() => tickTimer(test.id), 30000);
+    const i = setInterval(() => {
+      if (document.hidden) return;
+      tickTimer(test.id);
+    }, 30000);
     return () => clearInterval(i);
   }, [test?.id, test?.timerState, tickTimer]);
 

@@ -49,6 +49,7 @@ export function BreakExercise({ durationSec, onClose }: Props) {
 
   useEffect(() => {
     const i = setInterval(() => {
+      if (document.hidden) return; // === HEAT FIX: Skip when tab hidden ===
       setRemaining((r) => {
         if (r <= 1) {
           clearInterval(i);
@@ -121,6 +122,7 @@ function BoxBreathing() {
 
   useEffect(() => {
     const i = setInterval(() => {
+      if (document.hidden) return; // === HEAT FIX ===
       setPhaseSec((s) => {
         if (s <= 1) {
           // Move to next phase
@@ -168,6 +170,7 @@ function EyeRest({ durationSec }: { durationSec: number }) {
 
   useEffect(() => {
     const i = setInterval(() => {
+      if (document.hidden) return; // === HEAT FIX ===
       setRemaining((r) => Math.max(0, r - 1));
     }, 1000);
     return () => clearInterval(i);
@@ -206,6 +209,7 @@ function StretchSequence() {
 
   useEffect(() => {
     const i = setInterval(() => {
+      if (document.hidden) return; // === HEAT FIX ===
       setStepSec((s) => {
         if (s <= 1) {
           setStepIdx((idx) => (idx + 1) % STRETCH_STEPS.length);

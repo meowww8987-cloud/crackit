@@ -6,6 +6,7 @@ import { Moon, Sunrise, X, Bed } from 'lucide-react';
 import { useSleep } from '@/lib/store/sleep';
 import { useSettings } from '@/lib/store/settings';
 import { cn, formatHM, vibrate } from '@/lib/utils';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 /**
  * SleepBanner — persistent banner shown at the top of the Home tab.
@@ -30,6 +31,10 @@ export function SleepBanner() {
  const startSleep = useSleep((s) => s.startSleep);
  const wakeUp = useSleep((s) => s.wakeUp);
  const cancelSleep = useSleep((s) => s.cancelSleep);
+ // === HEAT FIX: Gate animations when tab hidden ===
+ const isVisible = useVisibility();
+ const reduceMotion = useReducedMotion();
+ const animate = isVisible && !reduceMotion;
  const haptics = useSettings((s) => s.haptics);
 
  // Live ticking duration
@@ -104,7 +109,7 @@ export function SleepBanner() {
  <div className="p-3 flex items-center gap-3">
  <motion.div
  animate={{ scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] }}
- transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+ transition={{ duration: 3, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
  className="w-10 h-10 rounded-full bg-indigo-500/25 flex items-center justify-center shrink-0 text-xl"
  >
  😴

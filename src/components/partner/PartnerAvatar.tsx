@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 type PartnerStatus = 'studying' | 'paused' | 'wasting' | 'offline' | 'online' | 'idle';
 
@@ -59,6 +60,10 @@ export function PartnerAvatar({
   // Normalize legacy status values
   const normalized: 'studying' | 'online' | 'paused' | 'wasting' | 'offline' =
     status === 'idle' ? 'paused' : status;
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
 
   const glowColor = subjectColor || accentColor;
   const activelyStudying = normalized === 'studying' || isStudying;
@@ -78,7 +83,7 @@ export function PartnerAvatar({
       {activelyStudying && (
         <motion.div
           animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.08, 1] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 2, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
           className="absolute inset-0 rounded-full"
           style={{
             background: `radial-gradient(circle, ${glowColor}40, transparent 70%)`,
@@ -123,7 +128,7 @@ export function PartnerAvatar({
         {activelyStudying && (
           <motion.div
             animate={{ scale: [1, 1.6, 1], opacity: [0.8, 0, 0.8] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
+            transition={{ duration: 1.5, repeat: animate ? Infinity : 0 }}
             className="absolute inset-0 rounded-full"
             style={{ background: statusColor }}
           />

@@ -169,7 +169,11 @@ export function useLockTimerTick() {
   const [, setTick] = useState(0);
   useEffect(() => {
     if (!isActive) return;
-    const i = setInterval(() => setTick((t) => t + 1), 1000);
+    // === HEAT FIX: Skip when tab hidden — getRemainingSec is Date-diff based ===
+    const i = setInterval(() => {
+      if (document.hidden) return;
+      setTick((t) => t + 1);
+    }, 1000);
     return () => clearInterval(i);
   }, [isActive]);
 }

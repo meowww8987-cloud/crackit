@@ -12,6 +12,7 @@ import {
 } from '@/lib/sleepHealth';
 import { formatHM, vibrate } from '@/lib/utils';
 import { SleepBackfillSheet } from '@/components/dailylog/SleepBackfillSheet';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 /**
  * SleepHealthCard — modernized sleep health summary card for Stats tab.
@@ -35,6 +36,10 @@ import { SleepBackfillSheet } from '@/components/dailylog/SleepBackfillSheet';
 export function SleepHealthCard({ onTap }: { onTap: () => void }) {
   const history = useSleep((s) => s.history);
   const activeSleep = useSleep((s) => s.activeSleep);
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   const report = useMemo(() => buildWeeklySleepReport(history), [history]);
   const last7 = useMemo(() => sleepLast7Days(history, activeSleep), [history, activeSleep]);
 
@@ -53,7 +58,11 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
   const isSleepingNow = last7.activeSleepDurationSec > 0;
   useEffect(() => {
     const interval = isSleepingNow ? 1000 : 30000;
-    const t = setInterval(() => setTick((x) => x + 1), interval);
+    // === HEAT FIX: Skip when tab hidden — sleep duration is Date-diff based ===
+    const t = setInterval(() => {
+      if (document.hidden) return;
+      setTick((x) => x + 1);
+    }, interval);
     return () => clearInterval(t);
   }, [isSleepingNow]);
 
@@ -183,7 +192,7 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
               <div className="flex items-center gap-1.5 mb-1">
                 <motion.div
                   animate={{ opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity }}
+                  transition={{ duration: 2, repeat: animate ? Infinity : 0 }}
                 >
                   <Bed size={12} style={{ color: '#818cf8' }} />
                 </motion.div>
@@ -315,7 +324,7 @@ export function SleepHealthCard({ onTap }: { onTap: () => void }) {
                   {day.isSleepingNow && (
                     <motion.div
                       animate={{ opacity: [0.5, 1, 0.5] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
+                      transition={{ duration: 1.5, repeat: animate ? Infinity : 0 }}
                       className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
                       style={{ background: '#818cf8' }}
                     />

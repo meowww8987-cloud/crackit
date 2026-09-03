@@ -250,6 +250,8 @@ export function PracticeRunner() {
     if (!activePractice) return;
     const i = setInterval(() => {
       if (menuOpen) return;
+      // === HEAT FIX: Skip when tab hidden — auto-end fires on next visible tick ===
+      if (document.hidden) return;
       setTick((t) => t + 1);
       const session = usePractice.getState().activePractice;
       if (session && session.timeLimitMin > 0) {

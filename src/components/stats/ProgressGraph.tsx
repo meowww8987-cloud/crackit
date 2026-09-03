@@ -246,7 +246,7 @@ export function ProgressGraph() {
                 stroke="#ffffff"
                 strokeWidth="1"
               >
-                <animate attributeName="r" values="2.5;4;2.5" dur="2s" repeatCount="indefinite" />
+                {/* === HEAT FIX: Removed SVG SMIL <animate> — static dot instead === */}
               </circle>
             )}
 

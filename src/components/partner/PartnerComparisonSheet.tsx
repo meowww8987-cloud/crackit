@@ -12,6 +12,7 @@ import { formatHM, todayKey, dateKey, addDays, vibrate } from '@/lib/utils';
 import type { Target as TargetType } from '@/lib/types';
 import { PartnerAvatar } from '@/components/partner/PartnerAvatar';
 import { PartnerProgressRing } from '@/components/partner/PartnerProgressRing';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 const EMPTY_TARGETS: TargetType[] = [];
 
@@ -32,6 +33,10 @@ export function PartnerComparisonSheet({ onClose }: Props) {
   const sessions = useHistory((s) => s.sessions);
   const myActiveSession = useSession((s) => s.active);
   const _byDate = useTargets((s) => s.byDate);
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   const _today = todayKey();
   const myTodayTargets = _byDate[_today] || EMPTY_TARGETS;
   const myTests = useTests.getState().tests;
@@ -219,7 +224,7 @@ export function PartnerComparisonSheet({ onClose }: Props) {
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.3)' }}>
               <motion.span
                 animate={{ opacity: [0.4, 1, 0.4] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
+                transition={{ duration: 1.5, repeat: animate ? Infinity : 0 }}
                 className="inline-block w-1.5 h-1.5 rounded-full"
                 style={{ background: '#16a34a' }}
               />

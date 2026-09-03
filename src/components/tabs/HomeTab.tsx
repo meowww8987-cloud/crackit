@@ -82,7 +82,11 @@ export function HomeTab() {
     if (!activeFocusSession && !activePractice) return;
     // 3-second tick for passive displays (progress rings, stats) — saves CPU
     // Active timers (FocusTimer, LockTimer) have their own 1s tick.
-    const i = setInterval(() => setLiveTick((t) => t + 1), 3000);
+    // === HEAT FIX: Skip when tab hidden ===
+    const i = setInterval(() => {
+      if (document.hidden) return;
+      setLiveTick((t) => t + 1);
+    }, 3000);
     return () => clearInterval(i);
   }, [activeFocusSession, activePractice]);
 
@@ -195,11 +199,15 @@ export function HomeTab() {
   }, [timetableSlots]);
 
   // Fix #10: Date updates at midnight (poll every 60s)
+  // === HEAT FIX: Skip when tab hidden — AppShell visibilitychange catches up ===
   const [dateText, setDateText] = useState('');
   useEffect(() => {
     const update = () => setDateText(longDate());
     update();
-    const interval = setInterval(update, 60000);
+    const interval = setInterval(() => {
+      if (document.hidden) return;
+      update();
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -523,6 +531,10 @@ function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
   onOpenReport: () => void;
   onOpenPlan: () => void;
 }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   // FIXED: Subscribe to raw data (stable references) + compute derived values
   // in useMemo. Previous code called s.getToday(), s.getDurationForDate(),
   // s.getAverageHours(), s.doubts.filter() in the selector — these create
@@ -592,7 +604,7 @@ function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
             <div className="flex items-center gap-2">
               <motion.div
                 animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                transition={{ duration: 2, repeat: animate ? Infinity : 0 }}
                 className="text-xl"
               >🌙</motion.div>
               <div className="flex-1">

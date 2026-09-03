@@ -74,8 +74,12 @@ export function FocusTimer() {
   const lastInteractRef = useRef(Date.now());
 
   // Live ticking — 500ms normally, 5s when dimmed (saves CPU on low-end devices)
+  // === HEAT FIX: Skip tick when tab hidden — timer state is Date-diff based ===
   useEffect(() => {
-    const i = setInterval(() => setTick((t) => t + 1), dimmed ? 5000 : 500);
+    const i = setInterval(() => {
+      if (document.hidden) return; // Skip — will catch up on return
+      setTick((t) => t + 1);
+    }, dimmed ? 5000 : 500);
     return () => clearInterval(i);
   }, [dimmed]);
 
@@ -237,9 +241,11 @@ export function FocusTimer() {
   }, [wastedSeconds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Burn protection check
+  // === HEAT FIX: Skip when tab hidden — dimming only matters when visible ===
   useEffect(() => {
     if (!settings.burnProtection || !active) return;
     const i = setInterval(() => {
+      if (document.hidden) return; // Skip — will re-evaluate on return
       const since = Date.now() - lastInteractRef.current;
       if (since > settings.dimDelay * 1000) {
         setDimmed(true);

@@ -26,9 +26,13 @@ export function FloatingWidget() {
   const y = useMotionValue(typeof window !== 'undefined' ? window.innerHeight - 280 : 100);
 
   // Live ticking — skip when widget is hidden (saves CPU on low-end devices)
+  // === HEAT FIX: Also skip when tab is hidden ===
   useEffect(() => {
     if (widgetHidden) return;
-    const i = setInterval(() => setTick((t) => t + 1), 1000);
+    const i = setInterval(() => {
+      if (document.hidden) return;
+      setTick((t) => t + 1);
+    }, 1000);
     return () => clearInterval(i);
   }, [widgetHidden]);
 

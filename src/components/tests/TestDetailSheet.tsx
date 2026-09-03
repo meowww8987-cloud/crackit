@@ -438,7 +438,11 @@ function UpcomingView({ test, readinessPct }: { test: Test; readinessPct: number
   const [, setTick] = useState(0);
   useEffect(() => {
     if (test.timerState !== 'running') return;
-    const i = setInterval(() => setTick((t) => t + 1), 1000);
+    // === HEAT FIX: Skip when tab hidden ===
+    const i = setInterval(() => {
+      if (document.hidden) return;
+      setTick((t) => t + 1);
+    }, 1000);
     return () => clearInterval(i);
   }, [test.timerState]);
 

@@ -389,6 +389,11 @@ function AdvancedRing({
   const outerCircumference = 2 * Math.PI * outerRadius;
   const innerCircumference = 2 * Math.PI * innerRadius;
 
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
+
   // Theme-aware colors — different per theme for optimal visibility
   const schemeColors = colorScheme === 'teal' ? themeColors.teal : themeColors.green;
   const colors = {
@@ -416,20 +421,19 @@ function AdvancedRing({
           opacity: isLive ? [0.5, 0.8, 0.5] : [0.4, 0.6, 0.4],
           scale: isLive ? [1, 1.08, 1] : [1, 1.03, 1],
         }}
-        transition={{ duration: isLive ? 1.5 : 3, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: isLive ? 1.5 : 3, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
       />
 
       {/* SVG Rings */}
       <svg width={size} height={size} className="relative z-10 -rotate-90">
         <defs>
-          {/* Flowing gradient for inner ring */}
+          {/* Flowing gradient for inner ring
+           * === HEAT FIX: Removed SVG SMIL <animate> tags ===
+           * SMIL animations run continuously and browser throttling when
+           * hidden is inconsistent. Static gradient is barely different. */}
           <linearGradient id={colors.gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={colors.primary}>
-              <animate attributeName="stop-color" values={`${colors.primary};${colors.secondary};${colors.primary}`} dur="3s" repeatCount="indefinite" />
-            </stop>
-            <stop offset="100%" stopColor={colors.secondary}>
-              <animate attributeName="stop-color" values={`${colors.secondary};${colors.primary};${colors.secondary}`} dur="3s" repeatCount="indefinite" />
-            </stop>
+            <stop offset="0%" stopColor={colors.primary} />
+            <stop offset="100%" stopColor={colors.secondary} />
           </linearGradient>
           {/* STRONGER glow filter */}
           <filter id={`glow-${colors.gradId}`} x="-50%" y="-50%" width="200%" height="200%">
@@ -567,7 +571,7 @@ function AdvancedRing({
             scale: [1, 1.15, 1],
             opacity: [0.6, 0, 0.6],
           }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
+          transition={{ duration: 2, repeat: animate ? Infinity : 0, ease: 'easeOut' }}
         />
       )}
     </div>

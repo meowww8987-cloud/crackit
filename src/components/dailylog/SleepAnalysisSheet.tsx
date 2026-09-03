@@ -14,6 +14,7 @@ import {
  formatSleepDuration,
  type SleepInsightReport,
 } from '@/lib/sleepHealth';
+import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
 
 interface SleepAnalysisSheetProps {
  open: boolean;
@@ -36,6 +37,10 @@ interface SleepAnalysisSheetProps {
 export function SleepAnalysisSheet({ open, onClose, initialTab = 'weekly' }: SleepAnalysisSheetProps) {
  const history = useSleep((s) => s.history);
  const [tab, setTab] = useState<'weekly' | 'monthly'>(initialTab);
+ // === HEAT FIX: Gate animations when tab hidden ===
+ const isVisible = useVisibility();
+ const reduceMotion = useReducedMotion();
+ const animate = isVisible && !reduceMotion;
 
  const weeklyReport = useMemo(() => buildSleepInsightReport(history, 7), [history]);
  const monthlyReport = useMemo(() => buildSleepInsightReport(history, 30), [history]);
@@ -92,7 +97,7 @@ export function SleepAnalysisSheet({ open, onClose, initialTab = 'weekly' }: Sle
  height: 1 + (i % 3),
  }}
  animate={{ opacity: [0.2, 0.8, 0.2] }}
- transition={{ duration: 2 + (i % 3), repeat: Infinity, delay: i * 0.3 }}
+ transition={{ duration: 2 + (i % 3), repeat: animate ? Infinity : 0, delay: i * 0.3 }}
  />
  ))}
 
@@ -110,7 +115,7 @@ export function SleepAnalysisSheet({ open, onClose, initialTab = 'weekly' }: Sle
  <div className="relative flex items-center gap-3">
  <motion.div
  animate={{ scale: [1, 1.1, 1], opacity: [0.8, 1, 0.8] }}
- transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+ transition={{ duration: 4, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
  className="text-4xl"
  style={{ filter: 'drop-shadow(0 0 20px rgba(165,180,252,0.6))' }}
  >

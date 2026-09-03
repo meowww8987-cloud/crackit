@@ -145,14 +145,20 @@ export function TargetCard({
   const [, setTick] = useState(0);
   useEffect(() => {
     if (!isThisActive) return;
-    const i = setInterval(() => setTick((t) => t + 1), 1000);
+    // === HEAT FIX: Skip when tab hidden — getLiveStudySeconds is Date-diff based ===
+    const i = setInterval(() => {
+      if (document.hidden) return;
+      setTick((t) => t + 1);
+    }, 1000);
     return () => clearInterval(i);
   }, [isThisActive]);
 
   // WASTING — periodic shake every 5s
+  // === HEAT FIX: Skip when tab hidden — shake is invisible when hidden ===
   useEffect(() => {
     if (sessionState !== 'wasting' || reduceAnimations) return;
     const i = setInterval(() => {
+      if (document.hidden) return;
       setShakeNonce((n) => n + 1);
     }, 5000);
     return () => clearInterval(i);

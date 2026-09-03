@@ -137,7 +137,11 @@ export function StudyTab() {
   useEffect(() => {
     if (!activeFocusSession && !activePractice) return;
     // 3-second tick — the progress card doesn't need second-by-second updates
-    const i = setInterval(() => setLiveTick((t) => t + 1), 3000);
+    // === HEAT FIX: Skip when tab hidden ===
+    const i = setInterval(() => {
+      if (document.hidden) return;
+      setLiveTick((t) => t + 1);
+    }, 3000);
     return () => clearInterval(i);
   }, [activeFocusSession, activePractice]);
 
@@ -1106,6 +1110,10 @@ function EmptyState({
   onSmartPlan: () => void;
   onAddManual: () => void;
 }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   const isFirstTime = type === 'first-time';
 
   return (
@@ -1118,7 +1126,7 @@ function EmptyState({
       <div className="flex justify-center">
         <motion.div
           animate={{ y: [0, -4, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 3, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
           className="text-5xl"
         >
           {isFirstTime ? '📚' : '🎯'}
@@ -1173,6 +1181,10 @@ function AllDoneState({
   totalCount: number;
   onAddMore: () => void;
 }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -1182,7 +1194,7 @@ function AllDoneState({
     >
       <motion.div
         animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
-        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 2, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
         className="text-5xl"
       >
         🎉
@@ -1355,6 +1367,10 @@ function DayStrip({
   setExpandedDay: (k: string | null) => void;
   dailyGoalSec: number;
 }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   const expandedData = days.find((d) => d.key === expandedDay);
 
   return (
@@ -1398,7 +1414,7 @@ function DayStrip({
                   color: chipColor,
                 }}
                 animate={d.isToday ? { scale: [1, 1.05, 1] } : {}}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{ duration: 2, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
               >
                 {d.date.getDate()}
               </motion.div>

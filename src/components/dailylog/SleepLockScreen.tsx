@@ -286,7 +286,7 @@ export function SleepLockScreen() {
                 </div>
                 <motion.div
                   animate={{ opacity: [0.85, 1, 0.85] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                  transition={{ duration: 4, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
                   className="text-5xl font-bold tabular text-white"
                   style={{ textShadow: `0 0 30px ${scene.textGlow}` }}
                 >
@@ -380,6 +380,10 @@ function SleepingPhase({
   onDoubleTap: () => void;
   onCancel: () => void;
 }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   const lastTapRef = useRef(0);
 
   const handleTap = () => {
@@ -405,7 +409,7 @@ function SleepingPhase({
           scale: [1, 1.12, 1],
           filter: ['brightness(1)', 'brightness(1.4)', 'brightness(1)'],
         }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 4, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
         className="text-8xl mb-6"
         style={{ filter: 'drop-shadow(0 0 50px rgba(165,180,252,0.7))' }}
       >
@@ -418,7 +422,7 @@ function SleepingPhase({
           scale: [1, 1.5, 1],
           opacity: [0.3, 0, 0.3],
         }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 4, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
         className="absolute rounded-full border-2 border-border"
         style={{ width: 120, height: 120, top: '35%' }}
       />
@@ -426,7 +430,7 @@ function SleepingPhase({
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: [0.5, 0.9, 0.5], y: 0 }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+        transition={{ duration: 4, repeat: animate ? Infinity : 0, ease: 'easeInOut', delay: 0.3 }}
         className="text-2xl font-light text-foreground mb-2 tracking-wide"
       >
         {sceneLabel}
@@ -435,7 +439,7 @@ function SleepingPhase({
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: [0.3, 0.7, 0.3] }}
-        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
+        transition={{ duration: 3, repeat: animate ? Infinity : 0, ease: 'easeInOut', delay: 0.6 }}
         className="text-sm text-muted-foreground font-medium mb-1"
       >
         Double-tap anywhere to wake up
@@ -444,7 +448,7 @@ function SleepingPhase({
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: [0.2, 0.5, 0.2] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.9 }}
+        transition={{ duration: 4, repeat: animate ? Infinity : 0, ease: 'easeInOut', delay: 0.9 }}
         className="text-[10px] text-muted-foreground/60 uppercase tracking-widest"
       >
         Breathe with the rhythm
@@ -471,6 +475,10 @@ function SleepingPhase({
 
 // ===== Challenge Phase — math problem to unlock =====
 function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFail: () => void; onBack: () => void }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   const problem = useMemo(() => {
     const type = Math.floor(Math.random() * 3);
     let a, b, c, question, answer;
@@ -519,7 +527,7 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
     >
       <motion.div
         animate={{ scale: [1, 1.05, 1] }}
-        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 3, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
         className="text-5xl mb-4"
         style={{ filter: 'drop-shadow(0 0 20px rgba(251,191,36,0.5))' }}
       >
@@ -567,6 +575,10 @@ function ChallengePhase({ onSolve, onFail, onBack }: { onSolve: () => void; onFa
 
 // ===== Waking Phase — multi-stage cinematic sunrise =====
 function WakingPhase({ tod, scene }: { tod: TimeOfDay; scene: typeof SCENES[TimeOfDay] }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   const isNight = tod === 'night' || tod === 'evening';
 
   return (
@@ -585,7 +597,7 @@ function WakingPhase({ tod, scene }: { tod: TimeOfDay; scene: typeof SCENES[Time
           style={{ width: 80, height: 80, top: '50%', left: '50%', marginLeft: -40, marginTop: -80 }}
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: [0, 4], opacity: [0.6, 0] }}
-          transition={{ duration: 2, ease: EASE_OUT_QUART, delay, repeat: Infinity }}
+          transition={{ duration: 2, ease: EASE_OUT_QUART, delay, repeat: animate ? Infinity : 0 }}
         />
       ))}
 
@@ -614,7 +626,7 @@ function WakingPhase({ tod, scene }: { tod: TimeOfDay; scene: typeof SCENES[Time
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: [0.3, 0.6, 0.3] }}
-        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        transition={{ duration: 2, repeat: animate ? Infinity : 0, ease: 'easeInOut', delay: 1 }}
         className="text-[10px] text-amber-100/50 uppercase tracking-widest mt-2"
       >
         Waking up...
@@ -635,6 +647,10 @@ function QualityPhase({
   onSelect: (quality: number) => void;
   onSkip: () => void;
 }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   const metrics = calcSleepMetrics(elapsedSec);
   const wakeTime = new Date(bedTimeDate.getTime() + elapsedSec * 1000);
   const wakeTimeStr = wakeTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -789,6 +805,10 @@ function QualityPhase({
 
 // ===== Celebrating Phase — time-of-day-aware confirmation before exit =====
 function CelebratingPhase({ tod }: { tod: TimeOfDay }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   // Time-of-day greeting + emoji
   const { greeting, emoji, glowColor } = useMemo(() => {
     switch (tod) {
@@ -839,7 +859,7 @@ function CelebratingPhase({ tod }: { tod: TimeOfDay }) {
           }}
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: [0, 3.5], opacity: [0.6, 0] }}
-          transition={{ duration: 1.4, ease: EASE_OUT_QUART, delay, repeat: Infinity }}
+          transition={{ duration: 1.4, ease: EASE_OUT_QUART, delay, repeat: animate ? Infinity : 0 }}
         />
       ))}
 
@@ -869,6 +889,10 @@ function CelebratingPhase({ tod }: { tod: TimeOfDay }) {
 
 // ===== Time-of-day aware scenery =====
 function TimeScenery({ tod }: { tod: TimeOfDay }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   if (tod === 'night' || tod === 'evening') {
     return <NightEveningScenery showMoon={tod === 'night'} />;
   }
@@ -884,6 +908,10 @@ function TimeScenery({ tod }: { tod: TimeOfDay }) {
 
 // ===== Night / Evening scenery — stars, moon, clouds, shooting stars, hills =====
 function NightEveningScenery({ showMoon }: { showMoon: boolean }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   // === HEAT FIX: Reduced from 40 → 8 stars ===
   // 40 twinkling stars = 40 simultaneous infinite animations all night.
   // 8 is enough to convey a starry night without cooking the GPU.
@@ -906,7 +934,7 @@ function NightEveningScenery({ showMoon }: { showMoon: boolean }) {
         <motion.div key={s.id} className="absolute rounded-full bg-white"
           style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size }}
           animate={{ opacity: [0.2, 1, 0.2], scale: [1, 1.5, 1] }}
-          transition={{ duration: s.duration, repeat: Infinity, delay: s.delay, ease: 'easeInOut' }}
+          transition={{ duration: s.duration, repeat: animate ? Infinity : 0, delay: s.delay, ease: 'easeInOut' }}
         />
       ))}
 
@@ -918,7 +946,7 @@ function NightEveningScenery({ showMoon }: { showMoon: boolean }) {
           style={{ top: c.top, scale: c.scale }}
           initial={{ x: '-150px' }}
           animate={{ x: 'calc(100vw + 150px)' }}
-          transition={{ duration: c.duration, repeat: Infinity, delay: c.delay, ease: 'linear' }}
+          transition={{ duration: c.duration, repeat: animate ? Infinity : 0, delay: c.delay, ease: 'linear' }}
         >
           <Cloud />
         </motion.div>
@@ -936,7 +964,7 @@ function NightEveningScenery({ showMoon }: { showMoon: boolean }) {
             filter: 'blur(8px)',
           }}
           animate={{ opacity: [0.5, 0.95, 0.5], scale: [0.95, 1.1, 0.95] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 4, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
         />
       )}
 
@@ -945,7 +973,7 @@ function NightEveningScenery({ showMoon }: { showMoon: boolean }) {
         className="absolute bottom-0 left-0 right-0"
         style={{ height: '50%', background: 'radial-gradient(ellipse at 50% 100%, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.12) 30%, transparent 70%)' }}
         animate={{ opacity: [0.5, 0.8, 0.5], scaleY: [0.95, 1.05, 0.95] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 8, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
       />
 
       {/* Rolling hills silhouette */}
@@ -959,6 +987,10 @@ function NightEveningScenery({ showMoon }: { showMoon: boolean }) {
 
 // ===== Dawn scenery — fading stars + warm horizon glow =====
 function DawnScenery() {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   // === HEAT FIX: Reduced from 15 → 5 stars ===
   const stars = useMemo(() => Array.from({ length: 5 }, (_, i) => ({
     id: i, x: Math.random() * 100, y: Math.random() * 40,
@@ -972,7 +1004,7 @@ function DawnScenery() {
         <motion.div key={s.id} className="absolute rounded-full bg-white"
           style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size }}
           animate={{ opacity: [0.1, 0.6, 0.1] }}
-          transition={{ duration: s.duration, repeat: Infinity, delay: s.delay, ease: 'easeInOut' }}
+          transition={{ duration: s.duration, repeat: animate ? Infinity : 0, delay: s.delay, ease: 'easeInOut' }}
         />
       ))}
 
@@ -984,7 +1016,7 @@ function DawnScenery() {
           filter: 'blur(6px)',
         }}
         animate={{ opacity: [0.6, 1, 0.6], scale: [0.95, 1.05, 0.95] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 5, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
       />
 
       {/* Warm horizon glow */}
@@ -992,7 +1024,7 @@ function DawnScenery() {
         className="absolute bottom-0 left-0 right-0"
         style={{ height: '45%', background: 'radial-gradient(ellipse at 50% 100%, rgba(244,162,97,0.3) 0%, rgba(196,69,105,0.12) 40%, transparent 70%)' }}
         animate={{ opacity: [0.5, 0.8, 0.5] }}
-        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 6, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
       />
 
       {/* Hills silhouette */}
@@ -1006,6 +1038,10 @@ function DawnScenery() {
 
 // ===== Day scenery (morning / noon) — sun + clouds + bright sky =====
 function DayScenery({ bright }: { bright: boolean }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   // === HEAT FIX: Reduced from 3 → 1 cloud ===
   const clouds = useMemo(() => [
     { id: 1, top: '12%', duration: 50, delay: 0, scale: 1 },
@@ -1021,7 +1057,7 @@ function DayScenery({ bright }: { bright: boolean }) {
           filter: 'blur(4px)',
         }}
         animate={{ opacity: [0.7, 1, 0.7], scale: [0.95, 1.05, 0.95] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 5, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
       />
 
       {/* Floating clouds (lighter, more visible than night) */}
@@ -1032,7 +1068,7 @@ function DayScenery({ bright }: { bright: boolean }) {
           style={{ top: c.top, scale: c.scale }}
           initial={{ x: '-150px' }}
           animate={{ x: 'calc(100vw + 150px)' }}
-          transition={{ duration: c.duration, repeat: Infinity, delay: c.delay, ease: 'linear' }}
+          transition={{ duration: c.duration, repeat: animate ? Infinity : 0, delay: c.delay, ease: 'linear' }}
         >
           <Cloud bright />
         </motion.div>
@@ -1043,7 +1079,7 @@ function DayScenery({ bright }: { bright: boolean }) {
         className="absolute bottom-0 left-0 right-0"
         style={{ height: '40%', background: 'radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.15) 0%, transparent 60%)' }}
         animate={{ opacity: [0.5, 0.8, 0.5] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 8, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
       />
 
       {/* Light hills */}
@@ -1057,6 +1093,10 @@ function DayScenery({ bright }: { bright: boolean }) {
 
 // ===== Dusk scenery — sunset + warm horizon =====
 function DuskScenery() {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   return (
     <div className="absolute inset-0 pointer-events-none">
       {/* Setting sun glow */}
@@ -1067,7 +1107,7 @@ function DuskScenery() {
           filter: 'blur(6px)',
         }}
         animate={{ opacity: [0.6, 0.95, 0.6], scale: [0.95, 1.05, 0.95] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 5, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
       />
 
       {/* Warm horizon */}
@@ -1075,7 +1115,7 @@ function DuskScenery() {
         className="absolute bottom-0 left-0 right-0"
         style={{ height: '50%', background: 'radial-gradient(ellipse at 50% 100%, rgba(230,126,34,0.3) 0%, rgba(142,68,173,0.12) 40%, transparent 70%)' }}
         animate={{ opacity: [0.5, 0.8, 0.5] }}
-        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 7, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
       />
 
       {/* Hills silhouette */}
@@ -1089,6 +1129,10 @@ function DuskScenery() {
 
 // ===== Waking scenery — sunrise / brighten transition =====
 function WakingScenery({ tod }: { tod: TimeOfDay }) {
+  // === HEAT FIX: Gate animations when tab hidden ===
+  const isVisible = useVisibility();
+  const reduceMotion = useReducedMotion();
+  const animate = isVisible && !reduceMotion;
   return (
     <div className="absolute inset-0 pointer-events-none">
       {/* Rising sun glow — animates upward */}
@@ -1146,6 +1190,12 @@ function ShootingStars() {
   useEffect(() => {
     let id = 0;
     const spawn = () => {
+      // === HEAT FIX: Don't spawn shooting stars when tab is hidden ===
+      // Re-check in 5s instead of spawning while hidden.
+      if (document.hidden) {
+        setTimeout(spawn, 5000);
+        return;
+      }
       const startX = Math.random() * 60;
       const startY = Math.random() * 30;
       setStars((prev) => [...prev, { id: id++, startX, startY }]);
