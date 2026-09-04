@@ -32,6 +32,16 @@ const RESOURCES: { key: LectureResource; icon: typeof Play; label: string; color
 
 const ACTIVITIES: ActivityType[] = ['Lecture', 'DPP', 'Notes', 'Revision', 'Custom'];
 
+// === CRITICAL: Shared empty array for Zustand selector ===
+// Using `|| []` inside a Zustand selector creates a NEW array reference every
+// time the selector runs when the value is undefined. Zustand uses Object.is
+// to compare — a new [] is never Object.is to the previous [] → triggers
+// re-render → selector runs again → another new [] → INFINITE RE-RENDER LOOP.
+// This was causing "Maximum update depth exceeded" errors when expanding
+// chapter cards (each LectureResourceRow had its own broken selector).
+// Fix: use a shared EMPTY_TARGETS constant so the reference is always stable.
+const EMPTY_TARGETS: import('@/lib/types').Target[] = [];
+
 // Revision color cycles — each revision gets a distinct color
 const REVISION_COLORS = [
   '#f59e0b', // 1st revision — amber
@@ -46,7 +56,7 @@ export function LectureResourceRow({ lecture, chapter, subject, index, onEdit, o
   const updateLecture = useSyllabus((s) => s.updateLecture);
   const deleteLecture = useSyllabus((s) => s.deleteLecture);
   const addTarget = useTargets((s) => s.addTarget);
-  const todayTargets = useTargets((s) => s.byDate[todayKey()] || []);
+  const todayTargets = useTargets((s) => s.byDate[todayKey()] ?? EMPTY_TARGETS);
   const activeSession = useSession((s) => s.active);
 
   // === Total study time across ALL activities for this lecture ===

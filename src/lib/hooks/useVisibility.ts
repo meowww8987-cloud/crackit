@@ -14,14 +14,18 @@ export function useVisibility(): boolean {
 
   useEffect(() => {
     const update = () => setVisible(!document.hidden);
+    const onFocus = () => setVisible(true);
+    const onBlur = () => setVisible(false);
     update(); // sync on mount
 
     document.addEventListener('visibilitychange', update);
-    window.addEventListener('focus', () => setVisible(true));
-    window.addEventListener('blur', () => setVisible(false));
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
 
     return () => {
       document.removeEventListener('visibilitychange', update);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
     };
   }, []);
 

@@ -48,6 +48,10 @@ const ACTIVITY_META: Record<ActivityType, {
 const EASE_SMOOTH = [0.4, 0, 0.2, 1] as const;
 const EASE_OUT_QUART = [0.25, 1, 0.5, 1] as const;
 
+// === CRITICAL: Shared empty array for Zustand selector ===
+// Prevents infinite re-render from `|| []` creating new array refs each call.
+const EMPTY_TARGETS: import('@/lib/types').Target[] = [];
+
 export function TargetCard({
   target,
   onOpenDetail,
@@ -213,7 +217,7 @@ export function TargetCard({
   const wastedOverThreshold = liveWasted >= 300; // 5 minutes
 
   // Find next-up sibling (same subject + chapter, not done, not this)
-  const todayTargets = useTargets((s) => s.byDate[target.date] || []);
+  const todayTargets = useTargets((s) => s.byDate[target.date] ?? EMPTY_TARGETS);
   const nextUpTarget = useMemo(() => {
     if (!target.done) return null;
     const siblings = todayTargets
