@@ -24,6 +24,7 @@ interface LockTimerStore extends LockTimerState {
   cancel: () => void;      // double-tap cancel — saves partial session
   complete: () => void;    // timer finished naturally — saves full session
   clear: () => void;       // reset state after UI dismisses
+  checkAutoComplete: () => void; // auto-complete if endsAt has passed (app return)
   getRemainingSec: () => number;
   getElapsedSec: () => number;
   getProgressPct: () => number;
@@ -77,14 +78,17 @@ export const useLockTimer = create<LockTimerStore>()(
         const s = get();
         if (!s.isActive) return;
         const elapsedSec = s.getElapsedSec();
+        // === FIX: Use endsAt as completedAt (when the timer ACTUALLY ended),
+        // not Date.now() (when the user happened to reopen the app) ===
+        const completedAt = s.endsAt || Date.now();
         set({
           isActive: false,
           isCompleted: true,
-          completedAt: Date.now(),
+          completedAt,
         });
-        // Save full session
+        // Save full session — uses capped elapsedSec + endsAt as endedAt
         if (elapsedSec >= 30) {
-          saveSession(s, elapsedSec);
+          saveSession({ ...s, completedAt }, elapsedSec);
         }
       },
 
@@ -113,7 +117,16 @@ export const useLockTimer = create<LockTimerStore>()(
         const s = get();
         if (!s.startedAt) return 0;
         const endTime = s.cancelledAt || s.completedAt || Date.now();
-        return Math.max(0, Math.floor((endTime - s.startedAt) / 1000));
+        const raw = Math.max(0, Math.floor((endTime - s.startedAt) / 1000));
+        // === FIX: Cap elapsed at target duration ===
+        // When the timer is active (not yet cancelled/completed) and the app
+        // was backgrounded past the end time, Date.now() - startedAt would
+        // return the FULL background duration (could be hours). We cap it at
+        // targetMinutes * 60 so the saved session + displayed time is correct.
+        if (s.targetMinutes > 0) {
+          return Math.min(raw, s.targetMinutes * 60);
+        }
+        return raw;
       },
 
       getProgressPct: () => {
@@ -122,6 +135,18 @@ export const useLockTimer = create<LockTimerStore>()(
         const elapsed = s.getElapsedSec();
         const total = s.targetMinutes * 60;
         return Math.min(100, Math.round((elapsed / total) * 100));
+      },
+
+      // === FIX: Auto-complete if timer should have ended while app was backgrounded ===
+      // Called on app visibility return. If endsAt has passed, complete the timer
+      // with the correct (capped) elapsed time.
+      checkAutoComplete: () => {
+        const s = get();
+        if (!s.isActive) return;
+        if (Date.now() >= s.endsAt) {
+          // Timer should have ended while app was in background
+          get().complete();
+        }
       },
     }),
     {
@@ -144,6 +169,11 @@ export const useLockTimer = create<LockTimerStore>()(
 
 // Helper: save a session to history
 function saveSession(s: LockTimerState, elapsedSec: number) {
+  // === FIX: Use endsAt as the endedAt timestamp when the timer completed
+  // naturally (not cancelled). This ensures the session's endedAt reflects
+  // when the timer ACTUALLY ended, not when the user happened to reopen
+  // the app. For cancellations, cancelledAt is used (set by cancel()).
+  const endedAt = s.cancelledAt || s.endsAt || Date.now();
   useHistory.getState().addSession({
     id: uid(),
     targetId: null,
@@ -156,7 +186,7 @@ function saveSession(s: LockTimerState, elapsedSec: number) {
     wastedSeconds: 0,
     mood: null,
     startedAt: s.startedAt,
-    endedAt: Date.now(),
+    endedAt,
     date: todayKey(),
   });
 }

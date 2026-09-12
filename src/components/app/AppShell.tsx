@@ -378,8 +378,14 @@ export function AppShell() {
     // Combined with CSS in globals.css, this pauses ALL CSS infinite animations
     // (pulse-slow, pulse-fast, skeleton, etc.) when the tab is hidden.
     // Single chokepoint — zero UX impact, animations resume on return.
+    // === FIX: Also check if lock timer should auto-complete on return ===
     const toggleAnimClass = () => {
-      document.documentElement.classList.toggle('hidden-anim', document.hidden);
+      const hidden = document.hidden;
+      document.documentElement.classList.toggle('hidden-anim', hidden);
+      // When app becomes visible, check if the lock timer ended while backgrounded
+      if (!hidden) {
+        try { useLockTimer.getState().checkAutoComplete(); } catch {}
+      }
     };
     toggleAnimClass(); // Set initial state
     document.addEventListener('visibilitychange', toggleAnimClass);
