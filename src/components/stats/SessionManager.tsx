@@ -206,7 +206,8 @@ export function SessionManager({ onClose }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[10001] bg-black/90 flex flex-col"
+      className="fixed inset-0 z-[10001] flex flex-col"
+      style={{ background: 'var(--background)' }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-foreground/10 shrink-0">
@@ -644,12 +645,12 @@ function FilterPill({ active, onClick, highlight, children }: {
       className={cn(
         'px-2.5 py-1 rounded-lg text-[10px] font-bold transition border active:scale-95 shrink-0',
         active
-          ? 'text-white border-transparent'
+          ? 'border-transparent'
           : highlight
           ? 'border-amber-500/30 bg-amber-500/10 text-amber-600'
           : 'border-border bg-foreground/5 text-muted-foreground'
       )}
-      style={active ? { background: 'var(--foreground)' } : undefined}
+      style={active ? { background: 'var(--foreground)', color: 'var(--background)' } : undefined}
     >
       {children}
     </button>

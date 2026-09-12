@@ -165,10 +165,10 @@ export function RoutineBuilder({ onClose }: Props) {
             className={cn(
               'px-2.5 py-1 rounded-lg text-[10px] font-bold transition border active:scale-95',
               selectedDay === i
-                ? 'text-white border-transparent'
+                ? 'border-transparent'
                 : 'border-border bg-foreground/5 text-muted-foreground hover:bg-foreground/10'
             )}
-            style={selectedDay === i ? { background: 'var(--foreground)' } : undefined}
+            style={selectedDay === i ? { background: 'var(--foreground)', color: 'var(--background)' } : undefined}
           >
             {d}
           </button>
@@ -735,10 +735,10 @@ function BlockEditor({
                   className={cn(
                     'flex-1 py-2 rounded-lg text-[10px] font-bold transition border active:scale-95',
                     type === t.value
-                      ? 'text-white border-transparent'
+                      ? 'border-transparent'
                       : 'border-border bg-foreground/5 text-muted-foreground'
                   )}
-                  style={type === t.value ? { background: 'var(--foreground)' } : undefined}
+                  style={type === t.value ? { background: 'var(--foreground)', color: 'var(--background)' } : undefined}
                 >
                   {t.emoji} {t.label}
                 </button>
@@ -789,10 +789,10 @@ function BlockEditor({
                     className={cn(
                       'px-2.5 py-1 rounded-lg text-[10px] font-semibold transition border active:scale-95',
                       allowedActivities.includes(a)
-                        ? 'text-white border-transparent'
+                        ? 'border-transparent'
                         : 'border-border bg-foreground/5 text-muted-foreground'
                     )}
-                    style={allowedActivities.includes(a) ? { background: 'var(--foreground)' } : undefined}
+                    style={allowedActivities.includes(a) ? { background: 'var(--foreground)', color: 'var(--background)' } : undefined}
                   >
                     {allowedActivities.includes(a) ? '✓ ' : ''}{a}
                   </button>
@@ -816,8 +816,8 @@ function BlockEditor({
           <button
             onClick={handleSave}
             disabled={endHour <= startHour}
-            className="flex-1 py-2 rounded-lg text-[12px] font-bold text-white active:scale-95 transition disabled:opacity-50"
-            style={{ background: 'var(--foreground)' }}
+            className="flex-1 py-2 rounded-lg text-[12px] font-bold active:scale-95 transition disabled:opacity-50"
+            style={{ background: 'var(--foreground)', color: 'var(--background)' }}
           >
             Save block
           </button>
