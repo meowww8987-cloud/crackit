@@ -12,6 +12,13 @@ interface HistoryStore {
   sessions: SavedSession[];
   addSession: (s: SavedSession) => void;
   deleteSession: (id: string) => void;
+  /** Delete multiple sessions by ID — atomic bulk operation */
+  deleteSessionsBulk: (ids: string[]) => void;
+  /** Delete all sessions before a given date (YYYY-MM-DD). Sessions ON that
+   *  date are kept. Useful for "delete all data older than X". */
+  deleteSessionsBeforeDate: (date: string) => void;
+  /** Delete ALL sessions (nuclear option). Used by Settings → Data. */
+  deleteAllSessions: () => void;
   getTodaySessions: () => SavedSession[];
   getSessionsForTargetToday: (targetId: string) => SavedSession[];
   getSessionsForTarget: (targetId: string) => SavedSession[];
@@ -88,6 +95,16 @@ export const useHistory = create<HistoryStore>()(
 
       deleteSession: (id) =>
         set((st) => ({ sessions: st.sessions.filter((x) => x.id !== id) })),
+
+      deleteSessionsBulk: (ids) => {
+        const idSet = new Set(ids);
+        set((st) => ({ sessions: st.sessions.filter((x) => !idSet.has(x.id)) }));
+      },
+
+      deleteSessionsBeforeDate: (date) =>
+        set((st) => ({ sessions: st.sessions.filter((x) => x.date >= date) })),
+
+      deleteAllSessions: () => set({ sessions: [] }),
 
       getTodaySessions: () => {
         const today = todayKey();

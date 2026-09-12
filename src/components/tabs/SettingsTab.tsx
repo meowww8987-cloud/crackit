@@ -26,6 +26,7 @@ import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 import { triggerTutorialOnboarding } from '@/components/app/AppShell';
 import { pushToast } from '@/components/shared/Toast';
 import { RoutineBuilder } from '@/components/routine/RoutineBuilder';
+import { SessionManager } from '@/components/stats/SessionManager';
 
 type SectionKey = 'goals' | 'focus' | 'appearance' | 'notifications' | 'data';
 
@@ -39,6 +40,7 @@ const SECTIONS: { key: SectionKey; label: string; icon: typeof TargetIcon; color
 
 export function SettingsTab() {
   const [activeSection, setActiveSection] = useState<SectionKey>('goals');
+  const [showSessionManager, setShowSessionManager] = useState(false);
   const s = useSettings();
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -129,7 +131,7 @@ export function SettingsTab() {
               {activeSection === 'focus' && <FocusSection s={s} update={update} />}
               {activeSection === 'appearance' && <AppearanceSection s={s} update={update} />}
               {activeSection === 'notifications' && <NotificationsSection s={s} update={update} />}
-              {activeSection === 'data' && <DataSection s={s} />}
+              {activeSection === 'data' && <DataSection s={s} onOpenSessionManager={() => setShowSessionManager(true)} />}
             </div>
           </motion.div>
         </AnimatePresence>
@@ -139,7 +141,10 @@ export function SettingsTab() {
         ← swipe between categories →
       </div>
 
-
+      {/* === Session Manager (full-screen overlay) === */}
+      {showSessionManager && (
+        <SessionManager onClose={() => setShowSessionManager(false)} />
+      )}
  </div>
  );
 }
@@ -954,7 +959,7 @@ function NotificationsSection({ s, update }: { s: Settings; update: <K extends k
   );
 }
 
-function DataSection({ s }: { s: Settings }) {
+function DataSection({ s, onOpenSessionManager }: { s: Settings; onOpenSessionManager: () => void }) {
   const [importPreview, setImportPreview] = useState<{ data: any; counts: Record<string, number> } | null>(null);
   const [hasUndoData, setHasUndoData] = useState(typeof window !== 'undefined' && !!localStorage.getItem('neet-pre-import-backup'));
   const [reinstalling, setReinstalling] = useState(false);
@@ -1014,17 +1019,6 @@ function DataSection({ s }: { s: Settings }) {
     Object.keys(backup).forEach((key) => { if (backup[key]) localStorage.setItem(key, backup[key]); });
     localStorage.removeItem('neet-pre-import-backup'); setHasUndoData(false);
     alert('Previous data restored! Reloading...'); window.location.reload();
-  };
-
-  const fixCorruptedData = () => {
-    const history = JSON.parse(localStorage.getItem('neet-history') || '{"sessions":[]}');
-    const corrupted = (history.sessions || []).filter((s: any) => s.studySeconds > 12 * 3600);
-    if (corrupted.length === 0) { alert('No corrupted sessions found'); return; }
-    if (confirm(`Found ${corrupted.length} corrupted sessions. Delete them?`)) {
-      history.sessions = history.sessions.filter((s: any) => s.studySeconds <= 12 * 3600);
-      localStorage.setItem('neet-history', JSON.stringify(history));
-      alert('Fixed! Reloading...'); window.location.reload();
-    }
   };
 
   const reinstallPWA = async () => {
@@ -1111,16 +1105,22 @@ function DataSection({ s }: { s: Settings }) {
         </p>
       </div>
 
-      {/* === GROUP 3: Data Tools === */}
+      {/* === GROUP 3: Session Manager === */}
       <div className="rounded-2xl p-4" style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-base">🔧</span>
-          <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Data Tools</span>
+          <span className="text-base">🗂️</span>
+          <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Session Manager</span>
         </div>
-        <button onClick={fixCorruptedData} className="w-full py-2.5 rounded-xl text-sm font-semibold active:scale-95 mb-2" style={{ background: 'rgba(217,119,6,0.15)', color: '#d97706', border: '1px solid rgba(217,119,6,0.3)' }}>
-          Find & Delete Corrupted Sessions
+        <button
+          onClick={onOpenSessionManager}
+          className="w-full py-2.5 rounded-xl text-sm font-semibold active:scale-95 mb-2 flex items-center justify-center gap-2"
+          style={{ background: 'rgba(13,148,136,0.12)', color: '#0d9488', border: '1px solid rgba(13,148,136,0.25)' }}
+        >
+          <Database size={14} /> Manage Study Sessions
         </button>
-        <p className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Detects sessions with &gt;12h study time</p>
+        <p className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
+          Browse, search, and delete any past session. Detects corrupted data (over 12h, negative time, missing fields). Bulk delete by date or all at once.
+        </p>
       </div>
 
       {/* === GROUP 4: Install === */}
