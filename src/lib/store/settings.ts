@@ -50,6 +50,8 @@ const DEFAULTS: Settings = {
   minimalMode: false,
   // OLED Black — pure #000000 backgrounds for battery saving
   oledBlack: false,
+  // Smart Study Routine — grace period (minutes) for "on time" detection
+  routineGracePeriod: 10,
 };
 
 const TEXT_SIZE_PX = { S: 14, M: 16, L: 18, XL: 20 };
@@ -91,6 +93,10 @@ export const useSettings = create<SettingsStore>()(
         // Migrate any persisted 'lavender' theme to 'dark' (lavender theme removed in v2.12.7)
         if (persisted?.state && persisted.state.appTheme === 'lavender') {
           persisted.state.appTheme = 'dark';
+        }
+        // Add routineGracePeriod default for existing users
+        if (persisted?.state && persisted.state.routineGracePeriod === undefined) {
+          persisted.state.routineGracePeriod = 10;
         }
         // (focusTheme setting was removed in v2.13.3 — no migration needed since the
         // field is just dropped; the Focus Timer always uses pure black now.)

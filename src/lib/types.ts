@@ -55,6 +55,10 @@ export interface ActiveSession {
   // for the same target on the same day. The current session's own time (studySeconds)
   // is added on top of this baseline for display only; saved sessions only record the delta.
   baselineStudySeconds?: number;
+  /** Smart Study Routine: the ID of the routine block this session was
+   *  started from (if any). Used to compute schedule adherence in Stats.
+   *  Undefined = not started from a routine block (normal target/free study). */
+  plannedSlotId?: string;
   baselineWastedSeconds?: number;
 }
 
@@ -72,6 +76,9 @@ export interface SavedSession {
   startedAt: number;
   endedAt: number;
   date: string; // YYYY-MM-DD
+  /** Smart Study Routine: the routine block ID this session was started from.
+   *  Used to compute schedule adherence (plan vs actual). */
+  plannedSlotId?: string;
 }
 
 // ===== Syllabus =====
@@ -380,6 +387,10 @@ export interface Settings {
   minimalMode: boolean;
   /** OLED Black — uses pure #000000 for dark mode backgrounds */
   oledBlack: boolean;
+  /** Smart Study Routine: grace period in minutes (5/10/15/20).
+   *  If user starts a session within this many minutes after a block starts,
+   *  it counts as "on time" instead of "late". */
+  routineGracePeriod: number;
 }
 
 // ===== Timetable =====
@@ -390,6 +401,20 @@ export interface TimetableSlot {
   startHour: number; // 0-23
   endHour: number; // 1-24
   subject: Subject;
+}
+
+// ===== Smart Study Routine =====
+
+export type RoutineBlockType = 'lecture' | 'self-study' | 'break';
+
+export interface RoutineBlock {
+  id: string;
+  day: number; // 0=Sun, 6=Sat
+  startHour: number; // 0-23
+  endHour: number; // 1-24
+  subject: Subject;
+  type: RoutineBlockType;
+  allowedActivities?: ActivityType[];
 }
 
 // ===== Smart Plan Suggestion =====

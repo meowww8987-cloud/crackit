@@ -19,6 +19,7 @@ import { generateSmartPlan } from '@/lib/smartPlan';
 import type { Subject, ActivityType, Target } from '@/lib/types';
 import { cn, shortDate, formatHM, todayKey, addDays, vibrate } from '@/lib/utils';
 import { TargetCard } from '@/components/study/TargetCard';
+import { CurrentBlockCard } from '@/components/routine/CurrentBlockCard';
 import { AddTargetSheet } from '@/components/study/AddTargetSheet';
 import { DetailSheet } from '@/components/study/DetailSheet';
 import { DoubtSheet } from '@/components/doubts/DoubtSheet';
@@ -360,6 +361,9 @@ export function StudyTab() {
           })}
         </div>
       )}
+
+      {/* ============ SECTION 5.5: SMART STUDY ROUTINE — Current Block ============ */}
+      <CurrentBlockCard />
 
       {/* ============ SECTION 6: EMPTY STATE ============ */}
       {mounted && emptyStateType && emptyStateType !== 'all-done' && (

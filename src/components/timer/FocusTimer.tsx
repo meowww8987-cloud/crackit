@@ -598,6 +598,40 @@ export function FocusTimer() {
         {active.topic && (
           <div className="text-xs text-foreground mt-0.5">{active.topic}</div>
         )}
+        {/* === Smart Study Routine: block ends at indicator === */}
+        {active.plannedSlotId && (() => {
+          // Find the routine block to get endHour
+          try {
+            const { useRoutine } = require('@/lib/store/routine');
+            const block = useRoutine.getState().blocks.find((b: any) => b.id === active.plannedSlotId);
+            if (!block) return null;
+            const now = new Date();
+            const blockEndMs = new Date().setHours(block.endHour, 0, 0, 0);
+            const remainingMin = Math.round((blockEndMs - now.getTime()) / 60000);
+            const formatHour = (h: number) => {
+              const period = h >= 12 ? 'PM' : 'AM';
+              const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
+              return `${display}:00 ${period}`;
+            };
+            if (remainingMin > 0) {
+              return (
+                <div className="text-[10px] mt-1 px-2 py-0.5 rounded-md inline-flex items-center gap-1"
+                  style={{ background: `${color?.hex}15`, color: color?.hex }}>
+                  Block ends at {formatHour(block.endHour)} · {remainingMin} min left
+                </div>
+              );
+            } else if (remainingMin > -120) {
+              // Overtime (up to 2h)
+              return (
+                <div className="text-[10px] mt-1 px-2 py-0.5 rounded-md inline-flex items-center gap-1"
+                  style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
+                  ⚠ {Math.abs(remainingMin)} min overtime
+                </div>
+              );
+            }
+          } catch {}
+          return null;
+        })()}
       </div>
 
       {/* Center: massive timer */}

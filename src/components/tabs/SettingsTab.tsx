@@ -25,6 +25,7 @@ import { ConcentricRings } from '@/components/ui/concentric-rings';
 import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 import { triggerTutorialOnboarding } from '@/components/app/AppShell';
 import { pushToast } from '@/components/shared/Toast';
+import { RoutineBuilder } from '@/components/routine/RoutineBuilder';
 
 type SectionKey = 'goals' | 'focus' | 'appearance' | 'notifications' | 'data';
 
@@ -355,6 +356,34 @@ function GoalsSection({ s, update }: { s: Settings; update: <K extends keyof Set
           </button>
         )}
       </div>
+
+      {/* ============ Smart Study Routine ============ */}
+      <div className="pt-2 border-t border-foreground/5">
+        <RoutineBuilder />
+      </div>
+
+      {/* Grace period setting */}
+      <Row label="Routine Grace Period">
+        <div className="flex gap-1.5">
+          {[5, 10, 15, 20].map((min) => (
+            <button
+              key={min}
+              onClick={() => { vibrate(8); update('routineGracePeriod', min); }}
+              className="flex-1 py-1.5 rounded-lg text-[11px] font-bold tabular transition active:scale-95"
+              style={{
+                background: s.routineGracePeriod === min ? '#0d9488' : 'var(--muted)',
+                color: s.routineGracePeriod === min ? '#ffffff' : 'var(--muted-foreground)',
+                border: s.routineGracePeriod === min ? 'none' : '1px solid var(--border)',
+              }}
+            >
+              {min}m
+            </button>
+          ))}
+        </div>
+        <div className="text-[10px] mt-1.5" style={{ color: 'var(--muted-foreground)' }}>
+          If you start within this many minutes of a block's start time, it counts as "on time".
+        </div>
+      </Row>
     </>
   );
 }

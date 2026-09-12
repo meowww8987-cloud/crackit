@@ -17,6 +17,7 @@ import { triggerTimeline } from '@/components/app/AppShell';
 import { PeakStudyTime } from '@/components/stats/PeakStudyTime';
 import { ActivityCard } from '@/components/stats/ActivityCard';
 import { SleepHealthCard } from '@/components/stats/SleepHealthCard';
+import { AdherenceCard } from '@/components/stats/AdherenceCard';
 import { SubjectBreakdown } from '@/components/stats/SubjectBreakdown';
 import { ProgressGraph } from '@/components/stats/ProgressGraph';
 import { SleepReportSheet } from '@/components/dailylog/SleepReportSheet';
@@ -92,6 +93,9 @@ export function StatsTab() {
 
       {/* === Activity card — Week | Month segmented control === */}
       <ActivityCard />
+
+      {/* === Schedule Adherence — Plan vs Actual === */}
+      <AdherenceCard />
 
       {/* === Sleep Health — modernized card with score ring === */}
       <SleepHealthCard onTap={() => setShowSleepReport(true)} />

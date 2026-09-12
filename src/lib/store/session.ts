@@ -27,6 +27,7 @@ interface SessionStore {
     topic: string;
     mode: SessionMode;
     expectedMinutes?: number;
+    plannedSlotId?: string; // Smart Study Routine: which routine block this session fulfills
   }) => void;
   pause: () => void;
   resume: () => void;
@@ -74,6 +75,7 @@ export const useSession = create<SessionStore>()(
             startedAt: finalSession.startedAt,
             endedAt: Date.now(),
             date: finalSession.date ?? todayKey(), // Use session's START date, not today
+            plannedSlotId: finalSession.plannedSlotId, // Smart Study Routine
           };
           // Save directly without mood prompt for the previous session
           useHistory.getState().addSession({ ...saved, id: uid(), mood: null });
@@ -111,6 +113,7 @@ export const useSession = create<SessionStore>()(
           date: todayKey(), // Bind session to its START date
           baselineStudySeconds,
           baselineWastedSeconds,
+          plannedSlotId: opts.plannedSlotId, // Smart Study Routine
         };
         set({ active: session, focusOpen: true, widgetHidden: false, lastInteractionAt: Date.now() });
         vibrate(15);
@@ -189,6 +192,7 @@ export const useSession = create<SessionStore>()(
           startedAt: finalSession.startedAt,
           endedAt: Date.now(),
           date: finalSession.date ?? todayKey(), // Use session's START date, not today
+          plannedSlotId: finalSession.plannedSlotId, // Smart Study Routine
         };
         set({
           pendingMoodSession: pending,
@@ -245,6 +249,7 @@ export const useSession = create<SessionStore>()(
             startedAt: committed.startedAt,
             endedAt: Date.now(),
             date: sessionDate, // Save to the ORIGINAL start date
+            plannedSlotId: committed.plannedSlotId, // Smart Study Routine
           };
           useHistory.getState().addSession({ ...saved, id: uid(), mood: null });
           // Close the session entirely — user must start fresh today
