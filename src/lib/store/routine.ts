@@ -111,8 +111,11 @@ export const useRoutine = create<RoutineStore>()(
         const blocks = get().blocks;
         const sourceBlocks = blocks.filter((b) => b.day === fromDay);
         if (sourceBlocks.length === 0) return;
-        // Remove all blocks for other days, then add copies of source blocks
-        const otherBlocks = blocks.filter((b) => b.day !== fromDay);
+        // === FIX: Replace ALL blocks on other days with copies of source ===
+        // Previous code kept existing blocks on other days AND added copies →
+        // duplicates on every day that already had blocks.
+        // Now: keep ONLY the source day's original blocks, then add fresh
+        // copies for each of the other 6 days. No duplicates possible.
         const copiedBlocks: RoutineBlock[] = [];
         for (let day = 0; day < 7; day++) {
           if (day === fromDay) continue;
@@ -124,7 +127,8 @@ export const useRoutine = create<RoutineStore>()(
             });
           }
         }
-        set({ blocks: [...otherBlocks, ...copiedBlocks] });
+        // Final blocks = source day's originals + copies for other 6 days
+        set({ blocks: [...sourceBlocks, ...copiedBlocks] });
       },
 
       clearAll: () => set({ blocks: [] }),
