@@ -44,6 +44,8 @@ export function SessionManager({ onClose }: Props) {
   const deleteSessionsBulk = useHistory((s) => s.deleteSessionsBulk);
   const deleteSessionsBeforeDate = useHistory((s) => s.deleteSessionsBeforeDate);
   const deleteAllSessions = useHistory((s) => s.deleteAllSessions);
+  const clearWastedTime = useHistory((s) => s.clearWastedTime);
+  const clearAllWastedTime = useHistory((s) => s.clearAllWastedTime);
 
   const [filter, setFilter] = useState<FilterMode>('all');
   const [search, setSearch] = useState('');
@@ -153,6 +155,27 @@ export function SessionManager({ onClose }: Props) {
     vibrate([10, 30, 10]);
     deleteSession(id);
     setSelectedSession(null);
+  };
+
+  const handleClearWasteTime = (id: string) => {
+    vibrate([10, 30, 10]);
+    clearWastedTime(id);
+    setSelectedSession(null);
+  };
+
+  const handleClearAllWasteTime = () => {
+    const wastedCount = sessions.filter((s) => s.wastedSeconds > 0).length;
+    setConfirmAction({
+      title: `Clear wasted time from ${wastedCount} session${wastedCount === 1 ? '' : 's'}?`,
+      message: 'This sets wastedSeconds to 0 for ALL sessions. Your study time is kept intact — only the wasted-time records are removed. This affects your stats (waste time will show 0).',
+      onConfirm: () => {
+        clearAllWastedTime();
+        setConfirmAction(null);
+        setShowBulkMenu(false);
+        vibrate([10, 30, 10]);
+      },
+      variant: 'amber',
+    });
   };
 
   const handleDeleteCorrupted = () => {
@@ -434,6 +457,21 @@ export function SessionManager({ onClose }: Props) {
                 {/* Delete before date */}
                 <DeleteBeforeDateButton onConfirm={handleDeleteBeforeDate} />
 
+                {/* Clear ALL waste time */}
+                <button
+                  onClick={() => { setShowBulkMenu(false); handleClearAllWasteTime(); }}
+                  disabled={sessions.filter((s) => s.wastedSeconds > 0).length === 0}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 transition text-left disabled:opacity-40"
+                >
+                  <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-amber-500/20 text-amber-600">
+                    <AlertTriangle size={14} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[13px] font-medium text-amber-600">Clear ALL waste time</div>
+                    <div className="text-[10px] text-muted-foreground">Set wastedSeconds to 0 (keep study time)</div>
+                  </div>
+                </button>
+
                 {/* Delete ALL */}
                 <button
                   onClick={() => { setShowBulkMenu(false); handleDeleteAll(); }}
@@ -603,6 +641,14 @@ export function SessionManager({ onClose }: Props) {
                       >
                         Close
                       </button>
+                      {(s.wastedSeconds || 0) > 0 && (
+                        <button
+                          onClick={() => handleClearWasteTime(s.id)}
+                          className="flex-1 py-2 rounded-lg bg-amber-500 text-white text-[12px] font-bold hover:bg-amber-600 active:scale-95 transition"
+                        >
+                          Clear waste
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteSession(s.id)}
                         className="flex-1 py-2 rounded-lg bg-red-500 text-white text-[12px] font-bold hover:bg-red-600 active:scale-95 transition"

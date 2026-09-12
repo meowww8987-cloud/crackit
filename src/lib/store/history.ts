@@ -19,6 +19,12 @@ interface HistoryStore {
   deleteSessionsBeforeDate: (date: string) => void;
   /** Delete ALL sessions (nuclear option). Used by Settings → Data. */
   deleteAllSessions: () => void;
+  /** Clear wasted time for a single session (sets wastedSeconds to 0).
+   *  Keeps the session + study time intact. */
+  clearWastedTime: (id: string) => void;
+  /** Clear wasted time for ALL sessions (sets all wastedSeconds to 0).
+   *  Keeps all sessions + study time intact. */
+  clearAllWastedTime: () => void;
   getTodaySessions: () => SavedSession[];
   getSessionsForTargetToday: (targetId: string) => SavedSession[];
   getSessionsForTarget: (targetId: string) => SavedSession[];
@@ -105,6 +111,22 @@ export const useHistory = create<HistoryStore>()(
         set((st) => ({ sessions: st.sessions.filter((x) => x.date >= date) })),
 
       deleteAllSessions: () => set({ sessions: [] }),
+
+      /** Clear wasted time for a single session (sets wastedSeconds to 0).
+       *  Keeps the session + study time intact. */
+      clearWastedTime: (id) =>
+        set((st) => ({
+          sessions: st.sessions.map((x) =>
+            x.id === id ? { ...x, wastedSeconds: 0 } : x
+          ),
+        })),
+
+      /** Clear wasted time for ALL sessions (sets all wastedSeconds to 0).
+       *  Keeps all sessions + study time intact. */
+      clearAllWastedTime: () =>
+        set((st) => ({
+          sessions: st.sessions.map((x) => ({ ...x, wastedSeconds: 0 })),
+        })),
 
       getTodaySessions: () => {
         const today = todayKey();
