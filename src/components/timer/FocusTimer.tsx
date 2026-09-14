@@ -712,12 +712,12 @@ export function FocusTimer() {
           {isPaused ? (
             <span><span aria-hidden="true">⏸</span> PAUSED</span>
           ) : isWasting ? (
-            // FIX #7: Removed pulse-fast, keep text only (less anxiety-inducing)
-            <span>⚠ WASTING TIME — tap to resume</span>
+            // FIX #7: pulse-fast back but gentler (1.8s opacity-only, was 0.9s with scale)
+            <span className={cn('pulse-fast', dimmed && '!animate-none')}>⚠ WASTING TIME — tap to resume</span>
           ) : (
-            // FIX #35: pulse-slow only for first 5 min, then static
+            // FIX #35: pulse-slow stays alive — gentle breathing always on
             // FIX #25: Disabled when reduceAnimations is on
-            <span className={cn(!reduceAnim && studySec < 300 && !dimmed && 'pulse-slow', dimmed && '!animate-none')}>
+            <span className={cn(!reduceAnim && !dimmed && 'pulse-slow', dimmed && '!animate-none')}>
               <span aria-hidden="true">●</span> STUDYING
             </span>
           )}
@@ -746,11 +746,16 @@ export function FocusTimer() {
           ) : (
             <FlipTimer
               value={formatClock(displayTime)}
-              className="text-7xl sm:text-8xl font-bold tabular tracking-tight text-center"
+              className={cn(
+                'text-7xl sm:text-8xl font-bold tabular tracking-tight text-center',
+                // === NEW: Breathing glow makes timer feel alive ===
+                !reduceAnim && 'timer-breathe'
+              )}
               style={{
                 color: timerColor,
                 textShadow: `0 0 40px ${timerColor}40`,
                 transition: 'color 600ms ease-in-out, text-shadow 600ms ease-in-out',
+                ['--timer-glow' as string]: `${timerColor}50`,
               }}
             />
           )}
