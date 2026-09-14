@@ -6,17 +6,18 @@ import { Pause, Play, Square, ChevronDown, AlertTriangle, CheckCircle2, RotateCw
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
 import { useTargets } from '@/lib/store/targets';
 import { useSettings } from '@/lib/store/settings';
-import { usePartner } from '@/lib/store/partner';
 import { subjectColor } from '@/lib/colors';
 import { cn, formatClock, formatHM, vibrate } from '@/lib/utils';
 import { FlipTimer } from '@/components/timer/FlipTimer';
+import { useRoutine } from '@/lib/store/routine';
 
 export function FocusTimer() {
   const { active, pause, resume, toggleWasting, stop, setFocusOpen, bumpInteraction } = useSession();
   const toggleTargetDone = useTargets((s) => s.toggleDone);
   const settings = useSettings();
-  const partnerSyncData = usePartner((s) => s.syncData);
-  const partnerCode = usePartner((s) => s.code);
+  // === FIX #23: Removed dead partner imports ===
+  // usePartner was imported but syncData/code were never used — dead code
+  // that triggered unnecessary re-renders when partner data changed.
   const color = active ? subjectColor(active.subject) : null;
 
   // Local state for live ticking + burn protection
@@ -25,6 +26,8 @@ export function FocusTimer() {
   const [timerPos, setTimerPos] = useState({ x: 0, y: 0 });
   const [wasteFlash, setWasteFlash] = useState<number | null>(null); // seconds wasted on return
   const [showPulse, setShowPulse] = useState(false);
+  // === FIX #8: In-app stop confirmation modal (replaces native confirm()) ===
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
   // === Modern Orientation Detection (v2.21.0) ===
   //
   // PROBLEMS with the old approach (single 45° threshold + raw sensor):
@@ -73,13 +76,16 @@ export function FocusTimer() {
   const lastWastedRef = useRef(0);
   const lastInteractRef = useRef(Date.now());
 
-  // Live ticking — 500ms normally, 5s when dimmed (saves CPU on low-end devices)
+  // Live ticking — 1000ms normally, 5s when dimmed (saves CPU on low-end devices)
+  // === FIX #21: Changed from 500ms to 1000ms ===
+  // The timer shows M:SS or H:MM:SS — 1s resolution is sufficient.
+  // 500ms caused ~7200 re-renders/hour; 1000ms cuts that in half.
   // === HEAT FIX: Skip tick when tab hidden — timer state is Date-diff based ===
   useEffect(() => {
     const i = setInterval(() => {
       if (document.hidden) return; // Skip — will catch up on return
       setTick((t) => t + 1);
-    }, dimmed ? 5000 : 500);
+    }, dimmed ? 5000 : 1000);
     return () => clearInterval(i);
   }, [dimmed]);
 
@@ -156,9 +162,18 @@ export function FocusTimer() {
 
     // --- 1. DeviceOrientationEvent with smoothing + hysteresis ---
     let deviceOrientationActive = false;
+    // === FIX #22: Throttle deviceorientation to 10Hz (100ms) ===
+    // Sensor fires at ~60Hz — way more than needed. Throttle saves battery.
+    let lastSensorProcessAt = 0;
+    const SENSOR_THROTTLE_MS = 100;
     const handleDeviceOrientation = (e: DeviceOrientationEvent) => {
       if (e.gamma == null || e.beta == null) return;
       deviceOrientationActive = true;
+
+      // Throttle — skip processing if less than 100ms since last process
+      const now = Date.now();
+      if (now - lastSensorProcessAt < SENSOR_THROTTLE_MS) return;
+      lastSensorProcessAt = now;
 
       // === Layer 3: LOW-PASS SMOOTHING ===
       // Exponential smoothing: removes ±3-5° sensor jitter.
@@ -231,10 +246,12 @@ export function FocusTimer() {
     if (!active) return;
     if (wastedSeconds > lastWastedRef.current + 2) {
       const added = wastedSeconds - lastWastedRef.current;
-      setWasteFlash(added);
-      // Auto-hide after 2.5s
-      const t = setTimeout(() => setWasteFlash(null), 2500);
+      // === FIX #28: Update ref synchronously + extend to 4s ===
+      // Previously ref was updated inside setTimeout — could miss rapid waste additions.
+      // Now updated synchronously. Auto-hide extended from 2.5s to 4s for readability.
       lastWastedRef.current = wastedSeconds;
+      setWasteFlash(added);
+      const t = setTimeout(() => setWasteFlash(null), 4000);
       return () => clearTimeout(t);
     }
     lastWastedRef.current = wastedSeconds;
@@ -364,6 +381,11 @@ export function FocusTimer() {
 
   if (!active || !color) return null;
 
+  // === FIX #24: minimalMode — hide non-essential UI for deep focus ===
+  // === FIX #25: reduceAnimations — disable decorative animations ===
+  const minimalMode = settings.minimalMode;
+  const reduceAnim = settings.reduceAnimations;
+
   const studySec = getLiveStudySeconds(active);
   const wastedSec = getLiveWastedSeconds(active);
   const isOverTime = active.expectedMinutes ? studySec > active.expectedMinutes * 60 : false;
@@ -374,14 +396,20 @@ export function FocusTimer() {
   const isStudying = !isPaused && !isWasting;
 
   // Timer color
-  const timerColor = isWasting ? '#ef4444' : isPaused ? '#f59e0b' : isOverTime ? '#f59e0b' : '#22c55e';
+  // === FIX #6: Distinct colors for paused vs overtime ===
+  // Previously both used #f59e0b (amber) — visually identical.
+  // Now: paused = amber, overtime = cyan, wasting = red, studying = green
+  const timerColor = isWasting ? '#ef4444' : isPaused ? '#f59e0b' : isOverTime ? '#06b6d4' : '#22c55e';
 
   // Background — pure black with smooth color morph overlay
+  // === FIX: Use subject color tint for studying state (subtle 3% alpha) ===
   const bgOverlay = isWasting
     ? 'radial-gradient(circle at 50% 50%, rgba(239,68,68,0.08) 0%, rgba(0,0,0,0) 70%)'
     : isPaused
     ? 'radial-gradient(circle at 50% 50%, rgba(245,158,11,0.06) 0%, rgba(0,0,0,0) 70%)'
-    : 'radial-gradient(circle at 50% 50%, rgba(34,197,94,0.04) 0%, rgba(0,0,0,0) 70%)';
+    : isOverTime
+    ? 'radial-gradient(circle at 50% 50%, rgba(6,182,212,0.06) 0%, rgba(0,0,0,0) 70%)'
+    : `radial-gradient(circle at 50% 50%, ${color?.hex}10 0%, rgba(0,0,0,0) 70%)`;
 
   const handleInteraction = () => {
     lastInteractRef.current = Date.now();
@@ -397,13 +425,17 @@ export function FocusTimer() {
   const handleStop = () => {
     vibrate(15);
     if (studySec < 300) {
-      // 5 min confirmation
-      if (confirm(`Only ${Math.floor(studySec / 60)}m studied. End session?`)) {
-        triggerStopPulse();
-      }
+      // === FIX #8: Use in-app modal instead of native confirm() ===
+      setShowStopConfirm(true);
     } else {
       triggerStopPulse();
     }
+  };
+
+  const confirmStop = () => {
+    setShowStopConfirm(false);
+    vibrate(15);
+    triggerStopPulse();
   };
 
   const triggerStopPulse = () => {
@@ -523,7 +555,8 @@ export function FocusTimer() {
               Total wasted: {formatHM(wastedSec)}
             </div>
             <div className="text-[10px] text-muted-foreground/60 mt-3">
-              Auto-resumed studying
+              {/* === FIX #29: Clearer wording — explains what happened === */}
+              Timer auto-resumed — tap Pause if you need a break
             </div>
           </motion.div>
         </motion.div>
@@ -577,8 +610,10 @@ export function FocusTimer() {
         )}
       </AnimatePresence>
 
-      {/* Top section: labels — HIDDEN when dimmed.
-          Improved contrast: bumped label opacity from /40 → /70, sizes up. */}
+      {/* Top section: labels — HIDDEN when dimmed OR minimalMode.
+          Improved contrast: bumped label opacity from /40 → /70, sizes up.
+          === FIX #24: Hidden in minimalMode for deep focus === */}
+      {!minimalMode && (
       <div className={cn('text-center transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-foreground/10 border border-border mb-2">
           <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color.hex }} />
@@ -598,45 +633,66 @@ export function FocusTimer() {
         {active.topic && (
           <div className="text-xs text-foreground mt-0.5">{active.topic}</div>
         )}
-        {/* === Smart Study Routine: block ends at indicator === */}
+        {/* === Smart Study Routine: block context ===
+         * === FIX #2: Wrong-subject warning ===
+         * === FIX #31: Next block preview ===
+         * === FIX: Moved require to top-level import === */}
         {active.plannedSlotId && (() => {
-          // Find the routine block to get endHour
           try {
-            const { useRoutine } = require('@/lib/store/routine');
-            const block = useRoutine.getState().blocks.find((b: any) => b.id === active.plannedSlotId);
+            const block = useRoutine.getState().blocks.find((b) => b.id === active.plannedSlotId);
             if (!block) return null;
             const now = new Date();
             const blockEndMs = new Date().setHours(block.endHour, 0, 0, 0);
             const remainingMin = Math.round((blockEndMs - now.getTime()) / 60000);
             const formatHour = (h: number) => {
+              if (h === 24) return '12:00 AM';
               const period = h >= 12 ? 'PM' : 'AM';
               const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
               return `${display}:00 ${period}`;
             };
-            if (remainingMin > 0) {
-              return (
-                <div className="text-[10px] mt-1 px-2 py-0.5 rounded-md inline-flex items-center gap-1"
-                  style={{ background: `${color?.hex}15`, color: color?.hex }}>
-                  Block ends at {formatHour(block.endHour)} · {remainingMin} min left
-                </div>
-              );
-            } else if (remainingMin > -120) {
-              // Overtime (up to 2h)
-              return (
-                <div className="text-[10px] mt-1 px-2 py-0.5 rounded-md inline-flex items-center gap-1"
-                  style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
-                  ⚠ {Math.abs(remainingMin)} min overtime
-                </div>
-              );
-            }
+            // === FIX #2: Wrong-subject warning ===
+            const isWrongSubject = active.subject !== block.subject;
+            // === FIX #31: Next block preview ===
+            const nextBlock = useRoutine.getState().getNextBlock();
+
+            return (
+              <div className="mt-1 flex flex-col items-center gap-1">
+                {/* Wrong-subject warning */}
+                {isWrongSubject && (
+                  <div className="text-[10px] px-2 py-0.5 rounded-md inline-flex items-center gap-1"
+                    style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
+                    ⚠ Off-plan: routine says {block.subject}
+                  </div>
+                )}
+                {/* Block ends at / overtime */}
+                {remainingMin > 0 ? (
+                  <div className="text-[10px] px-2 py-0.5 rounded-md inline-flex items-center gap-1"
+                    style={{ background: `${color?.hex}15`, color: color?.hex }}>
+                    Block ends at {formatHour(block.endHour)} · {remainingMin} min left
+                  </div>
+                ) : remainingMin > -120 ? (
+                  <div className="text-[10px] px-2 py-0.5 rounded-md inline-flex items-center gap-1"
+                    style={{ background: 'rgba(6,182,212,0.12)', color: '#06b6d4' }}>
+                    ⚠ {Math.abs(remainingMin)} min overtime
+                  </div>
+                ) : null}
+                {/* Next block preview */}
+                {nextBlock && (
+                  <div className="text-[9px] text-muted-foreground/60">
+                    Next: {nextBlock.subject} · {formatHour(nextBlock.startHour)}
+                  </div>
+                )}
+              </div>
+            );
           } catch {}
           return null;
         })()}
       </div>
+      )}
 
       {/* Center: massive timer */}
       <div className="flex-1 flex flex-col items-center justify-center">
-        {/* Status badge — HIDDEN when dimmed */}
+        {/* Status badge — HIDDEN when dimmed OR minimalMode */}
         <motion.div
           key={isPaused ? 'paused' : isWasting ? 'wasting' : 'studying'}
           initial={{ scale: 0.8, opacity: 0 }}
@@ -650,13 +706,20 @@ export function FocusTimer() {
             transition: 'background-color 600ms ease-in-out',
             boxShadow: dimmed ? 'none' : `0 4px 16px -4px ${isWasting ? '#ef4444' : isPaused ? '#f59e0b' : '#22c55e'}80`,
           }}
+          role="status"
+          aria-label={isPaused ? 'Status: Paused' : isWasting ? 'Status: Wasting time' : 'Status: Studying'}
         >
           {isPaused ? (
-            <span>⏸ PAUSED</span>
+            <span><span aria-hidden="true">⏸</span> PAUSED</span>
           ) : isWasting ? (
-            <span className={cn('pulse-fast', dimmed && '!animate-none')}>⚠ WASTING TIME — tap to resume</span>
+            // FIX #7: Removed pulse-fast, keep text only (less anxiety-inducing)
+            <span>⚠ WASTING TIME — tap to resume</span>
           ) : (
-            <span className={cn('pulse-slow', dimmed && '!animate-none')}>● STUDYING</span>
+            // FIX #35: pulse-slow only for first 5 min, then static
+            // FIX #25: Disabled when reduceAnimations is on
+            <span className={cn(!reduceAnim && studySec < 300 && !dimmed && 'pulse-slow', dimmed && '!animate-none')}>
+              <span aria-hidden="true">●</span> STUDYING
+            </span>
           )}
         </motion.div>
 
@@ -697,12 +760,25 @@ export function FocusTimer() {
               {isPaused ? 'Paused at' : isWasting ? 'Wasting for' : 'Studied for'}
             </div>
           )}
+          {/* === FIX #9: Minimal context when dimmed ===
+              Shows subject · chapter at low opacity so context survives
+              without burning the screen. */}
+          {dimmed && (
+            <div className="text-center mt-3 text-[10px] text-white/20 font-medium">
+              {active.subject}{active.chapter ? ` · ${active.chapter}` : ''}
+            </div>
+          )}
         </motion.div>
 
-        {/* Wasted display — HIDDEN when dimmed */}
+        {/* Wasted display + Focus quality — HIDDEN when dimmed */}
+        {/* === FIX #30: Added focus quality % indicator === */}
         {!isWasting && wastedSec > 0 && (
           <div className={cn('mt-4 text-sm text-red-400/85 tabular font-semibold transition-opacity duration-1000', dimmed ? 'opacity-0' : 'opacity-100')}>
-            Wasted: {formatHM(wastedSec)}
+            Wasted: {formatHM(wastedSec)} · {(() => {
+              const total = studySec + wastedSec;
+              const pct = total > 0 ? Math.round((studySec / total) * 100) : 100;
+              return `${pct}% focus`;
+            })()}
           </div>
         )}
 
@@ -759,7 +835,8 @@ export function FocusTimer() {
           {isWasting ? (
             <><Play size={18} fill="currentColor" /> Resume Study</>
           ) : (
-            <><AlertTriangle size={18} /> I'm Wasting Time</>
+            // === FIX #27: Softer wording — less accusatory ===
+            <><AlertTriangle size={18} /> Got Distracted</>
           )}
         </button>
 
@@ -769,15 +846,21 @@ export function FocusTimer() {
             <button
               onClick={(e) => { e.stopPropagation(); handleInteraction(); handleDone(); }}
               className="flex-1 py-4 rounded-2xl font-bold text-base bg-green-500 text-black active:scale-[0.98] transition flex items-center justify-center gap-2"
+              aria-label="Done — mark target complete"
             >
-              <CheckCircle2 size={18} /> Done
+              {/* === FIX #11: Shape differentiation for colorblind users ===
+                  Done = circle check (rounded-2xl + CheckCircle2) */}
+              <CheckCircle2 size={20} /> Done
             </button>
           ) : (
             <button
               onClick={(e) => { e.stopPropagation(); handleInteraction(); handleStop(); }}
               className="flex-1 py-4 rounded-2xl font-bold text-base bg-red-500/15 text-red-400 active:scale-[0.98] transition flex items-center justify-center gap-2"
+              aria-label="Stop — end session"
             >
-              <Square size={18} fill="currentColor" /> Stop
+              {/* === FIX #11: Shape differentiation ===
+                  Stop = square (rounded-2xl + Square filled) */}
+              <Square size={20} fill="currentColor" /> Stop
             </button>
           )}
           <button
@@ -787,8 +870,10 @@ export function FocusTimer() {
               setFocusOpen(false);
             }}
             className="px-5 py-4 rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+            aria-label="Hide timer"
           >
-            <ChevronDown size={16} /> Min
+            {/* === FIX #4: "Min" → "Hide" (clearer label) === */}
+            <ChevronDown size={16} /> Hide
           </button>
           {/* Orientation rotate + lock button.
               - Single tap: cycle through 4 angles (0°→90°→180°→270°→0°).
@@ -866,20 +951,21 @@ export function FocusTimer() {
                 rotateLongPressRef.current = null;
               }
             }}
-            className="px-4 py-4 rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
+            className="px-5 py-4 min-w-[56px] rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
             title={`Rotate (current: ${effectiveAngle}°${settings.lockedOrientation !== null ? ' · locked' : ''}${tempLockAngle !== null ? ' · temp-locked' : ''})\n• Tap: rotate 90°\n• Double-tap: temp lock\n• Long-press: persistent lock`}
             aria-label="Rotate or lock orientation"
           >
             {/* Show Lock icon when locked, RotateCw when unlocked */}
+            {/* === FIX #33: Bigger touch target + larger icon === */}
             {(settings.lockedOrientation !== null || tempLockAngle !== null) ? (
               <Lock
-                size={16}
+                size={20}
                 className="text-amber-400"
                 style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }}
               />
             ) : (
               <RotateCw
-                size={16}
+                size={20}
                 style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }}
               />
             )}
@@ -908,6 +994,55 @@ export function FocusTimer() {
       </div>
       </div>
       </div>
+
+      {/* === FIX #8: Stop confirmation modal (in-app, replaces native confirm) === */}
+      <AnimatePresence>
+        {showStopConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10001] bg-black/80 flex items-center justify-center p-4"
+            onClick={() => setShowStopConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="w-full max-w-xs rounded-2xl border border-border shadow-2xl p-4"
+              style={{ background: 'var(--popover, rgba(20,22,30,0.96))' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={18} className="text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">End session early?</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Only {Math.floor(studySec / 60)}m studied. Are you sure you want to end this session?
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowStopConfirm(false); vibrate(10); }}
+                  className="flex-1 py-2 rounded-lg bg-foreground/10 text-white text-[12px] font-semibold hover:bg-foreground/20 active:scale-95 transition"
+                >
+                  Keep Studying
+                </button>
+                <button
+                  onClick={confirmStop}
+                  className="flex-1 py-2 rounded-lg bg-red-500 text-white text-[12px] font-bold hover:bg-red-600 active:scale-95 transition"
+                >
+                  End Session
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

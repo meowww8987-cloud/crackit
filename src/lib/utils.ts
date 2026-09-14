@@ -32,11 +32,17 @@ export function formatShort(totalSeconds: number): string {
 }
 
 export function formatClock(totalSeconds: number): string {
-  // HH:MM:SS for timer display
+  // === FIX #5: No leading zeros under 1 hour ===
+  // - Under 1 hour: "M:SS" (e.g. "5:03" instead of "00:05:03")
+  // - 1 hour+: "H:MM:SS" (e.g. "1:23:45" instead of "01:23:45")
+  // This removes the visual noise of "00:00:" for short sessions.
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = Math.floor(totalSeconds % 60);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 // ===== Date helpers =====
@@ -96,6 +102,15 @@ export function uid(): string {
 
 export function vibrate(pattern: number | number[] = 10) {
   if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    // === FIX #26: Check haptics setting before vibrating ===
+    // Users who disabled haptics in Settings should not feel vibrations.
+    try {
+      const stored = localStorage.getItem('neet-settings');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.state?.haptics === false) return; // Haptics disabled
+      }
+    } catch {}
     try { navigator.vibrate(pattern); } catch {}
   }
 }

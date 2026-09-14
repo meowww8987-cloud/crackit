@@ -408,13 +408,29 @@ function commitInflight(s: ActiveSession): ActiveSession {
   let lastResumeAt = s.lastResumeAt;
   let lastWasteStart = s.lastWasteStart;
 
+  // === FIX #1: Battery-die / app-kill protection ===
+  // If the gap since lastResumeAt (or lastWasteStart) exceeds 90 seconds,
+  // the app was likely killed or the phone died. We DISCARD the inflight
+  // delta entirely (don't add it to study/wasted time) to prevent corrupt
+  // sessions like "8h studied" when the user was asleep.
+  // 90s is chosen because:
+  // - Normal periodic commits happen every 60s (AppShell tick)
+  // - A gap > 90s means at least one commit was missed → app was inactive
+  const MAX_INFLIGHT_GAP_SEC = 90;
+
   if (s.wasting && s.lastWasteStart) {
     const delta = Math.floor((now - s.lastWasteStart) / 1000);
-    wastedSeconds += delta;
-    lastWasteStart = now; // reset reference so subsequent commits don't double-count
+    if (delta <= MAX_INFLIGHT_GAP_SEC) {
+      wastedSeconds += delta;
+    }
+    // If delta > 90s, discard — don't add the gap as wasted time
+    lastWasteStart = now;
   } else if (!s.wasting && !s.paused && s.lastResumeAt) {
     const delta = Math.floor((now - s.lastResumeAt) / 1000);
-    studySeconds += delta;
+    if (delta <= MAX_INFLIGHT_GAP_SEC) {
+      studySeconds += delta;
+    }
+    // If delta > 90s, discard — don't add the gap as study time
     lastResumeAt = now;
   }
   return { ...s, studySeconds, wastedSeconds, lastResumeAt, lastWasteStart };
@@ -426,14 +442,18 @@ export function getLiveStudySeconds(s: ActiveSession | null): number {
   if (!s) return 0;
   const baseline = s.baselineStudySeconds ?? 0;
   if (s.paused || s.wasting || !s.lastResumeAt) return s.studySeconds + baseline;
-  return s.studySeconds + Math.floor((Date.now() - s.lastResumeAt) / 1000) + baseline;
+  // === FIX #1: Cap live delta at 90s to prevent battery-die inflation ===
+  const delta = Math.min(90, Math.floor((Date.now() - s.lastResumeAt) / 1000));
+  return s.studySeconds + delta + baseline;
 }
 
 export function getLiveWastedSeconds(s: ActiveSession | null): number {
   if (!s) return 0;
   const baseline = s.baselineWastedSeconds ?? 0;
   if (s.paused || !s.wasting || !s.lastWasteStart) return s.wastedSeconds + baseline;
-  return s.wastedSeconds + Math.floor((Date.now() - s.lastWasteStart) / 1000) + baseline;
+  // === FIX #1: Cap live delta at 90s ===
+  const delta = Math.min(90, Math.floor((Date.now() - s.lastWasteStart) / 1000));
+  return s.wastedSeconds + delta + baseline;
 }
 
 export function getLiveTotalSeconds(s: ActiveSession | null): number {
