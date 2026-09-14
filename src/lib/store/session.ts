@@ -258,10 +258,41 @@ export const useSession = create<SessionStore>()(
         }
 
         // Same day — normal restore: auto-pause if was running
+        // === BATTERY-DIE PROTECTION (moved here from commitInflight) ===
+        // On restore, if the gap since lastResumeAt is > 90s, the app was
+        // likely killed or the phone died. We DISCARD the inflight delta
+        // to prevent corrupt sessions like "8h studied" when the user was asleep.
+        // This protection ONLY applies on restore — during normal pause/stop,
+        // the full delta is always committed (no time loss).
         if (!s.paused) {
-          const committed = commitInflight(s);
+          const now = Date.now();
+          let { studySeconds, wastedSeconds } = s;
+          const MAX_RESTORE_GAP_SEC = 90;
+
+          if (s.wasting && s.lastWasteStart) {
+            const delta = Math.floor((now - s.lastWasteStart) / 1000);
+            if (delta <= MAX_RESTORE_GAP_SEC) {
+              wastedSeconds += delta;
+            }
+            // If delta > 90s, discard — app was killed
+          } else if (!s.wasting && s.lastResumeAt) {
+            const delta = Math.floor((now - s.lastResumeAt) / 1000);
+            if (delta <= MAX_RESTORE_GAP_SEC) {
+              studySeconds += delta;
+            }
+            // If delta > 90s, discard — app was killed
+          }
+
           set({
-            active: { ...committed, paused: true, lastResumeAt: null, lastWasteStart: null, wasting: false },
+            active: {
+              ...s,
+              studySeconds,
+              wastedSeconds,
+              paused: true,
+              lastResumeAt: null,
+              lastWasteStart: null,
+              wasting: false,
+            },
             focusOpen: false,
             widgetHidden: false,
           });
@@ -408,29 +439,24 @@ function commitInflight(s: ActiveSession): ActiveSession {
   let lastResumeAt = s.lastResumeAt;
   let lastWasteStart = s.lastWasteStart;
 
-  // === FIX #1: Battery-die / app-kill protection ===
-  // If the gap since lastResumeAt (or lastWasteStart) exceeds 90 seconds,
-  // the app was likely killed or the phone died. We DISCARD the inflight
-  // delta entirely (don't add it to study/wasted time) to prevent corrupt
-  // sessions like "8h studied" when the user was asleep.
-  // 90s is chosen because:
-  // - Normal periodic commits happen every 60s (AppShell tick)
-  // - A gap > 90s means at least one commit was missed → app was inactive
-  const MAX_INFLIGHT_GAP_SEC = 90;
+  // === FIX: Removed 90s cap from commitInflight ===
+  // The cap was causing time loss on pause: if the user studied for 11 min
+  // since the last commit, commitInflight only added 90s to studySeconds
+  // and discarded the remaining 570s. This made the timer "jump backward"
+  // every time the user paused.
+  //
+  // Battery-die protection is now handled ONLY in restoreSession —
+  // if the gap on restore is > 90s, the inflight is discarded there.
+  // During normal operation (pause/stop/toggleWasting), we always commit
+  // the FULL delta — no time is lost.
 
   if (s.wasting && s.lastWasteStart) {
     const delta = Math.floor((now - s.lastWasteStart) / 1000);
-    if (delta <= MAX_INFLIGHT_GAP_SEC) {
-      wastedSeconds += delta;
-    }
-    // If delta > 90s, discard — don't add the gap as wasted time
+    wastedSeconds += delta;
     lastWasteStart = now;
   } else if (!s.wasting && !s.paused && s.lastResumeAt) {
     const delta = Math.floor((now - s.lastResumeAt) / 1000);
-    if (delta <= MAX_INFLIGHT_GAP_SEC) {
-      studySeconds += delta;
-    }
-    // If delta > 90s, discard — don't add the gap as study time
+    studySeconds += delta;
     lastResumeAt = now;
   }
   return { ...s, studySeconds, wastedSeconds, lastResumeAt, lastWasteStart };
