@@ -145,9 +145,13 @@ export const useSession = create<SessionStore>()(
         const s = get().active;
         if (!s || s.paused) return;
         const now = Date.now();
+        // === FIX: Cap waste delta at 5 min when toggling ===
+        const MAX_WASTE_DELTA_SEC = 300; // 5 minutes
         if (s.wasting) {
           // switch back to studying
-          const wasteDelta = s.lastWasteStart ? Math.floor((now - s.lastWasteStart) / 1000) : 0;
+          const wasteDelta = s.lastWasteStart
+            ? Math.min(MAX_WASTE_DELTA_SEC, Math.floor((now - s.lastWasteStart) / 1000))
+            : 0;
           set({
             active: {
               ...s,
@@ -303,10 +307,14 @@ export const useSession = create<SessionStore>()(
         // Only set awaySince if not already away (avoid overwriting original away time)
         const state = get();
         if (state.active && !state.active.paused && !state.awaySince) {
-          // Commit any in-flight study time up to now
+          // Commit any in-flight study/waste time up to now
+          // This is the REAL "you just left" moment — commit the accurate delta
           const committed = commitInflight(state.active);
           set({
-            active: { ...committed, lastResumeAt: null }, // Stop counting study time
+            // Clear BOTH lastResumeAt AND lastWasteStart so nothing accumulates
+            // while the app is backgrounded. The away duration will be added
+            // as wasted time by handleReturn when the user comes back.
+            active: { ...committed, lastResumeAt: null, lastWasteStart: null },
             awaySince: Date.now(),
           });
         }
@@ -320,9 +328,16 @@ export const useSession = create<SessionStore>()(
         }
         const awayMs = Date.now() - awaySince;
         if (awayMs > 2000) {
-          // markAway already committed study time up to when user left
-          // Now just add the away duration as wasted time and resume studying
-          const awaySec = Math.floor(awayMs / 1000);
+          // === FIX: Cap away duration at 5 minutes ===
+          // Previously: if the app was backgrounded for 2 hours, the ENTIRE
+          // 2 hours was added as wasted time. This caused "15s waste → 2h waste"
+          // corruption when the phone was in the user's pocket.
+          //
+          // Now: cap at 5 minutes (300s). If you're away for more than 5 min,
+          // only 5 min is counted as wasted — the rest is treated as "app was
+          // not in use" (you weren't actively distracted, you just left).
+          const MAX_AWAY_SEC = 300; // 5 minutes
+          const awaySec = Math.min(MAX_AWAY_SEC, Math.floor(awayMs / 1000));
           set({
             active: {
               ...active,
@@ -439,19 +454,14 @@ function commitInflight(s: ActiveSession): ActiveSession {
   let lastResumeAt = s.lastResumeAt;
   let lastWasteStart = s.lastWasteStart;
 
-  // === FIX: Removed 90s cap from commitInflight ===
-  // The cap was causing time loss on pause: if the user studied for 11 min
-  // since the last commit, commitInflight only added 90s to studySeconds
-  // and discarded the remaining 570s. This made the timer "jump backward"
-  // every time the user paused.
-  //
-  // Battery-die protection is now handled ONLY in restoreSession —
-  // if the gap on restore is > 90s, the inflight is discarded there.
-  // During normal operation (pause/stop/toggleWasting), we always commit
-  // the FULL delta — no time is lost.
+  // === FIX: Cap waste delta at 5 min, study delta has NO cap ===
+  // Study time: no cap — if you studied 11 min, you get 11 min.
+  // Waste time: cap at 5 min — if the app was backgrounded while in wasting
+  // mode for 2 hours, only 5 min is counted (prevents "15s → 2h" bug).
+  const MAX_WASTE_DELTA_SEC = 300; // 5 minutes
 
   if (s.wasting && s.lastWasteStart) {
-    const delta = Math.floor((now - s.lastWasteStart) / 1000);
+    const delta = Math.min(MAX_WASTE_DELTA_SEC, Math.floor((now - s.lastWasteStart) / 1000));
     wastedSeconds += delta;
     lastWasteStart = now;
   } else if (!s.wasting && !s.paused && s.lastResumeAt) {
@@ -483,8 +493,12 @@ export function getLiveWastedSeconds(s: ActiveSession | null): number {
   if (!s) return 0;
   const baseline = s.baselineWastedSeconds ?? 0;
   if (s.paused || !s.wasting || !s.lastWasteStart) return s.wastedSeconds + baseline;
-  // === FIX: Removed 90s cap from LIVE display (same reason as above) ===
-  const delta = Math.floor((Date.now() - s.lastWasteStart) / 1000);
+  // === FIX: Cap live waste delta at 5 minutes ===
+  // Same logic as handleReturn: if the app was backgrounded while in wasting
+  // mode, the live display shouldn't show 2 hours of waste. Cap at 5 min.
+  // The actual commit on pause/stop will also be capped.
+  const MAX_WASTE_DISPLAY_SEC = 300; // 5 minutes
+  const delta = Math.min(MAX_WASTE_DISPLAY_SEC, Math.floor((Date.now() - s.lastWasteStart) / 1000));
   return s.wastedSeconds + delta + baseline;
 }
 
