@@ -51,8 +51,10 @@ export const useHistory = create<HistoryStore>()(
         set((st) => ({ sessions: [...st.sessions, s] }));
         // === Record learned time for this subject+activity pair ===
         // This powers the AI that auto-fills expected time when adding new targets.
-        // We look up the target's activity from localStorage (synchronous) and
-        // update BOTH the Zustand store state AND localStorage.
+        //
+        // FIX: Use recordSessionTime() — single write path through Zustand.
+        // Previous code wrote to localStorage directly, causing a race with
+        // Zustand persist's async hydration (which overwrote our writes).
         if (s.targetId && s.studySeconds >= 180) {
           try {
             if (typeof localStorage === 'undefined') return;
@@ -67,32 +69,17 @@ export const useHistory = create<HistoryStore>()(
                 if (target) { activity = target.activity as ActivityType; break; }
               }
               if (activity) {
-                const minutes = Math.round(s.studySeconds / 60);
-                if (minutes >= 3 && minutes <= 240) {
-                  // 1. Update Zustand store state via lazy import
-                  try {
-                    const { useLearnedTime } = require('./learnedTime');
-                    if (useLearnedTime && useLearnedTime.getState) {
-                      useLearnedTime.getState().record(
-                        s.subject as Subject,
-                        activity,
-                        minutes
-                      );
-                    }
-                  } catch {}
-                  // 2. Also write directly to localStorage as a safety net
-                  try {
-                    const ltRaw = localStorage.getItem('neet-learned-times');
-                    const ltParsed = ltRaw ? JSON.parse(ltRaw) : { state: { data: {} } };
-                    const data = ltParsed?.state?.data || {};
-                    const key = `${s.subject}:${activity}`;
-                    const existing = data[key] || [];
-                    data[key] = [...existing, minutes].slice(-20);
-                    ltParsed.state = ltParsed.state || {};
-                    ltParsed.state.data = data;
-                    localStorage.setItem('neet-learned-times', JSON.stringify(ltParsed));
-                  } catch {}
-                }
+                // Single write path — Zustand state update triggers persist → localStorage
+                try {
+                  const { recordSessionTime } = require('./learnedTime');
+                  if (recordSessionTime) {
+                    recordSessionTime(
+                      s.subject as Subject,
+                      activity,
+                      s.studySeconds
+                    );
+                  }
+                } catch {}
               }
             }
           } catch {}

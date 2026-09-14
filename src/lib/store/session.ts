@@ -442,8 +442,14 @@ export function getLiveStudySeconds(s: ActiveSession | null): number {
   if (!s) return 0;
   const baseline = s.baselineStudySeconds ?? 0;
   if (s.paused || s.wasting || !s.lastResumeAt) return s.studySeconds + baseline;
-  // === FIX #1: Cap live delta at 90s to prevent battery-die inflation ===
-  const delta = Math.min(90, Math.floor((Date.now() - s.lastResumeAt) / 1000));
+  // === FIX: Removed 90s cap from LIVE display ===
+  // The cap belongs only in commitInflight (restore/battery-die scenario).
+  // Capping the live display caused the timer to FREEZE at 90s during
+  // normal foreground study — every tick computed Date.now()-lastResumeAt
+  // but capped it at 90, so the displayed time stopped increasing.
+  // The AppShell tick commits every 60s, resetting lastResumeAt, which
+  // is why the timer appeared to "jump" every 60s then freeze again.
+  const delta = Math.floor((Date.now() - s.lastResumeAt) / 1000);
   return s.studySeconds + delta + baseline;
 }
 
@@ -451,8 +457,8 @@ export function getLiveWastedSeconds(s: ActiveSession | null): number {
   if (!s) return 0;
   const baseline = s.baselineWastedSeconds ?? 0;
   if (s.paused || !s.wasting || !s.lastWasteStart) return s.wastedSeconds + baseline;
-  // === FIX #1: Cap live delta at 90s ===
-  const delta = Math.min(90, Math.floor((Date.now() - s.lastWasteStart) / 1000));
+  // === FIX: Removed 90s cap from LIVE display (same reason as above) ===
+  const delta = Math.floor((Date.now() - s.lastWasteStart) / 1000);
   return s.wastedSeconds + delta + baseline;
 }
 
