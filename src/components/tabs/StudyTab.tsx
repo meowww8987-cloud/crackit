@@ -50,6 +50,7 @@ export function StudyTab() {
   // Floating widget visibility
   const widgetHidden = useSession((s) => s.widgetHidden);
   const setWidgetHidden = useSession((s) => s.setWidgetHidden);
+  const setFocusOpen = useSession((s) => s.setFocusOpen);
   const activeSession = useSession((s) => s.active);
 
   // === SECTION 10: Reactive selectors (replacing all getState() calls) ===
@@ -292,6 +293,7 @@ export function StudyTab() {
         progressPct={progressPct}
         widgetHidden={widgetHidden}
         setWidgetHidden={setWidgetHidden}
+        setFocusOpen={setFocusOpen}
         activeSession={!!activeSession}
         onToggleSuggestions={() => setShowSuggestions((s) => !s)}
         mounted={mounted}
@@ -447,7 +449,7 @@ export function StudyTab() {
    ========================================================================= */
 function HeaderRow({
   streak, studySecToday, doneCount, totalCount, progressPct,
-  widgetHidden, setWidgetHidden, activeSession, onToggleSuggestions, mounted,
+  widgetHidden, setWidgetHidden, setFocusOpen, activeSession, onToggleSuggestions, mounted,
 }: {
   streak: number;
   studySecToday: number;
@@ -456,6 +458,7 @@ function HeaderRow({
   progressPct: number;
   widgetHidden: boolean;
   setWidgetHidden: (v: boolean) => void;
+  setFocusOpen: (v: boolean) => void;
   activeSession: boolean;
   onToggleSuggestions: () => void;
   mounted: boolean;
@@ -500,7 +503,14 @@ function HeaderRow({
             <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
           </button>
           <button
-            onClick={() => { vibrate(10); setWidgetHidden(!widgetHidden); }}
+            onClick={() => {
+              vibrate(10);
+              if (widgetHidden) {
+                // Unhiding — also close FocusTimer if open so widget is visible
+                setFocusOpen(false);
+              }
+              setWidgetHidden(!widgetHidden);
+            }}
             className={cn(
               'w-8 h-8 rounded-lg glass flex items-center justify-center hover:bg-foreground/10 transition active:scale-95',
               !activeSession && 'opacity-40'

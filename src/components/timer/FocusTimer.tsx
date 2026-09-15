@@ -12,7 +12,7 @@ import { FlipTimer } from '@/components/timer/FlipTimer';
 import { useRoutine } from '@/lib/store/routine';
 
 export function FocusTimer() {
-  const { active, pause, resume, toggleWasting, stop, setFocusOpen, bumpInteraction } = useSession();
+  const { active, pause, resume, toggleWasting, stop, setFocusOpen, bumpInteraction, setWidgetHidden } = useSession();
   const toggleTargetDone = useTargets((s) => s.toggleDone);
   const settings = useSettings();
   // === FIX #23: Removed dead partner imports ===
@@ -873,6 +873,11 @@ export function FocusTimer() {
               e.stopPropagation();
               handleInteraction();
               setFocusOpen(false);
+              // === FIX: Reset widgetHidden so the floating widget appears ===
+              // Previously: if widgetHidden was true from a previous hide,
+              // minimizing FocusTimer wouldn't show the widget — it stayed
+              // hidden even though focusOpen was false.
+              setWidgetHidden(false);
             }}
             className="px-5 py-4 rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5"
             aria-label="Hide timer"
