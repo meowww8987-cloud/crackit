@@ -8,6 +8,10 @@ import type { Subject } from '@/lib/types';
 export interface PracticeQuestion {
   number: number;
   timeSpentSec: number;
+  /** How many times the user visited this question (navigated TO it).
+   *  0 = never visited, 1 = visited once, 2+ = revisited.
+   *  Helps the report show "you revisited Q12 3 times — total 4min". */
+  visitCount?: number;
   status: 'unanswered' | 'answered' | 'skipped' | 'review-later';
   result: 'correct' | 'wrong' | 'unmarked';
   userAnswer: string | null;      // 'A' | 'B' | 'C' | 'D' | ... | null — what user selected during practice

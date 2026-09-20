@@ -112,6 +112,18 @@ export function PracticeRunner() {
     }
   }, [endPractice]);
 
+  // === VISIT TRACKING: increment visitCount when navigating to a question ===
+  const trackVisit = useCallback((idx: number) => {
+    const session = usePractice.getState().activePractice;
+    if (!session) return;
+    const questions = [...session.questions];
+    while (questions.length <= idx) {
+      questions.push({ number: questions.length + 1, timeSpentSec: 0, visitCount: 0, status: 'unanswered', result: 'unmarked', userAnswer: null, correctAnswer: null, conceptNotes: '', formulaNotes: '' });
+    }
+    questions[idx] = { ...questions[idx], visitCount: (questions[idx]?.visitCount || 0) + 1 };
+    usePractice.setState({ activePractice: { ...session, questions } });
+  }, []);
+
   const handleSelectOption = useCallback((option: string) => {
     if (haptics) vibrate(10);
     const session = usePractice.getState().activePractice;
@@ -148,6 +160,7 @@ export function PracticeRunner() {
       const targetQ = questions[idx];
       const savedSec = targetQ?.timeSpentSec || 0;
       questionStartRef.current = Date.now() - (savedSec * 1000);
+      trackVisit(idx);
       setCurrentQuestionIndex(idx);
     }
     undoDataRef.current = null;
@@ -169,6 +182,7 @@ export function PracticeRunner() {
       const nextIdx = idx + 1;
       const savedSec = questions[nextIdx]?.timeSpentSec || 0;
       questionStartRef.current = Date.now() - (savedSec * 1000);
+      trackVisit(nextIdx);
       setCurrentQuestionIndex(nextIdx);
     }
   }, [menuOpen, deleteMode, haptics]);
@@ -188,6 +202,7 @@ export function PracticeRunner() {
         const prevIdx = idx - 1;
         const savedSec = questions[prevIdx]?.timeSpentSec || 0;
         questionStartRef.current = Date.now() - (savedSec * 1000);
+        trackVisit(prevIdx);
         setCurrentQuestionIndex(prevIdx);
       }
     }
@@ -287,6 +302,7 @@ export function PracticeRunner() {
         if (nextIdx !== undoToast.idx) {
           const savedSec = s.questions[nextIdx]?.timeSpentSec || 0;
           questionStartRef.current = Date.now() - (savedSec * 1000);
+          trackVisit(nextIdx);
           setCurrentQuestionIndex(nextIdx);
         }
       }
@@ -328,7 +344,15 @@ export function PracticeRunner() {
     }
   }, [menuOpen]);
 
-  useEffect(() => { questionStartRef.current = Date.now(); }, [currentIdx]);
+  // === FIX: REMOVED useEffect that reset questionStartRef on currentIdx change.
+  // This was OVERRIDING the careful timer-continuation logic in all navigation
+  // handlers (bubble tap, Next, swipe, undo). The effect ran AFTER the
+  // handler's state update, resetting questionStartRef to Date.now() —
+  // destroying the saved time continuation.
+  //
+  // Instead, each handler now sets questionStartRef correctly:
+  //   questionStartRef = Date.now() - (savedSec * 1000) → continues from saved
+  //   questionStartRef = Date.now()                   → starts from 0 (new question)
 
   useEffect(() => {
     if (activePractice && !timerResetRef.current) {
@@ -340,6 +364,7 @@ export function PracticeRunner() {
         questionStartRef.current = Date.now() - qElapsedBeforePause * 1000;
       } else {
         usePractice.setState({ activePractice: { ...activePractice, startedAt: Date.now() } });
+        trackVisit(currentIdx);
         questionStartRef.current = Date.now();
       }
     }
@@ -566,6 +591,7 @@ export function PracticeRunner() {
                   } else {
                     questionStartRef.current = Date.now();
                   }
+                  trackVisit(i);
                   setCurrentQuestionIndex(i);
                 }}
                 onPointerDown={() => {
@@ -869,6 +895,7 @@ export function PracticeRunner() {
           } else {
             questionStartRef.current = Date.now();
           }
+          trackVisit(nextIdx);
           setCurrentQuestionIndex(nextIdx);
         }}
         className="w-full py-2.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5"
