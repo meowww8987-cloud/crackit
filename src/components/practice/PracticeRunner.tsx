@@ -350,14 +350,17 @@ export function PracticeRunner() {
   // Row 2: Current question as a BIG bubble — pops in/out with spring
   const questionPills = (
     <div className="w-full">
-      {/* Row 1: Small bubbles — all questions */}
+      {/* Row 1: Small bubbles — all questions
+          === FIX: padding-top so floating animation isn't clipped === */}
       <div
         ref={bubbleScrollRef}
-        className="flex gap-1 overflow-x-auto pb-1"
+        className="flex gap-1 overflow-x-auto"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           WebkitOverflowScrolling: 'touch',
+          paddingTop: '6px',   // room for upward float
+          paddingBottom: '2px',
         }}
       >
         {visibleQuestions.map((q, i) => {
@@ -365,7 +368,7 @@ export function PracticeRunner() {
           return (
             <motion.div
               key={i}
-              layout  // === PUSH EFFECT: animates position when layout changes ===
+              layout
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               className="relative shrink-0"
             >
@@ -387,8 +390,16 @@ export function PracticeRunner() {
                     questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
                     usePractice.setState({ activePractice: { ...session, questions } });
                   }
+                  // === FIX: Continue timer from where user left this question ===
+                  // Instead of starting from 0, start from the saved timeSpentSec
+                  if (session) {
+                    const targetQ = session.questions[i];
+                    const savedSec = targetQ?.timeSpentSec || 0;
+                    questionStartRef.current = Date.now() - (savedSec * 1000);
+                  } else {
+                    questionStartRef.current = Date.now();
+                  }
                   setCurrentQuestionIndex(i);
-                  questionStartRef.current = Date.now();
                 }}
                 onPointerDown={() => {
                   if (deleteMode) return;
@@ -416,11 +427,9 @@ export function PracticeRunner() {
                     ? 'w-8 h-8 text-xs ring-2 ring-white'
                     : 'w-6 h-6 text-[10px]',
                   deleteMode && pendingDelete === i && 'ring-2 ring-red-500',
-                  // === BUBBLE FLOAT: non-current, non-delete bubbles float gently ===
                   !isCurrent && !deleteMode && 'bubble-float'
                 )}
                 style={{
-                  // === WAVE EFFECT: each bubble gets a different delay ===
                   animationDelay: !isCurrent && !deleteMode ? `${(i % 8) * 0.15}s` : undefined,
                   background: deleteMode
                     ? (pendingDelete === i ? '#ef4444' : 'rgba(255,255,255,0.15)')
@@ -453,35 +462,37 @@ export function PracticeRunner() {
         )}
       </div>
 
-      {/* Row 2: BIG current question bubble — DRAMATIC bubble animation */}
-      <div className="flex justify-center mt-2" style={{ minHeight: '70px' }}>
+      {/* Row 2: BIG current question bubble — DRAMATIC bubble animation
+          === FIX: overflow visible so exit animation isn't clipped === */}
+      <div className="flex justify-center mt-2 relative" style={{ minHeight: '80px', overflow: 'visible' }}>
         <AnimatePresence mode="popLayout">
           <motion.div
             key={currentIdx}
-            // === ENTER: dramatic pop from 0 → 1.3 overshoot → settle ===
+            // === ENTER: dramatic pop — visible overshoot ===
             initial={{ scale: 0, opacity: 0, y: -30, rotate: -15 }}
             animate={{
-              scale: [0, 1.3, 0.9, 1.1, 1],   // 0 → overshoot 1.3 → dip 0.9 → bounce 1.1 → settle 1
+              scale: [0, 1.3, 0.9, 1.1, 1],
               opacity: [0, 1, 1, 1, 1],
-              y: [-30, 0, 5, -2, 0],           // drop from above → bounce → settle
-              rotate: [-15, 5, -3, 1, 0],       // wobble: -15° → 5° → -3° → 1° → 0°
+              y: [-30, 0, 5, -2, 0],
+              rotate: [-15, 5, -3, 1, 0],
             }}
-            // === EXIT: dramatic pop-out — grow then shrink + drop + spin ===
+            // === EXIT: visible shrink UP towards small row (not down) ===
             exit={{
-              scale: [1, 1.4, 0],               // grow to 1.4 then pop to 0
-              opacity: [1, 1, 0],
-              y: [0, 10, 40],                    // drop down 40px
-              rotate: [0, 15, 30],               // spin 30° as it falls
-              transition: { duration: 0.4, ease: 'easeIn' },
+              scale: [1, 1.3, 0.5, 0],
+              opacity: [1, 1, 0.5, 0],
+              y: [0, -10, -30, -50],     // moves UP towards the small bubble row
+              rotate: [0, -5, 10, 15],   // slight spin
+              transition: { duration: 0.5, ease: 'easeOut' },
             }}
             transition={{
               duration: 0.6,
-              times: [0, 0.3, 0.5, 0.7, 1],     // keyframe timing
+              times: [0, 0.3, 0.5, 0.7, 1],
               scale: { type: 'spring', stiffness: 300, damping: 8 },
             }}
+            style={{ position: 'relative' }}
             className="flex flex-col items-center gap-0.5"
           >
-            {/* Big bubble — with NOTICEABLE breathing while displayed */}
+            {/* Big bubble — with NOTICEABLE breathing */}
             <div
               className={cn('w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black bubble-breathe')}
               style={{
@@ -674,15 +685,21 @@ export function PracticeRunner() {
             questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
             usePractice.setState({ activePractice: { ...session, questions } });
           }
-          if (currentIdx < activePractice.questions.length - 1) {
-            setCurrentQuestionIndex(currentIdx + 1);
-          } else {
+          // Navigate to next
+          let nextIdx = currentIdx + 1;
+          if (nextIdx >= activePractice.questions.length) {
             const firstUnanswered = activePractice.questions.findIndex(q => q.status === 'unanswered');
-            if (firstUnanswered >= 0) {
-              setCurrentQuestionIndex(firstUnanswered);
-            }
+            nextIdx = firstUnanswered >= 0 ? firstUnanswered : currentIdx;
           }
-          questionStartRef.current = Date.now();
+          // === FIX: Continue timer from where user left this question ===
+          if (session) {
+            const targetQ = session.questions[nextIdx];
+            const savedSec = targetQ?.timeSpentSec || 0;
+            questionStartRef.current = Date.now() - (savedSec * 1000);
+          } else {
+            questionStartRef.current = Date.now();
+          }
+          setCurrentQuestionIndex(nextIdx);
         }}
         className="w-full py-2.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5"
         style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#ffffff' }}
