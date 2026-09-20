@@ -478,29 +478,12 @@ export function PracticeRunner() {
     };
   }, []);
 
-  if (!activePractice && phase === 'practicing' && !reviewSession) return null;
-  if (phase === 'report' && reviewSession) {
-    return <ReportPhase session={reviewSession} onEdit={() => setPhase('edit')} onClose={() => { setPhase('practicing'); setReviewSessionId(null); }} haptics={haptics} />;
-  }
-  if (phase === 'edit' && reviewSession) {
-    return <EditPhase session={reviewSession} markCorrectAnswer={markCorrectAnswer} saveNotes={saveNotes} onBack={() => setPhase('report')} onClose={() => { setPhase('practicing'); setReviewSessionId(null); }} haptics={haptics} toggleMultiCorrectAnswer={toggleMultiCorrectAnswer} setSubCorrectAnswer={setSubCorrectAnswer} />;
-  }
-  if (!activePractice) return null;
-
-  const totalElapsed = Math.floor((Date.now() - activePractice.startedAt) / 1000);
-  const questionElapsed = menuOpen
-    ? Math.floor(((menuOpenSinceRef.current ?? Date.now()) - questionStartRef.current) / 1000)
-    : Math.floor((Date.now() - questionStartRef.current) / 1000);
-  const answeredCount = activePractice.questions.filter(q => q.status === 'answered').length;
-  const skippedCount = activePractice.questions.filter(q => q.status === 'skipped').length;
-  const reviewCount = activePractice.questions.filter(q => q.status === 'review-later').length;
-  const timeLimitSec = activePractice.timeLimitMin * 60;
-  const visibleQuestions = activePractice.questions.slice(0, Math.max(30, currentIdx + 5));
-
   // === PROGRESS MILESTONES: flash at 25%, 50%, 75% ===
+  // MUST be before any conditional returns (Rules of Hooks)
   useEffect(() => {
     if (!activePractice || activePractice.questionCount === 0) return;
-    const pct = Math.round((answeredCount / activePractice.questionCount) * 100);
+    const answered = activePractice.questions.filter(q => q.status === 'answered').length;
+    const pct = Math.round((answered / activePractice.questionCount) * 100);
     const milestones = [
       { pct: 25, msg: '🎯 25% done' },
       { pct: 50, msg: '🔥 Halfway there!' },
@@ -515,7 +498,27 @@ export function PracticeRunner() {
         break;
       }
     }
-  }, [answeredCount, activePractice, haptics]);
+  }, [activePractice, haptics]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!activePractice && phase === 'practicing' && !reviewSession) return null;
+  if (phase === 'report' && reviewSession) {
+    return <ReportPhase session={reviewSession} onEdit={() => setPhase('edit')} onClose={() => { setPhase('practicing'); setReviewSessionId(null); }} haptics={haptics} />;
+  }
+  if (phase === 'edit' && reviewSession) {
+    return <EditPhase session={reviewSession} markCorrectAnswer={markCorrectAnswer} saveNotes={saveNotes} onBack={() => setPhase('report')} onClose={() => { setPhase('practicing'); setReviewSessionId(null); }} haptics={haptics} toggleMultiCorrectAnswer={toggleMultiCorrectAnswer} setSubCorrectAnswer={setSubCorrectAnswer} />;
+  }
+
+  if (!activePractice) return null;
+
+  const totalElapsed = Math.floor((Date.now() - activePractice.startedAt) / 1000);
+  const questionElapsed = menuOpen
+    ? Math.floor(((menuOpenSinceRef.current ?? Date.now()) - questionStartRef.current) / 1000)
+    : Math.floor((Date.now() - questionStartRef.current) / 1000);
+  const answeredCount = activePractice.questions.filter(q => q.status === 'answered').length;
+  const skippedCount = activePractice.questions.filter(q => q.status === 'skipped').length;
+  const reviewCount = activePractice.questions.filter(q => q.status === 'review-later').length;
+  const timeLimitSec = activePractice.timeLimitMin * 60;
+  const visibleQuestions = activePractice.questions.slice(0, Math.max(30, currentIdx + 5));
 
   const currentQ = activePractice.questions[currentIdx];
   const currentMode: QuestionMode = (currentQ?.mode as QuestionMode) || 'single';
