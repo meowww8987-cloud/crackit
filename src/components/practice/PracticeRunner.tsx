@@ -69,6 +69,8 @@ export function PracticeRunner() {
   const wakeLockRef = useRef<any>(null);
   const [deleteMode, setDeleteMode] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // === FIX: Ref for the bubble scroll container — auto-scroll to current ===
+  const bubbleScrollRef = useRef<HTMLDivElement>(null);
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
   const timerResetRef = useRef(false);
 
@@ -264,6 +266,16 @@ export function PracticeRunner() {
 
   useEffect(() => { if (!activePractice) return; if (activePractice.questionCount > 0 && currentIdx >= activePractice.questionCount) handleEnd(); }, [currentIdx, activePractice, handleEnd]);
 
+  // === FIX: Auto-scroll bubble strip to current question ===
+  useEffect(() => {
+    if (!bubbleScrollRef.current) return;
+    const container = bubbleScrollRef.current;
+    const currentBubble = container.children[currentIdx] as HTMLElement;
+    if (currentBubble) {
+      currentBubble.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [currentIdx, deleteMode]);
+
   // === Auto-pause on refresh/close ===
   // If user refreshes or closes the tab while practicing, save the session
   // to pausedPractices so they can resume from where they left off.
@@ -341,6 +353,7 @@ export function PracticeRunner() {
     <div className="w-full">
       {/* Row 1: Small bubbles — all questions */}
       <div
+        ref={bubbleScrollRef}
         className="flex gap-1 overflow-x-auto pb-1"
         style={{
           scrollbarWidth: 'none',
@@ -472,7 +485,8 @@ export function PracticeRunner() {
     </div>
   );
 
-  // === MODERN: Hero header — "Question 5 of 30" + progress bar ===
+  // === MODERN: Hero header — "Question 5 of 30" + progress bar + TIME ===
+  // Stats moved to bottom (above Skip/Review). Time made more visible.
   const heroBlock = (
     <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>
       {/* Progress bar — thin bar at top */}
@@ -488,15 +502,16 @@ export function PracticeRunner() {
           }}
         />
       </div>
-      {/* Question number + timer chip */}
+      {/* Row: Question number (left) + time (right, MORE VISIBLE) */}
       <div className="flex items-center justify-between">
-        <div className="text-lg font-bold" style={{ color: '#ffffff' }}>
+        {/* Question number — hero headline */}
+        <div className="text-xl font-bold" style={{ color: '#ffffff' }}>
           Q{currentIdx + 1}
           <span className="text-sm font-normal" style={{ color: 'rgba(255,255,255,0.4)' }}>
             /{activePractice.questionCount || '?'}
           </span>
         </div>
-        {/* Per-question timer — demoted to small chip */}
+        {/* Time display — MORE VISIBLE now */}
         <div className="flex items-center gap-2">
           {currentMode !== 'single' && (
             <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
@@ -508,30 +523,27 @@ export function PracticeRunner() {
             <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase animate-pulse"
               style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24' }}>Paused</span>
           )}
-          <span className="text-[11px] tabular font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
-            {formatHMS(questionElapsed)}
-          </span>
+          {/* Per-question timer — bigger, more visible */}
+          <div className="flex items-baseline gap-1">
+            <Clock size={12} className="text-white/60" />
+            <span className="text-base tabular font-bold" style={{ color: '#ffffff' }}>
+              {formatHMS(questionElapsed)}
+            </span>
+          </div>
         </div>
       </div>
-      {/* Stats row — compact, with icons */}
-      <div className="flex items-center gap-3 mt-1 text-[10px]">
-        <span className="flex items-center gap-0.5" style={{ color: '#4ade80' }}>
-          <Check size={9} /> {answeredCount}
+      {/* Total time + time left — more visible */}
+      <div className="flex items-center gap-2 mt-1 text-[11px]">
+        <span className="tabular font-semibold" style={{ color: 'rgba(255,255,255,0.6)' }}>
+          Total: <span style={{ color: '#fbbf24' }}>{formatHMS(totalElapsed)}</span>
         </span>
-        <span className="flex items-center gap-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          <ChevronRight size={9} /> {skippedCount}
-        </span>
-        <span className="flex items-center gap-0.5" style={{ color: '#fbbf24' }}>
-          <Flag size={9} /> {reviewCount}
-        </span>
-        <span className="ml-auto text-[9px] tabular" style={{ color: 'rgba(255,255,255,0.3)' }}>
-          Total {formatHMS(totalElapsed)}
-          {timeLimitSec > 0 && (
-            <span style={{ color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.3)' }}>
-              {' '}· {formatHMS(Math.max(0, timeLimitSec - totalElapsed))} left
-            </span>
-          )}
-        </span>
+        {timeLimitSec > 0 && (
+          <span className="tabular font-semibold" style={{
+            color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.5)'
+          }}>
+            · {formatHMS(Math.max(0, timeLimitSec - totalElapsed))} left
+          </span>
+        )}
       </div>
       <div className="text-[9px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.25)' }}>{activePractice.name}</div>
     </div>
@@ -620,20 +632,15 @@ export function PracticeRunner() {
     </div>
   );
 
-  // === MODERN: Action buttons — Skip/Review on top, Next primary below ===
+  // === MODERN: Action buttons — Next on top, then Stats, then Skip/Review ===
+  // Layout: [Next Question] → [✓3 →1 ⚠1] → [Skip] [Review]
   // Note: "Finish Practice" is in the hamburger menu, not here
   const actionButtons = (
     <div className="space-y-1.5">
-      {/* Secondary row: Skip + Review (smaller, less prominent) */}
-      <div className="flex gap-1.5">
-        <button onClick={handleSkip} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}><ChevronRight size={11} /> Skip</button>
-        <button onClick={handleReviewLater} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)', color: '#fbbf24' }}><Flag size={11} /> Review</button>
-      </div>
-      {/* Primary: Next button (always shown — finish is in menu) */}
+      {/* Primary: Next button */}
       <button
         onClick={() => {
           if (haptics) vibrate(12);
-          // Save current question's elapsed time
           const session = usePractice.getState().activePractice;
           const idx = usePractice.getState().currentQuestionIndex;
           if (session) {
@@ -645,16 +652,13 @@ export function PracticeRunner() {
             questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
             usePractice.setState({ activePractice: { ...session, questions } });
           }
-          // Go to next question (or wrap to first unanswered if at end)
           if (currentIdx < activePractice.questions.length - 1) {
             setCurrentQuestionIndex(currentIdx + 1);
           } else {
-            // Last question — find first unanswered
             const firstUnanswered = activePractice.questions.findIndex(q => q.status === 'unanswered');
             if (firstUnanswered >= 0) {
               setCurrentQuestionIndex(firstUnanswered);
             }
-            // If all answered, do nothing — user can finish from menu
           }
           questionStartRef.current = Date.now();
         }}
@@ -663,6 +667,30 @@ export function PracticeRunner() {
       >
         Next Question <ChevronRight size={14} />
       </button>
+
+      {/* Stats row — MORE PROMINENT, between Next and Skip/Review */}
+      <div
+        className="flex items-center justify-center gap-4 py-1.5 px-3 rounded-lg"
+        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+      >
+        <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: '#4ade80' }}>
+          <Check size={12} /> {answeredCount} Answered
+        </span>
+        <span className="text-white/15">|</span>
+        <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+          <ChevronRight size={12} /> {skippedCount} Skipped
+        </span>
+        <span className="text-white/15">|</span>
+        <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: '#fbbf24' }}>
+          <Flag size={12} /> {reviewCount} Review
+        </span>
+      </div>
+
+      {/* Secondary row: Skip + Review (bottom) */}
+      <div className="flex gap-1.5">
+        <button onClick={handleSkip} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}><ChevronRight size={11} /> Skip</button>
+        <button onClick={handleReviewLater} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)', color: '#fbbf24' }}><Flag size={11} /> Review</button>
+      </div>
     </div>
   );
 
@@ -748,16 +776,24 @@ export function PracticeRunner() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui flex flex-col items-center justify-between"
       style={{ background: '#000000', padding: '1.5rem 1rem', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)', boxSizing: 'border-box' }}>
-        {/* Top: Hero block (progress bar + question number + stats) */}
+        {/* Menu button — absolute top-right corner */}
+        <button
+          onClick={() => { if (haptics) vibrate(8); setMenuOpen(true); }}
+          className="absolute top-3 right-3 z-20 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-foreground/20 active:scale-90 transition"
+          style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff' }}
+          aria-label="Practice menu"
+        >
+          <Menu size={18} />
+        </button>
+        {/* Top: Hero block (progress bar + question number + TIME) */}
         {heroBlock}
-        {/* Middle: Bubble strip (horizontal scroll, current bubble bigger) */}
-        <div className="w-full max-w-xs flex items-start justify-between gap-2" style={{ flexShrink: 0 }}>
+        {/* Middle: Bubble strip (two rows: small + big current) */}
+        <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>
           {questionPills}
-          {hamburgerBtn}
         </div>
         {/* Options */}
         {optionsBlock}
-        {/* Actions — Next primary + Skip/Review secondary */}
+        {/* Actions — Next → Stats → Skip/Review */}
         <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>{actionButtons}</div>
     </motion.div>
     {menuOverlay}
