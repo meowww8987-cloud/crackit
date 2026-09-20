@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, X, ChevronRight, Flag, Save, Edit, Clock, TrendingUp, Pause,
   Menu, X as XIcon, Play, FileText, ListTree, PenLine, AlertCircle, Plus, Minus,
-  CheckSquare, Square,
+  CheckSquare, Square, RotateCcw,
 } from 'lucide-react';
 import { usePractice, type PracticeSession, type PracticeQuestion } from '@/lib/store/practice';
 import { useHistory } from '@/lib/store/history';
@@ -73,6 +73,15 @@ export function PracticeRunner() {
   const bubbleScrollRef = useRef<HTMLDivElement>(null);
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
   const timerResetRef = useRef(false);
+  // === NEW: Auto-advance + Undo ===
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [undoToast, setUndoToast] = useState<{ idx: number; answer: string } | null>(null);
+  const undoDataRef = useRef<{ idx: number; prevAnswer: string | null } | null>(null);
+  // === NEW: Progress milestones ===
+  const milestoneShownRef = useRef<Set<number>>(new Set());
+  const [milestoneFlash, setMilestoneFlash] = useState<string | null>(null);
+  // === NEW: Auto-advance toggle (default ON for single mode) ===
+  const [autoAdvance, setAutoAdvance] = useState(true);
 
   const reviewSession = reviewSessionId ? history.find((s) => s.id === reviewSessionId) : null;
 
@@ -113,11 +122,76 @@ export function PracticeRunner() {
         questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', userAnswer: null, correctAnswer: null, conceptNotes: '', formulaNotes: '' });
       }
       const qElapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
+      undoDataRef.current = { idx, prevAnswer: questions[idx]?.userAnswer || null };
       questions[idx] = { ...questions[idx], timeSpentSec: qElapsed, status: 'answered', userAnswer: option };
       usePractice.setState({ activePractice: { ...session, questions } });
     }
     answerQuestion('answered');
-  }, [haptics, answerQuestion]);
+    // Auto-advance handled by effect watching question status change
+    if (autoAdvance) {
+      setUndoToast({ idx, answer: option });
+    }
+  }, [haptics, answerQuestion, autoAdvance]);
+
+  const handleUndoAnswer = useCallback(() => {
+    if (!undoDataRef.current) return;
+    if (autoAdvanceTimerRef.current) { clearTimeout(autoAdvanceTimerRef.current); autoAdvanceTimerRef.current = null; }
+    setUndoToast(null);
+    const { idx, prevAnswer } = undoDataRef.current;
+    const session = usePractice.getState().activePractice;
+    if (session) {
+      const questions = [...session.questions];
+      if (questions[idx]) {
+        questions[idx] = { ...questions[idx], userAnswer: prevAnswer, status: prevAnswer ? 'answered' : 'unanswered' };
+        usePractice.setState({ activePractice: { ...session, questions } });
+      }
+      const targetQ = questions[idx];
+      const savedSec = targetQ?.timeSpentSec || 0;
+      questionStartRef.current = Date.now() - (savedSec * 1000);
+      setCurrentQuestionIndex(idx);
+    }
+    undoDataRef.current = null;
+    if (haptics) vibrate(15);
+  }, [haptics]);
+
+  // Swipe handlers — use getState() to avoid forward reference issues
+  const handleSwipeLeft = useCallback(() => {
+    if (menuOpen || deleteMode) return;
+    if (haptics) vibrate(8);
+    const session = usePractice.getState().activePractice;
+    const idx = usePractice.getState().currentQuestionIndex;
+    if (session && idx < session.questions.length - 1) {
+      const qElapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
+      const questions = [...session.questions];
+      while (questions.length <= idx) { questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', userAnswer: null, correctAnswer: null, conceptNotes: '', formulaNotes: '' }); }
+      questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
+      usePractice.setState({ activePractice: { ...session, questions } });
+      const nextIdx = idx + 1;
+      const savedSec = questions[nextIdx]?.timeSpentSec || 0;
+      questionStartRef.current = Date.now() - (savedSec * 1000);
+      setCurrentQuestionIndex(nextIdx);
+    }
+  }, [menuOpen, deleteMode, haptics]);
+
+  const handleSwipeRight = useCallback(() => {
+    if (menuOpen || deleteMode) return;
+    const idx = usePractice.getState().currentQuestionIndex;
+    if (idx > 0) {
+      if (haptics) vibrate(8);
+      const session = usePractice.getState().activePractice;
+      if (session) {
+        const qElapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
+        const questions = [...session.questions];
+        while (questions.length <= idx) { questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', userAnswer: null, correctAnswer: null, conceptNotes: '', formulaNotes: '' }); }
+        questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
+        usePractice.setState({ activePractice: { ...session, questions } });
+        const prevIdx = idx - 1;
+        const savedSec = questions[prevIdx]?.timeSpentSec || 0;
+        questionStartRef.current = Date.now() - (savedSec * 1000);
+        setCurrentQuestionIndex(prevIdx);
+      }
+    }
+  }, [menuOpen, deleteMode, haptics]);
 
   const handleSelectSubAnswer = useCallback((subIndex: number, option: string) => {
     if (haptics) vibrate(10);
@@ -189,6 +263,38 @@ export function PracticeRunner() {
     answerQuestion('review-later');
   }, [haptics, answerQuestion]);
 
+  // === SWIPE UP: flag for review ===
+  const handleSwipeUp = useCallback(() => {
+    if (menuOpen || deleteMode) return;
+    handleReviewLater();
+  }, [menuOpen, deleteMode, handleReviewLater]);
+
+  // === AUTO-ADVANCE: move to next question after undoToast appears ===
+  useEffect(() => {
+    if (!undoToast || !autoAdvance || !activePractice) return;
+    const q = activePractice.questions[undoToast.idx];
+    if (q?.mode && q.mode !== 'single') return;
+    if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
+    autoAdvanceTimerRef.current = setTimeout(() => {
+      setUndoToast(null);
+      const s = usePractice.getState().activePractice;
+      if (s) {
+        let nextIdx = undoToast.idx + 1;
+        if (nextIdx >= s.questions.length) {
+          nextIdx = s.questions.findIndex(qq => qq.status === 'unanswered');
+          if (nextIdx < 0) nextIdx = undoToast.idx;
+        }
+        if (nextIdx !== undoToast.idx) {
+          const savedSec = s.questions[nextIdx]?.timeSpentSec || 0;
+          questionStartRef.current = Date.now() - (savedSec * 1000);
+          setCurrentQuestionIndex(nextIdx);
+        }
+      }
+      autoAdvanceTimerRef.current = null;
+    }, 600);
+    return () => { if (autoAdvanceTimerRef.current) { clearTimeout(autoAdvanceTimerRef.current); autoAdvanceTimerRef.current = null; } };
+  }, [undoToast, autoAdvance, activePractice]);
+
   const handlePause = useCallback(() => {
     if (haptics) vibrate([10, 30, 10]);
     const session = usePractice.getState().activePractice;
@@ -252,7 +358,6 @@ export function PracticeRunner() {
     if (!activePractice) return;
     const i = setInterval(() => {
       if (menuOpen) return;
-      // === HEAT FIX: Skip when tab hidden — auto-end fires on next visible tick ===
       if (document.hidden) return;
       setTick((t) => t + 1);
       const session = usePractice.getState().activePractice;
@@ -263,6 +368,48 @@ export function PracticeRunner() {
     }, 500);
     return () => clearInterval(i);
   }, [activePractice, handleEnd, menuOpen]);
+
+  // === TIME WARNING: auto-submit at 0 ===
+  useEffect(() => {
+    if (!activePractice || activePractice.timeLimitMin === 0) return;
+    const checkTime = () => {
+      const elapsed = Math.floor((Date.now() - activePractice.startedAt) / 1000);
+      const remaining = activePractice.timeLimitMin * 60 - elapsed;
+      if (remaining <= 0) {
+        handleEnd();
+      }
+    };
+    const i = setInterval(() => {
+      if (document.hidden) return;
+      checkTime();
+    }, 1000);
+    return () => clearInterval(i);
+  }, [activePractice, handleEnd]);
+
+  // === SWIPE GESTURE: touch handlers on the main container ===
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (menuOpen || deleteMode) return;
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || menuOpen || deleteMode) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartRef.current.x;
+    const dy = t.clientY - touchStartRef.current.y;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    // Only handle horizontal swipes (absX > absY and > 50px)
+    if (absX > 50 && absX > absY) {
+      if (dx < 0) handleSwipeLeft();
+      else handleSwipeRight();
+    } else if (absY > 60 && absY > absX) {
+      // Vertical swipe = flag for review
+      if (dy < 0) handleSwipeUp();
+    }
+    touchStartRef.current = null;
+  };
 
   useEffect(() => { if (!activePractice) return; if (activePractice.questionCount > 0 && currentIdx >= activePractice.questionCount) handleEnd(); }, [currentIdx, activePractice, handleEnd]);
 
@@ -324,6 +471,26 @@ export function PracticeRunner() {
   const reviewCount = activePractice.questions.filter(q => q.status === 'review-later').length;
   const timeLimitSec = activePractice.timeLimitMin * 60;
   const visibleQuestions = activePractice.questions.slice(0, Math.max(30, currentIdx + 5));
+
+  // === PROGRESS MILESTONES: flash at 25%, 50%, 75% ===
+  useEffect(() => {
+    if (!activePractice || activePractice.questionCount === 0) return;
+    const pct = Math.round((answeredCount / activePractice.questionCount) * 100);
+    const milestones = [
+      { pct: 25, msg: '🎯 25% done' },
+      { pct: 50, msg: '🔥 Halfway there!' },
+      { pct: 75, msg: '⚡ 75% — almost done!' },
+    ];
+    for (const m of milestones) {
+      if (pct >= m.pct && !milestoneShownRef.current.has(m.pct)) {
+        milestoneShownRef.current.add(m.pct);
+        setMilestoneFlash(m.msg);
+        if (haptics) vibrate([10, 30, 10]);
+        setTimeout(() => setMilestoneFlash(null), 1800);
+        break;
+      }
+    }
+  }, [answeredCount, activePractice, haptics]);
 
   const currentQ = activePractice.questions[currentIdx];
   const currentMode: QuestionMode = (currentQ?.mode as QuestionMode) || 'single';
@@ -813,11 +980,75 @@ export function PracticeRunner() {
   }
 
   // PORTRAIT: single column — modernized layout
+  // === Per-question pacing color ===
+  const pacingColor = questionElapsed < 30 ? '#4ade80' : questionElapsed < 90 ? '#fbbf24' : '#f87171';
+  // === Time warning: remaining time for edge pulse ===
+  const timeRemaining = activePractice.timeLimitMin > 0
+    ? Math.max(0, activePractice.timeLimitMin * 60 - totalElapsed)
+    : 0;
+  const showAmberEdge = timeRemaining > 0 && timeRemaining <= 300 && timeRemaining > 60;
+  const showRedEdge = timeRemaining > 0 && timeRemaining <= 60;
+
   return (
     <>
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui flex flex-col items-center justify-between"
-      style={{ background: '#000000', padding: '1.5rem 1rem', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)', boxSizing: 'border-box' }}>
+      style={{
+        background: '#000000',
+        padding: '1.5rem 1rem',
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
+        boxSizing: 'border-box',
+      }}>
+        {/* === TIME WARNING: screen edge pulse === */}
+        {showRedEdge && (
+          <div className="fixed inset-0 pointer-events-none z-10"
+            style={{ boxShadow: 'inset 0 0 60px rgba(239,68,68,0.4)', animation: 'pulse-fast 1s ease-in-out infinite' }} />
+        )}
+        {showAmberEdge && (
+          <div className="fixed inset-0 pointer-events-none z-10"
+            style={{ boxShadow: 'inset 0 0 40px rgba(245,158,11,0.25)', animation: 'pulse-slow 2s ease-in-out infinite' }} />
+        )}
+
+        {/* === MILESTONE FLASH: 25%/50%/75% === */}
+        <AnimatePresence>
+          {milestoneFlash && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+              className="fixed inset-0 flex items-center justify-center pointer-events-none z-30"
+            >
+              <div className="text-2xl font-black" style={{ color: '#ffffff', textShadow: '0 0 20px rgba(255,255,255,0.5)' }}>
+                {milestoneFlash}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* === UNDO TOAST: after auto-advance === */}
+        <AnimatePresence>
+          {undoToast && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 30 }}
+              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30"
+            >
+              <button
+                onClick={handleUndoAnswer}
+                className="px-4 py-2 rounded-xl text-[11px] font-bold flex items-center gap-2 active:scale-95 transition"
+                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', color: '#ffffff', backdropFilter: 'blur(10px)' }}
+              >
+                <RotateCcw size={12} /> Undo answer (Q{undoToast.idx + 1}: {undoToast.answer})
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Menu button — absolute top-right corner */}
         <button
           onClick={() => { if (haptics) vibrate(8); setMenuOpen(true); }}
@@ -827,15 +1058,46 @@ export function PracticeRunner() {
         >
           <Menu size={18} />
         </button>
-        {/* Top: Hero block (progress bar + question number + TIME) */}
-        {heroBlock}
-        {/* Middle: Bubble strip (two rows: small + big current) */}
+        {/* Top: Hero block — with PACING COLOR on per-question timer */}
+        <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>
+          {/* Progress bar */}
+          <div className="w-full h-1 rounded-full overflow-hidden mb-2" style={{ background: 'rgba(255,255,255,0.1)' }}>
+            <div className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${activePractice.questionCount > 0 ? Math.round((answeredCount / activePractice.questionCount) * 100) : 0}%`, background: 'linear-gradient(90deg, #22c55e, #4ade80)' }} />
+          </div>
+          {/* Row: Q number + Total time (center, big) + per-Q timer (pacing color) */}
+          <div className="flex items-center justify-between">
+            <div className="text-lg font-bold" style={{ color: '#ffffff' }}>
+              Q{currentIdx + 1}<span className="text-xs font-normal" style={{ color: 'rgba(255,255,255,0.4)' }}>/{activePractice.questionCount || '?'}</span>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-[8px] uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.4)' }}>Total</span>
+              <span className="text-base tabular font-black" style={{ color: '#fbbf24' }}>{formatHMS(totalElapsed)}</span>
+              {timeLimitSec > 0 && (
+                <span className="text-[10px] tabular font-semibold" style={{ color: timeRemaining < 60 ? '#f87171' : 'rgba(255,255,255,0.4)' }}>/ {formatHMS(timeRemaining)}</span>
+              )}
+            </div>
+            {/* Per-question timer — PACING COLOR */}
+            <div className="flex items-center gap-1">
+              {currentMode !== 'single' && (
+                <span className="px-1 py-0.5 rounded text-[7px] font-bold uppercase" style={{ background: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
+                  {currentMode === 'multi' ? `${subCount}s` : currentMode === 'multi-correct' ? 'MC' : 'Wr'}
+                </span>
+              )}
+              <span className="text-sm tabular font-bold" style={{ color: pacingColor }}>
+                {formatHMS(questionElapsed)}
+              </span>
+            </div>
+          </div>
+          <div className="text-[9px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.25)' }}>{activePractice.name}</div>
+        </div>
+        {/* Middle: Bubble strip */}
         <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>
           {questionPills}
         </div>
         {/* Options */}
         {optionsBlock}
-        {/* Actions — Next → Stats → Skip/Review */}
+        {/* Actions */}
         <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>{actionButtons}</div>
     </motion.div>
     {menuOverlay}
