@@ -1454,6 +1454,27 @@ html:not(.dark) .fill-white\/40 { fill: var(--muted-foreground, #6b7280) !import
   animation: pulse-fast 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* === NEW: Bubble float — small bubbles gently float up/down ===
+ * Each bubble gets a different animation-delay via inline style
+ * for a wave effect across the row. Very subtle (2px, 3s). */
+@keyframes bubble-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-2px); }
+}
+.bubble-float {
+  animation: bubble-float 3s ease-in-out infinite;
+}
+
+/* === NEW: Bubble breathing — big current bubble gently scales ===
+ * Like a real bubble gently expanding/contracting. */
+@keyframes bubble-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+.bubble-breathe {
+  animation: bubble-breathe 3s ease-in-out infinite;
+}
+
 /* === NEW: Timer breathing glow — makes the timer feel alive ===
  * Subtle text-shadow pulse on the timer digits.
  * Very gentle — 4s cycle, low intensity. */

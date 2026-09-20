@@ -345,10 +345,9 @@ export function PracticeRunner() {
     </button>
   );
 
-  // === MODERN: Two-row bubble layout ===
-  // Row 1: All questions as small bubbles (horizontal scroll)
-  // Row 2: Current question as a BIG bubble (separate row, centered)
-  // When user answers: big bubble shrinks back to small row, next Q becomes big
+  // === MODERN: Two-row bubble layout with BUBBLE PHYSICS ===
+  // Row 1: All questions as small bubbles — each floats gently (wave effect)
+  // Row 2: Current question as a BIG bubble — pops in/out with spring
   const questionPills = (
     <div className="w-full">
       {/* Row 1: Small bubbles — all questions */}
@@ -408,13 +407,16 @@ export function PracticeRunner() {
                 }}
                 className={cn(
                   'rounded-lg flex items-center justify-center font-bold transition-all',
-                  // Current = slightly bigger in small row (will be shown big below)
                   isCurrent
                     ? 'w-8 h-8 text-xs ring-2 ring-white'
                     : 'w-6 h-6 text-[10px]',
-                  deleteMode && pendingDelete === i && 'ring-2 ring-red-500'
+                  deleteMode && pendingDelete === i && 'ring-2 ring-red-500',
+                  // === BUBBLE FLOAT: non-current, non-delete bubbles float gently ===
+                  !isCurrent && !deleteMode && 'bubble-float'
                 )}
                 style={{
+                  // === WAVE EFFECT: each bubble gets a different delay ===
+                  animationDelay: !isCurrent && !deleteMode ? `${(i % 8) * 0.15}s` : undefined,
                   background: deleteMode
                     ? (pendingDelete === i ? '#ef4444' : 'rgba(255,255,255,0.15)')
                     : isCurrent
@@ -423,7 +425,6 @@ export function PracticeRunner() {
                   color: deleteMode ? '#fff' : isCurrent ? '#000' : q.status === 'unanswered' ? 'rgba(255,255,255,0.6)' : '#000',
                 }}
               >{q.number}</button>
-              {/* Delete label */}
               {deleteMode && pendingDelete === i && (
                 <button
                   onClick={() => {
@@ -434,9 +435,7 @@ export function PracticeRunner() {
                     questionStartRef.current = Date.now();
                   }}
                   className="absolute -bottom-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-red-500 text-white text-[8px] font-bold whitespace-nowrap z-20 active:scale-95 transition"
-                >
-                  Delete
-                </button>
+                >Delete</button>
               )}
             </div>
           );
@@ -449,44 +448,61 @@ export function PracticeRunner() {
         )}
       </div>
 
-      {/* Row 2: BIG current question bubble — separate row, centered */}
+      {/* Row 2: BIG current question bubble — BUBBLE POP animation */}
       <div className="flex justify-center mt-1.5">
-        <motion.div
-          key={currentIdx}
-          initial={{ scale: 0.3, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.3, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          className="flex flex-col items-center gap-0.5"
-        >
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black"
-            style={{
-              background: '#ffffff',
-              color: '#000000',
-              boxShadow: '0 0 20px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.3)',
+        <AnimatePresence mode="popLayout">
+          <motion.div
+            key={currentIdx}
+            initial={{ scale: 0, opacity: 0, y: -10 }}
+            animate={{
+              scale: [0, 1.15, 1],  // Pop: 0 → overshoot 1.15 → settle 1
+              opacity: 1,
+              y: 0,
             }}
-          >
-            {currentQ?.number || currentIdx + 1}
-          </div>
-          {/* Status label under the big bubble */}
-          <div className="text-[9px] font-bold uppercase tracking-wide"
-            style={{
-              color: currentQ?.status === 'answered' ? '#4ade80'
-                : currentQ?.status === 'skipped' ? '#9ca3af'
-                : currentQ?.status === 'review-later' ? '#fbbf24'
-                : 'rgba(255,255,255,0.4)'
+            exit={{
+              scale: [1, 1.1, 0.2],  // Pop out: 1 → slight grow → shrink to 0.2
+              opacity: [1, 1, 0],
+              y: [0, 5, 20],  // Drop down like a bubble falling
+              transition: { duration: 0.3 },
             }}
+            transition={{
+              scale: { type: 'spring', stiffness: 200, damping: 12 },  // Bouncy spring
+              opacity: { duration: 0.2 },
+              y: { type: 'spring', stiffness: 300, damping: 20 },
+            }}
+            className="flex flex-col items-center gap-0.5"
           >
-            {currentQ?.status === 'answered' ? '✓ Answered' : 'Attempting'}
-          </div>
-        </motion.div>
+            {/* Big bubble — with breathing animation while displayed */}
+            <div
+              className={cn('w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black bubble-breathe')}
+              style={{
+                background: '#ffffff',
+                color: '#000000',
+                boxShadow: '0 0 20px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.3)',
+              }}
+            >
+              {currentQ?.number || currentIdx + 1}
+            </div>
+            {/* Status label */}
+            <div className="text-[9px] font-bold uppercase tracking-wide"
+              style={{
+                color: currentQ?.status === 'answered' ? '#4ade80'
+                  : currentQ?.status === 'skipped' ? '#9ca3af'
+                  : currentQ?.status === 'review-later' ? '#fbbf24'
+                  : 'rgba(255,255,255,0.4)'
+              }}
+            >
+              {currentQ?.status === 'answered' ? '✓ Answered' : 'Attempting'}
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
 
   // === MODERN: Hero header — "Question 5 of 30" + progress bar + TIME ===
-  // Stats moved to bottom (above Skip/Review). Time made more visible.
+  // Total time centered + bigger. Per-question timer on the right.
+  // Stats moved to bottom (above Skip/Review).
   const heroBlock = (
     <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>
       {/* Progress bar — thin bar at top */}
@@ -502,48 +518,45 @@ export function PracticeRunner() {
           }}
         />
       </div>
-      {/* Row: Question number (left) + time (right, MORE VISIBLE) */}
+      {/* Row: Q number (left) + Total time (CENTER, BIG) + per-Q timer (right) */}
       <div className="flex items-center justify-between">
-        {/* Question number — hero headline */}
-        <div className="text-xl font-bold" style={{ color: '#ffffff' }}>
+        {/* Question number */}
+        <div className="text-lg font-bold" style={{ color: '#ffffff' }}>
           Q{currentIdx + 1}
-          <span className="text-sm font-normal" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <span className="text-xs font-normal" style={{ color: 'rgba(255,255,255,0.4)' }}>
             /{activePractice.questionCount || '?'}
           </span>
         </div>
-        {/* Time display — MORE VISIBLE now */}
-        <div className="flex items-center gap-2">
+        {/* Total time — CENTERED, BIGGER, more prominent */}
+        <div className="flex items-baseline gap-1">
+          <span className="text-[8px] uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.4)' }}>Total</span>
+          <span className="text-base tabular font-black" style={{ color: '#fbbf24' }}>
+            {formatHMS(totalElapsed)}
+          </span>
+          {timeLimitSec > 0 && (
+            <span className="text-[10px] tabular font-semibold" style={{
+              color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.4)'
+            }}>
+              / {formatHMS(Math.max(0, timeLimitSec - totalElapsed))}
+            </span>
+          )}
+        </div>
+        {/* Per-question timer — right side */}
+        <div className="flex items-center gap-1">
           {currentMode !== 'single' && (
-            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
+            <span className="px-1 py-0.5 rounded text-[7px] font-bold uppercase"
               style={{ background: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
-              {currentMode === 'multi' ? `${subCount} sub` : currentMode === 'multi-correct' ? 'Multi' : 'Written'}
+              {currentMode === 'multi' ? `${subCount}s` : currentMode === 'multi-correct' ? 'MC' : 'Wr'}
             </span>
           )}
           {menuOpen && (
-            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase animate-pulse"
-              style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24' }}>Paused</span>
+            <span className="px-1 py-0.5 rounded text-[7px] font-bold uppercase animate-pulse"
+              style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24' }}>II</span>
           )}
-          {/* Per-question timer — bigger, more visible */}
-          <div className="flex items-baseline gap-1">
-            <Clock size={12} className="text-white/60" />
-            <span className="text-base tabular font-bold" style={{ color: '#ffffff' }}>
-              {formatHMS(questionElapsed)}
-            </span>
-          </div>
-        </div>
-      </div>
-      {/* Total time + time left — more visible */}
-      <div className="flex items-center gap-2 mt-1 text-[11px]">
-        <span className="tabular font-semibold" style={{ color: 'rgba(255,255,255,0.6)' }}>
-          Total: <span style={{ color: '#fbbf24' }}>{formatHMS(totalElapsed)}</span>
-        </span>
-        {timeLimitSec > 0 && (
-          <span className="tabular font-semibold" style={{
-            color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.5)'
-          }}>
-            · {formatHMS(Math.max(0, timeLimitSec - totalElapsed))} left
+          <span className="text-sm tabular font-bold" style={{ color: 'rgba(255,255,255,0.7)' }}>
+            {formatHMS(questionElapsed)}
           </span>
-        )}
+        </div>
       </div>
       <div className="text-[9px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.25)' }}>{activePractice.name}</div>
     </div>
