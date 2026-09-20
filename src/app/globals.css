@@ -1454,22 +1454,21 @@ html:not(.dark) .fill-white\/40 { fill: var(--muted-foreground, #6b7280) !import
   animation: pulse-fast 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* === BUBBLE FLOAT: small bubbles float up/down — NOTICEABLE ===
- * 6px movement (was 2px), 2.5s cycle (was 3s).
- * Each bubble gets different delay for wave effect. */
+/* === BUBBLE FLOAT: small bubbles — VERY SUBTLE wave ===
+ * 2px only, no scale. Barely noticeable but alive. */
 @keyframes bubble-float {
-  0%, 100% { transform: translateY(0px) scale(1); }
-  50% { transform: translateY(-5px) scale(1.05); }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-2px); }
 }
 .bubble-float {
-  animation: bubble-float 2.5s ease-in-out infinite;
+  animation: bubble-float 3s ease-in-out infinite;
 }
 
-/* === BUBBLE BREATHE: big current bubble — NOTICEABLE ===
- * 8% scale (was 3%). Like a balloon gently inflating/deflating. */
+/* === BUBBLE BREATHE: big current bubble — VISIBLE ===
+ * 10% scale + box-shadow pulse. Clearly alive. */
 @keyframes bubble-breathe {
   0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.3); }
-  50% { transform: scale(1.08); box-shadow: 0 0 30px rgba(255,255,255,0.7), 0 4px 16px rgba(0,0,0,0.4); }
+  50% { transform: scale(1.1); box-shadow: 0 0 35px rgba(255,255,255,0.8), 0 4px 18px rgba(0,0,0,0.4); }
 }
 .bubble-breathe {
   animation: bubble-breathe 2s ease-in-out infinite;

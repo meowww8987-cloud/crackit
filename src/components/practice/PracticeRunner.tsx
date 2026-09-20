@@ -430,7 +430,7 @@ export function PracticeRunner() {
                   !isCurrent && !deleteMode && 'bubble-float'
                 )}
                 style={{
-                  animationDelay: !isCurrent && !deleteMode ? `${(i % 8) * 0.15}s` : undefined,
+                  animationDelay: !isCurrent && !deleteMode ? `${(i % 6) * 0.3}s` : undefined,
                   background: deleteMode
                     ? (pendingDelete === i ? '#ef4444' : 'rgba(255,255,255,0.15)')
                     : isCurrent
@@ -462,32 +462,35 @@ export function PracticeRunner() {
         )}
       </div>
 
-      {/* Row 2: BIG current question bubble — DRAMATIC bubble animation
-          === FIX: overflow visible so exit animation isn't clipped === */}
+      {/* Row 2: BIG current question bubble — DRAMATIC animation
+          === FIX: Remove spring override on scale — was breaking keyframes ===
+          Framer Motion ignores keyframe arrays when you override with spring.
+          Now all properties use tween + times for proper keyframe animation. */}
       <div className="flex justify-center mt-2 relative" style={{ minHeight: '80px', overflow: 'visible' }}>
         <AnimatePresence mode="popLayout">
           <motion.div
             key={currentIdx}
-            // === ENTER: dramatic pop — visible overshoot ===
-            initial={{ scale: 0, opacity: 0, y: -30, rotate: -15 }}
+            // === ENTER: 0 → BIG overshoot 1.4 → dip 0.8 → bounce 1.15 → settle 1 ===
+            initial={{ scale: 0, opacity: 0, y: -40, rotate: -20 }}
             animate={{
-              scale: [0, 1.3, 0.9, 1.1, 1],
+              scale: [0, 1.4, 0.8, 1.15, 1],
               opacity: [0, 1, 1, 1, 1],
-              y: [-30, 0, 5, -2, 0],
-              rotate: [-15, 5, -3, 1, 0],
+              y: [-40, 0, 8, -3, 0],
+              rotate: [-20, 8, -5, 2, 0],
             }}
-            // === EXIT: visible shrink UP towards small row (not down) ===
+            // === EXIT: grow 1.3 → shrink 0.4 → 0, moves UP towards small row ===
             exit={{
-              scale: [1, 1.3, 0.5, 0],
+              scale: [1, 1.3, 0.4, 0],
               opacity: [1, 1, 0.5, 0],
-              y: [0, -10, -30, -50],     // moves UP towards the small bubble row
-              rotate: [0, -5, 10, 15],   // slight spin
-              transition: { duration: 0.5, ease: 'easeOut' },
+              y: [0, -15, -40, -60],
+              rotate: [0, -8, 12, 20],
+              transition: { duration: 0.5, ease: 'easeOut', times: [0, 0.3, 0.7, 1] },
             }}
+            // === ALL use tween (NOT spring) so keyframes actually work ===
             transition={{
-              duration: 0.6,
-              times: [0, 0.3, 0.5, 0.7, 1],
-              scale: { type: 'spring', stiffness: 300, damping: 8 },
+              duration: 0.7,
+              times: [0, 0.25, 0.5, 0.75, 1],
+              ease: 'easeOut',
             }}
             style={{ position: 'relative' }}
             className="flex flex-col items-center gap-0.5"
