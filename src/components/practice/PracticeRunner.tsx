@@ -333,117 +333,142 @@ export function PracticeRunner() {
     </button>
   );
 
-  // Question pills — modernized: horizontal scroll, current bubble bigger
+  // === MODERN: Two-row bubble layout ===
+  // Row 1: All questions as small bubbles (horizontal scroll)
+  // Row 2: Current question as a BIG bubble (separate row, centered)
+  // When user answers: big bubble shrinks back to small row, next Q becomes big
   const questionPills = (
-    <div
-      className="flex gap-1.5 overflow-x-auto pb-1"
-      style={{
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
-        WebkitOverflowScrolling: 'touch',
-      }}
-      ref={(el) => {
-        // Auto-scroll current bubble into view
-        if (el) {
-          const currentBubble = el.children[currentIdx] as HTMLElement;
-          if (currentBubble) {
-            currentBubble.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-          }
-        }
-      }}
-    >
-      {visibleQuestions.map((q, i) => (
-        <div key={i} className="relative shrink-0">
+    <div className="w-full">
+      {/* Row 1: Small bubbles — all questions */}
+      <div
+        className="flex gap-1 overflow-x-auto pb-1"
+        style={{
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        {visibleQuestions.map((q, i) => {
+          const isCurrent = i === currentIdx && !deleteMode;
+          return (
+            <div key={i} className="relative shrink-0">
+              <button
+                onClick={() => {
+                  if (haptics) vibrate(8);
+                  if (deleteMode) {
+                    setPendingDelete(pendingDelete === i ? null : i);
+                    return;
+                  }
+                  const session = usePractice.getState().activePractice;
+                  const idx = usePractice.getState().currentQuestionIndex;
+                  if (session && i !== idx) {
+                    const qElapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
+                    const questions = [...session.questions];
+                    while (questions.length <= idx) {
+                      questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', userAnswer: null, correctAnswer: null, conceptNotes: '', formulaNotes: '' });
+                    }
+                    questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
+                    usePractice.setState({ activePractice: { ...session, questions } });
+                  }
+                  setCurrentQuestionIndex(i);
+                  questionStartRef.current = Date.now();
+                }}
+                onPointerDown={() => {
+                  if (deleteMode) return;
+                  longPressTimerRef.current = setTimeout(() => {
+                    if (haptics) vibrate([10, 30, 10]);
+                    setDeleteMode(true);
+                    setPendingDelete(i);
+                  }, 500);
+                }}
+                onPointerUp={() => {
+                  if (longPressTimerRef.current) {
+                    clearTimeout(longPressTimerRef.current);
+                    longPressTimerRef.current = null;
+                  }
+                }}
+                onPointerLeave={() => {
+                  if (longPressTimerRef.current) {
+                    clearTimeout(longPressTimerRef.current);
+                    longPressTimerRef.current = null;
+                  }
+                }}
+                className={cn(
+                  'rounded-lg flex items-center justify-center font-bold transition-all',
+                  // Current = slightly bigger in small row (will be shown big below)
+                  isCurrent
+                    ? 'w-8 h-8 text-xs ring-2 ring-white'
+                    : 'w-6 h-6 text-[10px]',
+                  deleteMode && pendingDelete === i && 'ring-2 ring-red-500'
+                )}
+                style={{
+                  background: deleteMode
+                    ? (pendingDelete === i ? '#ef4444' : 'rgba(255,255,255,0.15)')
+                    : isCurrent
+                    ? '#ffffff'
+                    : q.status === 'answered' ? '#22c55e' : q.status === 'skipped' ? '#6b7280' : q.status === 'review-later' ? '#f59e0b' : 'rgba(255,255,255,0.12)',
+                  color: deleteMode ? '#fff' : isCurrent ? '#000' : q.status === 'unanswered' ? 'rgba(255,255,255,0.6)' : '#000',
+                }}
+              >{q.number}</button>
+              {/* Delete label */}
+              {deleteMode && pendingDelete === i && (
+                <button
+                  onClick={() => {
+                    if (haptics) vibrate([10, 30, 10]);
+                    deleteQuestion(i);
+                    setPendingDelete(null);
+                    setDeleteMode(false);
+                    questionStartRef.current = Date.now();
+                  }}
+                  className="absolute -bottom-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-red-500 text-white text-[8px] font-bold whitespace-nowrap z-20 active:scale-95 transition"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          );
+        })}
+        {deleteMode && (
           <button
-            onClick={() => {
-              if (haptics) vibrate(8);
-              if (deleteMode) {
-                setPendingDelete(pendingDelete === i ? null : i);
-                return;
-              }
-              const session = usePractice.getState().activePractice;
-              const idx = usePractice.getState().currentQuestionIndex;
-              if (session && i !== idx) {
-                const qElapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
-                const questions = [...session.questions];
-                while (questions.length <= idx) {
-                  questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', userAnswer: null, correctAnswer: null, conceptNotes: '', formulaNotes: '' });
-                }
-                questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
-                usePractice.setState({ activePractice: { ...session, questions } });
-              }
-              setCurrentQuestionIndex(i);
-              questionStartRef.current = Date.now();
-            }}
-            onPointerDown={() => {
-              if (deleteMode) return;
-              longPressTimerRef.current = setTimeout(() => {
-                if (haptics) vibrate([10, 30, 10]);
-                setDeleteMode(true);
-                setPendingDelete(i);
-              }, 500);
-            }}
-            onPointerUp={() => {
-              if (longPressTimerRef.current) {
-                clearTimeout(longPressTimerRef.current);
-                longPressTimerRef.current = null;
-              }
-            }}
-            onPointerLeave={() => {
-              if (longPressTimerRef.current) {
-                clearTimeout(longPressTimerRef.current);
-                longPressTimerRef.current = null;
-              }
-            }}
-            className={cn(
-              'rounded-lg flex items-center justify-center font-bold transition active:scale-90',
-              // === MODERN: Current bubble is bigger + filled ===
-              i === currentIdx && !deleteMode
-                ? 'w-9 h-9 text-sm ring-2 ring-white'
-                : 'w-7 h-7 text-[11px]',
-              deleteMode && pendingDelete === i && 'ring-2 ring-red-500'
-            )}
-            style={{
-              background: deleteMode
-                ? (pendingDelete === i ? '#ef4444' : 'rgba(255,255,255,0.15)')
-                : i === currentIdx && !deleteMode
-                // Current: solid white background for max prominence
-                ? '#ffffff'
-                : q.status === 'answered' ? '#22c55e' : q.status === 'skipped' ? '#6b7280' : q.status === 'review-later' ? '#f59e0b' : 'rgba(255,255,255,0.15)',
-              color: deleteMode ? '#fff' : i === currentIdx && !deleteMode ? '#000000' : q.status === 'unanswered' ? 'rgba(255,255,255,0.6)' : '#000',
-              boxShadow: i === currentIdx && !deleteMode ? '0 0 12px rgba(255,255,255,0.4)' : 'none',
-            }}
-          >{q.number}</button>
-          {/* Delete label */}
-          {deleteMode && pendingDelete === i && (
-            <button
-              onClick={() => {
-                if (haptics) vibrate([10, 30, 10]);
-                deleteQuestion(i);
-                setPendingDelete(null);
-                setDeleteMode(false);
-                questionStartRef.current = Date.now();
-              }}
-              className="absolute -bottom-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-red-500 text-white text-[8px] font-bold whitespace-nowrap z-20 active:scale-95 transition"
-            >
-              Delete
-            </button>
-          )}
-        </div>
-      ))}
-      {/* Exit delete mode button */}
-      {deleteMode && (
-        <button
-          onClick={() => {
-            if (haptics) vibrate(8);
-            setDeleteMode(false);
-            setPendingDelete(null);
-          }}
-          className="ml-1 px-2 h-7 rounded-md bg-foreground/10 text-muted-foreground text-[8px] font-bold flex items-center active:scale-90 transition shrink-0"
+            onClick={() => { if (haptics) vibrate(8); setDeleteMode(false); setPendingDelete(null); }}
+            className="ml-1 px-2 h-6 rounded-md bg-foreground/10 text-muted-foreground text-[8px] font-bold flex items-center active:scale-90 transition shrink-0"
+          >✕ Exit</button>
+        )}
+      </div>
+
+      {/* Row 2: BIG current question bubble — separate row, centered */}
+      <div className="flex justify-center mt-1.5">
+        <motion.div
+          key={currentIdx}
+          initial={{ scale: 0.3, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.3, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          className="flex flex-col items-center gap-0.5"
         >
-          ✕ Exit
-        </button>
-      )}
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black"
+            style={{
+              background: '#ffffff',
+              color: '#000000',
+              boxShadow: '0 0 20px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.3)',
+            }}
+          >
+            {currentQ?.number || currentIdx + 1}
+          </div>
+          {/* Status label under the big bubble */}
+          <div className="text-[9px] font-bold uppercase tracking-wide"
+            style={{
+              color: currentQ?.status === 'answered' ? '#4ade80'
+                : currentQ?.status === 'skipped' ? '#9ca3af'
+                : currentQ?.status === 'review-later' ? '#fbbf24'
+                : 'rgba(255,255,255,0.4)'
+            }}
+          >
+            {currentQ?.status === 'answered' ? '✓ Answered' : 'Attempting'}
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 
@@ -596,6 +621,7 @@ export function PracticeRunner() {
   );
 
   // === MODERN: Action buttons — Skip/Review on top, Next primary below ===
+  // Note: "Finish Practice" is in the hamburger menu, not here
   const actionButtons = (
     <div className="space-y-1.5">
       {/* Secondary row: Skip + Review (smaller, less prominent) */}
@@ -603,40 +629,40 @@ export function PracticeRunner() {
         <button onClick={handleSkip} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}><ChevronRight size={11} /> Skip</button>
         <button onClick={handleReviewLater} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)', color: '#fbbf24' }}><Flag size={11} /> Review</button>
       </div>
-      {/* Primary: Next button (if not last question) */}
-      {currentIdx < activePractice.questions.length - 1 ? (
-        <button
-          onClick={() => {
-            if (haptics) vibrate(12);
-            // Save current question's elapsed time
-            const session = usePractice.getState().activePractice;
-            const idx = usePractice.getState().currentQuestionIndex;
-            if (session) {
-              const qElapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
-              const questions = [...session.questions];
-              while (questions.length <= idx) {
-                questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', userAnswer: null, correctAnswer: null, conceptNotes: '', formulaNotes: '' });
-              }
-              questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
-              usePractice.setState({ activePractice: { ...session, questions } });
+      {/* Primary: Next button (always shown — finish is in menu) */}
+      <button
+        onClick={() => {
+          if (haptics) vibrate(12);
+          // Save current question's elapsed time
+          const session = usePractice.getState().activePractice;
+          const idx = usePractice.getState().currentQuestionIndex;
+          if (session) {
+            const qElapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
+            const questions = [...session.questions];
+            while (questions.length <= idx) {
+              questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', userAnswer: null, correctAnswer: null, conceptNotes: '', formulaNotes: '' });
             }
+            questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
+            usePractice.setState({ activePractice: { ...session, questions } });
+          }
+          // Go to next question (or wrap to first unanswered if at end)
+          if (currentIdx < activePractice.questions.length - 1) {
             setCurrentQuestionIndex(currentIdx + 1);
-            questionStartRef.current = Date.now();
-          }}
-          className="w-full py-2.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5"
-          style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#ffffff' }}
-        >
-          Next Question <ChevronRight size={14} />
-        </button>
-      ) : (
-        <button
-          onClick={() => { if (haptics) vibrate(12); handleEnd(); }}
-          className="w-full py-2.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5"
-          style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#ffffff' }}
-        >
-          <Check size={14} /> Finish Practice
-        </button>
-      )}
+          } else {
+            // Last question — find first unanswered
+            const firstUnanswered = activePractice.questions.findIndex(q => q.status === 'unanswered');
+            if (firstUnanswered >= 0) {
+              setCurrentQuestionIndex(firstUnanswered);
+            }
+            // If all answered, do nothing — user can finish from menu
+          }
+          questionStartRef.current = Date.now();
+        }}
+        className="w-full py-2.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5"
+        style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#ffffff' }}
+      >
+        Next Question <ChevronRight size={14} />
+      </button>
     </div>
   );
 
