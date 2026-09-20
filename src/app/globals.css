@@ -1454,25 +1454,25 @@ html:not(.dark) .fill-white\/40 { fill: var(--muted-foreground, #6b7280) !import
   animation: pulse-fast 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* === NEW: Bubble float — small bubbles gently float up/down ===
- * Each bubble gets a different animation-delay via inline style
- * for a wave effect across the row. Very subtle (2px, 3s). */
+/* === BUBBLE FLOAT: small bubbles float up/down — NOTICEABLE ===
+ * 6px movement (was 2px), 2.5s cycle (was 3s).
+ * Each bubble gets different delay for wave effect. */
 @keyframes bubble-float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-2px); }
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-5px) scale(1.05); }
 }
 .bubble-float {
-  animation: bubble-float 3s ease-in-out infinite;
+  animation: bubble-float 2.5s ease-in-out infinite;
 }
 
-/* === NEW: Bubble breathing — big current bubble gently scales ===
- * Like a real bubble gently expanding/contracting. */
+/* === BUBBLE BREATHE: big current bubble — NOTICEABLE ===
+ * 8% scale (was 3%). Like a balloon gently inflating/deflating. */
 @keyframes bubble-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.03); }
+  0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.3); }
+  50% { transform: scale(1.08); box-shadow: 0 0 30px rgba(255,255,255,0.7), 0 4px 16px rgba(0,0,0,0.4); }
 }
 .bubble-breathe {
-  animation: bubble-breathe 3s ease-in-out infinite;
+  animation: bubble-breathe 2s ease-in-out infinite;
 }
 
 /* === NEW: Timer breathing glow — makes the timer feel alive ===

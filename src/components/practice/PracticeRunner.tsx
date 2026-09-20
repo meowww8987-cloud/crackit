@@ -363,7 +363,12 @@ export function PracticeRunner() {
         {visibleQuestions.map((q, i) => {
           const isCurrent = i === currentIdx && !deleteMode;
           return (
-            <div key={i} className="relative shrink-0">
+            <motion.div
+              key={i}
+              layout  // === PUSH EFFECT: animates position when layout changes ===
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              className="relative shrink-0"
+            >
               <button
                 onClick={() => {
                   if (haptics) vibrate(8);
@@ -437,7 +442,7 @@ export function PracticeRunner() {
                   className="absolute -bottom-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-red-500 text-white text-[8px] font-bold whitespace-nowrap z-20 active:scale-95 transition"
                 >Delete</button>
               )}
-            </div>
+            </motion.div>
           );
         })}
         {deleteMode && (
@@ -448,33 +453,37 @@ export function PracticeRunner() {
         )}
       </div>
 
-      {/* Row 2: BIG current question bubble — BUBBLE POP animation */}
-      <div className="flex justify-center mt-1.5">
+      {/* Row 2: BIG current question bubble — DRAMATIC bubble animation */}
+      <div className="flex justify-center mt-2" style={{ minHeight: '70px' }}>
         <AnimatePresence mode="popLayout">
           <motion.div
             key={currentIdx}
-            initial={{ scale: 0, opacity: 0, y: -10 }}
+            // === ENTER: dramatic pop from 0 → 1.3 overshoot → settle ===
+            initial={{ scale: 0, opacity: 0, y: -30, rotate: -15 }}
             animate={{
-              scale: [0, 1.15, 1],  // Pop: 0 → overshoot 1.15 → settle 1
-              opacity: 1,
-              y: 0,
+              scale: [0, 1.3, 0.9, 1.1, 1],   // 0 → overshoot 1.3 → dip 0.9 → bounce 1.1 → settle 1
+              opacity: [0, 1, 1, 1, 1],
+              y: [-30, 0, 5, -2, 0],           // drop from above → bounce → settle
+              rotate: [-15, 5, -3, 1, 0],       // wobble: -15° → 5° → -3° → 1° → 0°
             }}
+            // === EXIT: dramatic pop-out — grow then shrink + drop + spin ===
             exit={{
-              scale: [1, 1.1, 0.2],  // Pop out: 1 → slight grow → shrink to 0.2
+              scale: [1, 1.4, 0],               // grow to 1.4 then pop to 0
               opacity: [1, 1, 0],
-              y: [0, 5, 20],  // Drop down like a bubble falling
-              transition: { duration: 0.3 },
+              y: [0, 10, 40],                    // drop down 40px
+              rotate: [0, 15, 30],               // spin 30° as it falls
+              transition: { duration: 0.4, ease: 'easeIn' },
             }}
             transition={{
-              scale: { type: 'spring', stiffness: 200, damping: 12 },  // Bouncy spring
-              opacity: { duration: 0.2 },
-              y: { type: 'spring', stiffness: 300, damping: 20 },
+              duration: 0.6,
+              times: [0, 0.3, 0.5, 0.7, 1],     // keyframe timing
+              scale: { type: 'spring', stiffness: 300, damping: 8 },
             }}
             className="flex flex-col items-center gap-0.5"
           >
-            {/* Big bubble — with breathing animation while displayed */}
+            {/* Big bubble — with NOTICEABLE breathing while displayed */}
             <div
-              className={cn('w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black bubble-breathe')}
+              className={cn('w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black bubble-breathe')}
               style={{
                 background: '#ffffff',
                 color: '#000000',
