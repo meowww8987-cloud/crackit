@@ -333,20 +333,34 @@ export function PracticeRunner() {
     </button>
   );
 
-  // Question pills — CLICKABLE to navigate + LONG-PRESS to delete
+  // Question pills — modernized: horizontal scroll, current bubble bigger
   const questionPills = (
-    <div className="flex flex-wrap gap-1 justify-start">
+    <div
+      className="flex gap-1.5 overflow-x-auto pb-1"
+      style={{
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        WebkitOverflowScrolling: 'touch',
+      }}
+      ref={(el) => {
+        // Auto-scroll current bubble into view
+        if (el) {
+          const currentBubble = el.children[currentIdx] as HTMLElement;
+          if (currentBubble) {
+            currentBubble.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          }
+        }
+      }}
+    >
       {visibleQuestions.map((q, i) => (
-        <div key={i} className="relative">
+        <div key={i} className="relative shrink-0">
           <button
             onClick={() => {
               if (haptics) vibrate(8);
               if (deleteMode) {
-                // In delete mode, tapping shows the delete label
                 setPendingDelete(pendingDelete === i ? null : i);
                 return;
               }
-              // Normal mode: save current question's elapsed time before jumping
               const session = usePractice.getState().activePractice;
               const idx = usePractice.getState().currentQuestionIndex;
               if (session && i !== idx) {
@@ -382,18 +396,25 @@ export function PracticeRunner() {
               }
             }}
             className={cn(
-              'w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold transition active:scale-90',
-              i === currentIdx && !deleteMode && 'ring-2 ring-white',
+              'rounded-lg flex items-center justify-center font-bold transition active:scale-90',
+              // === MODERN: Current bubble is bigger + filled ===
+              i === currentIdx && !deleteMode
+                ? 'w-9 h-9 text-sm ring-2 ring-white'
+                : 'w-7 h-7 text-[11px]',
               deleteMode && pendingDelete === i && 'ring-2 ring-red-500'
             )}
             style={{
               background: deleteMode
                 ? (pendingDelete === i ? '#ef4444' : 'rgba(255,255,255,0.15)')
-                : q.status === 'answered' ? '#22c55e' : q.status === 'skipped' ? '#6b7280' : q.status === 'review-later' ? '#f59e0b' : 'rgba(255,255,255,0.3)',
-              color: deleteMode ? '#fff' : q.status === 'unanswered' ? 'rgba(255,255,255,0.6)' : '#000',
+                : i === currentIdx && !deleteMode
+                // Current: solid white background for max prominence
+                ? '#ffffff'
+                : q.status === 'answered' ? '#22c55e' : q.status === 'skipped' ? '#6b7280' : q.status === 'review-later' ? '#f59e0b' : 'rgba(255,255,255,0.15)',
+              color: deleteMode ? '#fff' : i === currentIdx && !deleteMode ? '#000000' : q.status === 'unanswered' ? 'rgba(255,255,255,0.6)' : '#000',
+              boxShadow: i === currentIdx && !deleteMode ? '0 0 12px rgba(255,255,255,0.4)' : 'none',
             }}
           >{q.number}</button>
-          {/* Delete label — appears when in delete mode + this pill is selected */}
+          {/* Delete label */}
           {deleteMode && pendingDelete === i && (
             <button
               onClick={() => {
@@ -418,7 +439,7 @@ export function PracticeRunner() {
             setDeleteMode(false);
             setPendingDelete(null);
           }}
-          className="ml-1 px-2 h-5 rounded-md bg-foreground/10 text-muted-foreground text-[8px] font-bold flex items-center active:scale-90 transition"
+          className="ml-1 px-2 h-7 rounded-md bg-foreground/10 text-muted-foreground text-[8px] font-bold flex items-center active:scale-90 transition shrink-0"
         >
           ✕ Exit
         </button>
@@ -426,34 +447,68 @@ export function PracticeRunner() {
     </div>
   );
 
-  // Timer + stats block
-  const timerBlock = (
-    <div className="text-center" style={{ color: '#ffffff' }}>
-      <div className="text-[10px] uppercase tracking-[0.2em] mb-0.5 flex items-center justify-center gap-1.5 flex-wrap" style={{ color: 'rgba(255,255,255,0.4)' }}>
-        <span>Q{currentIdx + 1}{activePractice.questionCount > 0 ? `/${activePractice.questionCount}` : ''}</span>
-        {currentMode !== 'single' && (
-          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
-            style={{ background: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
-            {currentMode === 'multi' ? `${subCount} sub` : currentMode === 'multi-correct' ? 'Multi' : 'Written'}
+  // === MODERN: Hero header — "Question 5 of 30" + progress bar ===
+  const heroBlock = (
+    <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>
+      {/* Progress bar — thin bar at top */}
+      <div
+        className="w-full h-1 rounded-full overflow-hidden mb-2"
+        style={{ background: 'rgba(255,255,255,0.1)' }}
+      >
+        <div
+          className="h-full rounded-full transition-all duration-300"
+          style={{
+            width: `${activePractice.questionCount > 0 ? Math.round((answeredCount / activePractice.questionCount) * 100) : 0}%`,
+            background: 'linear-gradient(90deg, #22c55e, #4ade80)',
+          }}
+        />
+      </div>
+      {/* Question number + timer chip */}
+      <div className="flex items-center justify-between">
+        <div className="text-lg font-bold" style={{ color: '#ffffff' }}>
+          Q{currentIdx + 1}
+          <span className="text-sm font-normal" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            /{activePractice.questionCount || '?'}
           </span>
-        )}
-        {optionCount !== 4 && currentMode !== 'written' && (
-          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
-            style={{ background: 'rgba(168,85,247,0.2)', color: '#d8b4fe' }}>{optionCount}opt</span>
-        )}
-        {menuOpen && (
-          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase animate-pulse"
-            style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24' }}>Paused</span>
-        )}
+        </div>
+        {/* Per-question timer — demoted to small chip */}
+        <div className="flex items-center gap-2">
+          {currentMode !== 'single' && (
+            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
+              style={{ background: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
+              {currentMode === 'multi' ? `${subCount} sub` : currentMode === 'multi-correct' ? 'Multi' : 'Written'}
+            </span>
+          )}
+          {menuOpen && (
+            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase animate-pulse"
+              style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24' }}>Paused</span>
+          )}
+          <span className="text-[11px] tabular font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            {formatHMS(questionElapsed)}
+          </span>
+        </div>
       </div>
-      <div className="text-3xl font-bold tabular mb-0.5" style={{ color: '#ffffff' }}>{formatHMS(questionElapsed)}</div>
-      <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Total: <span className="tabular" style={{ color: '#fbbf24' }}>{formatHMS(totalElapsed)}</span>{timeLimitSec > 0 && <span className="ml-2">· <span className="tabular" style={{ color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.4)' }}>{formatHMS(Math.max(0, timeLimitSec - totalElapsed))}</span></span>}</div>
-      <div className="flex items-center justify-center gap-3 mt-1 text-[11px]">
-        <span style={{ color: '#4ade80' }}>✓{answeredCount}</span>
-        <span style={{ color: 'rgba(255,255,255,0.4)' }}>→{skippedCount}</span>
-        <span style={{ color: '#fbbf24' }}>⚑{reviewCount}</span>
+      {/* Stats row — compact, with icons */}
+      <div className="flex items-center gap-3 mt-1 text-[10px]">
+        <span className="flex items-center gap-0.5" style={{ color: '#4ade80' }}>
+          <Check size={9} /> {answeredCount}
+        </span>
+        <span className="flex items-center gap-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <ChevronRight size={9} /> {skippedCount}
+        </span>
+        <span className="flex items-center gap-0.5" style={{ color: '#fbbf24' }}>
+          <Flag size={9} /> {reviewCount}
+        </span>
+        <span className="ml-auto text-[9px] tabular" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          Total {formatHMS(totalElapsed)}
+          {timeLimitSec > 0 && (
+            <span style={{ color: timeLimitSec - totalElapsed < 60 ? '#f87171' : 'rgba(255,255,255,0.3)' }}>
+              {' '}· {formatHMS(Math.max(0, timeLimitSec - totalElapsed))} left
+            </span>
+          )}
+        </span>
       </div>
-      <div className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>{activePractice.name}</div>
+      <div className="text-[9px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.25)' }}>{activePractice.name}</div>
     </div>
   );
 
@@ -540,11 +595,48 @@ export function PracticeRunner() {
     </div>
   );
 
-  // Skip / Review buttons
+  // === MODERN: Action buttons — Skip/Review on top, Next primary below ===
   const actionButtons = (
-    <div className="flex gap-2">
-      <button onClick={handleSkip} className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}><ChevronRight size={13} /> Skip</button>
-      <button onClick={handleReviewLater} className="flex-1 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}><Flag size={13} /> Review</button>
+    <div className="space-y-1.5">
+      {/* Secondary row: Skip + Review (smaller, less prominent) */}
+      <div className="flex gap-1.5">
+        <button onClick={handleSkip} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}><ChevronRight size={11} /> Skip</button>
+        <button onClick={handleReviewLater} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold active:scale-95 transition flex items-center justify-center gap-1" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)', color: '#fbbf24' }}><Flag size={11} /> Review</button>
+      </div>
+      {/* Primary: Next button (if not last question) */}
+      {currentIdx < activePractice.questions.length - 1 ? (
+        <button
+          onClick={() => {
+            if (haptics) vibrate(12);
+            // Save current question's elapsed time
+            const session = usePractice.getState().activePractice;
+            const idx = usePractice.getState().currentQuestionIndex;
+            if (session) {
+              const qElapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
+              const questions = [...session.questions];
+              while (questions.length <= idx) {
+                questions.push({ number: questions.length + 1, timeSpentSec: 0, status: 'unanswered', result: 'unmarked', userAnswer: null, correctAnswer: null, conceptNotes: '', formulaNotes: '' });
+              }
+              questions[idx] = { ...questions[idx], timeSpentSec: qElapsed };
+              usePractice.setState({ activePractice: { ...session, questions } });
+            }
+            setCurrentQuestionIndex(currentIdx + 1);
+            questionStartRef.current = Date.now();
+          }}
+          className="w-full py-2.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5"
+          style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#ffffff' }}
+        >
+          Next Question <ChevronRight size={14} />
+        </button>
+      ) : (
+        <button
+          onClick={() => { if (haptics) vibrate(12); handleEnd(); }}
+          className="w-full py-2.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5"
+          style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#ffffff' }}
+        >
+          <Check size={14} /> Finish Practice
+        </button>
+      )}
     </div>
   );
 
@@ -605,10 +697,10 @@ export function PracticeRunner() {
           aria-label="Practice menu">
           <Menu size={20} />
         </button>
-        {/* LEFT column: pills + timer + stats (~25%) */}
-        <div className="flex flex-col items-center justify-center gap-3" style={{ flex: '0 0 25%', maxWidth: '12rem' }}>
+        {/* LEFT column: hero + pills (~25%) */}
+        <div className="flex flex-col items-start justify-center gap-2" style={{ flex: '0 0 25%', maxWidth: '12rem' }}>
+          {heroBlock}
           {questionPills}
-          {timerBlock}
         </div>
         {/* CENTER column: options (~50%) */}
         <div className="flex flex-col items-center justify-center" style={{ flex: '1 1 0', maxWidth: '24rem', minHeight: 0 }}>
@@ -624,22 +716,22 @@ export function PracticeRunner() {
     );
   }
 
-  // PORTRAIT: single column (current working layout)
+  // PORTRAIT: single column — modernized layout
   return (
     <>
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] overflow-hidden force-dark-ui flex flex-col items-center justify-between"
-      style={{ background: '#000000', padding: '1.5rem 1rem', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)', boxSizing: 'border-box' }}>
-        {/* Top bar: pills + hamburger */}
+      style={{ background: '#000000', padding: '1.5rem 1rem', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)', boxSizing: 'border-box' }}>
+        {/* Top: Hero block (progress bar + question number + stats) */}
+        {heroBlock}
+        {/* Middle: Bubble strip (horizontal scroll, current bubble bigger) */}
         <div className="w-full max-w-xs flex items-start justify-between gap-2" style={{ flexShrink: 0 }}>
           {questionPills}
           {hamburgerBtn}
         </div>
-        {/* Timer */}
-        <div style={{ flexShrink: 0 }}>{timerBlock}</div>
         {/* Options */}
         {optionsBlock}
-        {/* Actions */}
+        {/* Actions — Next primary + Skip/Review secondary */}
         <div className="w-full max-w-xs" style={{ flexShrink: 0 }}>{actionButtons}</div>
     </motion.div>
     {menuOverlay}
