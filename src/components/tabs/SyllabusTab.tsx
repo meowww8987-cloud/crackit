@@ -66,6 +66,7 @@ export function SyllabusTab() {
   };
 
   const [openChapter, setOpenChapter] = useState<string | null>(null);
+  const [openAssignmentChapter, setOpenAssignmentChapter] = useState<string | null>(null);
   const [editingLecture, setEditingLecture] = useState<Lecture | null>(null);
   const [detailLecture, setDetailLecture] = useState<{ lecture: Lecture; chapter: Chapter; subject: SubjectEntity } | null>(null);
   const [addChapterFor, setAddChapterFor] = useState<SubjectEntity | null>(null);
@@ -670,6 +671,7 @@ export function SyllabusTab() {
                 if (progressFilter === 'overdue' && chOverdue === 0) return null;
                 if (search && !matchesSearch(ch.name) && !chLectures.some((l) => matchesSearch(l.topic))) return null;
                 const chOpen = openChapter === ch.id;
+                const chAssignOpen = openAssignmentChapter === ch.id;
                 const chTodayCount = todayTargets.filter((t) => t.chapterId === ch.id).length;
                 const isChapterActive = activeSession?.subject === subj.name && chLectures.some((l) => l.id === activeSession?.targetId);
                 return (
@@ -768,10 +770,32 @@ export function SyllabusTab() {
                         </div>
                       </div>
 
-                      {/* Chevron only — % is now inside the ring */}
-                      <motion.div animate={{ rotate: chOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
-                        <ChevronDown size={16} className="text-muted-foreground" />
-                      </motion.div>
+                      {/* Chevron for lectures + chevron for assignments */}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {/* Lecture chevron */}
+                        <motion.div animate={{ rotate: chOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
+                          <ChevronDown size={16} className="text-muted-foreground" />
+                        </motion.div>
+                        {/* Assignment chevron — separate toggle */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            vibrate(8);
+                            setOpenAssignmentChapter(chAssignOpen ? null : ch.id);
+                          }}
+                          className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg transition active:scale-90"
+                          style={{
+                            background: chAssignOpen ? 'rgba(168,85,247,0.12)' : 'transparent',
+                            border: `1px solid ${chAssignOpen ? 'rgba(168,85,247,0.2)' : 'transparent'}`,
+                          }}
+                          title="Toggle assignments"
+                        >
+                          <FileText size={13} style={{ color: chAssignOpen ? '#a855f7' : 'var(--muted-foreground)' }} />
+                          <motion.div animate={{ rotate: chAssignOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
+                            <ChevronDown size={12} style={{ color: chAssignOpen ? '#a855f7' : 'var(--muted-foreground)' }} />
+                          </motion.div>
+                        </button>
+                      </div>
                     </button>
 
                     {/* Horizontal progress bar REMOVED — ring shows progress now */}
@@ -833,25 +857,58 @@ export function SyllabusTab() {
                       ) : null;
                     })()}
 
-                    {/* Expanded lecture list + assignments (side by side in same scroll) */}
+                    {/* Expanded lecture list (lectures only) */}
                     <AnimatePresence initial={false}>
                       {chOpen && (
                         <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                           <div className="px-2.5 pb-2.5 pt-1 space-y-2">
-                            {chLectures.length === 0 && (ch.assignments || []).length === 0 && (<p className="text-xs text-center py-3" style={{ color: 'var(--muted-foreground)' }}>No lectures or assignments yet</p>)}
+                            {chLectures.length === 0 && (<p className="text-xs text-center py-3" style={{ color: 'var(--muted-foreground)' }}>No lectures yet</p>)}
                             {chLectures.filter((l) => { if (progressFilter === 'done') return l.done; if (progressFilter === 'next') return !l.done; if (progressFilter === 'studying') return !l.done && l.revisionStage >= 0; if (progressFilter === 'overdue') return l.done && isRevisionOverdue(l.nextRevisionAt); return true; }).filter((l) => !search || matchesSearch(l.topic)).map((lec, lecIndex) => (<LectureResourceRow key={lec.id} lecture={lec} chapter={ch} subject={subj} index={lecIndex} onEdit={() => setDetailLecture({ lecture: lec, chapter: ch, subject: subj })} onEditLecture={() => setEditingLecture(lec)} />))}
-                            {/* === Inline assignment cards — same flow as lectures === */}
-                            {(ch.assignments || []).map((a) => (
-                              <AssignmentInlineCard
-                                key={a.id}
-                                assignment={a}
-                                onIncrement={() => { incrementAssignmentDone(ch.id, a.id); vibrate(8); }}
-                                onDecrement={() => { decrementAssignmentDone(ch.id, a.id); vibrate([10, 20, 10]); }}
-                                onDelete={() => { deleteAssignment(ch.id, a.id); vibrate([10, 30, 10]); }}
-                                onRename={(name) => { renameAssignment(ch.id, a.id, name); vibrate(8); }}
-                              />
-                            ))}
-                            {/* Add assignment — narrow pill button */}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* === Separate assignment expand — own arrow, own section === */}
+                    <AnimatePresence initial={false}>
+                      {chAssignOpen && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                          <div className="px-2.5 pb-2.5 pt-1 space-y-2" style={{
+                            background: 'rgba(168,85,247,0.03)',
+                            borderBottomLeftRadius: '12px',
+                            borderBottomRightRadius: '12px',
+                            marginLeft: '4px',
+                            marginRight: '4px',
+                          }}>
+                            {/* Assignment header row */}
+                            <div className="flex items-center gap-2 px-1 py-1">
+                              <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(168,85,247,0.15)' }}>
+                                <FileText size={11} style={{ color: '#a855f7' }} />
+                              </div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#a855f7' }}>
+                                Assignments
+                              </span>
+                              <span className="text-[10px] tabular font-bold" style={{ color: 'var(--muted-foreground)' }}>
+                                {(ch.assignments || []).reduce((s, a) => s + a.doneCount, 0)}/{(ch.assignments || []).length}
+                              </span>
+                            </div>
+
+                            {(ch.assignments || []).length === 0 ? (
+                              <p className="text-[10px] text-center py-2" style={{ color: 'var(--muted-foreground)' }}>No assignments yet</p>
+                            ) : (
+                              (ch.assignments || []).map((a) => (
+                                <AssignmentInlineCard
+                                  key={a.id}
+                                  assignment={a}
+                                  onIncrement={() => { incrementAssignmentDone(ch.id, a.id); vibrate(8); }}
+                                  onDecrement={() => { decrementAssignmentDone(ch.id, a.id); vibrate([10, 20, 10]); }}
+                                  onDelete={() => { deleteAssignment(ch.id, a.id); vibrate([10, 30, 10]); }}
+                                  onRename={(name) => { renameAssignment(ch.id, a.id, name); vibrate(8); }}
+                                />
+                              ))
+                            )}
+
+                            {/* Add assignment pill */}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -859,12 +916,11 @@ export function SyllabusTab() {
                                 addAssignment(ch.id, name);
                                 vibrate(10);
                               }}
-                              className="w-full py-2 rounded-full text-[10px] font-bold flex items-center justify-center gap-1 active:scale-95 transition"
+                              className="w-full py-1.5 rounded-full text-[10px] font-bold flex items-center justify-center gap-1 active:scale-95 transition"
                               style={{
                                 background: 'rgba(168,85,247,0.08)',
                                 border: '1px solid rgba(168,85,247,0.2)',
                                 color: '#a855f7',
-                                borderRadius: '9999px',
                               }}
                             >
                               <Plus size={11} /> Add Assignment
