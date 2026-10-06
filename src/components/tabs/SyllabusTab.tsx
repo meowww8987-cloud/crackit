@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GraduationCap, Plus, Search, ChevronDown, ChevronRight, Calendar, Clock, Sigma,
-  GripVertical, Check, X, CheckCircle2, RotateCcw, Trash2, Sparkles, BookMarked, FlaskConical, Play, FileText,
+  GripVertical, Check, X, CheckCircle2, RotateCcw, Trash2, Sparkles, BookMarked, FlaskConical, Play, FileText, Pencil,
 } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -41,7 +41,10 @@ let _showToast: (msg: string, sub?: string) => void = () => {};
 export function setSyllabusToastHandler(fn: (msg: string, sub?: string) => void) { _showToast = fn; }
 
 export function SyllabusTab() {
-  const { subjects, chapters, lectures, deleteChapter, reorderChapters, incrementAssignment, decrementAssignment, resetAssignment } = useSyllabus();
+  const { subjects, chapters, lectures, deleteChapter, reorderChapters,
+    addAssignment, incrementAssignmentDone, decrementAssignmentDone,
+    resetAssignmentDone, deleteAssignment, renameAssignment,
+  } = useSyllabus();
   const [search, setSearch] = useState('');
   const [reorderMode, setReorderMode] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState<Subject | 'all'>(() => {
@@ -780,35 +783,6 @@ export function SyllabusTab() {
                         <span className="text-muted-foreground">📝 <span className="text-green-600 dark:text-green-400 font-semibold">{dppDone}</span>/{chLectures.length}</span>
                         <span className="text-muted-foreground">📖 <span className="text-blue-600 dark:text-blue-400 font-semibold">{notesDone}</span>/{chLectures.length}</span>
                         <span className="text-muted-foreground">🔄 <span className="text-amber-600 dark:text-amber-400 font-semibold">{revDone}</span>/{chLectures.length}</span>
-                        {/* === Assignment counter (chapter-level) === */}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); vibrate(10); incrementAssignment(ch.id); }}
-                          onPointerDown={(e) => {
-                            e.stopPropagation();
-                            chapterLongPressRef.current = setTimeout(() => {
-                              const count = ch.assignmentDoneCount || 0;
-                              if (count === 0) return;
-                              const action = confirm(
-                                `Assignment: ${count}× done.\n\nOK = Undo last (→${count - 1}×)\nCancel = Keep ${count}×`
-                              );
-                              if (action) {
-                                vibrate([10, 20, 10]);
-                                decrementAssignment(ch.id);
-                              }
-                            }, 500);
-                          }}
-                          onPointerUp={() => { if (chapterLongPressRef.current) { clearTimeout(chapterLongPressRef.current); chapterLongPressRef.current = null; } }}
-                          onPointerLeave={() => { if (chapterLongPressRef.current) { clearTimeout(chapterLongPressRef.current); chapterLongPressRef.current = null; } }}
-                          className="text-[10px] px-2 py-0.5 rounded-full font-semibold transition flex items-center gap-0.5 active:scale-95"
-                          style={{
-                            background: (ch.assignmentDoneCount || 0) > 0 ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.05)',
-                            color: (ch.assignmentDoneCount || 0) > 0 ? '#a855f7' : 'var(--muted-foreground)',
-                            border: `1px solid ${(ch.assignmentDoneCount || 0) > 0 ? 'rgba(168,85,247,0.3)' : 'var(--border)'}`,
-                          }}
-                          title={`Assignment: ${ch.assignmentDoneCount || 0}× done. Tap +1, long-press undo.`}
-                        >
-                          <FileText size={10} /> {ch.assignmentDoneCount || 0}×
-                        </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); setAddLectureFor({ chapter: ch, subject: subj }); vibrate(10); }}
                           className="ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold transition flex items-center gap-0.5 active:scale-95"
@@ -820,23 +794,18 @@ export function SyllabusTab() {
                         </button>
                       </div>
                     )}
-                    {/* Assignment row even when no lectures exist */}
-                    {chLectures.length === 0 && (
-                      <div className="flex items-center gap-2.5 px-3.5 py-2.5 text-[11px] tabular">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); vibrate(10); incrementAssignment(ch.id); }}
-                          className="text-[10px] px-2 py-0.5 rounded-full font-semibold transition flex items-center gap-0.5 active:scale-95"
-                          style={{
-                            background: (ch.assignmentDoneCount || 0) > 0 ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.05)',
-                            color: (ch.assignmentDoneCount || 0) > 0 ? '#a855f7' : 'var(--muted-foreground)',
-                            border: `1px solid ${(ch.assignmentDoneCount || 0) > 0 ? 'rgba(168,85,247,0.3)' : 'var(--border)'}`,
-                          }}
-                          title={`Assignment: ${ch.assignmentDoneCount || 0}× done`}
-                        >
-                          <FileText size={10} /> Assignment: {ch.assignmentDoneCount || 0}×
-                        </button>
-                      </div>
-                    )}
+
+                    {/* === ASSIGNMENT SECTION (chapter-level, expandable) === */}
+                    <AssignmentSection
+                      chapter={ch}
+                      color={color}
+                      onAdd={(name) => { addAssignment(ch.id, name); vibrate(10); }}
+                      onIncrement={(aId) => { incrementAssignmentDone(ch.id, aId); vibrate(8); }}
+                      onDecrement={(aId) => { decrementAssignmentDone(ch.id, aId); vibrate([10, 20, 10]); }}
+                      onReset={(aId) => { resetAssignmentDone(ch.id, aId); vibrate([10, 30, 10]); }}
+                      onDelete={(aId) => { deleteAssignment(ch.id, aId); vibrate([10, 30, 10]); }}
+                      onRename={(aId, name) => { renameAssignment(ch.id, aId, name); vibrate(8); }}
+                    />
 
                     {/* === Chapter time stats === */}
                     {chLectures.length > 0 && (() => {
@@ -1120,12 +1089,10 @@ function ChapterActionsModal({
   const allLectures = useSyllabus((s) => s.lectures);
   const deleteChapter = useSyllabus((s) => s.deleteChapter);
   const updateLecture = useSyllabus((s) => s.updateLecture);
-  const resetAssignment = useSyllabus((s) => s.resetAssignment);
   const lectures = useMemo(() => allLectures.filter((l) => l.chapterId === chapter.id), [allLectures, chapter.id]);
   const allDone = lectures.length > 0 && lectures.every((l) => l.done);
   const doneCount = lectures.filter((l) => l.done).length;
   const notDoneCount = lectures.length - doneCount;
-  const assignmentCount = chapter.assignmentDoneCount || 0;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Scroll lock + Escape
@@ -1260,26 +1227,6 @@ function ChapterActionsModal({
             </button>
           )}
 
-          {/* === Reset Assignment === */}
-          {assignmentCount > 0 && (
-            <button
-              onClick={() => {
-                vibrate([10, 30, 10]);
-                resetAssignment(chapter.id);
-                onClose();
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-purple-500/10 active:bg-purple-500/15 transition text-left"
-            >
-              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-purple-500/20 text-purple-600 dark:text-purple-400">
-                <RotateCcw size={14} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-purple-600 dark:text-purple-400">Reset Assignment Count</div>
-                <div className="text-[10px] text-muted-foreground">Currently {assignmentCount}× — reset to 0</div>
-              </div>
-            </button>
-          )}
-
           {/* Delete — opens confirmation */}
           <div className="h-px bg-foreground/10 my-1" />
           <button
@@ -1350,9 +1297,240 @@ function ChapterActionsModal({
 
 // Keep ChapterContextMenu as a thin wrapper for backward compatibility
 function ChapterContextMenu({ chapter, onClose }: { chapter: Chapter; onClose: () => void }) {
-  // FIXED: .find() in selector is fine — returns the same object reference
-  // if the subjects array hasn't changed. Zustand compares by reference.
   const subj = useSyllabus((s) => s.subjects.find((su) => su.id === chapter.subjectId));
   const color = subjectColor(subj?.name || 'General');
   return <ChapterActionsModal chapter={chapter} color={color} onClose={onClose} />;
+}
+
+// ===== AssignmentSection — expandable chapter-level assignment tracker =====
+function AssignmentSection({
+  chapter,
+  color,
+  onAdd,
+  onIncrement,
+  onDecrement,
+  onReset,
+  onDelete,
+  onRename,
+}: {
+  chapter: Chapter;
+  color: { hex: string; glow: string };
+  onAdd: (name: string) => void;
+  onIncrement: (assignmentId: string) => void;
+  onDecrement: (assignmentId: string) => void;
+  onReset: (assignmentId: string) => void;
+  onDelete: (assignmentId: string) => void;
+  onRename: (assignmentId: string, name: string) => void;
+}) {
+  const assignments = chapter.assignments || [];
+  const totalDone = assignments.reduce((sum, a) => sum + a.doneCount, 0);
+  const totalAssignments = assignments.length;
+  const [expanded, setExpanded] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const lpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lpFiredRef = useRef(false);
+
+  const handleAdd = () => {
+    const name = newName.trim() || `Assignment ${totalAssignments + 1}`;
+    onAdd(name);
+    setNewName('');
+    setShowAdd(false);
+    setExpanded(true);
+  };
+
+  return (
+    <div className="px-3.5 py-2" style={{ borderTop: '1px solid var(--border)' }}>
+      {/* Header row — total done/total + expand toggle */}
+      <div
+        className="flex items-center gap-2 cursor-pointer"
+        onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); vibrate(5); }}
+      >
+        {/* Purple assignment icon */}
+        <div
+          className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+          style={{
+            background: totalDone > 0 ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${totalDone > 0 ? 'rgba(168,85,247,0.3)' : 'var(--border)'}`,
+          }}
+        >
+          <FileText size={12} style={{ color: totalDone > 0 ? '#a855f7' : 'var(--muted-foreground)' }} />
+        </div>
+        {/* Total done / total */}
+        <span className="text-[11px] font-bold tabular" style={{ color: 'var(--foreground)' }}>
+          Assignments
+        </span>
+        <span className="text-[11px] tabular font-bold" style={{
+          color: totalDone > 0 ? '#a855f7' : 'var(--muted-foreground)',
+        }}>
+          {totalDone}/{totalAssignments}
+        </span>
+        {totalDone > 0 && (
+          <span className="text-[9px] text-muted-foreground">
+            ({totalDone}× done across {totalAssignments} assignment{totalAssignments === 1 ? '' : 's'})
+          </span>
+        )}
+        {/* Expand chevron */}
+        <motion.div animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }} className="ml-auto">
+          <ChevronDown size={14} className="text-muted-foreground" />
+        </motion.div>
+      </div>
+
+      {/* Expanded list */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-1.5 pt-2">
+              {assignments.length === 0 && !showAdd && (
+                <div className="text-center py-2 text-[10px] text-muted-foreground">
+                  No assignments yet. Tap "Add" to create one.
+                </div>
+              )}
+              {assignments.map((a) => {
+                const isEditing = editingId === a.id;
+                return (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-2 p-2 rounded-lg"
+                    style={{
+                      background: a.doneCount > 0 ? 'rgba(168,85,247,0.06)' : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${a.doneCount > 0 ? 'rgba(168,85,247,0.2)' : 'var(--border)'}`,
+                    }}
+                  >
+                    {/* Done count badge */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (lpFiredRef.current) { lpFiredRef.current = false; return; }
+                        onIncrement(a.id);
+                      }}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        lpFiredRef.current = false;
+                        lpTimerRef.current = setTimeout(() => {
+                          lpFiredRef.current = true;
+                          if (a.doneCount === 0) return;
+                          const action = confirm(
+                            `${a.name}: ${a.doneCount}× done.\n\nOK = Undo last (→${a.doneCount - 1}×)\nCancel = Keep ${a.doneCount}×`
+                          );
+                          if (action) {
+                            onDecrement(a.id);
+                          }
+                        }, 500);
+                      }}
+                      onPointerUp={() => { if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null; } }}
+                      onPointerLeave={() => { if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null; } }}
+                      className="w-9 h-9 rounded-lg flex flex-col items-center justify-center shrink-0 active:scale-90 transition"
+                      style={{
+                        background: a.doneCount > 0 ? '#a855f7' : 'rgba(168,85,247,0.08)',
+                        color: a.doneCount > 0 ? '#ffffff' : '#a855f7',
+                        border: `1px solid ${a.doneCount > 0 ? '#a855f7' : 'rgba(168,85,247,0.2)'}`,
+                      }}
+                      title={`Tap +1, long-press undo. Currently ${a.doneCount}×`}
+                    >
+                      <span className="text-[14px] font-black tabular leading-none">{a.doneCount}</span>
+                      <span className="text-[6px] font-bold uppercase">×done</span>
+                    </button>
+
+                    {/* Name + last done */}
+                    <div className="flex-1 min-w-0">
+                      {isEditing ? (
+                        <input
+                          autoFocus
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              if (editName.trim()) onRename(a.id, editName.trim());
+                              setEditingId(null);
+                            }
+                            if (e.key === 'Escape') setEditingId(null);
+                          }}
+                          onBlur={() => {
+                            if (editName.trim()) onRename(a.id, editName.trim());
+                            setEditingId(null);
+                          }}
+                          className="w-full px-1.5 py-0.5 rounded text-[11px] font-medium"
+                          style={{ background: 'var(--muted)', border: '1px solid #a855f740', color: 'var(--foreground)' }}
+                        />
+                      ) : (
+                        <>
+                          <div className="text-[11px] font-semibold truncate" style={{ color: a.doneCount > 0 ? '#a855f7' : 'var(--foreground)' }}>
+                            {a.name}
+                          </div>
+                          {a.doneCount > 0 && a.lastDoneAt && (
+                            <div className="text-[8px] text-muted-foreground">
+                              Last: {new Date(a.lastDoneAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Edit + delete */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditName(a.name); setEditingId(a.id); }}
+                      className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-foreground/10 transition active:scale-90 shrink-0"
+                      title="Rename"
+                    >
+                      <Pencil size={10} className="text-muted-foreground" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDelete(a.id); }}
+                      className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-red-500/10 transition active:scale-90 shrink-0"
+                      title="Delete"
+                    >
+                      <Trash2 size={10} className="text-red-500" />
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Add new assignment */}
+              {showAdd ? (
+                <div className="flex items-center gap-2 p-2 rounded-lg" style={{ border: '1px solid rgba(168,85,247,0.2)' }}>
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleAdd();
+                      if (e.key === 'Escape') { setShowAdd(false); setNewName(''); }
+                    }}
+                    placeholder="Assignment name..."
+                    className="flex-1 px-2 py-1 rounded text-[11px]"
+                    style={{ background: 'var(--muted)', border: '1px solid rgba(168,85,247,0.3)', color: 'var(--foreground)' }}
+                  />
+                  <button onClick={handleAdd} className="px-2 py-1 rounded text-[10px] font-bold text-white active:scale-95" style={{ background: '#a855f7' }}>
+                    Add
+                  </button>
+                  <button onClick={() => { setShowAdd(false); setNewName(''); }} className="px-2 py-1 rounded text-[10px] font-semibold text-muted-foreground hover:bg-foreground/10 active:scale-95">
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowAdd(true); vibrate(8); }}
+                  className="w-full py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 active:scale-95 transition"
+                  style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)', color: '#a855f7' }}
+                >
+                  <Plus size={11} /> Add Assignment
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }

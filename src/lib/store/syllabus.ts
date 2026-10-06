@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { SubjectEntity, Chapter, Lecture, Subject, LectureResource } from '@/lib/types';
+import type { SubjectEntity, Chapter, Lecture, Subject, LectureResource, ChapterAssignment } from '@/lib/types';
 import { uid, nextRevisionDate, todayKey } from '@/lib/utils';
 import { useProgress } from './progress';
 
@@ -28,9 +28,12 @@ interface SyllabusStore {
   addLectureStats: (id: string, studySec: number, wastedSec: number, confidence?: number) => void;
   markLectureDoneWithStats: (id: string, studySec: number, wastedSec: number, confidence: number) => void;
   /** Chapter-level assignment tracking */
-  incrementAssignment: (chapterId: string) => void;
-  decrementAssignment: (chapterId: string) => void;
-  resetAssignment: (chapterId: string) => void;
+  addAssignment: (chapterId: string, name: string) => string;
+  incrementAssignmentDone: (chapterId: string, assignmentId: string) => void;
+  decrementAssignmentDone: (chapterId: string, assignmentId: string) => void;
+  resetAssignmentDone: (chapterId: string, assignmentId: string) => void;
+  deleteAssignment: (chapterId: string, assignmentId: string) => void;
+  renameAssignment: (chapterId: string, assignmentId: string, name: string) => void;
 }
 
 export const useSyllabus = create<SyllabusStore>()(
@@ -404,39 +407,89 @@ export const useSyllabus = create<SyllabusStore>()(
         })),
 
       // === Chapter-level assignment tracking ===
-      incrementAssignment: (chapterId) =>
+      addAssignment: (chapterId, name) => {
+        const id = uid();
+        const assignment: ChapterAssignment = {
+          id,
+          name: name || `Assignment ${Date.now().toString(36).slice(-4).toUpperCase()}`,
+          doneCount: 0,
+          createdAt: Date.now(),
+        };
         set((st) => ({
           chapters: st.chapters.map((c) =>
             c.id === chapterId
-              ? {
-                  ...c,
-                  assignmentDoneCount: (c.assignmentDoneCount || 0) + 1,
-                  assignmentLastDoneAt: Date.now(),
-                }
+              ? { ...c, assignments: [...(c.assignments || []), assignment] }
+              : c
+          ),
+        }));
+        return id;
+      },
+
+      incrementAssignmentDone: (chapterId, assignmentId) =>
+        set((st) => ({
+          chapters: st.chapters.map((c) => {
+            if (c.id !== chapterId) return c;
+            return {
+              ...c,
+              assignments: (c.assignments || []).map((a) =>
+                a.id === assignmentId
+                  ? { ...a, doneCount: a.doneCount + 1, lastDoneAt: Date.now() }
+                  : a
+              ),
+            };
+          }),
+        })),
+
+      decrementAssignmentDone: (chapterId, assignmentId) =>
+        set((st) => ({
+          chapters: st.chapters.map((c) => {
+            if (c.id !== chapterId) return c;
+            return {
+              ...c,
+              assignments: (c.assignments || []).map((a) =>
+                a.id === assignmentId
+                  ? { ...a, doneCount: Math.max(0, a.doneCount - 1) }
+                  : a
+              ),
+            };
+          }),
+        })),
+
+      resetAssignmentDone: (chapterId, assignmentId) =>
+        set((st) => ({
+          chapters: st.chapters.map((c) => {
+            if (c.id !== chapterId) return c;
+            return {
+              ...c,
+              assignments: (c.assignments || []).map((a) =>
+                a.id === assignmentId
+                  ? { ...a, doneCount: 0, lastDoneAt: undefined }
+                  : a
+              ),
+            };
+          }),
+        })),
+
+      deleteAssignment: (chapterId, assignmentId) =>
+        set((st) => ({
+          chapters: st.chapters.map((c) =>
+            c.id === chapterId
+              ? { ...c, assignments: (c.assignments || []).filter((a) => a.id !== assignmentId) }
               : c
           ),
         })),
 
-      decrementAssignment: (chapterId) =>
+      renameAssignment: (chapterId, assignmentId, name) =>
         set((st) => ({
-          chapters: st.chapters.map((c) =>
-            c.id === chapterId
-              ? {
-                  ...c,
-                  assignmentDoneCount: Math.max(0, (c.assignmentDoneCount || 0) - 1),
-                  assignmentLastDoneAt: (c.assignmentDoneCount || 0) > 1 ? Date.now() : undefined,
-                }
-              : c
-          ),
-        })),
-
-      resetAssignment: (chapterId) =>
-        set((st) => ({
-          chapters: st.chapters.map((c) =>
-            c.id === chapterId
-              ? { ...c, assignmentDoneCount: 0, assignmentLastDoneAt: undefined }
-              : c
-          ),
+          chapters: st.chapters.map((c) => {
+            if (c.id !== chapterId) return c;
+            return {
+              ...c,
+              assignments: (c.assignments || []).map((a) =>
+                a.id === assignmentId ? { ...a, name } : a
+              ),
+            };
+          }),
         })),
     }),
     {

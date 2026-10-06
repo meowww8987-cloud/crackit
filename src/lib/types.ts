@@ -112,6 +112,15 @@ export interface Lecture {
 
 export type LectureResource = 'lecture' | 'dpp' | 'notes' | 'revision';
 
+export interface ChapterAssignment {
+  id: string;
+  name: string;
+  /** How many times this specific assignment was done. 0 = not done, 1+ = done N times. */
+  doneCount: number;
+  lastDoneAt?: number;
+  createdAt: number;
+}
+
 export interface Chapter {
   id: string;
   subjectId: string;
@@ -119,14 +128,9 @@ export interface Chapter {
   pyqCount: number;
   createdAt: number;
   order?: number; // for drag-to-reorder
-  /** NEET exam weightage (0-100, percentage of subject's NEET questions from this chapter).
-   *  If undefined, chapter is weighted equally with all others. */
   weightage?: number;
-  /** Chapter-level assignment tracking. How many assignments have been completed.
-   *  Can be any number (0, 5, 20...) — not tied to lecture count.
-   *  Tap +1 to increment, long-press for undo/reset. */
-  assignmentDoneCount?: number;
-  assignmentLastDoneAt?: number;
+  /** Chapter-level assignments (0, 1, 5, 20...). Each has a doneCount. */
+  assignments?: ChapterAssignment[];
 }
 
 export interface SubjectEntity {
