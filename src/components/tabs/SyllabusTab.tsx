@@ -22,7 +22,7 @@ import { useTargets } from '@/lib/store/targets';
 import { useSession } from '@/lib/store/session';
 import { useHistory } from '@/lib/store/history';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
-import type { Subject, Lecture, SubjectEntity, Chapter } from '@/lib/types';
+import type { Subject, Lecture, SubjectEntity, Chapter, ChapterAssignment } from '@/lib/types';
 import { cn, vibrate, isRevisionOverdue, todayKey, formatHM } from '@/lib/utils';
 import { LectureResourceRow } from '@/components/syllabus/LectureResourceRow';
 import { LectureEditModal } from '@/components/syllabus/LectureEditModal';
@@ -795,17 +795,14 @@ export function SyllabusTab() {
                       </div>
                     )}
 
-                    {/* === ASSIGNMENT SECTION (chapter-level, expandable) === */}
-                    <AssignmentSection
-                      chapter={ch}
-                      color={color}
-                      onAdd={(name) => { addAssignment(ch.id, name); vibrate(10); }}
-                      onIncrement={(aId) => { incrementAssignmentDone(ch.id, aId); vibrate(8); }}
-                      onDecrement={(aId) => { decrementAssignmentDone(ch.id, aId); vibrate([10, 20, 10]); }}
-                      onReset={(aId) => { resetAssignmentDone(ch.id, aId); vibrate([10, 30, 10]); }}
-                      onDelete={(aId) => { deleteAssignment(ch.id, aId); vibrate([10, 30, 10]); }}
-                      onRename={(aId, name) => { renameAssignment(ch.id, aId, name); vibrate(8); }}
-                    />
+                    {/* Assignment summary in resource row (compact) */}
+                    {(ch.assignments || []).length > 0 && (() => {
+                      const totalDone = (ch.assignments || []).reduce((s, a) => s + a.doneCount, 0);
+                      const totalAssignments = (ch.assignments || []).length;
+                      return (
+                        <span className="text-muted-foreground ml-1">📄 <span className="text-purple-600 dark:text-purple-400 font-semibold">{totalDone}</span>/{totalAssignments}</span>
+                      );
+                    })()}
 
                     {/* === Chapter time stats === */}
                     {chLectures.length > 0 && (() => {
@@ -836,13 +833,42 @@ export function SyllabusTab() {
                       ) : null;
                     })()}
 
-                    {/* Expanded lecture list */}
+                    {/* Expanded lecture list + assignments (side by side in same scroll) */}
                     <AnimatePresence initial={false}>
                       {chOpen && (
                         <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                           <div className="px-2.5 pb-2.5 pt-1 space-y-2">
-                            {chLectures.length === 0 && (<p className="text-xs text-center py-3" style={{ color: 'var(--muted-foreground)' }}>No lectures yet</p>)}
+                            {chLectures.length === 0 && (ch.assignments || []).length === 0 && (<p className="text-xs text-center py-3" style={{ color: 'var(--muted-foreground)' }}>No lectures or assignments yet</p>)}
                             {chLectures.filter((l) => { if (progressFilter === 'done') return l.done; if (progressFilter === 'next') return !l.done; if (progressFilter === 'studying') return !l.done && l.revisionStage >= 0; if (progressFilter === 'overdue') return l.done && isRevisionOverdue(l.nextRevisionAt); return true; }).filter((l) => !search || matchesSearch(l.topic)).map((lec, lecIndex) => (<LectureResourceRow key={lec.id} lecture={lec} chapter={ch} subject={subj} index={lecIndex} onEdit={() => setDetailLecture({ lecture: lec, chapter: ch, subject: subj })} onEditLecture={() => setEditingLecture(lec)} />))}
+                            {/* === Inline assignment cards — same flow as lectures === */}
+                            {(ch.assignments || []).map((a) => (
+                              <AssignmentInlineCard
+                                key={a.id}
+                                assignment={a}
+                                onIncrement={() => { incrementAssignmentDone(ch.id, a.id); vibrate(8); }}
+                                onDecrement={() => { decrementAssignmentDone(ch.id, a.id); vibrate([10, 20, 10]); }}
+                                onDelete={() => { deleteAssignment(ch.id, a.id); vibrate([10, 30, 10]); }}
+                                onRename={(name) => { renameAssignment(ch.id, a.id, name); vibrate(8); }}
+                              />
+                            ))}
+                            {/* Add assignment — narrow pill button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const name = `Assignment ${(ch.assignments || []).length + 1}`;
+                                addAssignment(ch.id, name);
+                                vibrate(10);
+                              }}
+                              className="w-full py-2 rounded-full text-[10px] font-bold flex items-center justify-center gap-1 active:scale-95 transition"
+                              style={{
+                                background: 'rgba(168,85,247,0.08)',
+                                border: '1px solid rgba(168,85,247,0.2)',
+                                color: '#a855f7',
+                                borderRadius: '9999px',
+                              }}
+                            >
+                              <Plus size={11} /> Add Assignment
+                            </button>
                           </div>
                         </motion.div>
                       )}
@@ -1302,235 +1328,126 @@ function ChapterContextMenu({ chapter, onClose }: { chapter: Chapter; onClose: (
   return <ChapterActionsModal chapter={chapter} color={color} onClose={onClose} />;
 }
 
-// ===== AssignmentSection — expandable chapter-level assignment tracker =====
-function AssignmentSection({
-  chapter,
-  color,
-  onAdd,
+// ===== AssignmentInlineCard — narrow rounded card, sits inline with lectures =====
+function AssignmentInlineCard({
+  assignment,
   onIncrement,
   onDecrement,
-  onReset,
   onDelete,
   onRename,
 }: {
-  chapter: Chapter;
-  color: { hex: string; glow: string };
-  onAdd: (name: string) => void;
-  onIncrement: (assignmentId: string) => void;
-  onDecrement: (assignmentId: string) => void;
-  onReset: (assignmentId: string) => void;
-  onDelete: (assignmentId: string) => void;
-  onRename: (assignmentId: string, name: string) => void;
+  assignment: ChapterAssignment;
+  onIncrement: () => void;
+  onDecrement: () => void;
+  onDelete: () => void;
+  onRename: (name: string) => void;
 }) {
-  const assignments = chapter.assignments || [];
-  const totalDone = assignments.reduce((sum, a) => sum + a.doneCount, 0);
-  const totalAssignments = assignments.length;
-  const [expanded, setExpanded] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(assignment.name);
   const lpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lpFiredRef = useRef(false);
 
-  const handleAdd = () => {
-    const name = newName.trim() || `Assignment ${totalAssignments + 1}`;
-    onAdd(name);
-    setNewName('');
-    setShowAdd(false);
-    setExpanded(true);
-  };
-
   return (
-    <div className="px-3.5 py-2" style={{ borderTop: '1px solid var(--border)' }}>
-      {/* Header row — total done/total + expand toggle */}
+    <div
+      className="flex items-center gap-2 p-2.5 rounded-2xl relative overflow-hidden"
+      style={{
+        background: assignment.doneCount > 0 ? 'rgba(168,85,247,0.06)' : 'var(--bg-card, rgba(255,255,255,0.01))',
+        border: `1px solid ${assignment.doneCount > 0 ? 'rgba(168,85,247,0.25)' : 'var(--border-card, rgba(255,255,255,0.06))'}`,
+        borderRadius: '16px',
+      }}
+    >
+      {/* Purple left stripe */}
       <div
-        className="flex items-center gap-2 cursor-pointer"
-        onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); vibrate(5); }}
+        className="absolute top-0 left-0 bottom-0 w-1"
+        style={{ background: assignment.doneCount > 0 ? '#a855f7' : 'rgba(168,85,247,0.2)' }}
+      />
+
+      {/* Done count badge — circular, tap +1, long-press undo */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (lpFiredRef.current) { lpFiredRef.current = false; return; }
+          onIncrement();
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          lpFiredRef.current = false;
+          lpTimerRef.current = setTimeout(() => {
+            lpFiredRef.current = true;
+            if (assignment.doneCount === 0) return;
+            const action = confirm(
+              `${assignment.name}: ${assignment.doneCount}× done.\n\nOK = Undo last (→${assignment.doneCount - 1}×)\nCancel = Keep ${assignment.doneCount}×`
+            );
+            if (action) onDecrement();
+          }, 500);
+        }}
+        onPointerUp={() => { if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null; } }}
+        onPointerLeave={() => { if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null; } }}
+        className="w-10 h-10 rounded-full flex flex-col items-center justify-center shrink-0 active:scale-90 transition"
+        style={{
+          background: assignment.doneCount > 0 ? '#a855f7' : 'rgba(168,85,247,0.1)',
+          color: assignment.doneCount > 0 ? '#ffffff' : '#a855f7',
+          border: `1.5px solid ${assignment.doneCount > 0 ? '#a855f7' : 'rgba(168,85,247,0.2)'}`,
+          boxShadow: assignment.doneCount > 0 ? '0 0 10px rgba(168,85,247,0.3)' : 'none',
+        }}
+        title={`Tap +1, long-press undo. Currently ${assignment.doneCount}× done`}
       >
-        {/* Purple assignment icon */}
-        <div
-          className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-          style={{
-            background: totalDone > 0 ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.05)',
-            border: `1px solid ${totalDone > 0 ? 'rgba(168,85,247,0.3)' : 'var(--border)'}`,
-          }}
-        >
-          <FileText size={12} style={{ color: totalDone > 0 ? '#a855f7' : 'var(--muted-foreground)' }} />
-        </div>
-        {/* Total done / total */}
-        <span className="text-[11px] font-bold tabular" style={{ color: 'var(--foreground)' }}>
-          Assignments
-        </span>
-        <span className="text-[11px] tabular font-bold" style={{
-          color: totalDone > 0 ? '#a855f7' : 'var(--muted-foreground)',
-        }}>
-          {totalDone}/{totalAssignments}
-        </span>
-        {totalDone > 0 && (
-          <span className="text-[9px] text-muted-foreground">
-            ({totalDone}× done across {totalAssignments} assignment{totalAssignments === 1 ? '' : 's'})
-          </span>
+        <span className="text-[16px] font-black tabular leading-none">{assignment.doneCount}</span>
+        <span className="text-[6px] font-bold uppercase opacity-70">×done</span>
+      </button>
+
+      {/* Name + last done date */}
+      <div className="flex-1 min-w-0">
+        {editing ? (
+          <input
+            autoFocus
+            type="text"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (editName.trim()) onRename(editName.trim());
+                setEditing(false);
+              }
+              if (e.key === 'Escape') { setEditing(false); setEditName(assignment.name); }
+            }}
+            onBlur={() => {
+              if (editName.trim() && editName !== assignment.name) onRename(editName.trim());
+              setEditing(false);
+            }}
+            className="w-full px-2 py-1 rounded-lg text-[12px] font-medium"
+            style={{ background: 'var(--muted)', border: '1px solid rgba(168,85,247,0.4)', color: 'var(--foreground)' }}
+          />
+        ) : (
+          <>
+            <div className="text-[12px] font-semibold truncate flex items-center gap-1" style={{ color: assignment.doneCount > 0 ? '#a855f7' : 'var(--foreground)' }}>
+              <FileText size={11} className="shrink-0" style={{ color: '#a855f7' }} />
+              {assignment.name}
+            </div>
+            {assignment.doneCount > 0 && assignment.lastDoneAt && (
+              <div className="text-[9px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                Last: {new Date(assignment.lastDoneAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </div>
+            )}
+          </>
         )}
-        {/* Expand chevron */}
-        <motion.div animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }} className="ml-auto">
-          <ChevronDown size={14} className="text-muted-foreground" />
-        </motion.div>
       </div>
 
-      {/* Expanded list */}
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="space-y-1.5 pt-2">
-              {assignments.length === 0 && !showAdd && (
-                <div className="text-center py-2 text-[10px] text-muted-foreground">
-                  No assignments yet. Tap "Add" to create one.
-                </div>
-              )}
-              {assignments.map((a) => {
-                const isEditing = editingId === a.id;
-                return (
-                  <div
-                    key={a.id}
-                    className="flex items-center gap-2 p-2 rounded-lg"
-                    style={{
-                      background: a.doneCount > 0 ? 'rgba(168,85,247,0.06)' : 'rgba(255,255,255,0.02)',
-                      border: `1px solid ${a.doneCount > 0 ? 'rgba(168,85,247,0.2)' : 'var(--border)'}`,
-                    }}
-                  >
-                    {/* Done count badge */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (lpFiredRef.current) { lpFiredRef.current = false; return; }
-                        onIncrement(a.id);
-                      }}
-                      onPointerDown={(e) => {
-                        e.stopPropagation();
-                        lpFiredRef.current = false;
-                        lpTimerRef.current = setTimeout(() => {
-                          lpFiredRef.current = true;
-                          if (a.doneCount === 0) return;
-                          const action = confirm(
-                            `${a.name}: ${a.doneCount}× done.\n\nOK = Undo last (→${a.doneCount - 1}×)\nCancel = Keep ${a.doneCount}×`
-                          );
-                          if (action) {
-                            onDecrement(a.id);
-                          }
-                        }, 500);
-                      }}
-                      onPointerUp={() => { if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null; } }}
-                      onPointerLeave={() => { if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null; } }}
-                      className="w-9 h-9 rounded-lg flex flex-col items-center justify-center shrink-0 active:scale-90 transition"
-                      style={{
-                        background: a.doneCount > 0 ? '#a855f7' : 'rgba(168,85,247,0.08)',
-                        color: a.doneCount > 0 ? '#ffffff' : '#a855f7',
-                        border: `1px solid ${a.doneCount > 0 ? '#a855f7' : 'rgba(168,85,247,0.2)'}`,
-                      }}
-                      title={`Tap +1, long-press undo. Currently ${a.doneCount}×`}
-                    >
-                      <span className="text-[14px] font-black tabular leading-none">{a.doneCount}</span>
-                      <span className="text-[6px] font-bold uppercase">×done</span>
-                    </button>
-
-                    {/* Name + last done */}
-                    <div className="flex-1 min-w-0">
-                      {isEditing ? (
-                        <input
-                          autoFocus
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              if (editName.trim()) onRename(a.id, editName.trim());
-                              setEditingId(null);
-                            }
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          onBlur={() => {
-                            if (editName.trim()) onRename(a.id, editName.trim());
-                            setEditingId(null);
-                          }}
-                          className="w-full px-1.5 py-0.5 rounded text-[11px] font-medium"
-                          style={{ background: 'var(--muted)', border: '1px solid #a855f740', color: 'var(--foreground)' }}
-                        />
-                      ) : (
-                        <>
-                          <div className="text-[11px] font-semibold truncate" style={{ color: a.doneCount > 0 ? '#a855f7' : 'var(--foreground)' }}>
-                            {a.name}
-                          </div>
-                          {a.doneCount > 0 && a.lastDoneAt && (
-                            <div className="text-[8px] text-muted-foreground">
-                              Last: {new Date(a.lastDoneAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Edit + delete */}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setEditName(a.name); setEditingId(a.id); }}
-                      className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-foreground/10 transition active:scale-90 shrink-0"
-                      title="Rename"
-                    >
-                      <Pencil size={10} className="text-muted-foreground" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onDelete(a.id); }}
-                      className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-red-500/10 transition active:scale-90 shrink-0"
-                      title="Delete"
-                    >
-                      <Trash2 size={10} className="text-red-500" />
-                    </button>
-                  </div>
-                );
-              })}
-
-              {/* Add new assignment */}
-              {showAdd ? (
-                <div className="flex items-center gap-2 p-2 rounded-lg" style={{ border: '1px solid rgba(168,85,247,0.2)' }}>
-                  <input
-                    autoFocus
-                    type="text"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleAdd();
-                      if (e.key === 'Escape') { setShowAdd(false); setNewName(''); }
-                    }}
-                    placeholder="Assignment name..."
-                    className="flex-1 px-2 py-1 rounded text-[11px]"
-                    style={{ background: 'var(--muted)', border: '1px solid rgba(168,85,247,0.3)', color: 'var(--foreground)' }}
-                  />
-                  <button onClick={handleAdd} className="px-2 py-1 rounded text-[10px] font-bold text-white active:scale-95" style={{ background: '#a855f7' }}>
-                    Add
-                  </button>
-                  <button onClick={() => { setShowAdd(false); setNewName(''); }} className="px-2 py-1 rounded text-[10px] font-semibold text-muted-foreground hover:bg-foreground/10 active:scale-95">
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowAdd(true); vibrate(8); }}
-                  className="w-full py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 active:scale-95 transition"
-                  style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)', color: '#a855f7' }}
-                >
-                  <Plus size={11} /> Add Assignment
-                </button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Edit + delete */}
+      <button
+        onClick={(e) => { e.stopPropagation(); setEditName(assignment.name); setEditing(!editing); }}
+        className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-foreground/10 transition active:scale-90 shrink-0"
+        title="Rename"
+      >
+        <Pencil size={10} className="text-muted-foreground" />
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition active:scale-90 shrink-0"
+        title="Delete assignment"
+      >
+        <Trash2 size={10} className="text-red-500" />
+      </button>
     </div>
   );
 }
