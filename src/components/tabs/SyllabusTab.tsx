@@ -770,12 +770,27 @@ export function SyllabusTab() {
                         </div>
                       </div>
 
-                      {/* Chevron for lectures + assignment info+arrow */}
+                      {/* Lecture info+arrow + assignment info+arrow — both compact pills */}
                       <div className="flex items-center gap-1 shrink-0">
-                        {/* Lecture chevron */}
-                        <motion.div animate={{ rotate: chOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
-                          <ChevronDown size={16} className="text-muted-foreground" />
-                        </motion.div>
+                        {/* Lecture summary + arrow — info above, arrow below */}
+                        <div className="flex flex-col items-center gap-0 px-2 py-0.5 rounded-xl transition"
+                          style={{
+                            background: chOpen ? `${color.hex}15` : chLectures.length > 0 ? `${color.hex}08` : 'transparent',
+                            border: `1px solid ${chOpen ? `${color.hex}30` : chLectures.length > 0 ? `${color.hex}15` : 'transparent'}`,
+                          }}
+                        >
+                          {/* Info row: done/total */}
+                          <span className="text-[9px] font-bold tabular leading-tight" style={{
+                            color: chLectures.length > 0 ? color.hex : 'var(--muted-foreground)',
+                          }}>
+                            {lecDone}/{chLectures.length}
+                          </span>
+                          {/* Arrow */}
+                          <motion.div animate={{ rotate: chOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} className="flex items-center">
+                            <Play size={9} fill="currentColor" style={{ color: chLectures.length > 0 ? color.hex : 'var(--muted-foreground)' }} />
+                            <ChevronDown size={9} style={{ color: chLectures.length > 0 ? color.hex : 'var(--muted-foreground)' }} />
+                          </motion.div>
+                        </div>
                         {/* Assignment summary + arrow — info above, arrow below */}
                         <button
                           onClick={(e) => {
@@ -807,33 +822,7 @@ export function SyllabusTab() {
 
                     {/* Horizontal progress bar REMOVED — ring shows progress now */}
 
-                    {/* Resource row — cleaner spacing */}
-                    {chLectures.length > 0 && (
-                      <div className="flex items-center gap-2.5 px-3.5 py-2.5 text-[11px] tabular">
-                        <span className="text-muted-foreground">📺 <span className="text-teal-600 dark:text-teal-400 font-semibold">{lecDone}</span>/{chLectures.length}</span>
-                        <span className="text-muted-foreground">📝 <span className="text-green-600 dark:text-green-400 font-semibold">{dppDone}</span>/{chLectures.length}</span>
-                        <span className="text-muted-foreground">📖 <span className="text-blue-600 dark:text-blue-400 font-semibold">{notesDone}</span>/{chLectures.length}</span>
-                        <span className="text-muted-foreground">🔄 <span className="text-amber-600 dark:text-amber-400 font-semibold">{revDone}</span>/{chLectures.length}</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setAddLectureFor({ chapter: ch, subject: subj }); vibrate(10); }}
-                          className="ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold transition flex items-center gap-0.5 active:scale-95"
-                          style={{ background: `${color.hex}20`, color: color.hex, border: `1px solid ${color.hex}40` }}
-                          aria-label={`Add lecture to ${ch.name}`}
-                          title="Add lecture"
-                        >
-                          <Plus size={10} /> Lec
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Assignment summary in resource row (compact) */}
-                    {(ch.assignments || []).length > 0 && (() => {
-                      const totalDone = (ch.assignments || []).reduce((s, a) => s + a.doneCount, 0);
-                      const totalAssignments = (ch.assignments || []).length;
-                      return (
-                        <span className="text-muted-foreground ml-1">📄 <span className="text-purple-600 dark:text-purple-400 font-semibold">{totalDone}</span>/{totalAssignments}</span>
-                      );
-                    })()}
+                    {/* Resource row + assignment summary REMOVED — info now above arrows */}
 
                     {/* === Chapter time stats === */}
                     {chLectures.length > 0 && (() => {
