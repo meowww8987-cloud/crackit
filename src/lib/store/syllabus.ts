@@ -27,6 +27,10 @@ interface SyllabusStore {
   getOverdueRevisions: () => Lecture[];
   addLectureStats: (id: string, studySec: number, wastedSec: number, confidence?: number) => void;
   markLectureDoneWithStats: (id: string, studySec: number, wastedSec: number, confidence: number) => void;
+  /** Chapter-level assignment tracking */
+  incrementAssignment: (chapterId: string) => void;
+  decrementAssignment: (chapterId: string) => void;
+  resetAssignment: (chapterId: string) => void;
 }
 
 export const useSyllabus = create<SyllabusStore>()(
@@ -327,13 +331,15 @@ export const useSyllabus = create<SyllabusStore>()(
         set((st) => ({
           lectures: st.lectures.map((l) => {
             if (l.id !== id) return l;
-            const nextStage = Math.min(l.revisionStage + 1, 4);
+            // === FIX: No cap — revision keeps counting up forever ===
+            // Was: Math.min(l.revisionStage + 1, 4) — capped at 4
+            const nextStage = l.revisionStage + 1;
             return {
               ...l,
-              revisionDone: true,  // FIXED: was missing — button color checks this
+              revisionDone: true,
               revisionStage: nextStage,
               lastRevisedAt: Date.now(),
-              nextRevisionAt: nextRevisionDate(nextStage),
+              nextRevisionAt: nextRevisionDate(Math.min(nextStage, 4)), // spaced-rep interval uses min(stage, 4)
             };
           }),
         }));
@@ -390,12 +396,47 @@ export const useSyllabus = create<SyllabusStore>()(
               timeSpentSec: (l.timeSpentSec || 0) + studySec,
               timeWastedSec: (l.timeWastedSec || 0) + wastedSec,
               confidence,
-              // Enter spaced repetition if not already
               revisionStage: l.revisionStage < 0 ? 0 : l.revisionStage,
               lastRevisedAt: l.lastRevisedAt || Date.now(),
               nextRevisionAt: l.nextRevisionAt || nextRevisionDate(0),
             };
           }),
+        })),
+
+      // === Chapter-level assignment tracking ===
+      incrementAssignment: (chapterId) =>
+        set((st) => ({
+          chapters: st.chapters.map((c) =>
+            c.id === chapterId
+              ? {
+                  ...c,
+                  assignmentDoneCount: (c.assignmentDoneCount || 0) + 1,
+                  assignmentLastDoneAt: Date.now(),
+                }
+              : c
+          ),
+        })),
+
+      decrementAssignment: (chapterId) =>
+        set((st) => ({
+          chapters: st.chapters.map((c) =>
+            c.id === chapterId
+              ? {
+                  ...c,
+                  assignmentDoneCount: Math.max(0, (c.assignmentDoneCount || 0) - 1),
+                  assignmentLastDoneAt: (c.assignmentDoneCount || 0) > 1 ? Date.now() : undefined,
+                }
+              : c
+          ),
+        })),
+
+      resetAssignment: (chapterId) =>
+        set((st) => ({
+          chapters: st.chapters.map((c) =>
+            c.id === chapterId
+              ? { ...c, assignmentDoneCount: 0, assignmentLastDoneAt: undefined }
+              : c
+          ),
         })),
     }),
     {

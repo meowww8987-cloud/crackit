@@ -122,6 +122,11 @@ export interface Chapter {
   /** NEET exam weightage (0-100, percentage of subject's NEET questions from this chapter).
    *  If undefined, chapter is weighted equally with all others. */
   weightage?: number;
+  /** Chapter-level assignment tracking. How many assignments have been completed.
+   *  Can be any number (0, 5, 20...) — not tied to lecture count.
+   *  Tap +1 to increment, long-press for undo/reset. */
+  assignmentDoneCount?: number;
+  assignmentLastDoneAt?: number;
 }
 
 export interface SubjectEntity {

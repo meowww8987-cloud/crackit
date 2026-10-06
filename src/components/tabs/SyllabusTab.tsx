@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GraduationCap, Plus, Search, ChevronDown, ChevronRight, Calendar, Clock, Sigma,
-  GripVertical, Check, X, CheckCircle2, RotateCcw, Trash2, Sparkles, BookMarked, FlaskConical, Play,
+  GripVertical, Check, X, CheckCircle2, RotateCcw, Trash2, Sparkles, BookMarked, FlaskConical, Play, FileText,
 } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -41,7 +41,7 @@ let _showToast: (msg: string, sub?: string) => void = () => {};
 export function setSyllabusToastHandler(fn: (msg: string, sub?: string) => void) { _showToast = fn; }
 
 export function SyllabusTab() {
-  const { subjects, chapters, lectures, deleteChapter, reorderChapters } = useSyllabus();
+  const { subjects, chapters, lectures, deleteChapter, reorderChapters, incrementAssignment, decrementAssignment, resetAssignment } = useSyllabus();
   const [search, setSearch] = useState('');
   const [reorderMode, setReorderMode] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState<Subject | 'all'>(() => {
@@ -780,6 +780,35 @@ export function SyllabusTab() {
                         <span className="text-muted-foreground">📝 <span className="text-green-600 dark:text-green-400 font-semibold">{dppDone}</span>/{chLectures.length}</span>
                         <span className="text-muted-foreground">📖 <span className="text-blue-600 dark:text-blue-400 font-semibold">{notesDone}</span>/{chLectures.length}</span>
                         <span className="text-muted-foreground">🔄 <span className="text-amber-600 dark:text-amber-400 font-semibold">{revDone}</span>/{chLectures.length}</span>
+                        {/* === Assignment counter (chapter-level) === */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); vibrate(10); incrementAssignment(ch.id); }}
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            chapterLongPressRef.current = setTimeout(() => {
+                              const count = ch.assignmentDoneCount || 0;
+                              if (count === 0) return;
+                              const action = confirm(
+                                `Assignment: ${count}× done.\n\nOK = Undo last (→${count - 1}×)\nCancel = Keep ${count}×`
+                              );
+                              if (action) {
+                                vibrate([10, 20, 10]);
+                                decrementAssignment(ch.id);
+                              }
+                            }, 500);
+                          }}
+                          onPointerUp={() => { if (chapterLongPressRef.current) { clearTimeout(chapterLongPressRef.current); chapterLongPressRef.current = null; } }}
+                          onPointerLeave={() => { if (chapterLongPressRef.current) { clearTimeout(chapterLongPressRef.current); chapterLongPressRef.current = null; } }}
+                          className="text-[10px] px-2 py-0.5 rounded-full font-semibold transition flex items-center gap-0.5 active:scale-95"
+                          style={{
+                            background: (ch.assignmentDoneCount || 0) > 0 ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.05)',
+                            color: (ch.assignmentDoneCount || 0) > 0 ? '#a855f7' : 'var(--muted-foreground)',
+                            border: `1px solid ${(ch.assignmentDoneCount || 0) > 0 ? 'rgba(168,85,247,0.3)' : 'var(--border)'}`,
+                          }}
+                          title={`Assignment: ${ch.assignmentDoneCount || 0}× done. Tap +1, long-press undo.`}
+                        >
+                          <FileText size={10} /> {ch.assignmentDoneCount || 0}×
+                        </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); setAddLectureFor({ chapter: ch, subject: subj }); vibrate(10); }}
                           className="ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold transition flex items-center gap-0.5 active:scale-95"
@@ -788,6 +817,23 @@ export function SyllabusTab() {
                           title="Add lecture"
                         >
                           <Plus size={10} /> Lec
+                        </button>
+                      </div>
+                    )}
+                    {/* Assignment row even when no lectures exist */}
+                    {chLectures.length === 0 && (
+                      <div className="flex items-center gap-2.5 px-3.5 py-2.5 text-[11px] tabular">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); vibrate(10); incrementAssignment(ch.id); }}
+                          className="text-[10px] px-2 py-0.5 rounded-full font-semibold transition flex items-center gap-0.5 active:scale-95"
+                          style={{
+                            background: (ch.assignmentDoneCount || 0) > 0 ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.05)',
+                            color: (ch.assignmentDoneCount || 0) > 0 ? '#a855f7' : 'var(--muted-foreground)',
+                            border: `1px solid ${(ch.assignmentDoneCount || 0) > 0 ? 'rgba(168,85,247,0.3)' : 'var(--border)'}`,
+                          }}
+                          title={`Assignment: ${ch.assignmentDoneCount || 0}× done`}
+                        >
+                          <FileText size={10} /> Assignment: {ch.assignmentDoneCount || 0}×
                         </button>
                       </div>
                     )}
@@ -1074,10 +1120,12 @@ function ChapterActionsModal({
   const allLectures = useSyllabus((s) => s.lectures);
   const deleteChapter = useSyllabus((s) => s.deleteChapter);
   const updateLecture = useSyllabus((s) => s.updateLecture);
+  const resetAssignment = useSyllabus((s) => s.resetAssignment);
   const lectures = useMemo(() => allLectures.filter((l) => l.chapterId === chapter.id), [allLectures, chapter.id]);
   const allDone = lectures.length > 0 && lectures.every((l) => l.done);
   const doneCount = lectures.filter((l) => l.done).length;
   const notDoneCount = lectures.length - doneCount;
+  const assignmentCount = chapter.assignmentDoneCount || 0;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Scroll lock + Escape
@@ -1208,6 +1256,26 @@ function ChapterActionsModal({
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] font-medium text-foreground">Reset All</div>
                 <div className="text-[10px] text-muted-foreground">Mark all {lectures.length} as not done</div>
+              </div>
+            </button>
+          )}
+
+          {/* === Reset Assignment === */}
+          {assignmentCount > 0 && (
+            <button
+              onClick={() => {
+                vibrate([10, 30, 10]);
+                resetAssignment(chapter.id);
+                onClose();
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-purple-500/10 active:bg-purple-500/15 transition text-left"
+            >
+              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-purple-500/20 text-purple-600 dark:text-purple-400">
+                <RotateCcw size={14} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium text-purple-600 dark:text-purple-400">Reset Assignment Count</div>
+                <div className="text-[10px] text-muted-foreground">Currently {assignmentCount}× — reset to 0</div>
               </div>
             </button>
           )}
