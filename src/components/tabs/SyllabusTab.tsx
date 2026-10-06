@@ -770,29 +770,36 @@ export function SyllabusTab() {
                         </div>
                       </div>
 
-                      {/* Chevron for lectures + chevron for assignments */}
-                      <div className="flex items-center gap-0.5 shrink-0">
+                      {/* Chevron for lectures + assignment info+arrow */}
+                      <div className="flex items-center gap-1 shrink-0">
                         {/* Lecture chevron */}
                         <motion.div animate={{ rotate: chOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
                           <ChevronDown size={16} className="text-muted-foreground" />
                         </motion.div>
-                        {/* Assignment chevron — separate toggle */}
+                        {/* Assignment summary + arrow — info above, arrow below */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             vibrate(8);
                             setOpenAssignmentChapter(chAssignOpen ? null : ch.id);
                           }}
-                          className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg transition active:scale-90"
+                          className="flex flex-col items-center gap-0 px-2 py-0.5 rounded-xl transition active:scale-90 relative"
                           style={{
-                            background: chAssignOpen ? 'rgba(168,85,247,0.12)' : 'transparent',
-                            border: `1px solid ${chAssignOpen ? 'rgba(168,85,247,0.2)' : 'transparent'}`,
+                            background: chAssignOpen ? 'rgba(168,85,247,0.12)' : (ch.assignments || []).length > 0 ? 'rgba(168,85,247,0.06)' : 'transparent',
+                            border: `1px solid ${chAssignOpen ? 'rgba(168,85,247,0.25)' : (ch.assignments || []).length > 0 ? 'rgba(168,85,247,0.12)' : 'transparent'}`,
                           }}
                           title="Toggle assignments"
                         >
-                          <FileText size={13} style={{ color: chAssignOpen ? '#a855f7' : 'var(--muted-foreground)' }} />
-                          <motion.div animate={{ rotate: chAssignOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
-                            <ChevronDown size={12} style={{ color: chAssignOpen ? '#a855f7' : 'var(--muted-foreground)' }} />
+                          {/* Info row: done/total */}
+                          <span className="text-[9px] font-bold tabular leading-tight" style={{
+                            color: (ch.assignments || []).length > 0 ? '#a855f7' : 'var(--muted-foreground)',
+                          }}>
+                            {(ch.assignments || []).reduce((s, a) => s + a.doneCount, 0)}/{(ch.assignments || []).length}
+                          </span>
+                          {/* Arrow */}
+                          <motion.div animate={{ rotate: chAssignOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} className="flex items-center">
+                            <FileText size={9} style={{ color: (ch.assignments || []).length > 0 ? '#a855f7' : 'var(--muted-foreground)' }} />
+                            <ChevronDown size={9} style={{ color: (ch.assignments || []).length > 0 ? '#a855f7' : 'var(--muted-foreground)' }} />
                           </motion.div>
                         </button>
                       </div>
@@ -869,62 +876,73 @@ export function SyllabusTab() {
                       )}
                     </AnimatePresence>
 
-                    {/* === Separate assignment expand — own arrow, own section === */}
+                    {/* === Assignment pop — narrow, extends from the arrow === */}
                     <AnimatePresence initial={false}>
                       {chAssignOpen && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                          <div className="px-2.5 pb-2.5 pt-1 space-y-2" style={{
-                            background: 'rgba(168,85,247,0.03)',
-                            borderBottomLeftRadius: '12px',
-                            borderBottomRightRadius: '12px',
-                            marginLeft: '4px',
-                            marginRight: '4px',
-                          }}>
-                            {/* Assignment header row */}
-                            <div className="flex items-center gap-2 px-1 py-1">
+                        <motion.div
+                          initial={{ height: 0, opacity: 0, y: -5 }}
+                          animate={{ height: 'auto', opacity: 1, y: 0 }}
+                          exit={{ height: 0, opacity: 0, y: -5 }}
+                          transition={{ duration: 0.2, ease: 'easeOut' }}
+                          className="overflow-hidden"
+                        >
+                          {/* Narrow pop container — right-aligned, like extending from arrow */}
+                          <div
+                            className="mx-4 mb-1.5 rounded-2xl overflow-hidden"
+                            style={{
+                              background: 'var(--popover, rgba(20,22,30,0.96))',
+                              border: '1px solid rgba(168,85,247,0.2)',
+                              boxShadow: '0 4px 20px -4px rgba(168,85,247,0.15)',
+                            }}
+                          >
+                            {/* Pop header */}
+                            <div className="flex items-center gap-1.5 px-3 py-2" style={{ borderBottom: '1px solid rgba(168,85,247,0.1)' }}>
                               <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(168,85,247,0.15)' }}>
                                 <FileText size={11} style={{ color: '#a855f7' }} />
                               </div>
                               <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#a855f7' }}>
                                 Assignments
                               </span>
-                              <span className="text-[10px] tabular font-bold" style={{ color: 'var(--muted-foreground)' }}>
+                              <span className="text-[10px] tabular font-bold ml-auto" style={{ color: 'var(--muted-foreground)' }}>
                                 {(ch.assignments || []).reduce((s, a) => s + a.doneCount, 0)}/{(ch.assignments || []).length}
                               </span>
                             </div>
 
-                            {(ch.assignments || []).length === 0 ? (
-                              <p className="text-[10px] text-center py-2" style={{ color: 'var(--muted-foreground)' }}>No assignments yet</p>
-                            ) : (
-                              (ch.assignments || []).map((a) => (
-                                <AssignmentInlineCard
-                                  key={a.id}
-                                  assignment={a}
-                                  onIncrement={() => { incrementAssignmentDone(ch.id, a.id); vibrate(8); }}
-                                  onDecrement={() => { decrementAssignmentDone(ch.id, a.id); vibrate([10, 20, 10]); }}
-                                  onDelete={() => { deleteAssignment(ch.id, a.id); vibrate([10, 30, 10]); }}
-                                  onRename={(name) => { renameAssignment(ch.id, a.id, name); vibrate(8); }}
-                                />
-                              ))
-                            )}
+                            {/* Assignment list */}
+                            <div className="p-2 space-y-1.5">
+                              {(ch.assignments || []).length === 0 ? (
+                                <p className="text-[10px] text-center py-3" style={{ color: 'var(--muted-foreground)' }}>No assignments yet</p>
+                              ) : (
+                                (ch.assignments || []).map((a) => (
+                                  <AssignmentInlineCard
+                                    key={a.id}
+                                    assignment={a}
+                                    onIncrement={() => { incrementAssignmentDone(ch.id, a.id); vibrate(8); }}
+                                    onDecrement={() => { decrementAssignmentDone(ch.id, a.id); vibrate([10, 20, 10]); }}
+                                    onDelete={() => { deleteAssignment(ch.id, a.id); vibrate([10, 30, 10]); }}
+                                    onRename={(name) => { renameAssignment(ch.id, a.id, name); vibrate(8); }}
+                                  />
+                                ))
+                              )}
 
-                            {/* Add assignment pill */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const name = `Assignment ${(ch.assignments || []).length + 1}`;
-                                addAssignment(ch.id, name);
-                                vibrate(10);
-                              }}
-                              className="w-full py-1.5 rounded-full text-[10px] font-bold flex items-center justify-center gap-1 active:scale-95 transition"
-                              style={{
-                                background: 'rgba(168,85,247,0.08)',
-                                border: '1px solid rgba(168,85,247,0.2)',
-                                color: '#a855f7',
-                              }}
-                            >
-                              <Plus size={11} /> Add Assignment
-                            </button>
+                              {/* Add assignment pill */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const name = `Assignment ${(ch.assignments || []).length + 1}`;
+                                  addAssignment(ch.id, name);
+                                  vibrate(10);
+                                }}
+                                className="w-full py-1.5 rounded-full text-[10px] font-bold flex items-center justify-center gap-1 active:scale-95 transition"
+                                style={{
+                                  background: 'rgba(168,85,247,0.08)',
+                                  border: '1px solid rgba(168,85,247,0.2)',
+                                  color: '#a855f7',
+                                }}
+                              >
+                                <Plus size={11} /> Add Assignment
+                              </button>
+                            </div>
                           </div>
                         </motion.div>
                       )}
