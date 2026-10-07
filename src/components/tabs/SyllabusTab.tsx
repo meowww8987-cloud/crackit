@@ -858,8 +858,20 @@ export function SyllabusTab() {
                       {chOpen && (
                         <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                           <div className="px-2.5 pb-2.5 pt-1 space-y-2">
-                            {chLectures.length === 0 && (<p className="text-xs text-center py-3" style={{ color: 'var(--muted-foreground)' }}>No lectures yet</p>)}
+                            {chLectures.length === 0 && (<p className="text-xs text-center py-3" style={{ color: 'var(--muted-foreground)' }}>No lectures yet — tap below to add</p>)}
                             {chLectures.filter((l) => { if (progressFilter === 'done') return l.done; if (progressFilter === 'next') return !l.done; if (progressFilter === 'studying') return !l.done && l.revisionStage >= 0; if (progressFilter === 'overdue') return l.done && isRevisionOverdue(l.nextRevisionAt); return true; }).filter((l) => !search || matchesSearch(l.topic)).map((lec, lecIndex) => (<LectureResourceRow key={lec.id} lecture={lec} chapter={ch} subject={subj} index={lecIndex} onEdit={() => setDetailLecture({ lecture: lec, chapter: ch, subject: subj })} onEditLecture={() => setEditingLecture(lec)} />))}
+                            {/* Add lecture pill — same style as Add Assignment */}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setAddLectureFor({ chapter: ch, subject: subj }); vibrate(10); }}
+                              className="w-full py-1.5 rounded-full text-[10px] font-bold flex items-center justify-center gap-1 active:scale-95 transition"
+                              style={{
+                                background: `${color.hex}0a`,
+                                border: `1px solid ${color.hex}20`,
+                                color: color.hex,
+                              }}
+                            >
+                              <Plus size={11} /> Add Lecture
+                            </button>
                           </div>
                         </motion.div>
                       )}
