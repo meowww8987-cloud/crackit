@@ -137,7 +137,9 @@ export function AddTargetSheet({ editing, onClose }: Props) {
     }
   };
 
-  const canSubmit = selectedChapterId && (selectedLectureIds.size > 0 || customTopic.trim() || activity !== 'Lecture');
+  // Assignment is chapter-level — no lecture needed. Auto-allow submit.
+  const isAssignment = activity === 'Assignment';
+  const canSubmit = selectedChapterId && (isAssignment || selectedLectureIds.size > 0 || customTopic.trim() || activity !== 'Lecture');
   const canProceedStep2 = selectedChapterId;
 
   const handleSubmit = () => {
@@ -146,7 +148,15 @@ export function AddTargetSheet({ editing, onClose }: Props) {
 
     const targetsToAdd: Parameters<typeof addTarget>[0][] = [];
 
-    if (selectedLectureIds.size > 0) {
+    // === Assignment: chapter-level target, no lecture needed ===
+    if (isAssignment) {
+      targetsToAdd.push({
+        date: todayKey(), subject, activity: 'Assignment',
+        chapter: selectedChapter.name,
+        topic: customTopic.trim() || `Assignment: ${selectedChapter.name}`,
+        expectedMinutes, chapterId: selectedChapterId, isChapterTarget: true,
+      });
+    } else if (selectedLectureIds.size > 0) {
       for (const lecId of selectedLectureIds) {
         const lec = syllabusLectures.find((l) => l.id === lecId);
         if (!lec) continue;
@@ -521,7 +531,17 @@ export function AddTargetSheet({ editing, onClose }: Props) {
           )}
           {step === 2 && (
             <button
-              onClick={() => { if (canProceedStep2) { setStep(3); vibrate(10); } }}
+              onClick={() => {
+                if (canProceedStep2) {
+                  // === Assignment: skip lecture selection, go straight to confirm ===
+                  setStep(isAssignment ? 3 : 3);
+                  // Auto-fill topic for assignment
+                  if (isAssignment && !customTopic) {
+                    setCustomTopic(`Assignment: ${selectedChapter?.name || ''}`);
+                  }
+                  vibrate(10);
+                }
+              }}
               disabled={!canProceedStep2}
               className={cn(
                 'w-full py-3.5 rounded-xl font-bold text-sm transition active:scale-[0.98] flex items-center justify-center gap-2',

@@ -19,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTargets } from '@/lib/store/targets';
+import { getLearnedExpectedMinutes } from '@/lib/store/learnedTime';
 import { useSession } from '@/lib/store/session';
 import { useHistory } from '@/lib/store/history';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
@@ -96,6 +97,7 @@ export function SyllabusTab() {
   }, []);
 
   const todayTargets = useTargets((s) => s.byDate[todayKey()] || EMPTY_TARGETS);
+  const addTarget = useTargets((s) => s.addTarget);
   const activeSession = useSession((s) => s.active);
   // History sessions — used to detect "recently studied" chapters for the
   // "In Progress" filter. A chapter only shows in "In Progress" if it has been
@@ -896,17 +898,38 @@ export function SyllabusTab() {
                               boxShadow: '0 4px 20px -4px rgba(168,85,247,0.15)',
                             }}
                           >
-                            {/* Pop header */}
+                            {/* Pop header + Add to Today button */}
                             <div className="flex items-center gap-1.5 px-3 py-2" style={{ borderBottom: '1px solid rgba(168,85,247,0.1)' }}>
                               <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(168,85,247,0.15)' }}>
                                 <FileText size={11} style={{ color: '#a855f7' }} />
                               </div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#a855f7' }}>
-                                Assignments
-                              </span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#a855f7' }}>Assignments</span>
                               <span className="text-[10px] tabular font-bold ml-auto" style={{ color: 'var(--muted-foreground)' }}>
                                 {(ch.assignments || []).reduce((s, a) => s + a.doneCount, 0)}/{(ch.assignments || []).length}
                               </span>
+                              {/* Add to Today button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  vibrate(12);
+                                  const learnedMin = getLearnedExpectedMinutes(subj.name, 'Assignment');
+                                  addTarget({
+                                    date: todayKey(),
+                                    subject: subj.name,
+                                    activity: 'Assignment',
+                                    chapter: ch.name,
+                                    topic: `Assignment: ${ch.name}`,
+                                    expectedMinutes: learnedMin,
+                                    chapterId: ch.id,
+                                    isChapterTarget: true,
+                                  });
+                                }}
+                                className="px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-0.5 active:scale-95 transition shrink-0"
+                                style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.25)', color: '#a855f7' }}
+                                title="Add assignment as today's study target"
+                              >
+                                <Plus size={9} /> To Today
+                              </button>
                             </div>
 
                             {/* Assignment list */}
