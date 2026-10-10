@@ -14,6 +14,13 @@ import { getLearnedExpectedMinutes } from '@/lib/store/learnedTime';
 
 interface Props {
   editing?: Target | null;
+  /** Pre-fill the sheet from another entry point (e.g., SyllabusTab's
+   * "+ To Today" button on the assignment pop). Skips Step 1 entirely. */
+  prefill?: {
+    subject: Subject;
+    chapterId: string;
+    activity: ActivityType;
+  } | null;
   onClose: () => void;
 }
 
@@ -40,7 +47,7 @@ const SUBJECT_ICONS: Record<string, typeof Atom> = {
 // Preset snap points for the expected time slider — must match slider range
 const TIME_PRESETS = [30, 45, 60, 90, 120, 150, 180];
 
-export function AddTargetSheet({ editing, onClose }: Props) {
+export function AddTargetSheet({ editing, prefill, onClose }: Props) {
   const addTarget = useTargets((s) => s.addTarget);
   const updateTarget = useTargets((s) => s.updateTarget);
   const isAlreadyAdded = useTargets((s) => s.isAlreadyAddedToday);
@@ -54,22 +61,35 @@ export function AddTargetSheet({ editing, onClose }: Props) {
   const activeSession = useSession((s) => s.active);
   const smartDefaultSubject = useMemo<Subject>(() => {
     if (editing?.subject) return editing.subject;
+    if (prefill?.subject) return prefill.subject;
     if (activeSession?.subject) return activeSession.subject;
     return (syllabusSubjects[0]?.name as Subject) || 'Physics';
-  }, [editing, activeSession, syllabusSubjects]);
+  }, [editing, prefill, activeSession, syllabusSubjects]);
 
   // Form state
-  const [step, setStep] = useState<1 | 2 | 3>(editing ? 3 : 1);
+  // When prefill is set, jump straight to Step 2 (chapter already chosen).
+  const [step, setStep] = useState<1 | 2 | 3>(editing ? 3 : prefill ? 2 : 1);
   const [subject, setSubject] = useState<Subject>(smartDefaultSubject);
-  const [activity, setActivity] = useState<ActivityType>(editing?.activity || 'Lecture');
+  const [activity, setActivity] = useState<ActivityType>(
+    editing?.activity || prefill?.activity || 'Lecture'
+  );
   // Initialize expectedMinutes with learned time for the default subject+activity.
   // This avoids a flicker from 60 → learned value on first render.
   const [expectedMinutes, setExpectedMinutes] = useState(
-    editing?.expectedMinutes || getLearnedExpectedMinutes(smartDefaultSubject, editing?.activity || 'Lecture')
+    editing?.expectedMinutes || getLearnedExpectedMinutes(smartDefaultSubject, editing?.activity || prefill?.activity || 'Lecture')
   );
-  const [selectedChapterId, setSelectedChapterId] = useState<string>(editing?.chapterId || '');
+  const [selectedChapterId, setSelectedChapterId] = useState<string>(
+    editing?.chapterId || prefill?.chapterId || ''
+  );
   const [selectedLectureIds, setSelectedLectureIds] = useState<Set<string>>(
     new Set(editing?.lectureId ? [editing.lectureId] : [])
+  );
+  // === Assignment multi-select — mirrors selectedLectureIds ===
+  // When the user picks activity=Assignment and a chapter, they can pick
+  // one or more specific assignments from that chapter's assignment list.
+  // Each selected assignment becomes its own target linked via assignmentId.
+  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<Set<string>>(
+    new Set(editing?.assignmentId ? [editing.assignmentId] : [])
   );
   const [customTopic, setCustomTopic] = useState(
     editing?.isChapterTarget ? '' : (editing?.topic && !editing.lectureId ? editing.topic : '')
@@ -97,12 +117,22 @@ export function AddTargetSheet({ editing, onClose }: Props) {
       .sort((a, b) => a.lecNo - b.lecNo);
   }, [selectedChapterId, syllabusLectures]);
 
+  // === Assignments for selected chapter ===
+  // Sourced from chapter.assignments array. Mirrors availableLectures.
+  const availableAssignments = useMemo(() => {
+    if (!selectedChapterId) return [];
+    const ch = syllabusChapters.find((c) => c.id === selectedChapterId);
+    return ch?.assignments || [];
+  }, [selectedChapterId, syllabusChapters]);
+
   const selectedChapter = syllabusChapters.find((c) => c.id === selectedChapterId);
 
   // === Auto-scroll to the chapter the user is currently studying ===
   // If there's an active session, find its chapter in the list and scroll to it.
+  // Skip this entirely when prefill is set (user explicitly chose a chapter).
   const chapterListRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if (prefill || editing) return; // respect explicit choices
     if (step !== 2 || !chapterListRef.current) return;
     // If the user has an active session, find the matching chapter
     if (activeSession?.chapter) {
@@ -116,7 +146,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
         }, 100);
       }
     }
-  }, [step, activeSession, availableChapters]);
+  }, [step, activeSession, availableChapters, prefill, editing]);
 
   const toggleLecture = (lecId: string) => {
     vibrate(6);
@@ -137,9 +167,51 @@ export function AddTargetSheet({ editing, onClose }: Props) {
     }
   };
 
-  // Assignment is chapter-level — no lecture needed. Auto-allow submit.
+  // === Assignment multi-select helpers — mirror toggleLecture/selectAllLectures ===
+  // Picking any assignment implicitly sets activity='Assignment' (and hides lectures,
+  // since lectures are only relevant for non-assignment activities). Picking the last
+  // assignment OFF reverts activity back to 'Lecture' so the lectures picker reappears.
+  const toggleAssignment = (aId: string) => {
+    vibrate(6);
+    setSelectedAssignmentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(aId)) {
+        next.delete(aId);
+        // If we just removed the last assignment, revert activity to Lecture
+        // (so the lectures picker reappears and the activity picker unlocks).
+        if (next.size === 0 && selectedLectureIds.size === 0) {
+          setActivity('Lecture');
+        }
+      } else {
+        next.add(aId);
+        // Picking an assignment locks activity to Assignment
+        setActivity('Assignment');
+      }
+      return next;
+    });
+  };
+
+  const selectAllAssignments = () => {
+    vibrate(8);
+    if (selectedAssignmentIds.size === availableAssignments.length) {
+      // Deselecting all → revert activity if no lectures
+      setSelectedAssignmentIds(new Set());
+      if (selectedLectureIds.size === 0) setActivity('Lecture');
+    } else {
+      setSelectedAssignmentIds(new Set(availableAssignments.map((a) => a.id)));
+      setActivity('Assignment');
+    }
+  };
+
   const isAssignment = activity === 'Assignment';
-  const canSubmit = selectedChapterId && (isAssignment || selectedLectureIds.size > 0 || customTopic.trim() || activity !== 'Lecture');
+  // Assignment is chapter-level — submit is allowed if a chapter is selected AND
+  // (the user picked at least one specific assignment OR there are no assignments
+  // in the chapter to pick from, OR they typed a custom topic).
+  const assignmentHasSelection = selectedAssignmentIds.size > 0;
+  const canSubmit = selectedChapterId && (
+    (isAssignment && (assignmentHasSelection || availableAssignments.length === 0 || customTopic.trim() !== '')) ||
+    (!isAssignment && (selectedLectureIds.size > 0 || customTopic.trim() || activity !== 'Lecture'))
+  );
   const canProceedStep2 = selectedChapterId;
 
   const handleSubmit = () => {
@@ -148,14 +220,31 @@ export function AddTargetSheet({ editing, onClose }: Props) {
 
     const targetsToAdd: Parameters<typeof addTarget>[0][] = [];
 
-    // === Assignment: chapter-level target, no lecture needed ===
+    // === Assignment: one target per selected assignment (linked via assignmentId) ===
+    // Falls back to chapter-level target when the user hasn't picked any specific
+    // assignment (e.g., chapter has no assignments yet, or they typed a custom topic).
     if (isAssignment) {
-      targetsToAdd.push({
-        date: todayKey(), subject, activity: 'Assignment',
-        chapter: selectedChapter.name,
-        topic: customTopic.trim() || `Assignment: ${selectedChapter.name}`,
-        expectedMinutes, chapterId: selectedChapterId, isChapterTarget: true,
-      });
+      if (selectedAssignmentIds.size > 0) {
+        for (const aId of selectedAssignmentIds) {
+          const a = availableAssignments.find((x) => x.id === aId);
+          if (!a) continue;
+          targetsToAdd.push({
+            date: todayKey(), subject, activity: 'Assignment',
+            chapter: selectedChapter.name,
+            topic: a.name,
+            expectedMinutes, chapterId: selectedChapterId,
+            assignmentId: a.id, isChapterTarget: true,
+          });
+        }
+      } else {
+        // Fall back to chapter-level (no specific assignment picked)
+        targetsToAdd.push({
+          date: todayKey(), subject, activity: 'Assignment',
+          chapter: selectedChapter.name,
+          topic: customTopic.trim() || `Assignment: ${selectedChapter.name}`,
+          expectedMinutes, chapterId: selectedChapterId, isChapterTarget: true,
+        });
+      }
     } else if (selectedLectureIds.size > 0) {
       for (const lecId of selectedLectureIds) {
         const lec = syllabusLectures.find((l) => l.id === lecId);
@@ -197,6 +286,23 @@ export function AddTargetSheet({ editing, onClose }: Props) {
     const lec = syllabusLectures.find((l) => l.id === lecId);
     if (!lec || !selectedChapter) return false;
     return isAlreadyAdded(subject, selectedChapter.name, 'Lecture', `L${lec.lecNo}`);
+  };
+
+  // === Mirror of isLectureAdded for assignments ===
+  // Scans today's targets for one that's already been added with the same
+  // (subject + chapter + Assignment + assignmentId). We can't reuse
+  // isAlreadyAdded directly because that one matches by lecture label.
+  const todaysTargets = useTargets((s) => s.byDate[todayKey()] || []);
+  const isAssignmentAdded = (aId: string) => {
+    if (editing) return false;
+    if (!selectedChapter) return false;
+    return todaysTargets.some(
+      (t) =>
+        t.subject === subject &&
+        t.chapter === selectedChapter.name &&
+        t.activity === 'Assignment' &&
+        t.assignmentId === aId
+    );
   };
 
   // Snap the slider to the nearest preset
@@ -378,7 +484,7 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                 )}
 
                 {/* Lecture picker */}
-                {selectedChapterId && availableLectures.length > 0 && (
+                {selectedChapterId && availableLectures.length > 0 && !isAssignment && (
                   <div className="mt-4">
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-xs font-semibold text-muted-foreground">LECTURES</label>
@@ -417,6 +523,63 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                     </div>
                   </div>
                 )}
+
+                {/* === Assignment picker — separate small column, mirrors the lecture picker ===
+                    Visible whenever a chapter is selected (even if no assignments yet — shows
+                    an empty state hint). Mirrors the same multi-select + ADDED-check pattern. */}
+                {selectedChapterId && (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                        <FileText size={11} style={{ color: '#a855f7' }} /> ASSIGNMENTS
+                      </label>
+                      {availableAssignments.length > 0 && (
+                        <button onClick={selectAllAssignments} className="text-[10px] text-teal-400">
+                          {selectedAssignmentIds.size === availableAssignments.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                      )}
+                    </div>
+                    {availableAssignments.length === 0 ? (
+                      <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(168,85,247,0.05)', border: '1px dashed rgba(168,85,247,0.25)' }}>
+                        <p className="text-[10px]" style={{ color: 'rgba(168,85,247,0.85)' }}>No assignments in this chapter yet</p>
+                        <p className="text-[9px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>Add via Syllabus tab → chapter → Assignment</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 max-h-32 overflow-y-auto scroll-area">
+                        {availableAssignments.map((a) => {
+                          const sel = selectedAssignmentIds.has(a.id);
+                          const already = isAssignmentAdded(a.id);
+                          return (
+                            <button
+                              key={a.id}
+                              onClick={() => !already && toggleAssignment(a.id)}
+                              disabled={already}
+                              className={cn(
+                                'w-full p-2 rounded-lg flex items-center gap-2 transition',
+                                sel ? 'bg-teal-500/15' : 'bg-foreground/[0.03] hover:bg-foreground/[0.07]',
+                                already && 'opacity-50 cursor-not-allowed'
+                              )}
+                            >
+                              <div
+                                className="w-4 h-4 rounded border flex items-center justify-center shrink-0"
+                                style={sel ? { background: '#a855f7', borderColor: '#a855f7' } : { borderColor: 'rgba(255,255,255,0.2)' }}
+                              >
+                                {sel && <Check size={10} className="text-black" strokeWidth={3} />}
+                                {already && !sel && <Check size={10} className="text-green-400" strokeWidth={3} />}
+                              </div>
+                              <FileText size={10} style={{ color: '#a855f7' }} className="shrink-0" />
+                              <span className={cn('text-xs truncate flex-1 text-left', sel ? 'text-foreground' : 'text-muted-foreground')}>{a.name}</span>
+                              {a.doneCount > 0 && (
+                                <span className="text-[9px] tabular font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(168,85,247,0.15)', color: '#a855f7' }}>{a.doneCount}×</span>
+                              )}
+                              {already && <span className="text-[9px] text-green-400 font-bold">ADDED</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -442,22 +605,32 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                   {selectedLectureIds.size > 0 && (
                     <span className="text-[10px] text-teal-400 font-bold">{selectedLectureIds.size} lec</span>
                   )}
+                  {selectedAssignmentIds.size > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(168,85,247,0.15)', color: '#a855f7' }}>{selectedAssignmentIds.size} asg</span>
+                  )}
                 </div>
 
-                {/* Activity picker — color-coded with icons */}
-                <label className="text-xs font-semibold text-muted-foreground mb-2 block">ACTIVITY</label>
+                {/* Activity picker — color-coded with icons.
+                    When assignments are picked, activity is locked to Assignment
+                    (assignment targets are inherently Assignment activity). */}
+                <label className="text-xs font-semibold text-muted-foreground mb-2 block">
+                  ACTIVITY{selectedAssignmentIds.size > 0 && ' · locked (Assignment)'}
+                </label>
                 <div className="flex gap-2 mb-4">
                   {ACTIVITIES.map((a) => {
                     const cfg = ACTIVITY_CONFIG[a];
                     const Icon = cfg.icon;
                     const sel = activity === a;
+                    const locked = selectedAssignmentIds.size > 0 && a !== 'Assignment';
                     return (
                       <button
                         key={a}
-                        onClick={() => { setActivity(a); vibrate(8); }}
+                        onClick={() => { if (!locked) { setActivity(a); vibrate(8); } }}
+                        disabled={locked}
                         className={cn(
                           'flex-1 py-2.5 rounded-xl flex flex-col items-center gap-1 transition border',
-                          sel ? 'border-2' : 'border border-foreground/10 bg-foreground/[0.04]'
+                          sel ? 'border-2' : 'border border-foreground/10 bg-foreground/[0.04]',
+                          locked && 'opacity-30 cursor-not-allowed'
                         )}
                         style={sel ? { background: `${cfg.color}20`, borderColor: cfg.color } : undefined}
                       >
@@ -507,8 +680,9 @@ export function AddTargetSheet({ editing, onClose }: Props) {
                   </div>
                 </div>
 
-                {/* Custom topic (for non-lecture or custom) */}
-                {activity !== 'Lecture' && selectedLectureIds.size === 0 && (
+                {/* Custom topic (for non-lecture or custom). Hidden when assignments are picked
+                    because each assignment target uses the assignment name as its topic. */}
+                {activity !== 'Lecture' && selectedLectureIds.size === 0 && selectedAssignmentIds.size === 0 && (
                   <div className="mb-4">
                     <label className="text-xs font-semibold text-muted-foreground mb-2 block">TOPIC (optional)</label>
                     <input
@@ -533,12 +707,10 @@ export function AddTargetSheet({ editing, onClose }: Props) {
             <button
               onClick={() => {
                 if (canProceedStep2) {
-                  // === Assignment: skip lecture selection, go straight to confirm ===
-                  setStep(isAssignment ? 3 : 3);
-                  // Auto-fill topic for assignment
-                  if (isAssignment && !customTopic) {
-                    setCustomTopic(`Assignment: ${selectedChapter?.name || ''}`);
-                  }
+                  // If assignments are picked, activity is already locked to Assignment
+                  // by toggleAssignment. If lectures are picked (no assignments), activity
+                  // stays at user's choice (defaults to Lecture). Either way, proceed to step 3.
+                  setStep(3);
                   vibrate(10);
                 }
               }}
@@ -549,7 +721,11 @@ export function AddTargetSheet({ editing, onClose }: Props) {
               )}
               style={canProceedStep2 ? { background: color.hex } : undefined}
             >
-              {selectedLectureIds.size > 0 ? `Next (${selectedLectureIds.size} selected)` : 'Next'} <ChevronRight size={16} />
+              {(() => {
+                const total = selectedLectureIds.size + selectedAssignmentIds.size;
+                if (total > 0) return `Next (${total} selected)`;
+                return 'Next';
+              })()} <ChevronRight size={16} />
             </button>
           )}
           {step === 3 && (
@@ -562,7 +738,10 @@ export function AddTargetSheet({ editing, onClose }: Props) {
               )}
               style={canSubmit ? { background: color.hex } : undefined}
             >
-              {editing ? 'Update Target' : selectedLectureIds.size > 0 ? `Add ${selectedLectureIds.size} Target${selectedLectureIds.size > 1 ? 's' : ''}` : 'Add Target'}
+              {editing ? 'Update Target' : (() => {
+                const total = selectedLectureIds.size + selectedAssignmentIds.size;
+                return total > 0 ? `Add ${total} Target${total > 1 ? 's' : ''}` : 'Add Target';
+              })()}
             </button>
           )}
         </div>

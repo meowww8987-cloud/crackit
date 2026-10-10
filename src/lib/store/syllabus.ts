@@ -521,18 +521,23 @@ export const useSyllabus = create<SyllabusStore>()(
 // Must be AFTER useSyllabus is defined to avoid TDZ (temporal dead zone).
 if (typeof window !== 'undefined') {
   window.addEventListener('target-done-sync', ((e: CustomEvent) => {
-    const { lectureId, activity, chapterId } = e.detail;
+    const { lectureId, activity, chapterId, assignmentId } = e.detail;
     const syllabus = useSyllabus.getState();
 
     // === Assignment sync — increment chapter's assignment counter ===
+    // If the target was linked to a specific assignment (assignmentId set),
+    // increment THAT assignment. Otherwise fall back to first (legacy behaviour).
     if (activity === 'Assignment' && chapterId) {
       const chapter = syllabus.chapters.find((c) => c.id === chapterId);
       if (chapter) {
-        // Create an assignment entry if none exist, or increment the first one
         const assignments = chapter.assignments || [];
         if (assignments.length > 0) {
-          // Increment the first assignment's doneCount
-          syllabus.incrementAssignmentDone(chapterId, assignments[0].id);
+          // Pick the specific assignment if provided and exists; else first
+          const target = assignmentId
+            ? assignments.find((a) => a.id === assignmentId)
+            : null;
+          const idToInc = target ? target.id : assignments[0].id;
+          syllabus.incrementAssignmentDone(chapterId, idToInc);
         } else {
           // Create a new assignment and mark it done once
           const id = syllabus.addAssignment(chapterId, 'Assignment (from target)');

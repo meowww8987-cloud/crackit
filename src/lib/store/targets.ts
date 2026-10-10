@@ -140,12 +140,15 @@ export const useTargets = create<TargetsStore>()(
             }
           }));
         } else if (target?.chapterId && !target.lectureId && newDone && target.activity === 'Assignment') {
-          // Assignment target — sync to chapter's assignment counter
+          // Assignment target — sync to chapter's assignment counter.
+          // If assignmentId is set, increment THAT specific assignment;
+          // otherwise fall back to first assignment (legacy / chapter-level).
           window.dispatchEvent(new CustomEvent('target-done-sync', {
             detail: {
               lectureId: null,
               activity: target.activity,
               chapterId: target.chapterId,
+              assignmentId: target.assignmentId || null,
             }
           }));
         }

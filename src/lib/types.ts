@@ -25,6 +25,11 @@ export interface Target {
   lectureId?: string;
   // linked syllabus chapter id (optional — for chapter-level targets)
   chapterId?: string;
+  // linked chapter-level assignment id (optional — for Assignment activity
+  // bound to a specific assignment the user picked from the chapter's assignment list).
+  // When present, completing this target increments THIS assignment's doneCount,
+  // not the first assignment of the chapter.
+  assignmentId?: string;
   // true if this is a chapter-level target (not a specific lecture)
   isChapterTarget?: boolean;
   createdAt: number;

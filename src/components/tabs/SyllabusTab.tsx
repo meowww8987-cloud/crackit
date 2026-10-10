@@ -19,7 +19,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTargets } from '@/lib/store/targets';
-import { getLearnedExpectedMinutes } from '@/lib/store/learnedTime';
 import { useSession } from '@/lib/store/session';
 import { useHistory } from '@/lib/store/history';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
@@ -32,6 +31,7 @@ import { AddChapterSheet } from '@/components/syllabus/AddChapterSheet';
 import { BuildSyllabusSheet } from '@/components/syllabus/BuildSyllabusSheet';
 import { FormulaVault } from '@/components/syllabus/FormulaVault';
 import { AddLectureSheet } from '@/components/syllabus/AddLectureSheet';
+import { AddTargetSheet } from '@/components/study/AddTargetSheet';
 import { triggerTimeline } from '@/components/app/AppShell';
 
 type ProgressFilter = 'all' | 'studying' | 'next' | 'done' | 'overdue';
@@ -74,6 +74,13 @@ export function SyllabusTab() {
   const [addLectureFor, setAddLectureFor] = useState<{ chapter: import('@/lib/types').Chapter; subject: SubjectEntity } | null>(null);
   const [showBuildSheet, setShowBuildSheet] = useState(false);
   const [showFormulaVault, setShowFormulaVault] = useState(false);
+  // Pre-fill data for AddTargetSheet opened from the syllabus tab.
+  // Currently triggered by the "+ To Today" button on the assignment pop.
+  const [addTargetPrefill, setAddTargetPrefill] = useState<{
+    subject: Subject;
+    chapterId: string;
+    activity: 'Assignment';
+  } | null>(null);
   const [chapterMenu, setChapterMenu] = useState<Chapter | null>(null);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [collapsedSubjects, setCollapsedSubjects] = useState<Set<string>>(new Set());
@@ -97,7 +104,6 @@ export function SyllabusTab() {
   }, []);
 
   const todayTargets = useTargets((s) => s.byDate[todayKey()] || EMPTY_TARGETS);
-  const addTarget = useTargets((s) => s.addTarget);
   const activeSession = useSession((s) => s.active);
   // History sessions — used to detect "recently studied" chapters for the
   // "In Progress" filter. A chapter only shows in "In Progress" if it has been
@@ -907,21 +913,17 @@ export function SyllabusTab() {
                               <span className="text-[10px] tabular font-bold ml-auto" style={{ color: 'var(--muted-foreground)' }}>
                                 {(ch.assignments || []).reduce((s, a) => s + a.doneCount, 0)}/{(ch.assignments || []).length}
                               </span>
-                              {/* Add to Today button */}
+                              {/* Add to Today button — opens AddTargetSheet pre-filled with this
+                                  subject + chapter + Assignment activity, so the user gets expected
+                                  time selection AND can pick which specific assignment(s) to add. */}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   vibrate(12);
-                                  const learnedMin = getLearnedExpectedMinutes(subj.name, 'Assignment');
-                                  addTarget({
-                                    date: todayKey(),
+                                  setAddTargetPrefill({
                                     subject: subj.name,
-                                    activity: 'Assignment',
-                                    chapter: ch.name,
-                                    topic: `Assignment: ${ch.name}`,
-                                    expectedMinutes: learnedMin,
                                     chapterId: ch.id,
-                                    isChapterTarget: true,
+                                    activity: 'Assignment',
                                   });
                                 }}
                                 className="px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-0.5 active:scale-95 transition shrink-0"
@@ -999,6 +1001,16 @@ export function SyllabusTab() {
       {showBuildSheet && (<BuildSyllabusSheet onClose={() => setShowBuildSheet(false)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {addLectureFor && (<AddLectureSheet chapter={addLectureFor.chapter} subject={addLectureFor.subject} onClose={() => setAddLectureFor(null)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {showFormulaVault && (<FormulaVaultInline onClose={() => setShowFormulaVault(false)} />)}
+
+      {/* AddTargetSheet opened from the "+ To Today" button on the assignment pop.
+          Pre-filled with the subject + chapter + Assignment activity so the user lands
+          directly in the assignment picker (Step 2) — no need to re-navigate subject → chapter. */}
+      {addTargetPrefill && (
+        <AddTargetSheet
+          prefill={addTargetPrefill}
+          onClose={() => setAddTargetPrefill(null)}
+        />
+      )}
 
       {/* === Chapter context menu (long-press) — Mark All Done / Reset / Delete === */}
       <AnimatePresence>
