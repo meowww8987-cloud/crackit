@@ -924,6 +924,7 @@ export function SyllabusTab() {
                                     subject={subj}
                                     onIncrement={() => { incrementAssignmentDone(ch.id, a.id); vibrate(8); }}
                                     onDecrement={() => { decrementAssignmentDone(ch.id, a.id); vibrate([10, 20, 10]); }}
+                                    onReset={() => { resetAssignmentDone(ch.id, a.id); vibrate([15, 30, 15]); }}
                                     onDelete={() => { deleteAssignment(ch.id, a.id); vibrate([10, 30, 10]); }}
                                     onRename={(name) => { renameAssignment(ch.id, a.id, name); vibrate(8); }}
                                   />
@@ -1408,12 +1409,15 @@ function ChapterContextMenu({ chapter, onClose }: { chapter: Chapter; onClose: (
 }
 
 // ===== AssignmentInlineCard — narrow rounded card, sits inline with lectures =====
+// Layout: purple left stripe + circular done-count badge (tap +1) + name + last-done date.
+// All destructive/edit actions live in a long-press action sheet (mirrors lectures' pattern).
 function AssignmentInlineCard({
   assignment,
   chapter,
   subject,
   onIncrement,
   onDecrement,
+  onReset,
   onDelete,
   onRename,
 }: {
@@ -1422,46 +1426,55 @@ function AssignmentInlineCard({
   subject: SubjectEntity;
   onIncrement: () => void;
   onDecrement: () => void;
+  onReset: () => void;
   onDelete: () => void;
   onRename: (name: string) => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [editName, setEditName] = useState(assignment.name);
-  const lpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lpFiredRef = useRef(false);
-
-  // === Long-press → expected-time popup (mirrors LectureResourceRow pattern) ===
-  // Long-press anywhere on the card opens a small modal to add this assignment
-  // as today's target with a chosen expected time. Short taps on the inner buttons
-  // (Done count, Edit, Delete) still work because they stopPropagation on pointer-down.
   const addTarget = useTargets((s) => s.addTarget);
-  const [showAddToday, setShowAddToday] = useState(false);
+
+  // === Action sheet state === (opens on long-press, contains Add-to-Today + Undo + Reset + Rename + Delete)
+  const [showActions, setShowActions] = useState(false);
   const [expectedMinutes, setExpectedMinutes] = useState(
     getLearnedExpectedMinutes(subject.name, 'Assignment')
   );
 
-  // Reset learned-time default whenever the popup is reopened (in case the user
-  // studied another assignment in between and the pattern changed).
+  // Refresh learned-time default every time the sheet opens
   useEffect(() => {
-    if (showAddToday) {
+    if (showActions) {
       setExpectedMinutes(getLearnedExpectedMinutes(subject.name, 'Assignment'));
     }
-  }, [showAddToday, subject.name]);
+  }, [showActions, subject.name]);
 
-  const cardLpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cardLpFired = useRef(false);
+  // === Card long-press === — opens the action sheet. stopPropagation on pointer
+  // events so the chapter card's long-press (ChapterContextMenu) does NOT also fire.
+  const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lpFired = useRef(false);
   const handleCardPointerDown = (e: React.PointerEvent) => {
-    cardLpFired.current = false;
-    cardLpTimer.current = setTimeout(() => {
-      cardLpFired.current = true;
+    e.stopPropagation();
+    lpFired.current = false;
+    lpTimer.current = setTimeout(() => {
+      lpFired.current = true;
       vibrate(20);
-      setShowAddToday(true);
+      setShowActions(true);
     }, 500);
   };
-  const handleCardPointerUp = () => {
-    if (cardLpTimer.current) { clearTimeout(cardLpTimer.current); cardLpTimer.current = null; }
+  const handleCardPointerUp = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null; }
   };
 
+  // === Done-count badge: tap to +1 (no long-press — undo lives in the action sheet) ===
+  const handleDoneClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (lpFired.current) { lpFired.current = false; return; }
+    onIncrement();
+  };
+  const handleDonePointerDown = (e: React.PointerEvent) => {
+    // Prevent triggering the card's long-press when the user taps the badge
+    e.stopPropagation();
+  };
+
+  // === Action sheet handlers ===
   const handleConfirmAddToday = () => {
     vibrate(12);
     addTarget({
@@ -1475,129 +1488,105 @@ function AssignmentInlineCard({
       assignmentId: assignment.id,
       isChapterTarget: true,
     });
-    setShowAddToday(false);
+    setShowActions(false);
   };
+
+  const handleUndoLast = () => {
+    if (assignment.doneCount === 0) return;
+    const ok = confirm(
+      `${assignment.name}: ${assignment.doneCount}× done.\n\nOK = Undo last (→${assignment.doneCount - 1}×)\nCancel = Keep ${assignment.doneCount}×`
+    );
+    if (ok) { onDecrement(); vibrate([10, 20, 10]); setShowActions(false); }
+  };
+
+  const handleReset = () => {
+    if (assignment.doneCount === 0) return;
+    const ok = confirm(
+      `${assignment.name}: ${assignment.doneCount}× done.\n\nReset to 0? This cannot be undone.`
+    );
+    if (ok) { onReset(); vibrate([15, 30, 15]); setShowActions(false); }
+  };
+
+  const handleRename = () => {
+    const newName = window.prompt('Rename assignment', assignment.name);
+    if (newName && newName.trim() && newName.trim() !== assignment.name) {
+      onRename(newName.trim());
+      vibrate(8);
+    }
+    setShowActions(false);
+  };
+
+  const handleDelete = () => {
+    const ok = confirm(`Delete "${assignment.name}"?\nThis cannot be undone.`);
+    if (ok) { onDelete(); vibrate([10, 30, 10]); setShowActions(false); }
+  };
+
+  const hasDone = assignment.doneCount > 0;
 
   return (
     <>
-    <div
-      onPointerDown={handleCardPointerDown}
-      onPointerUp={handleCardPointerUp}
-      onPointerLeave={handleCardPointerUp}
-      className="flex items-center gap-2 p-2.5 rounded-2xl relative overflow-hidden cursor-pointer"
-      style={{
-        background: assignment.doneCount > 0 ? 'rgba(168,85,247,0.06)' : 'var(--bg-card, rgba(255,255,255,0.01))',
-        border: `1px solid ${assignment.doneCount > 0 ? 'rgba(168,85,247,0.25)' : 'var(--border-card, rgba(255,255,255,0.06))'}`,
-        borderRadius: '16px',
-      }}
-      title="Long-press to add as today's target"
-    >
-      {/* Purple left stripe */}
       <div
-        className="absolute top-0 left-0 bottom-0 w-1"
-        style={{ background: assignment.doneCount > 0 ? '#a855f7' : 'rgba(168,85,247,0.2)' }}
-      />
-
-      {/* Done count badge — circular, tap +1, long-press undo */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          if (lpFiredRef.current) { lpFiredRef.current = false; return; }
-          onIncrement();
-        }}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          lpFiredRef.current = false;
-          lpTimerRef.current = setTimeout(() => {
-            lpFiredRef.current = true;
-            if (assignment.doneCount === 0) return;
-            const action = confirm(
-              `${assignment.name}: ${assignment.doneCount}× done.\n\nOK = Undo last (→${assignment.doneCount - 1}×)\nCancel = Keep ${assignment.doneCount}×`
-            );
-            if (action) onDecrement();
-          }, 500);
-        }}
-        onPointerUp={() => { if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null; } }}
-        onPointerLeave={() => { if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null; } }}
-        className="w-10 h-10 rounded-full flex flex-col items-center justify-center shrink-0 active:scale-90 transition"
+        onPointerDown={handleCardPointerDown}
+        onPointerUp={handleCardPointerUp}
+        onPointerLeave={handleCardPointerUp}
+        className="flex items-center gap-2 p-2.5 rounded-2xl relative overflow-hidden cursor-pointer select-none"
         style={{
-          background: assignment.doneCount > 0 ? '#a855f7' : 'rgba(168,85,247,0.1)',
-          color: assignment.doneCount > 0 ? '#ffffff' : '#a855f7',
-          border: `1.5px solid ${assignment.doneCount > 0 ? '#a855f7' : 'rgba(168,85,247,0.2)'}`,
-          boxShadow: assignment.doneCount > 0 ? '0 0 10px rgba(168,85,247,0.3)' : 'none',
+          background: hasDone ? 'rgba(168,85,247,0.06)' : 'var(--bg-card, rgba(255,255,255,0.01))',
+          border: `1px solid ${hasDone ? 'rgba(168,85,247,0.25)' : 'var(--border-card, rgba(255,255,255,0.06))'}`,
+          borderRadius: '16px',
         }}
-        title={`Tap +1, long-press undo. Currently ${assignment.doneCount}× done`}
+        title="Tap circle to +1 · Long-press for more actions"
       >
-        <span className="text-[16px] font-black tabular leading-none">{assignment.doneCount}</span>
-        <span className="text-[6px] font-bold uppercase opacity-70">×done</span>
-      </button>
+        {/* Purple left stripe */}
+        <div
+          className="absolute top-0 left-0 bottom-0 w-1"
+          style={{ background: hasDone ? '#a855f7' : 'rgba(168,85,247,0.2)' }}
+        />
 
-      {/* Name + last done date */}
-      <div className="flex-1 min-w-0">
-        {editing ? (
-          <input
-            autoFocus
-            type="text"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                if (editName.trim()) onRename(editName.trim());
-                setEditing(false);
-              }
-              if (e.key === 'Escape') { setEditing(false); setEditName(assignment.name); }
-            }}
-            onBlur={() => {
-              if (editName.trim() && editName !== assignment.name) onRename(editName.trim());
-              setEditing(false);
-            }}
-            className="w-full px-2 py-1 rounded-lg text-[12px] font-medium"
-            style={{ background: 'var(--muted)', border: '1px solid rgba(168,85,247,0.4)', color: 'var(--foreground)' }}
-          />
-        ) : (
-          <>
-            <div className="text-[12px] font-semibold truncate flex items-center gap-1" style={{ color: assignment.doneCount > 0 ? '#a855f7' : 'var(--foreground)' }}>
-              <FileText size={11} className="shrink-0" style={{ color: '#a855f7' }} />
-              {assignment.name}
+        {/* Done count badge — circular, tap +1 */}
+        <button
+          onClick={handleDoneClick}
+          onPointerDown={handleDonePointerDown}
+          onPointerUp={(e) => e.stopPropagation()}
+          className="w-10 h-10 rounded-full flex flex-col items-center justify-center shrink-0 active:scale-90 transition"
+          style={{
+            background: hasDone ? '#a855f7' : 'rgba(168,85,247,0.1)',
+            color: hasDone ? '#ffffff' : '#a855f7',
+            border: `1.5px solid ${hasDone ? '#a855f7' : 'rgba(168,85,247,0.2)'}`,
+            boxShadow: hasDone ? '0 0 10px rgba(168,85,247,0.3)' : 'none',
+          }}
+          title={`Tap to mark done once more. Currently ${assignment.doneCount}× done`}
+        >
+          <span className="text-[16px] font-black tabular leading-none">{assignment.doneCount}</span>
+          <span className="text-[6px] font-bold uppercase opacity-70">×done</span>
+        </button>
+
+        {/* Name + last done date */}
+        <div className="flex-1 min-w-0">
+          <div className="text-[12px] font-semibold truncate flex items-center gap-1" style={{ color: hasDone ? '#a855f7' : 'var(--foreground)' }}>
+            <FileText size={11} className="shrink-0" style={{ color: '#a855f7' }} />
+            {assignment.name}
+          </div>
+          {hasDone && assignment.lastDoneAt && (
+            <div className="text-[9px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+              Last: {new Date(assignment.lastDoneAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </div>
-            {assignment.doneCount > 0 && assignment.lastDoneAt && (
-              <div className="text-[9px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-                Last: {new Date(assignment.lastDoneAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </div>
-            )}
-          </>
-        )}
+          )}
+        </div>
+
+        {/* Long-press hint — tiny chevron to hint at more actions */}
+        <ChevronRight size={12} className="text-muted-foreground/40 shrink-0" />
       </div>
 
-      {/* Edit + delete — both stopPropagation on pointer-down so the card's
-          long-press doesn't fire when tapping these buttons. */}
-      <button
-        onClick={(e) => { e.stopPropagation(); setEditName(assignment.name); setEditing(!editing); }}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-foreground/10 transition active:scale-90 shrink-0"
-        title="Rename"
-      >
-        <Pencil size={10} className="text-muted-foreground" />
-      </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition active:scale-90 shrink-0"
-        title="Delete assignment"
-      >
-        <Trash2 size={10} className="text-red-500" />
-      </button>
-    </div>
-
-      {/* === Long-press popup — expected-time selector + add to today (mirrors lectures) === */}
-      {showAddToday && typeof document !== 'undefined' && createPortal(
+      {/* === Action sheet — opens on long-press === */}
+      {showActions && typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[10001] bg-black/80"
-            onClick={() => setShowAddToday(false)}
+            onClick={() => setShowActions(false)}
           />
           <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
             <motion.div
@@ -1605,23 +1594,31 @@ function AssignmentInlineCard({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-              className="w-[300px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border shadow-2xl pointer-events-auto"
-              style={{ background: 'var(--popover, rgba(20,22,30,0.96))' }}
+              className="w-[320px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto rounded-2xl border border-border shadow-2xl pointer-events-auto"
+              style={{
+                background: 'var(--popover, rgba(20,22,30,0.96))',
+                overscrollBehavior: 'contain',
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-y',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
-              <div className="px-4 py-3 border-b border-foreground/10">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(168,85,247,0.2)', color: '#a855f7' }}>
-                    <Clock size={16} />
+              {/* === Header === */}
+              <div
+                className="px-4 py-3 border-b border-foreground/10 sticky top-0 z-10"
+                style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.18), rgba(168,85,247,0.04))' }}
+              >
+                <div className="flex items-start gap-2">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(168,85,247,0.25)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.3)' }}>
+                    <FileText size={18} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Add Assignment to Today</div>
-                    <div className="text-sm font-semibold text-foreground truncate">{assignment.name}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">{subject.name} · {chapter.name}</div>
+                    <div className="text-[9px] uppercase tracking-wider font-bold" style={{ color: '#a855f7' }}>Assignment · {assignment.doneCount}× done</div>
+                    <div className="text-sm font-semibold text-foreground leading-snug truncate">{assignment.name}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{subject.name} · {chapter.name}</div>
                   </div>
                   <button
-                    onClick={() => setShowAddToday(false)}
+                    onClick={() => setShowActions(false)}
                     className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-foreground/10 transition active:scale-90 shrink-0"
                     aria-label="Close"
                   >
@@ -1629,30 +1626,111 @@ function AssignmentInlineCard({
                   </button>
                 </div>
               </div>
-              {/* Body */}
+
+              {/* === Body === */}
               <div className="p-4 space-y-4">
+
+                {/* Section 1: Add to today's target — at the top */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide">Expected Time</label>
-                    <span className="text-[11px] font-bold tabular" style={{ color: '#a855f7' }}>{expectedMinutes} min</span>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Clock size={11} style={{ color: '#a855f7' }} />
+                    <span className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Add to today's target</span>
                   </div>
-                  <ScrollAwareSlider>
-                    <input
-                      type="range" min={10} max={180} step={5}
-                      value={expectedMinutes}
-                      onChange={(e) => setExpectedMinutes(Number(e.target.value))}
-                      className="w-full"
-                      style={{ accentColor: '#a855f7' }}
-                    />
-                  </ScrollAwareSlider>
+                  <div className="rounded-xl p-3" style={{ background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)' }}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Expected Time</label>
+                      <span className="text-[12px] font-bold tabular" style={{ color: '#a855f7' }}>{expectedMinutes} min</span>
+                    </div>
+                    <ScrollAwareSlider>
+                      <input
+                        type="range" min={10} max={180} step={5}
+                        value={expectedMinutes}
+                        onChange={(e) => setExpectedMinutes(Number(e.target.value))}
+                        className="w-full"
+                        style={{ accentColor: '#a855f7' }}
+                      />
+                    </ScrollAwareSlider>
+                    <button
+                      onClick={handleConfirmAddToday}
+                      className="w-full mt-2.5 py-2 rounded-lg text-[11px] font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5"
+                      style={{ background: '#a855f7', boxShadow: '0 2px 8px -2px rgba(168,85,247,0.5)' }}
+                    >
+                      <Plus size={12} /> Add to Today ({expectedMinutes}m)
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={handleConfirmAddToday}
-                  className="w-full py-2.5 rounded-lg text-[12px] font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5"
-                  style={{ background: '#a855f7', boxShadow: '0 2px 8px -2px rgba(168,85,247,0.5)' }}
-                >
-                  <Check size={12} /> Add Assignment ({expectedMinutes}m)
-                </button>
+
+                {/* Section 2: Quick actions */}
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Quick actions</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {/* Undo last done */}
+                    <button
+                      onClick={handleUndoLast}
+                      disabled={!hasDone}
+                      className={cn(
+                        'w-full px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition text-left',
+                        hasDone ? 'bg-foreground/[0.04] hover:bg-foreground/[0.08] active:scale-[0.98]' : 'bg-foreground/[0.02] opacity-40 cursor-not-allowed'
+                      )}
+                    >
+                      <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(168,85,247,0.12)', color: '#a855f7' }}>
+                        <RotateCcw size={13} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12px] font-semibold text-foreground">Undo last done</div>
+                        <div className="text-[9px] text-muted-foreground">Mistakenly marked? Goes back to {Math.max(0, assignment.doneCount - 1)}×</div>
+                      </div>
+                    </button>
+
+                    {/* Reset to 0 */}
+                    <button
+                      onClick={handleReset}
+                      disabled={!hasDone}
+                      className={cn(
+                        'w-full px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition text-left',
+                        hasDone ? 'bg-orange-500/5 hover:bg-orange-500/10 active:scale-[0.98]' : 'bg-foreground/[0.02] opacity-40 cursor-not-allowed'
+                      )}
+                    >
+                      <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(249,115,22,0.12)', color: '#f97316' }}>
+                        <RotateCcw size={13} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12px] font-semibold" style={{ color: '#f97316' }}>Reset to 0</div>
+                        <div className="text-[9px] text-muted-foreground">Clears all {assignment.doneCount} done-count. Cannot be undone.</div>
+                      </div>
+                    </button>
+
+                    {/* Rename */}
+                    <button
+                      onClick={handleRename}
+                      className="w-full px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition text-left bg-foreground/[0.04] hover:bg-foreground/[0.08] active:scale-[0.98]"
+                    >
+                      <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(168,85,247,0.12)', color: '#a855f7' }}>
+                        <Pencil size={13} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12px] font-semibold text-foreground">Rename</div>
+                        <div className="text-[9px] text-muted-foreground truncate">Currently: {assignment.name}</div>
+                      </div>
+                    </button>
+
+                    {/* Delete */}
+                    <button
+                      onClick={handleDelete}
+                      className="w-full px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition text-left bg-red-500/5 hover:bg-red-500/10 active:scale-[0.98]"
+                    >
+                      <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
+                        <Trash2 size={13} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12px] font-semibold" style={{ color: '#ef4444' }}>Delete assignment</div>
+                        <div className="text-[9px] text-muted-foreground">Removes "{assignment.name}" from {chapter.name}. Cannot be undone.</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </div>
