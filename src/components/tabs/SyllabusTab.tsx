@@ -19,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTargets } from '@/lib/store/targets';
+import { getLearnedExpectedMinutes } from '@/lib/store/learnedTime';
 import { useSession } from '@/lib/store/session';
 import { useHistory } from '@/lib/store/history';
 import { subjectColor, SUBJECTS } from '@/lib/colors';
@@ -31,7 +32,7 @@ import { AddChapterSheet } from '@/components/syllabus/AddChapterSheet';
 import { BuildSyllabusSheet } from '@/components/syllabus/BuildSyllabusSheet';
 import { FormulaVault } from '@/components/syllabus/FormulaVault';
 import { AddLectureSheet } from '@/components/syllabus/AddLectureSheet';
-import { AddTargetSheet } from '@/components/study/AddTargetSheet';
+import { ScrollAwareSlider } from '@/components/shared/ScrollAwareSlider';
 import { triggerTimeline } from '@/components/app/AppShell';
 
 type ProgressFilter = 'all' | 'studying' | 'next' | 'done' | 'overdue';
@@ -74,13 +75,6 @@ export function SyllabusTab() {
   const [addLectureFor, setAddLectureFor] = useState<{ chapter: import('@/lib/types').Chapter; subject: SubjectEntity } | null>(null);
   const [showBuildSheet, setShowBuildSheet] = useState(false);
   const [showFormulaVault, setShowFormulaVault] = useState(false);
-  // Pre-fill data for AddTargetSheet opened from the syllabus tab.
-  // Currently triggered by the "+ To Today" button on the assignment pop.
-  const [addTargetPrefill, setAddTargetPrefill] = useState<{
-    subject: Subject;
-    chapterId: string;
-    activity: 'Assignment';
-  } | null>(null);
   const [chapterMenu, setChapterMenu] = useState<Chapter | null>(null);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [collapsedSubjects, setCollapsedSubjects] = useState<Set<string>>(new Set());
@@ -913,25 +907,8 @@ export function SyllabusTab() {
                               <span className="text-[10px] tabular font-bold ml-auto" style={{ color: 'var(--muted-foreground)' }}>
                                 {(ch.assignments || []).reduce((s, a) => s + a.doneCount, 0)}/{(ch.assignments || []).length}
                               </span>
-                              {/* Add to Today button — opens AddTargetSheet pre-filled with this
-                                  subject + chapter + Assignment activity, so the user gets expected
-                                  time selection AND can pick which specific assignment(s) to add. */}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  vibrate(12);
-                                  setAddTargetPrefill({
-                                    subject: subj.name,
-                                    chapterId: ch.id,
-                                    activity: 'Assignment',
-                                  });
-                                }}
-                                className="px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-0.5 active:scale-95 transition shrink-0"
-                                style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.25)', color: '#a855f7' }}
-                                title="Add assignment as today's study target"
-                              >
-                                <Plus size={9} /> To Today
-                              </button>
+                              {/* Note: To add an assignment as a today's target, long-press any
+                                  assignment card below — same pattern as lectures (expected-time popup). */}
                             </div>
 
                             {/* Assignment list */}
@@ -943,6 +920,8 @@ export function SyllabusTab() {
                                   <AssignmentInlineCard
                                     key={a.id}
                                     assignment={a}
+                                    chapter={ch}
+                                    subject={subj}
                                     onIncrement={() => { incrementAssignmentDone(ch.id, a.id); vibrate(8); }}
                                     onDecrement={() => { decrementAssignmentDone(ch.id, a.id); vibrate([10, 20, 10]); }}
                                     onDelete={() => { deleteAssignment(ch.id, a.id); vibrate([10, 30, 10]); }}
@@ -1001,16 +980,6 @@ export function SyllabusTab() {
       {showBuildSheet && (<BuildSyllabusSheet onClose={() => setShowBuildSheet(false)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {addLectureFor && (<AddLectureSheet chapter={addLectureFor.chapter} subject={addLectureFor.subject} onClose={() => setAddLectureFor(null)} showToast={(msg, sub) => _showToast(msg, sub)} />)}
       {showFormulaVault && (<FormulaVaultInline onClose={() => setShowFormulaVault(false)} />)}
-
-      {/* AddTargetSheet opened from the "+ To Today" button on the assignment pop.
-          Pre-filled with the subject + chapter + Assignment activity so the user lands
-          directly in the assignment picker (Step 2) — no need to re-navigate subject → chapter. */}
-      {addTargetPrefill && (
-        <AddTargetSheet
-          prefill={addTargetPrefill}
-          onClose={() => setAddTargetPrefill(null)}
-        />
-      )}
 
       {/* === Chapter context menu (long-press) — Mark All Done / Reset / Delete === */}
       <AnimatePresence>
@@ -1441,12 +1410,16 @@ function ChapterContextMenu({ chapter, onClose }: { chapter: Chapter; onClose: (
 // ===== AssignmentInlineCard — narrow rounded card, sits inline with lectures =====
 function AssignmentInlineCard({
   assignment,
+  chapter,
+  subject,
   onIncrement,
   onDecrement,
   onDelete,
   onRename,
 }: {
   assignment: ChapterAssignment;
+  chapter: Chapter;
+  subject: SubjectEntity;
   onIncrement: () => void;
   onDecrement: () => void;
   onDelete: () => void;
@@ -1457,14 +1430,67 @@ function AssignmentInlineCard({
   const lpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lpFiredRef = useRef(false);
 
+  // === Long-press → expected-time popup (mirrors LectureResourceRow pattern) ===
+  // Long-press anywhere on the card opens a small modal to add this assignment
+  // as today's target with a chosen expected time. Short taps on the inner buttons
+  // (Done count, Edit, Delete) still work because they stopPropagation on pointer-down.
+  const addTarget = useTargets((s) => s.addTarget);
+  const [showAddToday, setShowAddToday] = useState(false);
+  const [expectedMinutes, setExpectedMinutes] = useState(
+    getLearnedExpectedMinutes(subject.name, 'Assignment')
+  );
+
+  // Reset learned-time default whenever the popup is reopened (in case the user
+  // studied another assignment in between and the pattern changed).
+  useEffect(() => {
+    if (showAddToday) {
+      setExpectedMinutes(getLearnedExpectedMinutes(subject.name, 'Assignment'));
+    }
+  }, [showAddToday, subject.name]);
+
+  const cardLpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardLpFired = useRef(false);
+  const handleCardPointerDown = (e: React.PointerEvent) => {
+    cardLpFired.current = false;
+    cardLpTimer.current = setTimeout(() => {
+      cardLpFired.current = true;
+      vibrate(20);
+      setShowAddToday(true);
+    }, 500);
+  };
+  const handleCardPointerUp = () => {
+    if (cardLpTimer.current) { clearTimeout(cardLpTimer.current); cardLpTimer.current = null; }
+  };
+
+  const handleConfirmAddToday = () => {
+    vibrate(12);
+    addTarget({
+      date: todayKey(),
+      subject: subject.name,
+      activity: 'Assignment',
+      chapter: chapter.name,
+      topic: assignment.name,
+      expectedMinutes,
+      chapterId: chapter.id,
+      assignmentId: assignment.id,
+      isChapterTarget: true,
+    });
+    setShowAddToday(false);
+  };
+
   return (
+    <>
     <div
-      className="flex items-center gap-2 p-2.5 rounded-2xl relative overflow-hidden"
+      onPointerDown={handleCardPointerDown}
+      onPointerUp={handleCardPointerUp}
+      onPointerLeave={handleCardPointerUp}
+      className="flex items-center gap-2 p-2.5 rounded-2xl relative overflow-hidden cursor-pointer"
       style={{
         background: assignment.doneCount > 0 ? 'rgba(168,85,247,0.06)' : 'var(--bg-card, rgba(255,255,255,0.01))',
         border: `1px solid ${assignment.doneCount > 0 ? 'rgba(168,85,247,0.25)' : 'var(--border-card, rgba(255,255,255,0.06))'}`,
         borderRadius: '16px',
       }}
+      title="Long-press to add as today's target"
     >
       {/* Purple left stripe */}
       <div
@@ -1543,9 +1569,11 @@ function AssignmentInlineCard({
         )}
       </div>
 
-      {/* Edit + delete */}
+      {/* Edit + delete — both stopPropagation on pointer-down so the card's
+          long-press doesn't fire when tapping these buttons. */}
       <button
         onClick={(e) => { e.stopPropagation(); setEditName(assignment.name); setEditing(!editing); }}
+        onPointerDown={(e) => e.stopPropagation()}
         className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-foreground/10 transition active:scale-90 shrink-0"
         title="Rename"
       >
@@ -1553,11 +1581,84 @@ function AssignmentInlineCard({
       </button>
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        onPointerDown={(e) => e.stopPropagation()}
         className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition active:scale-90 shrink-0"
         title="Delete assignment"
       >
         <Trash2 size={10} className="text-red-500" />
       </button>
     </div>
+
+      {/* === Long-press popup — expected-time selector + add to today (mirrors lectures) === */}
+      {showAddToday && typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10001] bg-black/80"
+            onClick={() => setShowAddToday(false)}
+          />
+          <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="w-[300px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border shadow-2xl pointer-events-auto"
+              style={{ background: 'var(--popover, rgba(20,22,30,0.96))' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-foreground/10">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(168,85,247,0.2)', color: '#a855f7' }}>
+                    <Clock size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Add Assignment to Today</div>
+                    <div className="text-sm font-semibold text-foreground truncate">{assignment.name}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{subject.name} · {chapter.name}</div>
+                  </div>
+                  <button
+                    onClick={() => setShowAddToday(false)}
+                    className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-foreground/10 transition active:scale-90 shrink-0"
+                    aria-label="Close"
+                  >
+                    <X size={14} className="text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+              {/* Body */}
+              <div className="p-4 space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide">Expected Time</label>
+                    <span className="text-[11px] font-bold tabular" style={{ color: '#a855f7' }}>{expectedMinutes} min</span>
+                  </div>
+                  <ScrollAwareSlider>
+                    <input
+                      type="range" min={10} max={180} step={5}
+                      value={expectedMinutes}
+                      onChange={(e) => setExpectedMinutes(Number(e.target.value))}
+                      className="w-full"
+                      style={{ accentColor: '#a855f7' }}
+                    />
+                  </ScrollAwareSlider>
+                </div>
+                <button
+                  onClick={handleConfirmAddToday}
+                  className="w-full py-2.5 rounded-lg text-[12px] font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5"
+                  style={{ background: '#a855f7', boxShadow: '0 2px 8px -2px rgba(168,85,247,0.5)' }}
+                >
+                  <Check size={12} /> Add Assignment ({expectedMinutes}m)
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </AnimatePresence>,
+        document.body
+      )}
+    </>
   );
 }

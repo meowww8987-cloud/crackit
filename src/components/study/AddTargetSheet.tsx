@@ -483,52 +483,114 @@ export function AddTargetSheet({ editing, prefill, onClose }: Props) {
                   </div>
                 )}
 
-                {/* Lecture picker */}
-                {selectedChapterId && availableLectures.length > 0 && !isAssignment && (
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-semibold text-muted-foreground">LECTURES</label>
-                      <button onClick={selectAllLectures} className="text-[10px] text-teal-400">
-                        {selectedLectureIds.size === availableLectures.length ? 'Deselect All' : 'Select All'}
-                      </button>
-                    </div>
-                    <div className="space-y-1 max-h-32 overflow-y-auto scroll-area">
-                      {availableLectures.map((lec) => {
-                        const sel = selectedLectureIds.has(lec.id);
-                        const already = isLectureAdded(lec.id);
-                        return (
-                          <button
-                            key={lec.id}
-                            onClick={() => !already && toggleLecture(lec.id)}
-                            disabled={already}
-                            className={cn(
-                              'w-full p-2 rounded-lg flex items-center gap-2 transition',
-                              sel ? 'bg-teal-500/15' : 'bg-foreground/[0.03] hover:bg-foreground/[0.07]',
-                              already && 'opacity-50 cursor-not-allowed'
-                            )}
-                          >
-                            <div
-                              className="w-4 h-4 rounded border flex items-center justify-center shrink-0"
-                              style={sel ? { background: color.hex, borderColor: color.hex } : { borderColor: 'rgba(255,255,255,0.2)' }}
-                            >
-                              {sel && <Check size={10} className="text-black" strokeWidth={3} />}
-                              {already && !sel && <Check size={10} className="text-green-400" strokeWidth={3} />}
-                            </div>
-                            <span className="text-[10px] font-bold text-muted-foreground tabular w-6">L{lec.lecNo}</span>
-                            <span className={cn('text-xs truncate flex-1 text-left', sel ? 'text-foreground' : 'text-muted-foreground')}>{lec.topic}</span>
-                            {already && <span className="text-[9px] text-green-400 font-bold">ADDED</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
+                {/* === Side-by-side two-column selector: Lecture | Assignment ===
+                    Replaces the previous stacked (up/down) layout. Default = Lecture.
+                    Selected column gets its colour; only the matching picker shows below. */}
+                {selectedChapterId && (
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {/* Lecture column */}
+                    <button
+                      onClick={() => {
+                        if (isAssignment) {
+                          // Switching from Assignment → Lecture: clear assignment
+                          // selections so they don't get submitted by accident.
+                          setSelectedAssignmentIds(new Set());
+                          setActivity('Lecture');
+                          vibrate(8);
+                        }
+                      }}
+                      className={cn(
+                        'py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition border',
+                        !isAssignment ? 'border-2' : 'border border-foreground/10 bg-foreground/[0.04]'
+                      )}
+                      style={!isAssignment ? { background: `${color.hex}20`, borderColor: color.hex } : undefined}
+                    >
+                      <BookOpen size={14} style={{ color: !isAssignment ? color.hex : 'var(--muted-foreground, rgba(128,128,128,0.6))' }} />
+                      <span className="text-[11px] font-bold" style={{ color: !isAssignment ? color.hex : 'var(--muted-foreground, rgba(128,128,128,0.6))' }}>
+                        Lecture{availableLectures.length > 0 && (
+                          <span className="ml-1 tabular opacity-70">{availableLectures.length}</span>
+                        )}
+                      </span>
+                    </button>
+                    {/* Assignment column */}
+                    <button
+                      onClick={() => {
+                        if (!isAssignment) {
+                          // Switching from Lecture → Assignment: clear lecture
+                          // selections (assignment targets are inherently Assignment activity).
+                          setSelectedLectureIds(new Set());
+                          setActivity('Assignment');
+                          vibrate(8);
+                        }
+                      }}
+                      className={cn(
+                        'py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition border',
+                        isAssignment ? 'border-2' : 'border border-foreground/10 bg-foreground/[0.04]'
+                      )}
+                      style={isAssignment ? { background: 'rgba(168,85,247,0.18)', borderColor: '#a855f7' } : undefined}
+                    >
+                      <FileText size={14} style={{ color: isAssignment ? '#a855f7' : 'var(--muted-foreground, rgba(128,128,128,0.6))' }} />
+                      <span className="text-[11px] font-bold" style={{ color: isAssignment ? '#a855f7' : 'var(--muted-foreground, rgba(128,128,128,0.6))' }}>
+                        Assignment{availableAssignments.length > 0 && (
+                          <span className="ml-1 tabular opacity-70">{availableAssignments.length}</span>
+                        )}
+                      </span>
+                    </button>
                   </div>
                 )}
 
-                {/* === Assignment picker — separate small column, mirrors the lecture picker ===
-                    Visible whenever a chapter is selected (even if no assignments yet — shows
-                    an empty state hint). Mirrors the same multi-select + ADDED-check pattern. */}
-                {selectedChapterId && (
-                  <div className="mt-4">
+                {/* === Lecture picker — only shown when Lecture column is selected === */}
+                {selectedChapterId && !isAssignment && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold text-muted-foreground">LECTURES</label>
+                      {availableLectures.length > 0 && (
+                        <button onClick={selectAllLectures} className="text-[10px] text-teal-400">
+                          {selectedLectureIds.size === availableLectures.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                      )}
+                    </div>
+                    {availableLectures.length === 0 ? (
+                      <div className="rounded-xl p-3 text-center" style={{ background: `${color.hex}08`, border: `1px dashed ${color.hex}30` }}>
+                        <p className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>No lectures in this chapter yet</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 max-h-32 overflow-y-auto scroll-area">
+                        {availableLectures.map((lec) => {
+                          const sel = selectedLectureIds.has(lec.id);
+                          const already = isLectureAdded(lec.id);
+                          return (
+                            <button
+                              key={lec.id}
+                              onClick={() => !already && toggleLecture(lec.id)}
+                              disabled={already}
+                              className={cn(
+                                'w-full p-2 rounded-lg flex items-center gap-2 transition',
+                                sel ? 'bg-teal-500/15' : 'bg-foreground/[0.03] hover:bg-foreground/[0.07]',
+                                already && 'opacity-50 cursor-not-allowed'
+                              )}
+                            >
+                              <div
+                                className="w-4 h-4 rounded border flex items-center justify-center shrink-0"
+                                style={sel ? { background: color.hex, borderColor: color.hex } : { borderColor: 'rgba(255,255,255,0.2)' }}
+                              >
+                                {sel && <Check size={10} className="text-black" strokeWidth={3} />}
+                                {already && !sel && <Check size={10} className="text-green-400" strokeWidth={3} />}
+                              </div>
+                              <span className="text-[10px] font-bold text-muted-foreground tabular w-6">L{lec.lecNo}</span>
+                              <span className={cn('text-xs truncate flex-1 text-left', sel ? 'text-foreground' : 'text-muted-foreground')}>{lec.topic}</span>
+                              {already && <span className="text-[9px] text-green-400 font-bold">ADDED</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* === Assignment picker — only shown when Assignment column is selected === */}
+                {selectedChapterId && isAssignment && (
+                  <div className="mt-3">
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
                         <FileText size={11} style={{ color: '#a855f7' }} /> ASSIGNMENTS
