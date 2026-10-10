@@ -1260,10 +1260,11 @@ function AddFAB({
   }, [showQuickAdd, onCloseQuickAdd]);
 
   const quickOptions: { type: ActivityType; label: string; icon: typeof BookOpen; color: string }[] = [
-    { type: 'Lecture',  label: 'Lecture',  icon: BookOpen, color: '#3b82f6' },
-    { type: 'DPP',      label: 'DPP',      icon: FileText, color: '#f97316' },
-    { type: 'Notes',    label: 'Notes',    icon: FileText, color: '#22c55e' },
-    { type: 'Revision', label: 'Revision', icon: RotateCcw, color: '#a855f7' },
+    { type: 'Lecture',   label: 'Lecture',   icon: BookOpen, color: '#3b82f6' },
+    { type: 'DPP',       label: 'DPP',       icon: FileText, color: '#f97316' },
+    { type: 'Notes',     label: 'Notes',     icon: FileText, color: '#22c55e' },
+    { type: 'Revision',  label: 'Revision',  icon: RotateCcw, color: '#a855f7' },
+    { type: 'Assignment', label: 'Assignment', icon: FileText, color: '#7c3aed' },
   ];
 
   const subjColor = subjectColor(defaultSubject);
@@ -1321,7 +1322,7 @@ function AddFAB({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-[13px] font-medium text-foreground">Quick: {opt.label}</div>
-                      <div className="text-[10px] text-muted-foreground">{opt.type === 'DPP' ? '30 min' : opt.type === 'Notes' ? '25 min' : opt.type === 'Revision' ? '20 min' : '45 min'}</div>
+                      <div className="text-[10px] text-muted-foreground">{opt.type === 'DPP' ? '30 min' : opt.type === 'Notes' ? '25 min' : opt.type === 'Revision' ? '20 min' : opt.type === 'Assignment' ? '45 min' : '45 min'}</div>
                     </div>
                   </button>
                 ))}

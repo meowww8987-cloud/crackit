@@ -30,7 +30,7 @@ const RESOURCES: { key: LectureResource; icon: typeof Play; label: string; color
   { key: 'revision', icon: RotateCw, label: 'Revision', color: '#f59e0b' },
 ];
 
-const ACTIVITIES: ActivityType[] = ['Lecture', 'DPP', 'Notes', 'Revision', 'Custom'];
+const ACTIVITIES: ActivityType[] = ['Lecture', 'DPP', 'Notes', 'Revision', 'Assignment', 'Custom'];
 
 // === CRITICAL: Shared empty array for Zustand selector ===
 // Using `|| []` inside a Zustand selector creates a NEW array reference every

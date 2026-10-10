@@ -37,11 +37,12 @@ const ACTIVITY_META: Record<ActivityType, {
   gradient: [string, string]; // top stripe gradient
   watermark: string;    // emoji for large background watermark
 }> = {
-  Lecture:  { icon: BookOpen,  label: 'Lecture',  accent: '#3b82f6', gradient: ['#3b82f6', '#60a5fa'], watermark: '📚' },
-  DPP:      { icon: FileText,  label: 'DPP',      accent: '#f97316', gradient: ['#f97316', '#fb923c'], watermark: '📝' },
-  Notes:    { icon: FileText,  label: 'Notes',    accent: '#22c55e', gradient: ['#22c55e', '#4ade80'], watermark: '✍️' },
-  Revision: { icon: BookOpen,  label: 'Revision', accent: '#a855f7', gradient: ['#a855f7', '#c084fc'], watermark: '🔄' },
-  Custom:   { icon: FileText,  label: 'Task',     accent: '#64748b', gradient: ['#64748b', '#94a3b8'], watermark: '⭐' },
+  Lecture:   { icon: BookOpen,  label: 'Lecture',   accent: '#3b82f6', gradient: ['#3b82f6', '#60a5fa'], watermark: '📚' },
+  DPP:       { icon: FileText,  label: 'DPP',       accent: '#f97316', gradient: ['#f97316', '#fb923c'], watermark: '📝' },
+  Notes:     { icon: FileText,  label: 'Notes',     accent: '#22c55e', gradient: ['#22c55e', '#4ade80'], watermark: '✍️' },
+  Revision:  { icon: BookOpen,  label: 'Revision',  accent: '#a855f7', gradient: ['#a855f7', '#c084fc'], watermark: '🔄' },
+  Assignment:{ icon: FileText,  label: 'Assignment', accent: '#7c3aed', gradient: ['#7c3aed', '#a78bfa'], watermark: '📄' },
+  Custom:    { icon: FileText,  label: 'Task',      accent: '#64748b', gradient: ['#64748b', '#94a3b8'], watermark: '⭐' },
 };
 
 // Premium easing curves

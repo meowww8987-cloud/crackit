@@ -2,7 +2,7 @@
 
 export type Subject = 'Physics' | 'Chemistry' | 'Botany' | 'Zoology' | 'General';
 
-export type ActivityType = 'Lecture' | 'DPP' | 'Notes' | 'Revision' | 'Custom';
+export type ActivityType = 'Lecture' | 'DPP' | 'Notes' | 'Revision' | 'Assignment' | 'Custom';
 
 export type SessionMode = 'focus' | 'free';
 

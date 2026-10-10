@@ -39,6 +39,7 @@ export function getLearnedExpectedMinutes(subject: Subject, activity: ActivityTy
       DPP: 30,
       Notes: 45,
       Revision: 40,
+      Assignment: 45,
       Custom: 60,
     };
     const val = defaults[activity] || 60;
@@ -53,7 +54,7 @@ export function getLearnedExpectedMinutes(subject: Subject, activity: ActivityTy
 
   if (durations.length === 0) {
     const defaults: Record<ActivityType, number> = {
-      Lecture: 60, DPP: 30, Notes: 45, Revision: 40, Custom: 60,
+      Lecture: 60, DPP: 30, Notes: 45, Revision: 40, Assignment: 45, Custom: 60,
     };
     const val = defaults[activity] || 60;
     cache.set(key, val);

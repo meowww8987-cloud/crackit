@@ -27,6 +27,7 @@ const DEFAULTS: Record<ActivityType, number> = {
   DPP: 30,
   Notes: 25,
   Revision: 20,
+  Assignment: 45,
   Custom: 60,
 };
 

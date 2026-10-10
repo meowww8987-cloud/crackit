@@ -127,6 +127,7 @@ export const useTargets = create<TargetsStore>()(
             detail: {
               lectureId: target.lectureId,
               activity,
+              chapterId: target.chapterId,
             }
           }));
         } else if (target?.lectureId && !target.isChapterTarget && !newDone) {
@@ -135,6 +136,16 @@ export const useTargets = create<TargetsStore>()(
             detail: {
               lectureId: target.lectureId,
               activity: target.activity,
+              chapterId: target.chapterId,
+            }
+          }));
+        } else if (target?.chapterId && !target.lectureId && newDone && target.activity === 'Assignment') {
+          // Assignment target — sync to chapter's assignment counter
+          window.dispatchEvent(new CustomEvent('target-done-sync', {
+            detail: {
+              lectureId: null,
+              activity: target.activity,
+              chapterId: target.chapterId,
             }
           }));
         }

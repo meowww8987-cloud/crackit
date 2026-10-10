@@ -19,11 +19,12 @@ interface Props {
 
 // Activity config with colors + icons
 const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof BookOpen; color: string; label: string }> = {
-  Lecture:  { icon: BookOpen,   color: '#3b82f6', label: 'Lecture' },
-  DPP:      { icon: FileText,   color: '#f59e0b', label: 'DPP' },
-  Notes:    { icon: StickyNote, color: '#a855f7', label: 'Notes' },
-  Revision: { icon: RefreshCw,  color: '#22c55e', label: 'Revision' },
-  Custom:   { icon: Star,       color: '#6b7280', label: 'Custom' },
+  Lecture:   { icon: BookOpen,   color: '#3b82f6', label: 'Lecture' },
+  DPP:       { icon: FileText,   color: '#f59e0b', label: 'DPP' },
+  Notes:     { icon: StickyNote, color: '#a855f7', label: 'Notes' },
+  Revision:  { icon: RefreshCw,  color: '#22c55e', label: 'Revision' },
+  Assignment:{ icon: FileText,   color: '#7c3aed', label: 'Assignment' },
+  Custom:    { icon: Star,       color: '#6b7280', label: 'Custom' },
 };
 const ACTIVITIES = Object.keys(ACTIVITY_CONFIG) as ActivityType[];
 
