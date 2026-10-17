@@ -12,7 +12,7 @@ import { FlipTimer } from '@/components/timer/FlipTimer';
 import { useRoutine } from '@/lib/store/routine';
 
 export function FocusTimer() {
-  const { active, pause, resume, toggleWasting, stop, setFocusOpen, bumpInteraction, setWidgetHidden } = useSession();
+  const { active, pause, resume, toggleWasting, stop, setFocusOpen, bumpInteraction, setWidgetHidden, tick } = useSession();
   const toggleTargetDone = useTargets((s) => s.toggleDone);
   const settings = useSettings();
   // === FIX #23: Removed dead partner imports ===
@@ -81,13 +81,22 @@ export function FocusTimer() {
   // The timer shows M:SS or H:MM:SS — 1s resolution is sufficient.
   // 500ms caused ~7200 re-renders/hour; 1000ms cuts that in half.
   // === HEAT FIX: Skip tick when tab hidden — timer state is Date-diff based ===
+  // === BUG FIX: Also call session.tick() so the periodic commit (every 60s)
+  //     fires during FocusTimer use. Previously, AppShell's tick was stopped
+  //     while focusOpen=true, so no commit ever happened — meaning all study
+  //     time lived only in the (un-persisted) lastResumeAt delta. If the app
+  //     was killed without firing pagehide/markAway, that time was lost and
+  //     the timer showed 0 on restore. ===
   useEffect(() => {
     const i = setInterval(() => {
       if (document.hidden) return; // Skip — will catch up on return
       setTick((t) => t + 1);
+      // Drive the session store's periodic commit + waste-detection logic.
+      // This is a no-op when no session is active.
+      try { tick(); } catch {}
     }, dimmed ? 5000 : 1000);
     return () => clearInterval(i);
-  }, [dimmed]);
+  }, [dimmed, tick]);
 
   // === Hysteresis-based angle computation ===
   // Uses the CURRENT orientation state to decide which threshold to apply.

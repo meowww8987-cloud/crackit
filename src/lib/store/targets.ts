@@ -4,10 +4,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Target, Subject, ActivityType } from '@/lib/types';
 import { todayKey, uid, isToday } from '@/lib/utils';
-
-// NOTE: useLearnedTime is imported lazily inside addTarget() to avoid any
-// potential module loading order issues. The import is done via a cached
-// dynamic require pattern that's safe for both SSR and client.
+import { recordSessionTime } from './learnedTime';
 
 interface TargetsStore {
   // keyed by date string YYYY-MM-DD
@@ -47,19 +44,18 @@ export const useTargets = create<TargetsStore>()(
         // (subject + activity), we remember it. Next time the user adds a target
         // with the same subject + activity, the expected time auto-fills.
         //
-        // FIX: Use recordSessionTime() — single write path through Zustand.
-        // Previous code wrote to localStorage directly, causing a race with
-        // Zustand persist's async hydration (which overwrote our writes).
+        // FIX: Use a static ES import instead of require() — require() is
+        // forbidden in Next.js client bundles and was throwing at runtime
+        // when adding a target from the Study tab. recordSessionTime is safe
+        // to import at module top (no circular dep — learnedTime imports
+        // nothing from targets).
         if (t.expectedMinutes >= 5 && t.expectedMinutes <= 240) {
           try {
-            const { recordSessionTime } = require('./learnedTime');
-            if (recordSessionTime) {
-              recordSessionTime(
-                t.subject as Subject,
-                t.activity as ActivityType,
-                t.expectedMinutes * 60 // recordSessionTime expects seconds
-              );
-            }
+            recordSessionTime(
+              t.subject as Subject,
+              t.activity as ActivityType,
+              t.expectedMinutes * 60 // recordSessionTime expects seconds
+            );
           } catch {}
         }
 

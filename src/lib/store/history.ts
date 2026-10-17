@@ -4,9 +4,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { SavedSession, Subject, ActivityType } from '@/lib/types';
 import { todayKey, isSameDay } from '@/lib/utils';
-
-// NOTE: useLearnedTime is imported lazily inside addSession() to avoid any
-// potential module loading order issues.
+import { recordSessionTime } from './learnedTime';
 
 interface HistoryStore {
   sessions: SavedSession[];
@@ -71,14 +69,11 @@ export const useHistory = create<HistoryStore>()(
               if (activity) {
                 // Single write path — Zustand state update triggers persist → localStorage
                 try {
-                  const { recordSessionTime } = require('./learnedTime');
-                  if (recordSessionTime) {
-                    recordSessionTime(
-                      s.subject as Subject,
-                      activity,
-                      s.studySeconds
-                    );
-                  }
+                  recordSessionTime(
+                    s.subject as Subject,
+                    activity,
+                    s.studySeconds
+                  );
                 } catch {}
               }
             }

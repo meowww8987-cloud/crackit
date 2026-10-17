@@ -427,9 +427,20 @@ export const useSession = create<SessionStore>()(
         // === PERIODIC COMMIT ===
         // Every ~60 seconds, commit inflight study time to persisted state
         // so it's not lost if the app is killed without firing pagehide/freeze.
+        // === BUG FIX: Previous check `inflight % 60 === 0` was fragile — if a
+        //     tick was skipped (e.g. due to JS event loop congestion) and
+        //     inflight went 59 → 61, the commit at 60 was missed entirely and
+        //     the next commit wouldn't fire until inflight hit 120. Worse, if
+        //     the AppShell tick was stopped (FocusTimer mode) and only the
+        //     FocusTimer's local tick was running, that tick never called
+        //     session.tick() — so no commit EVER happened, all study time
+        //     lived in the unpersisted lastResumeAt delta, and a sudden
+        //     app kill would lose everything (timer showed 0 on restore).
+        //     Now: commit whenever inflight >= 60, then reset lastResumeAt
+        //     to now so the next commit is ~60s later. ===
         if (s.lastResumeAt && !s.wasting) {
           const inflight = Math.floor((now - s.lastResumeAt) / 1000);
-          if (inflight > 0 && inflight % 60 === 0) {
+          if (inflight >= 60) {
             const committed = commitInflight(s);
             set({ active: committed });
           }
