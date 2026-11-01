@@ -63,10 +63,6 @@ export function FocusTimer() {
   //   270° = landscape (rotated 90° CCW — home button on right)
   const [orientationAngle, setOrientationAngle] = useState(0);
   const orientationAngleRef = useRef(0);
-  // Smoothed sensor values (low-pass filter state)
-  const smoothedGammaRef = useRef(0);
-  const smoothedBetaRef = useRef(0);
-  const sensorInitializedRef = useRef(false);
   // Temporary lock (double-tap rotate button) — only for current session.
   const [tempLockAngle, setTempLockAngle] = useState<number | null>(null);
   // Lock button state
@@ -77,69 +73,28 @@ export function FocusTimer() {
   const lastInteractRef = useRef(Date.now());
 
   // Live ticking — 1000ms normally, 5s when dimmed (saves CPU on low-end devices)
-  // === FIX #21: Changed from 500ms to 1000ms ===
-  // The timer shows M:SS or H:MM:SS — 1s resolution is sufficient.
-  // 500ms caused ~7200 re-renders/hour; 1000ms cuts that in half.
-  // === HEAT FIX: Skip tick when tab hidden — timer state is Date-diff based ===
-  // === BUG FIX: Also call session.tick() so the periodic commit (every 60s)
-  //     fires during FocusTimer use. Previously, AppShell's tick was stopped
-  //     while focusOpen=true, so no commit ever happened — meaning all study
-  //     time lived only in the (un-persisted) lastResumeAt delta. If the app
-  //     was killed without firing pagehide/markAway, that time was lost and
-  //     the timer showed 0 on restore. ===
   useEffect(() => {
     const i = setInterval(() => {
       if (document.hidden) return; // Skip — will catch up on return
       setTick((t) => t + 1);
       // Drive the session store's periodic commit + waste-detection logic.
-      // This is a no-op when no session is active.
       try { tick(); } catch {}
     }, dimmed ? 5000 : 1000);
     return () => clearInterval(i);
   }, [dimmed, tick]);
 
-  // === Hysteresis-based angle computation ===
-  // Uses the CURRENT orientation state to decide which threshold to apply.
-  //
-  // AGGRESSIVE HYSTERESIS (user-requested v2.21.1):
-  //   - To ENTER landscape: tilt past 75° (nearly horizontal)
-  //   - To EXIT back to portrait: tilt back past 15° (nearly vertical)
-  //   - Gap = 60° — once in landscape, it's effectively LOCKED until the user
-  //     deliberately rotates the phone almost fully back to vertical.
-  //   - This eliminates ALL accidental flips from wrist movement, bed reading,
-  //     or slight tilts. The user must make a deliberate 75° rotation to change.
-  const computeAngleHysteresis = useCallback((gamma: number, beta: number, currentAngle: number): number => {
-    const isCurrentlyPortrait = currentAngle === 0 || currentAngle === 180;
-    const LANDSCAPE_ENTER = 75;   // must tilt past 75° to enter landscape (nearly horizontal)
-    const LANDSCAPE_EXIT = 15;    // must tilt back below 15° to return to portrait (nearly vertical)
-
-    if (isCurrentlyPortrait) {
-      // Currently portrait — need MAJOR tilt (75°+) to switch to landscape
-      if (gamma > LANDSCAPE_ENTER) return 270;  // tilt right → 270
-      if (gamma < -LANDSCAPE_ENTER) return 90;   // tilt left → 90
-      // Still portrait — use beta for 0 vs 180
-      if (beta < -45 || beta > 135) return 180;
-      return 0;
-    } else {
-      // Currently landscape — LOCKED until user tilts almost fully back to vertical (< 15°)
-      if (Math.abs(gamma) < LANDSCAPE_EXIT) {
-        // Returned to near-vertical → portrait
-        if (beta < -45 || beta > 135) return 180;
-        return 0;
-      }
-      // Still in landscape — stay locked in current landscape orientation
-      if (gamma > 0) return 270;
-      return 90;
-    }
-  }, []);
-
   // The EFFECTIVE angle: if locked, use the lock value. Otherwise use auto-detected.
   const effectiveAngle = tempLockAngle ?? settings.lockedOrientation ?? orientationAngle;
 
-  // === Orientation detection effect ===
+  // === Orientation detection — viewport-based, NOT sensor-based ===
+  // Replaces the old deviceorientation sensor approach which caused severe
+  // landscape layout bugs (rotated portrait-sized div had only ~390px for
+  // flex row → controls squeezed → buttons cut off → rotate invisible).
+  //
+  // Now: just detect if the viewport is landscape (innerWidth > innerHeight).
+  // The browser handles the actual rotation. No manual CSS rotation needed.
+  // Listen to resize + orientationchange to update on rotate.
   useEffect(() => {
-    // Skip orientation detection when dimmed (saves 60Hz sensor polling)
-    if (dimmed) return;
     const lockAngle = tempLockAngle ?? settings.lockedOrientation;
     if (lockAngle !== null && lockAngle !== undefined) {
       const normalized = ((lockAngle % 360) + 360) % 360;
@@ -148,14 +103,9 @@ export function FocusTimer() {
       return;
     }
 
-    // --- Helper: read current angle from Screen Orientation API (fallback) ---
-    const readScreenAngle = (): number => {
-      if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.angle === 'number') {
-        return screen.orientation.angle;
-      }
-      if (typeof window !== 'undefined' && typeof (window as any).orientation === 'number') {
-        return (window as any).orientation;
-      }
+    const readViewportAngle = (): number => {
+      // 0 = portrait, 90 = landscape. (No 180°/270° — browser handles those
+      // automatically by flipping the viewport, so we always see 0 or 90.)
       return window.innerWidth > window.innerHeight ? 90 : 0;
     };
 
@@ -167,84 +117,23 @@ export function FocusTimer() {
       }
     };
 
-    applyAngle(readScreenAngle());
+    applyAngle(readViewportAngle());
 
-    // --- 1. DeviceOrientationEvent with smoothing + hysteresis ---
-    let deviceOrientationActive = false;
-    // === FIX #22: Throttle deviceorientation to 10Hz (100ms) ===
-    // Sensor fires at ~60Hz — way more than needed. Throttle saves battery.
-    let lastSensorProcessAt = 0;
-    const SENSOR_THROTTLE_MS = 100;
-    const handleDeviceOrientation = (e: DeviceOrientationEvent) => {
-      if (e.gamma == null || e.beta == null) return;
-      deviceOrientationActive = true;
-
-      // Throttle — skip processing if less than 100ms since last process
-      const now = Date.now();
-      if (now - lastSensorProcessAt < SENSOR_THROTTLE_MS) return;
-      lastSensorProcessAt = now;
-
-      // === Layer 3: LOW-PASS SMOOTHING ===
-      // Exponential smoothing: removes ±3-5° sensor jitter.
-      // alpha = 0.15 means 15% of the new reading + 85% of the old.
-      // Result: ~300ms response time, jitter-free.
-      if (!sensorInitializedRef.current) {
-        // First reading — initialize without smoothing
-        smoothedGammaRef.current = e.gamma;
-        smoothedBetaRef.current = e.beta;
-        sensorInitializedRef.current = true;
-      } else {
-        smoothedGammaRef.current = 0.85 * smoothedGammaRef.current + 0.15 * e.gamma;
-        smoothedBetaRef.current = 0.85 * smoothedBetaRef.current + 0.15 * e.beta;
-      }
-
-      const angle = computeAngleHysteresis(
-        smoothedGammaRef.current,
-        smoothedBetaRef.current,
-        orientationAngleRef.current,  // pass current state for hysteresis
-      );
-      applyAngle(angle);
-    };
-
-    try {
-      window.addEventListener('deviceorientation', handleDeviceOrientation, true);
-    } catch {
-      // ignore
-    }
-
-    // --- 2. Fallback: screen.orientation 'change' event ---
-    const handleScreenOrientationChange = () => {
-      if (deviceOrientationActive) return;
-      applyAngle(readScreenAngle());
-    };
-    window.addEventListener('orientationchange', handleScreenOrientationChange);
-    window.addEventListener('resize', handleScreenOrientationChange);
+    const onResize = () => applyAngle(readViewportAngle());
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
     if (typeof screen !== 'undefined' && screen.orientation) {
-      screen.orientation.addEventListener('change', handleScreenOrientationChange);
+      screen.orientation.addEventListener('change', onResize);
     }
-
-    // --- 3. Periodic fallback for first 5s ---
-    let fallbackChecks = 0;
-    const fallbackInterval = setInterval(() => {
-      if (deviceOrientationActive) {
-        clearInterval(fallbackInterval);
-        return;
-      }
-      applyAngle(readScreenAngle());
-      fallbackChecks++;
-      if (fallbackChecks > 5) clearInterval(fallbackInterval);
-    }, 1000);
 
     return () => {
-      window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
-      window.removeEventListener('orientationchange', handleScreenOrientationChange);
-      window.removeEventListener('resize', handleScreenOrientationChange);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
       if (typeof screen !== 'undefined' && screen.orientation) {
-        screen.orientation.removeEventListener('change', handleScreenOrientationChange);
+        screen.orientation.removeEventListener('change', onResize);
       }
-      clearInterval(fallbackInterval);
     };
-  }, [computeAngleHysteresis, tempLockAngle, settings.lockedOrientation, dimmed]);
+  }, [tempLockAngle, settings.lockedOrientation]);
 
   // === Waste flash — shows when returning from background after > 60s away ===
   // === BUG FIX (B3 + B6): Previous effect used `wastedSeconds > lastWastedRef.current + 2`
@@ -307,26 +196,23 @@ export function FocusTimer() {
     return () => clearInterval(i);
   }, [settings.burnProtection, settings.dimDelay, active]);
 
-  // Fullscreen on mount + lock screen orientation + request iOS motion permission.
+  // Fullscreen on mount + request iOS motion permission.
   //
-  // Why lock screen orientation? On Android with auto-rotate ON, the OS rotates
-  // the display when the phone turns. If we ALSO rotate our content (via
-  // deviceorientation), we get a DOUBLE rotation — content appears upside down
-  // or sideways. By locking the screen to 'portrait' (supported in fullscreen on
-  // Fullscreen REMOVED (v2.19.0) — was triggering "press Esc to exit fullscreen"
-  // toast on every focus session start + app return. The FocusTimer is already
-  // CSS position:fixed inset-0 z-[9999] so it visually covers the viewport.
-  // On installed Android PWA, manifest display:fullscreen handles OS-level
-  // fullscreen. screen.orientation.lock still works on Android (no toast).
+  // === ORIENTATION LOCK REMOVED ===
+  // Previously: locked screen to 'portrait' + manually rotated content via
+  // deviceorientation sensor. This caused SEVERE layout bugs in landscape:
+  //   - The content div was always 100vmin × 100vmax (portrait dimensions:
+  //     ~390×844). When rotated 90°, the flex row only had ~390px of pre-rotation
+  //     width → controls `w-full` took all 390px → timer squeezed to 0 → buttons
+  //     overflowed/cut off → rotate button invisible.
+  //   - Double-rotation in browser mode (browser auto-rotates + we also rotate).
+  //
+  // Now: NO orientation lock. The browser handles rotation naturally. When the
+  // phone tilts to landscape, the viewport becomes landscape (innerWidth >
+  // innerHeight), and we lay out content with flexDirection: row using the FULL
+  // viewport width. No manual rotation, no squeezing, no glitches.
   useEffect(() => {
-    const enterFullscreenAndLock = async () => {
-      // Orientation lock — needed so Android stops auto-rotating and we can
-      // handle rotation via gravity sensor. Does NOT trigger a toast.
-      try {
-        if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).lock === 'function') {
-          await (screen.orientation as any).lock('portrait').catch(() => {});
-        }
-      } catch {}
+    const requestMotionPermission = async () => {
       try {
         const anyDeviceOrientation = (window as any).DeviceOrientationEvent;
         if (anyDeviceOrientation && typeof anyDeviceOrientation.requestPermission === 'function') {
@@ -334,16 +220,8 @@ export function FocusTimer() {
         }
       } catch {}
     };
-
-    enterFullscreenAndLock();
-
-    return () => {
-      try {
-        if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).unlock === 'function') {
-          (screen.orientation as any).unlock();
-        }
-      } catch {}
-    };
+    requestMotionPermission();
+    // No cleanup needed — no orientation lock to undo
   }, []);
 
   // Wake Lock — keep screen awake during study session (no auto-lock)
@@ -427,8 +305,10 @@ export function FocusTimer() {
   const isOverTime = active.expectedMinutes ? studySec > active.expectedMinutes * 60 : false;
 
   // === Landscape detection ===
-  // Used to switch to a compact, non-overlapping landscape layout.
-  const isLandscape = effectiveAngle === 90 || effectiveAngle === 270;
+  // Used to switch to a compact landscape layout.
+  // effectiveAngle is now 0 (portrait) or 90 (landscape) — the browser handles
+  // 180°/270° by flipping the viewport, so we always see one of these two.
+  const isLandscape = effectiveAngle === 90;
 
   // Determine state
   const isPaused = active.paused;
@@ -516,90 +396,87 @@ export function FocusTimer() {
         transition: 'background-image 800ms ease-in-out, background-color 800ms ease-in-out',
       }}
     >
-      {/* === FLEX CENTERING WRAPPER ===
-          This div fills the viewport (fixed inset-0) and uses flexbox to
-          CENTER the rotated content div below. The content div is always
-          portrait-shaped (100vmin × 100vmax); flexbox centering ensures
-          its center = viewport center, so the CSS rotation pivots around
-          the viewport center — content stays perfectly framed at all 4 angles. */}
-      <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-      {/* === ROTATED CONTENT DIV ===
-          ALWAYS portrait dimensions: 100vmin (short) × 100vmax (long).
-          vmin/vmax are ORIENTATION-INDEPENDENT — 100vmin is always the
-          shorter screen dimension, 100vmax is always the longer one,
-          regardless of whether the phone is in portrait or landscape.
+      {/* === CONTENT DIV — uses ACTUAL viewport dimensions, NO rotation ===
+          Previous approach: always 100vmin × 100vmax (portrait) + CSS rotation.
+          That caused severe landscape bugs (controls squeezed into ~390px,
+          buttons cut off, rotate invisible).
 
-          The flexbox parent centers this div, so transformOrigin: center
-          rotates around the viewport center. After rotation, the content
-          fills the viewport exactly at all 4 angles.
-
-          LAYOUT ADAPTATION: When the effective angle is 90° or 270°
-          (landscape), the content switches to a ROW layout (timer on
-          left, controls on right) so everything is visible and reachable
-          on a wide landscape screen. In portrait (0°/180°) it stays
-          COLUMN (timer on top, controls on bottom). */}
+          Now: 100vw × 100vh (actual viewport). The browser handles rotation.
+          flexDirection: row for landscape (wide), column for portrait (tall).
+          No transform, no transformOrigin, no rotation math. */}
       <div
         style={{
-          // Always portrait dimensions (short × long)
-          width: '100vmin',
-          height: '100vmax',
+          width: '100vw',
+          height: '100vh',
           display: 'flex',
-          // Landscape (90°/270°) → row layout; Portrait (0°/180°) → column
-          flexDirection: (effectiveAngle === 90 || effectiveAngle === 270) ? 'row' : 'column',
+          flexDirection: isLandscape ? 'row' : 'column',
           alignItems: 'center',
-          justifyContent: (effectiveAngle === 90 || effectiveAngle === 270) ? 'center' : 'space-between',
-          gap: (effectiveAngle === 90 || effectiveAngle === 270) ? '2rem' : undefined,
-          // Landscape: more horizontal padding; Portrait: more vertical padding
-          padding: (effectiveAngle === 90 || effectiveAngle === 270) ? '1.5rem 3rem' : '3rem 1.5rem',
-          // Rotate to match device orientation (or locked angle)
-          transform: `rotate(${effectiveAngle}deg)`,
-          transformOrigin: 'center center',
-          // Smooth transition when angle changes
-          transition: 'transform 0.3s ease',
-          // Background overlay on the ROTATED content div (not the outer div)
-          // so the radial gradient stays circular in all orientations.
-          // The outer div has solid black; this div has the colored overlay.
+          justifyContent: isLandscape ? 'center' : 'space-between',
+          gap: isLandscape ? '1.5rem' : undefined,
+          padding: isLandscape ? '1.5rem 2rem' : '3rem 1.5rem',
           backgroundImage: dimmed ? 'none' : bgOverlay,
           backgroundColor: '#000000',
         }}
       >
-      {/* Wasted time flash — shows when returning from background after > 60s away.
-          Uses FIXED positioning (not absolute) so it fills the ACTUAL viewport
-          regardless of the content div's rotation. The radial-gradient stays
-          a perfect circle in all orientations.
-          === Tap-to-dismiss: pointer-events-auto + onClick. === */}
+      {/* === Waste flash — modern card overlay ===
+          Shows when returning from background after > 60s away.
+          Clean card design with: icon, time, total, and dismiss hint.
+          Tap anywhere to dismiss. Auto-dismisses after 4s. */}
       {wasteFlash !== null && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.3 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
           onClick={dismissWasteFlash}
-          className="fixed inset-0 z-[60] flex flex-col items-center justify-center cursor-pointer"
-          style={{
-            background: 'radial-gradient(circle, rgba(239,68,68,0.25) 0%, rgba(0,0,0,0.95) 70%)',
-          }}
+          className="fixed inset-0 z-[60] flex items-center justify-center cursor-pointer p-6"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
         >
           <motion.div
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="text-center"
+            initial={{ scale: 0.85, y: 20, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.9, y: 10, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+            onClick={(e) => e.stopPropagation()}
+            className="rounded-3xl p-6 max-w-[300px] w-full text-center"
+            style={{
+              background: 'linear-gradient(180deg, rgba(239,68,68,0.15) 0%, rgba(20,20,25,0.98) 100%)',
+              border: '1px solid rgba(239,68,68,0.3)',
+              boxShadow: '0 20px 60px -10px rgba(239,68,68,0.3), 0 0 0 1px rgba(255,255,255,0.05)',
+            }}
           >
-            <div className="text-5xl mb-3">⚠️</div>
-            <div className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">
-              Wasted Time Detected
+            {/* Icon */}
+            <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <AlertTriangle size={24} className="text-red-400" />
             </div>
-            <div className="text-4xl font-bold tabular text-red-400 mb-1">
-              +{Math.floor(wasteFlash / 60) > 0 ? `${Math.floor(wasteFlash / 60)}m ` : ''}{wasteFlash % 60}s
+            {/* Label */}
+            <div className="text-[10px] font-bold text-red-400/80 uppercase tracking-widest mb-2">
+              Welcome Back
             </div>
-            <div className="text-xs text-muted-foreground">
-              Total wasted: {formatHM(wastedSec)}
+            {/* Time wasted this away */}
+            <div className="text-4xl font-black tabular text-white mb-1">
+              {Math.floor(wasteFlash / 60) > 0 ? `${Math.floor(wasteFlash / 60)}m ` : ''}{wasteFlash % 60}s
             </div>
-            <div className="text-[10px] text-muted-foreground/60 mt-3">
-              Timer auto-resumed — tap Pause if you need a break
+            <div className="text-[11px] text-muted-foreground mb-4">
+              {Math.floor(wasteFlash / 60) > 0 ? 'away while studying' : 'seconds distracted'}
             </div>
-            <div className="text-[9px] text-muted-foreground/40 mt-2">tap to dismiss</div>
+            {/* Total wasted */}
+            <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground mb-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <span>Total wasted this session:</span>
+              <span className="font-bold text-red-400/80 tabular">{formatHM(wastedSec)}</span>
+            </div>
+            {/* Resume hint */}
+            <div className="text-[11px] text-foreground/70 mb-3">
+              Study timer auto-resumed
+            </div>
+            {/* Dismiss button */}
+            <button
+              onClick={dismissWasteFlash}
+              className="w-full py-2.5 rounded-xl text-[12px] font-bold text-white transition active:scale-[0.98]"
+              style={{ background: 'rgba(239,68,68,0.8)' }}
+            >
+              Continue Studying
+            </button>
           </motion.div>
         </motion.div>
       )}
@@ -971,67 +848,29 @@ export function FocusTimer() {
                 <ChevronDown size={16} /> Hide
               </button>
               <button
-                onPointerDown={(e) => {
+                onClick={(e) => {
                   e.stopPropagation();
                   handleInteraction();
-                  rotateLongPressRef.current = setTimeout(() => {
-                    const isCurrentlyLocked = settings.lockedOrientation !== null;
-                    if (isCurrentlyLocked) {
-                      settings.set('lockedOrientation', null);
-                      setTempLockAngle(null);
-                      setLockToast('🔓 Orientation unlocked — auto-rotate on');
-                      vibrate([10, 30, 10]);
-                    } else {
-                      settings.set('lockedOrientation', effectiveAngle);
-                      setLockToast(`🔒 Locked at ${effectiveAngle}°`);
-                      vibrate([10, 30, 10, 30, 50]);
+                  vibrate(8);
+                  // Toggle between portrait and landscape via Screen Orientation API.
+                  // In browser mode this may not work (orientation lock requires fullscreen/PWA),
+                  // but the user can always just rotate their phone physically.
+                  try {
+                    if (screen.orientation) {
+                      const target = isLandscape ? 'portrait' : 'landscape';
+                      (screen.orientation as any).lock?.(target).catch(() => {});
                     }
-                    setTimeout(() => setLockToast(null), 2500);
-                    rotateLongPressRef.current = null;
-                  }, 500);
-                }}
-                onPointerUp={(e) => {
-                  e.stopPropagation();
-                  if (rotateLongPressRef.current === null) return;
-                  clearTimeout(rotateLongPressRef.current);
-                  rotateLongPressRef.current = null;
-                  window.dispatchEvent(new Event('neet-rotate-tap'));
-                  const now = Date.now();
-                  const isDoubleTap = now - lastRotateTapRef.current < 300;
-                  lastRotateTapRef.current = now;
-                  if (isDoubleTap) {
-                    if (tempLockAngle !== null) {
-                      setTempLockAngle(null);
-                      setLockToast('🔓 Temp lock released');
-                      vibrate([10, 30]);
-                    } else if (settings.lockedOrientation === null) {
-                      setTempLockAngle(effectiveAngle);
-                      setLockToast(`⏸ Temp locked at ${effectiveAngle}°`);
-                      vibrate([10, 30]);
-                    }
-                    setTimeout(() => setLockToast(null), 2000);
-                  } else {
-                    if (settings.lockedOrientation !== null) settings.set('lockedOrientation', null);
-                    if (tempLockAngle !== null) setTempLockAngle(null);
-                    setOrientationAngle((prev) => (prev + 90) % 360);
-                    vibrate(8);
-                  }
-                }}
-                onPointerLeave={() => {
-                  if (rotateLongPressRef.current) {
-                    clearTimeout(rotateLongPressRef.current);
-                    rotateLongPressRef.current = null;
-                  }
+                  } catch {}
+                  // Also update our local state for instant visual feedback
+                  setOrientationAngle(isLandscape ? 0 : 90);
+                  if (settings.lockedOrientation !== null) settings.set('lockedOrientation', null);
+                  if (tempLockAngle !== null) setTempLockAngle(null);
                 }}
                 className="py-3 rounded-xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
-                title={`Rotate (current: ${effectiveAngle}°${settings.lockedOrientation !== null ? ' · locked' : ''}${tempLockAngle !== null ? ' · temp-locked' : ''})`}
-                aria-label="Rotate or lock orientation"
+                title={isLandscape ? 'Switch to portrait' : 'Switch to landscape'}
+                aria-label="Toggle orientation"
               >
-                {(settings.lockedOrientation !== null || tempLockAngle !== null) ? (
-                  <Lock size={18} className="text-amber-400" style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
-                ) : (
-                  <RotateCw size={18} style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
-                )}
+                <RotateCw size={18} />
               </button>
             </div>
           </>
@@ -1116,117 +955,32 @@ export function FocusTimer() {
           </button>
           {/* Orientation rotate + lock button (portrait). */}
           <button
-            onPointerDown={(e) => {
+            onClick={(e) => {
               e.stopPropagation();
               handleInteraction();
-              // Start long-press timer
-              rotateLongPressRef.current = setTimeout(() => {
-                // Long-press fired → toggle persistent lock
-                const isCurrentlyLocked = settings.lockedOrientation !== null;
-                if (isCurrentlyLocked) {
-                  // Unlock
-                  settings.set('lockedOrientation', null);
-                  setTempLockAngle(null);
-                  setLockToast('🔓 Orientation unlocked — auto-rotate on');
-                  vibrate([10, 30, 10]);
-                } else {
-                  // Lock at current effective angle
-                  settings.set('lockedOrientation', effectiveAngle);
-                  setLockToast(`🔒 Orientation locked at ${effectiveAngle}° — stays even after restart`);
-                  vibrate([10, 30, 10, 30, 50]);
+              vibrate(8);
+              // Toggle between portrait and landscape via Screen Orientation API
+              try {
+                if (screen.orientation) {
+                  const target = isLandscape ? 'portrait' : 'landscape';
+                  (screen.orientation as any).lock?.(target).catch(() => {});
                 }
-                setTimeout(() => setLockToast(null), 2500);
-                rotateLongPressRef.current = null;
-              }, 500);
-            }}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              // If long-press already fired, do nothing
-              if (rotateLongPressRef.current === null) return;
-              // Cancel long-press
-              clearTimeout(rotateLongPressRef.current);
-              rotateLongPressRef.current = null;
-              // Dispatch custom event for RotateHintToast to count taps
-              window.dispatchEvent(new Event('neet-rotate-tap'));
-              // Detect double-tap
-              const now = Date.now();
-              const isDoubleTap = now - lastRotateTapRef.current < 300;
-              lastRotateTapRef.current = now;
-              if (isDoubleTap) {
-                // Double-tap → toggle temporary lock
-                if (tempLockAngle !== null) {
-                  setTempLockAngle(null);
-                  setLockToast('🔓 Temporary lock released');
-                  vibrate([10, 30]);
-                } else if (settings.lockedOrientation === null) {
-                  // Only set temp lock if not already persistently locked
-                  setTempLockAngle(effectiveAngle);
-                  setLockToast(`⏸ Temporarily locked at ${effectiveAngle}° (double-tap to release)`);
-                  vibrate([10, 30]);
-                }
-                setTimeout(() => setLockToast(null), 2000);
-              } else {
-                // Single tap → cycle angle by 90°
-                // If currently locked (persistent or temp), unlock first then cycle
-                if (settings.lockedOrientation !== null) {
-                  settings.set('lockedOrientation', null);
-                }
-                if (tempLockAngle !== null) {
-                  setTempLockAngle(null);
-                }
-                setOrientationAngle((prev) => (prev + 90) % 360);
-                vibrate(8);
-              }
-            }}
-            onPointerLeave={() => {
-              if (rotateLongPressRef.current) {
-                clearTimeout(rotateLongPressRef.current);
-                rotateLongPressRef.current = null;
-              }
+              } catch {}
+              setOrientationAngle(isLandscape ? 0 : 90);
+              if (settings.lockedOrientation !== null) settings.set('lockedOrientation', null);
+              if (tempLockAngle !== null) setTempLockAngle(null);
             }}
             className="px-5 py-4 min-w-[56px] rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
-            title={`Rotate (current: ${effectiveAngle}°${settings.lockedOrientation !== null ? ' · locked' : ''}${tempLockAngle !== null ? ' · temp-locked' : ''})\n• Tap: rotate 90°\n• Double-tap: temp lock\n• Long-press: persistent lock`}
-            aria-label="Rotate or lock orientation"
+            title={isLandscape ? 'Switch to portrait' : 'Switch to landscape'}
+            aria-label="Toggle orientation"
           >
-            {/* Show Lock icon when locked, RotateCw when unlocked */}
-            {/* === FIX #33: Bigger touch target + larger icon === */}
-            {(settings.lockedOrientation !== null || tempLockAngle !== null) ? (
-              <Lock
-                size={20}
-                className="text-amber-400"
-                style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }}
-              />
-            ) : (
-              <RotateCw
-                size={20}
-                style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }}
-              />
-            )}
+            <RotateCw size={20} />
           </button>
-
-          {/* Lock toast — shows briefly when lock state changes */}
-          <AnimatePresence>
-            {lockToast && (
-              <motion.div
-                initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                className="absolute bottom-32 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-xl bg-black/90 border border-border text-white text-xs font-semibold whitespace-nowrap z-50 pointer-events-none"
-              >
-                {lockToast}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Rotate hint — shows when user taps rotate multiple times.
-              Has "Got it" (dismiss) and "Don't show again" (permanent dismiss
-              via localStorage). Reappears if user struggles again (taps rotate
-              5+ times in a session after dismissing with "Got it"). */}
+          {/* Rotate hint — removed (rotate button is now a simple toggle) */}
           <RotateHintToast />
         </div>
         </>
         )}
-      </div>
       </div>
       </div>
 
