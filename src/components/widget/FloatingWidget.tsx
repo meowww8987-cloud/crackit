@@ -1,7 +1,7 @@
 'use client';
 // === FIX: removed unused imports (useVisibility/useReducedMotion were
 //     imported but never used — dead code) ===
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, useMotionValue } from 'framer-motion';
 import { Maximize2, EyeOff, Pause, Play, Square, CheckCircle2 } from 'lucide-react';
 import { useSession, getLiveStudySeconds, getLiveWastedSeconds } from '@/lib/store/session';
@@ -25,51 +25,117 @@ export function FloatingWidget() {
   const x = useMotionValue(typeof window !== 'undefined' ? window.innerWidth - 210 : 100);
   const y = useMotionValue(typeof window !== 'undefined' ? window.innerHeight - 280 : 100);
 
-  // === FIX (widget disappears after rotating the phone) ===
-  // The position was computed ONCE at mount (window.innerWidth - 210). When the
-  // viewport later changes size — phone rotated landscape→portrait, split screen,
-  // returning from background — the widget kept its old coordinates. A widget
-  // parked at x≈630 in a 844px-wide landscape viewport lands 240px PAST the right
-  // edge of a 390px-wide portrait viewport → completely off-screen and invisible.
-  // The user reported this as "the floating widget disappeared".
+  // === FIX (widget stays off-screen after Hide in landscape → rotate to portrait) ===
+  // What the user's video showed: tap "Hide" on the landscape full-screen timer
+  // → widget mounts at landscape coordinates (x = landscapeWidth - 210 ≈ 630) →
+  // phone rotates to portrait (width ≈ 390) → the widget is 240px PAST the right
+  // edge — completely invisible — and it NEVER came back.
   //
-  // Fix: on every viewport change, re-clamp the position into the new bounds.
-  // An in-bounds widget is never moved (no surprise jumps) — only one that would
-  // end up (partially) off-screen is pulled back to the nearest safe edge,
-  // matching the snap margins used at drag-end (20px right / 180px bottom).
-  useEffect(() => {
+  // Root cause: the ONLY re-clamp triggers were resize-family events. On real
+  // phones the first `resize` after a rotation can fire while window.innerWidth
+  // still reports the OLD (pre-rotation) value. The clamp then believes the
+  // widget is "in bounds" for a viewport that no longer exists and does nothing.
+  // If no further resize event follows, nothing ever re-clamps → widget lost
+  // off-screen until the next rotation.
+  //
+  // Fix — four INDEPENDENT clamp layers, so no single browser quirk can strand
+  // the widget:
+  //   1. Event triggers (resize / orientationchange / screen.orientation /
+  //      visibilitychange / pageshow) — each one re-checks again on the next
+  //      animation frames and after short timeouts, which heals the
+  //      stale-dimension case (fresh dimensions settle a frame or two after
+  //      the event fires).
+  //   2. visualViewport 'resize' — reliable on mobile, also covers URL-bar
+  //      and keyboard viewport changes.
+  //   3. ResizeObserver on <html> — fires AFTER layout settles, so the
+  //      dimensions read inside it are always fresh.
+  //   4. Clamp on EVERY render — the widget re-renders every second (live
+  //      ticking) while visible, so even if ALL events fail the widget
+  //      re-enters the screen by itself within ~1 second.
+  //
+  // An in-bounds widget is never moved (no surprise jumps) — only one that
+  // would end up (partially) off-screen is pulled back to the nearest safe
+  // edge, matching the snap margins used at drag-end (20px right / 180px
+  // bottom).
+  const clampToViewport = useCallback(() => {
     const WIDGET_W = 184;
-    const reclamp = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      const maxX = Math.max(0, w - WIDGET_W - 20); // same 20px margin as snap
-      const maxY = Math.max(0, h - 180);          // same bottom margin as snap
-      const cx = x.get();
-      const cy = y.get();
-      const nx = cx > maxX ? maxX : Math.max(0, cx);
-      const ny = cy > maxY ? maxY : Math.max(0, cy);
-      if (nx !== cx) x.set(nx);
-      if (ny !== cy) y.set(ny);
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const maxX = Math.max(0, w - WIDGET_W - 20); // same 20px margin as snap
+    const maxY = Math.max(0, h - 180);          // same bottom margin as snap
+    const cx = x.get();
+    const cy = y.get();
+    const nx = cx > maxX ? maxX : Math.max(0, cx);
+    const ny = cy > maxY ? maxY : Math.max(0, cy);
+    if (nx !== cx) x.set(nx);
+    if (ny !== cy) y.set(ny);
+  }, [x, y]);
+
+  // Layers 1–3: event-driven clamping with stale-dimension self-healing.
+  useEffect(() => {
+    let raf1 = 0;
+    let raf2 = 0;
+    let t1: ReturnType<typeof setTimeout> | undefined;
+    let t2: ReturnType<typeof setTimeout> | undefined;
+    // Clamp now + again on the next frames + after short timeouts. Costs a few
+    // no-ops when dimensions were already fresh; saves the widget when they weren't.
+    const trigger = () => {
+      clampToViewport();
+      cancelAnimationFrame(raf1);
+      raf1 = requestAnimationFrame(() => {
+        clampToViewport();
+        cancelAnimationFrame(raf2);
+        raf2 = requestAnimationFrame(clampToViewport);
+      });
+      clearTimeout(t1); t1 = setTimeout(clampToViewport, 150);
+      clearTimeout(t2); t2 = setTimeout(clampToViewport, 400);
     };
-    reclamp(); // also covers mount (no-op when already in bounds)
-    window.addEventListener('resize', reclamp);
-    window.addEventListener('orientationchange', reclamp);
+
+    window.addEventListener('resize', trigger);
+    window.addEventListener('orientationchange', trigger);
     if (typeof screen !== 'undefined' && screen.orientation) {
-      screen.orientation.addEventListener('change', reclamp);
+      screen.orientation.addEventListener('change', trigger);
     }
-    const onVis = () => { if (!document.hidden) reclamp(); };
+    // Layer 2: visualViewport (fires for rotation + URL bar + keyboard)
+    window.visualViewport?.addEventListener('resize', trigger);
+    // Layer 3: ResizeObserver on <html> — always fires AFTER layout settles
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => trigger());
+      ro.observe(document.documentElement);
+    }
+    const onVis = () => { if (!document.hidden) trigger(); };
     document.addEventListener('visibilitychange', onVis);
     window.addEventListener('pageshow', onVis);
+
+    trigger(); // also covers mount (no-op when already in bounds)
+
     return () => {
-      window.removeEventListener('resize', reclamp);
-      window.removeEventListener('orientationchange', reclamp);
+      window.removeEventListener('resize', trigger);
+      window.removeEventListener('orientationchange', trigger);
       if (typeof screen !== 'undefined' && screen.orientation) {
-        screen.orientation.removeEventListener('change', reclamp);
+        screen.orientation.removeEventListener('change', trigger);
       }
+      window.visualViewport?.removeEventListener('resize', trigger);
+      ro?.disconnect();
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('pageshow', onVis);
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      clearTimeout(t1);
+      clearTimeout(t2);
     };
-  }, [x, y]);
+  }, [clampToViewport]);
+
+  // Layer 4: clamp on EVERY render. The widget re-renders every second while
+  // visible (live ticking), so this is the safety net that guarantees the
+  // widget can never stay off-screen for more than ~1s, even if every event
+  // listener above fails to fire. Skipped mid-drag so it never fights the
+  // finger (the drag handler already clamps to bounds itself).
+  useEffect(() => {
+    if (dragging) return;
+    clampToViewport();
+  });
 
   // Live ticking — skip when widget is hidden (saves CPU on low-end devices)
   // === HEAT FIX: Also skip when tab is hidden ===
