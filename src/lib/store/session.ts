@@ -150,13 +150,39 @@ export const useSession = create<SessionStore>()(
 
       toggleWasting: () => {
         const s = get().active;
-        if (!s || s.paused) return;
+        if (!s) return;
         const now = Date.now();
+
+        // === If paused, auto-resume first then start wasting ===
+        // Previous behaviour: silently returned (button looked tappable but
+        // did nothing). Now: if the user taps "Got Distracted" while paused,
+        // we resume the session AND enter wasting mode in one step. This is
+        // the intuitive behaviour — "I was on break, now I'm distracted".
+        if (s.paused) {
+          // Resume + start wasting simultaneously
+          set({
+            active: {
+              ...s,
+              paused: false,
+              wasting: true,
+              lastResumeAt: null,
+              lastWasteStart: now,
+              lastWasteThreshold: 0,
+              wasteBoutStartSeconds: s.wastedSeconds,
+            },
+            lastInteractionAt: now,
+          });
+          vibrate(20);
+          return;
+        }
+
         if (s.wasting) {
           // === Switch back to studying ===
           // Manual waste has NO CAP — the user explicitly said "I'm distracted",
           // so we count the full duration they were in wasting mode. (Auto-detect
           // away time is still capped at 5 min, but that's a different path.)
+          // The 15-MIN AUTO-RESUME safety net (in tick()) prevents catastrophic
+          // waste if the user forgets to tap "Back to Study".
           const wasteDelta = s.lastWasteStart
             ? Math.floor((now - s.lastWasteStart) / 1000)
             : 0;
@@ -441,13 +467,37 @@ export const useSession = create<SessionStore>()(
 
         const now = Date.now();
         if (s.wasting && s.lastWasteStart) {
+          // === 15-MIN AUTO-RESUME SAFETY NET ===
+          // If the user tapped "Got Distracted" and forgot to tap "Back to Study"
+          // for 15 minutes, auto-resume studying. This prevents catastrophic
+          // waste accumulation (e.g. 2 hours of waste from forgetting) which
+          // would destroy the session stats. 15 min is enough for a real break
+          // (bathroom, quick snack) but short enough to prevent stat corruption.
+          const MAX_MANUAL_WASTE_SEC = 15 * 60; // 15 minutes
+          const elapsed = Math.floor((now - s.lastWasteStart) / 1000);
+          if (elapsed >= MAX_MANUAL_WASTE_SEC) {
+            // Auto-resume: commit the waste (capped at 15 min), start studying
+            const cappedWaste = Math.min(MAX_MANUAL_WASTE_SEC, elapsed);
+            set({
+              active: {
+                ...s,
+                wasting: false,
+                wastedSeconds: s.wastedSeconds + cappedWaste,
+                lastWasteStart: null,
+                lastResumeAt: now,
+                lastWasteThreshold: 0,
+              },
+            });
+            vibrate([10, 30, 10]);
+            return;
+          }
+
           // === Vibration: fire at 30s/60s/90s... of THIS BOUT (not cumulative) ===
           // Previous logic used `totalWasted = wastedSeconds + elapsed` which meant
           // the second bout's first vibration fired immediately (because totalWasted
           // was already > 30 from the first bout). Now we use `elapsed` (inflight
           // waste in current bout) relative to bout start, so each bout vibrates
           // at 30s, 60s, 90s of THAT bout.
-          const elapsed = Math.floor((now - s.lastWasteStart) / 1000);
           const settings = useSettings.getState();
           if (settings.haptics && elapsed >= (s.lastWasteThreshold + 1) * 30) {
             vibrate(30);

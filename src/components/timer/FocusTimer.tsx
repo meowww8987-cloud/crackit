@@ -778,7 +778,7 @@ export function FocusTimer() {
             <span><span aria-hidden="true">⏸</span> PAUSED</span>
           ) : isWasting ? (
             // FIX #7: pulse-fast back but gentler (1.8s opacity-only, was 0.9s with scale)
-            <span className={cn('pulse-fast', dimmed && '!animate-none')}>⚠ WASTING TIME — tap to resume</span>
+            <span className={cn('pulse-fast', dimmed && '!animate-none')}>⚠ DISTRACTED — tap Back to Study</span>
           ) : (
             // FIX #35: pulse-slow stays alive — gentle breathing always on
             // FIX #25: Disabled when reduceAnimations is on
@@ -933,7 +933,7 @@ export function FocusTimer() {
                 )}
               >
                 {isWasting ? (
-                  <><Play size={16} fill="currentColor" /> Resume Study</>
+                  <><Play size={16} fill="currentColor" /> Back to Study</>
                 ) : (
                   <><AlertTriangle size={16} /> Distracted</>
                 )}
@@ -1052,7 +1052,7 @@ export function FocusTimer() {
           {isPaused ? <><Play size={18} fill="currentColor" /> Resume</> : <><Pause size={18} fill="currentColor" /> Pause</>}
         </button>
 
-        {/* Wasting toggle */}
+        {/* Wasting toggle — works even when paused (auto-resumes + starts wasting) */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -1067,7 +1067,7 @@ export function FocusTimer() {
           )}
         >
           {isWasting ? (
-            <><Play size={18} fill="currentColor" /> Resume Study</>
+            <><Play size={18} fill="currentColor" /> Back to Study</>
           ) : (
             // === FIX #27: Softer wording — less accusatory ===
             <><AlertTriangle size={18} /> Got Distracted</>
