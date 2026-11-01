@@ -224,22 +224,31 @@ export function FocusTimer() {
     return () => clearInterval(i);
   }, [settings.burnProtection, settings.dimDelay, active]);
 
-  // Fullscreen on mount + request iOS motion permission.
+  // === Orientation lifecycle: unlock on mount, restore portrait on unmount ===
   //
-  // === ORIENTATION LOCK REMOVED ===
-  // Previously: locked screen to 'portrait' + manually rotated content via
-  // deviceorientation sensor. This caused SEVERE layout bugs in landscape:
-  //   - The content div was always 100vmin × 100vmax (portrait dimensions:
-  //     ~390×844). When rotated 90°, the flex row only had ~390px of pre-rotation
-  //     width → controls `w-full` took all 390px → timer squeezed to 0 → buttons
-  //     overflowed/cut off → rotate button invisible.
-  //   - Double-rotation in browser mode (browser auto-rotates + we also rotate).
+  // The main app (AppShell, tabs, sheets) is PORTRAIT-ONLY — its layouts are not
+  // optimized for landscape. ONLY the FocusTimer full-screen is allowed to rotate
+  // to landscape (for desk-study with the phone sideways).
   //
-  // Now: NO orientation lock. The browser handles rotation naturally. When the
-  // phone tilts to landscape, the viewport becomes landscape (innerWidth >
-  // innerHeight), and we lay out content with flexDirection: row using the FULL
-  // viewport width. No manual rotation, no squeezing, no glitches.
+  // Lifecycle:
+  //   Mount (FocusTimer opens):   unlock() → free rotation allowed (portrait + landscape)
+  //   Unmount (FocusTimer hides/stops/dones): lock('portrait') → main app back to portrait
+  //
+  // This fixes: "hide from FocusTimer → screen stays in landscape → main app broken".
+  // Now hiding the timer always restores portrait for the rest of the app.
+  //
+  // NOTE: screen.orientation.lock() only works in fullscreen/PWA mode. In a
+  // regular browser tab it fails silently and the browser follows the phone's
+  // physical orientation — acceptable fallback.
   useEffect(() => {
+    // === Mount: unlock orientation — allow free rotation while in FocusTimer ===
+    try {
+      if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).unlock === 'function') {
+        (screen.orientation as any).unlock();
+      }
+    } catch {}
+
+    // Request iOS motion permission (harmless on Android/desktop)
     const requestMotionPermission = async () => {
       try {
         const anyDeviceOrientation = (window as any).DeviceOrientationEvent;
@@ -249,7 +258,15 @@ export function FocusTimer() {
       } catch {}
     };
     requestMotionPermission();
-    // No cleanup needed — no orientation lock to undo
+
+    // === Unmount: lock back to PORTRAIT so the main app is never in landscape ===
+    return () => {
+      try {
+        if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).lock === 'function') {
+          (screen.orientation as any).lock('portrait').catch(() => {});
+        }
+      } catch {}
+    };
   }, []);
 
   // Wake Lock — keep screen awake during study session (no auto-lock)

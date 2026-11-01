@@ -199,6 +199,20 @@ export function AppShell() {
     useSession.getState().restoreSession();
   }, []);
 
+  // === PORTRAIT LOCK for the main app ===
+  // The main app (tabs, sheets, cards) is PORTRAIT-ONLY — layouts are not
+  // optimized for landscape. ONLY the FocusTimer full-screen is allowed to
+  // rotate (it unlocks on mount and re-locks portrait on unmount).
+  // This lock runs on app mount so the app never starts or stays in landscape.
+  // NOTE: only works in fullscreen/PWA mode; silently no-ops in browser tabs.
+  useEffect(() => {
+    try {
+      if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).lock === 'function') {
+        (screen.orientation as any).lock('portrait').catch(() => {});
+      }
+    } catch {}
+  }, []);
+
   // Apply OLED Black + Minimal Mode on mount
   useEffect(() => {
     import('@/lib/store/settings').then(({ applyOledBlack, applyMinimalMode }) => {
