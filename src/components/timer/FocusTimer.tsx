@@ -61,8 +61,16 @@ export function FocusTimer() {
   //   90°  = landscape (rotated 90° CW — home button on left)
   //   180° = portrait upside-down
   //   270° = landscape (rotated 90° CCW — home button on right)
-  const [orientationAngle, setOrientationAngle] = useState(0);
-  const orientationAngleRef = useRef(0);
+  // === Initialize from ACTUAL viewport — prevents portrait flash on mount ===
+  // If the phone is already in landscape when FocusTimer opens, starting at 0
+  // (portrait) causes a brief portrait layout flash before the effect runs.
+  // Lazy init reads the viewport on first render so the correct layout is used
+  // immediately.
+  const [orientationAngle, setOrientationAngle] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    return window.innerWidth > window.innerHeight ? 90 : 0;
+  });
+  const orientationAngleRef = useRef(orientationAngle);
   // Temporary lock (double-tap rotate button) — only for current session.
   const [tempLockAngle, setTempLockAngle] = useState<number | null>(null);
   // Lock button state
@@ -93,7 +101,8 @@ export function FocusTimer() {
   //
   // Now: just detect if the viewport is landscape (innerWidth > innerHeight).
   // The browser handles the actual rotation. No manual CSS rotation needed.
-  // Listen to resize + orientationchange to update on rotate.
+  // Listen to resize + orientationchange + visibilitychange to update on rotate
+  // AND on app return (minimize → reopen doesn't always fire resize).
   useEffect(() => {
     const lockAngle = tempLockAngle ?? settings.lockedOrientation;
     if (lockAngle !== null && lockAngle !== undefined) {
@@ -126,12 +135,31 @@ export function FocusTimer() {
       screen.orientation.addEventListener('change', onResize);
     }
 
+    // === CRITICAL: Re-read orientation when app becomes visible ===
+    // When the app is minimized (backgrounded) and reopened, `resize` and
+    // `orientationchange` events often DON'T fire — the viewport dimensions
+    // are cached from before minimizing. But the user may have rotated their
+    // phone while the app was backgrounded. On return, the orientation state
+    // is stale (still showing portrait when the phone is now landscape).
+    // This handler forces a re-read on every visibility return.
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        // Small delay — the viewport dimensions may not be updated yet when
+        // visibilitychange fires. 100ms is enough for the browser to settle.
+        setTimeout(() => applyAngle(readViewportAngle()), 100);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pageshow', onVisibilityChange);
+
     return () => {
       window.removeEventListener('resize', onResize);
       window.removeEventListener('orientationchange', onResize);
       if (typeof screen !== 'undefined' && screen.orientation) {
         screen.orientation.removeEventListener('change', onResize);
       }
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pageshow', onVisibilityChange);
     };
   }, [tempLockAngle, settings.lockedOrientation]);
 
