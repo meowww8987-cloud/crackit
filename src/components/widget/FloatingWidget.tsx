@@ -1,6 +1,6 @@
 'use client';
-import { useVisibility, useReducedMotion } from '@/lib/hooks/useVisibility';
-
+// === FIX: removed unused imports (useVisibility/useReducedMotion were
+//     imported but never used — dead code) ===
 import { useState, useEffect, useRef } from 'react';
 import { motion, useMotionValue } from 'framer-motion';
 import { Maximize2, EyeOff, Pause, Play, Square, CheckCircle2 } from 'lucide-react';
@@ -151,21 +151,24 @@ export function FloatingWidget() {
             style={{ background: statusColor, boxShadow: `0 0 6px ${statusColor}` }}
           />
           <span className="text-[10px] font-bold text-white flex-1">{statusText}</span>
+          {/* === FIX: Bigger hit targets (was p-0.5 + 12px icon ≈ 17px — too
+              small for fingers; taps missed the button and hit the drag handle
+              instead, which felt like "hide/unhide not working") === */}
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => setFocusOpen(true)}
-            className="text-foreground/85 hover:text-foreground p-0.5"
+            className="text-foreground/85 hover:text-foreground p-1.5 -m-1"
             aria-label="Maximize"
           >
-            <Maximize2 size={12} />
+            <Maximize2 size={13} />
           </button>
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => setWidgetHidden(true)}
-            className="text-foreground/85 hover:text-foreground p-0.5"
+            className="text-foreground/85 hover:text-foreground p-1.5 -m-1"
             aria-label="Hide"
           >
-            <EyeOff size={12} />
+            <EyeOff size={13} />
           </button>
         </div>
 

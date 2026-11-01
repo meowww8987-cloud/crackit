@@ -519,7 +519,10 @@ function HeaderRow({
             title={widgetHidden ? 'Show widget' : 'Hide widget'}
             disabled={!activeSession}
           >
-            {widgetHidden ? <EyeOff size={15} /> : <Eye size={15} />}
+            {/* === FIX: Icon was inverted ===
+                When the widget is HIDDEN, show an OPEN Eye (the ACTION is "show").
+                When the widget is VISIBLE, show EyeOff (the ACTION is "hide"). */}
+            {widgetHidden ? <Eye size={15} /> : <EyeOff size={15} />}
           </button>
         </div>
       </div>

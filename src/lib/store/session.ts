@@ -306,6 +306,13 @@ export const useSession = create<SessionStore>()(
         // to prevent corrupt sessions like "8h studied" when the user was asleep.
         // This protection ONLY applies on restore — during normal pause/stop,
         // the full delta is always committed (no time loss).
+        //
+        // === FIX: always reset focusOpen + widgetHidden ===
+        // Previously these were only reset inside the `!s.paused` branch, so a
+        // PAUSED session that was hidden (or fullscreen) before the app died
+        // restored with the widget still hidden and no chip/way to see it.
+        // Now EVERY restore lands in a clean state: focus timer closed,
+        // floating widget visible.
         if (!s.paused) {
           const now = Date.now();
           let { studySeconds, wastedSeconds } = s;
@@ -338,6 +345,9 @@ export const useSession = create<SessionStore>()(
             focusOpen: false,
             widgetHidden: false,
           });
+        } else {
+          // Was already paused — just reset the UI state
+          set({ focusOpen: false, widgetHidden: false });
         }
       },
 

@@ -8,6 +8,7 @@ import { useSession } from '@/lib/store/session';
 import { cn, vibrate, todayKey, isRevisionOverdue } from '@/lib/utils';
 import { FocusTimer } from '@/components/timer/FocusTimer';
 import { FloatingWidget } from '@/components/widget/FloatingWidget';
+import { HiddenWidgetChip } from '@/components/widget/HiddenWidgetChip';
 import { MoodPicker } from '@/components/timer/MoodPicker';
 import { StudyTab } from '@/components/tabs/StudyTab';
 import { HomeTab } from '@/components/tabs/HomeTab';
@@ -348,6 +349,29 @@ export function AppShell() {
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [tick, focusOpen, activePaperTestId, activePractice]);
+
+  // ====== FocusTimer exit-stall watchdog ======
+  // When the FocusTimer closes, framer-motion's AnimatePresence keeps its
+  // full-screen overlay mounted during the exit fade (~0.3s). If that
+  // animation stalls — e.g. the user locked the screen or backgrounded the
+  // app the instant they tapped Hide, so requestAnimationFrame is throttled —
+  // an INVISIBLE opacity-0 overlay stays on top of everything (z-9999) and
+  // silently eats every tap in the app ("hide/unhide not working",
+  // "nothing responds"). After a 1.5s grace period (exit normally takes
+  // ~0.3s), force any lingering overlay inert: opacity 0 + pointer-events
+  // none. The element stays under React/framer-motion ownership so they can
+  // still remove it normally later.
+  useEffect(() => {
+    if (focusOpen) return;
+    const t = setTimeout(() => {
+      document.querySelectorAll('[data-focus-overlay]').forEach((el) => {
+        const style = (el as HTMLElement).style;
+        style.opacity = '0';
+        style.pointerEvents = 'none';
+      });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [focusOpen]);
 
   // ====== Auto-detect tab switching / app backgrounding ======
   // === REMOVED: blur/focus listeners ===
@@ -765,8 +789,15 @@ export function AppShell() {
             </div>
       </nav>
 
-      {/* Floating widget (when focus timer is minimized) */}
-      {active && !focusOpen && !pendingMoodSession && <FloatingWidget />}
+      {/* Floating widget (when focus timer is minimized) + hidden-session chip
+          (when the widget is hidden — keeps a visible, tappable trace of the
+          running session on every tab, so hiding is always reversible) */}
+      {active && !focusOpen && !pendingMoodSession && (
+        <>
+          <FloatingWidget />
+          <HiddenWidgetChip />
+        </>
+      )}
 
       {/* Focus timer overlay */}
       <AnimatePresence>
