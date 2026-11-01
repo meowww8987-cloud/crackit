@@ -47,6 +47,14 @@ const SUBJECT_ICONS: Record<string, typeof Atom> = {
 // Preset snap points for the expected time slider — must match slider range
 const TIME_PRESETS = [30, 45, 60, 90, 120, 150, 180];
 
+// === Stable empty array for the today's-targets selector ===
+// Returning `|| []` inline from a Zustand selector creates a NEW array reference
+// on every render when today has no targets. Zustand's default Object.is equality
+// check then sees a "changed" value → re-render → selector runs again → another
+// new [] → infinite loop → React "Maximum update depth exceeded" error.
+// This stable constant keeps the reference identical across renders.
+const EMPTY_TARGETS: Target[] = [];
+
 export function AddTargetSheet({ editing, prefill, onClose }: Props) {
   const addTarget = useTargets((s) => s.addTarget);
   const updateTarget = useTargets((s) => s.updateTarget);
@@ -292,7 +300,11 @@ export function AddTargetSheet({ editing, prefill, onClose }: Props) {
   // Scans today's targets for one that's already been added with the same
   // (subject + chapter + Assignment + assignmentId). We can't reuse
   // isAlreadyAdded directly because that one matches by lecture label.
-  const todaysTargets = useTargets((s) => s.byDate[todayKey()] || []);
+  // === BUG FIX: Use a stable EMPTY_TARGETS constant instead of `|| []` —
+  //     the inline `[]` created a new reference every render → infinite
+  //     re-render loop → "Maximum update depth exceeded" error when opening
+  //     AddTargetSheet with no targets added today yet. ===
+  const todaysTargets = useTargets((s) => s.byDate[todayKey()] || EMPTY_TARGETS);
   const isAssignmentAdded = (aId: string) => {
     if (editing) return false;
     if (!selectedChapter) return false;
