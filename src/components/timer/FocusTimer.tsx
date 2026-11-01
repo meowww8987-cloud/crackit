@@ -451,16 +451,28 @@ export function FocusTimer() {
           No transform, no transformOrigin, no rotation math. */}
       <div
         style={{
-          width: '100vw',
-          height: '100vh',
+          // Use 100% instead of 100vw/100vh — inherits from the fixed inset-0
+          // parent. 100vh on mobile excludes the dynamic toolbar inconsistently
+          // and can cause off-by-Npx overflow that pushes controls off-screen.
+          width: '100%',
+          height: '100%',
           display: 'flex',
           flexDirection: isLandscape ? 'row' : 'column',
           alignItems: 'center',
-          justifyContent: isLandscape ? 'center' : 'space-between',
+          // space-between is a no-op once the center child has flex-1; use
+          // flex-start so the layout is predictable when content overflows.
+          justifyContent: isLandscape ? 'center' : 'flex-start',
           gap: isLandscape ? '1.5rem' : undefined,
-          padding: isLandscape ? '1.5rem 2rem' : '3rem 1.5rem',
+          // Compact portrait padding — was 3rem (48px) top/bottom which ate
+          // ~96px of vertical space and pushed the bottom controls off-screen
+          // on phones with ~640px viewport height.
+          padding: isLandscape ? '1.5rem 2rem' : '1.25rem 1.25rem',
           backgroundImage: dimmed ? 'none' : bgOverlay,
           backgroundColor: '#000000',
+          // Hard clip any overflow so the bottom controls never get pushed
+          // off-screen — they are flex-shrink-0 so they always keep their
+          // size; only the center (min-h-0) absorbs the squeeze.
+          overflow: 'hidden',
         }}
       >
       {/* === Waste flash — modern card overlay ===
@@ -577,7 +589,7 @@ export function FocusTimer() {
       {/* Top section: labels — HIDDEN when dimmed OR minimalMode.
           === LANDSCAPE: Compact single-line layout (no stacked badges). === */}
       {!minimalMode && (
-      <div className={cn('text-center transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100', isLandscape && 'shrink-0')}>
+      <div className={cn('text-center transition-opacity duration-1000 shrink-0', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
         {/* Landscape: single-line compact header. Portrait: stacked badges. */}
         {isLandscape ? (
           <div className="flex items-center gap-2 text-xs">
@@ -677,15 +689,21 @@ export function FocusTimer() {
 
       {/* Center: massive timer.
           === LANDSCAPE: Smaller badge margin (mb-3 vs mb-6) so the timer
-              doesn't get pushed down by the compact header. === */}
-      <div className="flex-1 flex flex-col items-center justify-center">
+              doesn't get pushed down by the compact header. ===
+          === min-h-0: critical — without it, flex children default to
+              min-height:auto and REFUSE to shrink below their content's
+              natural size. That meant when top + bottom + timer exceeded the
+              viewport, the bottom controls were pushed off-screen instead of
+              the timer shrinking. With min-h-0 the center can shrink and the
+              bottom controls (flex-shrink-0) stay anchored on-screen. === */}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center">
         {/* Status badge — HIDDEN when dimmed OR minimalMode */}
         <motion.div
           key={isPaused ? 'paused' : isWasting ? 'wasting' : 'studying'}
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: dimmed ? 0 : 1 }}
           transition={{ duration: 1 }}
-          className={cn('px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg', isLandscape ? 'mb-3' : 'mb-6')}
+          className={cn('px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg', isLandscape ? 'mb-3' : 'mb-3')}
           style={{
             background: isWasting ? '#ef4444' : isPaused ? '#f59e0b' : '#22c55e',
             color: '#000',
@@ -722,7 +740,7 @@ export function FocusTimer() {
         >
           {dimmed ? (
             <div
-              className={cn('font-bold tabular tracking-tight text-center', isLandscape ? 'text-6xl' : 'text-7xl sm:text-8xl')}
+              className={cn('font-bold tabular tracking-tight text-center', isLandscape ? 'text-6xl' : 'text-6xl sm:text-7xl')}
               style={{
                 color: timerColor,
                 transition: 'color 1000ms ease-in-out',
@@ -735,7 +753,10 @@ export function FocusTimer() {
               value={formatClock(displayTime)}
               className={cn(
                 'font-bold tabular tracking-tight text-center',
-                isLandscape ? 'text-6xl' : 'text-7xl sm:text-8xl',
+                // text-6xl sm:text-7xl (was text-7xl sm:text-8xl) — saves
+                // ~32px of vertical space on phones, enough to keep the bottom
+                // controls on-screen alongside the routine badges.
+                isLandscape ? 'text-6xl' : 'text-6xl sm:text-7xl',
                 // === NEW: Breathing glow makes timer feel alive ===
                 !reduceAnim && 'timer-breathe'
               )}
@@ -781,7 +802,7 @@ export function FocusTimer() {
           const showWasted = studySinceResume < 30;
           if (!showWasted) return null;
           return (
-            <div className={cn('mt-4 text-sm text-red-400/85 tabular font-semibold transition-opacity duration-1000', dimmed ? 'opacity-0' : 'opacity-100')}>
+            <div className={cn('mt-2 text-sm text-red-400/85 tabular font-semibold transition-opacity duration-1000', dimmed ? 'opacity-0' : 'opacity-100')}>
               Wasted: {formatHM(wastedSec)} · {(() => {
                 const total = studySec + wastedSec;
                 const pct = total > 0 ? Math.round((studySec / total) * 100) : 100;
@@ -796,7 +817,7 @@ export function FocusTimer() {
                 space in the short landscape viewport. The timer + status badge
                 + compact header is enough context. === */}
         {active.expectedMinutes && !isLandscape && (
-          <div className={cn('mt-6 w-64 transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
+          <div className={cn('mt-3 w-64 transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
             <div className="flex justify-between text-[11px] text-foreground mb-1 tabular font-medium">
               <span>{formatHM(studySec)} done</span>
               <span>{active.expectedMinutes}m goal</span>
@@ -822,9 +843,12 @@ export function FocusTimer() {
               the shorter landscape viewport. ===
           === PORTRAIT: Original stacked full-width layout. === */}
       <div className={cn(
-        'w-full transition-opacity duration-1000',
+        // shrink-0 — bottom controls must NEVER be squeezed off-screen.
+        // This is the anchor: top + center can flex, but Pause/Stop/Hide/Rotate
+        // stay visible at all times in portrait.
+        'w-full transition-opacity duration-1000 shrink-0',
         dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100',
-        isLandscape ? 'max-w-md space-y-2' : 'max-w-sm space-y-3'
+        isLandscape ? 'max-w-md space-y-2' : 'max-w-sm space-y-2'
       )}>
         {isLandscape ? (
           /* === LANDSCAPE LAYOUT — 2-row grid === */
@@ -922,7 +946,7 @@ export function FocusTimer() {
         ) : (
           /* === PORTRAIT LAYOUT — original stacked full-width buttons === */
           <>
-        {/* Pause/Resume */}
+        {/* Pause/Resume — py-3 (was py-4) to save vertical space in portrait */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -931,7 +955,7 @@ export function FocusTimer() {
             if (isPaused) resume();
             else pause();
           }}
-          className="w-full py-4 rounded-2xl font-bold text-base bg-foreground/20 text-white  active:scale-[0.98] transition flex items-center justify-center gap-2"
+          className="w-full py-3 rounded-2xl font-bold text-base bg-foreground/20 text-white  active:scale-[0.98] transition flex items-center justify-center gap-2"
         >
           {isPaused ? <><Play size={18} fill="currentColor" /> Resume</> : <><Pause size={18} fill="currentColor" /> Pause</>}
         </button>
@@ -944,7 +968,7 @@ export function FocusTimer() {
             toggleWasting();
           }}
           className={cn(
-            'w-full py-4 rounded-2xl font-bold text-base active:scale-[0.98] transition flex items-center justify-center gap-2',
+            'w-full py-3 rounded-2xl font-bold text-base active:scale-[0.98] transition flex items-center justify-center gap-2',
             isWasting
               ? 'bg-green-500 text-black'
               : 'bg-red-500/90 text-white'
@@ -963,7 +987,7 @@ export function FocusTimer() {
           {active?.targetId ? (
             <button
               onClick={(e) => { e.stopPropagation(); handleInteraction(); handleDone(); }}
-              className="flex-1 py-4 rounded-2xl font-bold text-base bg-green-500 text-black active:scale-[0.98] transition flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-2xl font-bold text-base bg-green-500 text-black active:scale-[0.98] transition flex items-center justify-center gap-2"
               aria-label="Done — mark target complete"
             >
               {/* === FIX #11: Shape differentiation for colorblind users ===
@@ -973,7 +997,7 @@ export function FocusTimer() {
           ) : (
             <button
               onClick={(e) => { e.stopPropagation(); handleInteraction(); handleStop(); }}
-              className="flex-1 py-4 rounded-2xl font-bold text-base bg-red-500/15 text-red-400 active:scale-[0.98] transition flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-2xl font-bold text-base bg-red-500/15 text-red-400 active:scale-[0.98] transition flex items-center justify-center gap-2"
               aria-label="Stop — end session"
             >
               {/* === FIX #11: Shape differentiation ===
@@ -992,7 +1016,7 @@ export function FocusTimer() {
               // hidden even though focusOpen was false.
               setWidgetHidden(false);
             }}
-            className="px-5 py-4 rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+            className="px-5 py-3 rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5"
             aria-label="Hide timer"
           >
             {/* === FIX #4: "Min" → "Hide" (clearer label) === */}
@@ -1015,7 +1039,7 @@ export function FocusTimer() {
               if (settings.lockedOrientation !== null) settings.set('lockedOrientation', null);
               if (tempLockAngle !== null) setTempLockAngle(null);
             }}
-            className="px-5 py-4 min-w-[56px] rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
+            className="px-5 py-3 min-w-[56px] rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
             title={isLandscape ? 'Switch to portrait' : 'Switch to landscape'}
             aria-label="Toggle orientation"
           >

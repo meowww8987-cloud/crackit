@@ -96,7 +96,10 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
             <div
               className="text-6xl font-black tracking-tighter"
               style={{
-                background: 'linear-gradient(135deg, #14b8a6, #22c55e, #a855f7)',
+                // backgroundImage (long-form) instead of background (shorthand)
+                // to avoid React's "mixing shorthand and non-shorthand" warning
+                // when combined with backgroundClip below.
+                backgroundImage: 'linear-gradient(135deg, #14b8a6, #22c55e, #a855f7)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',

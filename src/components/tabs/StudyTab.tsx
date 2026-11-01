@@ -608,7 +608,11 @@ function ProgressCard({
               transition={{ type: 'spring', stiffness: 200, damping: 18 }}
               className="text-sm font-bold tabular"
               style={{
-                background: isComplete
+                // Use backgroundImage (long-form) instead of background (shorthand).
+                // Mixing `background:` with `backgroundClip:` triggers a React
+                // warning because the shorthand resets backgroundClip behind
+                // React's back on re-render.
+                backgroundImage: isComplete
                   ? 'linear-gradient(135deg, #22c55e, #16a34a)'
                   : `linear-gradient(135deg, ${ringColor}, ${ringColor2})`,
                 WebkitBackgroundClip: 'text',

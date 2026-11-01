@@ -333,7 +333,10 @@ export function StreakFlame({ streak, className }: Props) {
                 transition={{ delay: 0.2 }}
                 className="text-2xl font-bold"
                 style={{
-                  background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                  // backgroundImage (long-form) instead of background (shorthand)
+                  // to avoid React's "mixing shorthand and non-shorthand" warning
+                  // when combined with backgroundClip below.
+                  backgroundImage: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',

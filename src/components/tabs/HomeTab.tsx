@@ -352,7 +352,10 @@ export function HomeTab() {
             <h1
               className="text-2xl font-bold tracking-tight"
               style={{
-                background: 'linear-gradient(135deg, #14b8a6, #22c55e)',
+                // backgroundImage (long-form) instead of background (shorthand)
+                // to avoid React's "mixing shorthand and non-shorthand" warning
+                // when combined with backgroundClip below.
+                backgroundImage: 'linear-gradient(135deg, #14b8a6, #22c55e)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
