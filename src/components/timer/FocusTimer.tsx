@@ -71,12 +71,6 @@ export function FocusTimer() {
     return window.innerWidth > window.innerHeight ? 90 : 0;
   });
   const orientationAngleRef = useRef(orientationAngle);
-  // Temporary lock (double-tap rotate button) — only for current session.
-  const [tempLockAngle, setTempLockAngle] = useState<number | null>(null);
-  // Lock button state
-  const rotateLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastRotateTapRef = useRef(0);
-  const [lockToast, setLockToast] = useState<string | null>(null);
   const lastWastedRef = useRef(0);
   const lastInteractRef = useRef(Date.now());
 
@@ -91,27 +85,29 @@ export function FocusTimer() {
     return () => clearInterval(i);
   }, [dimmed, tick]);
 
-  // The EFFECTIVE angle: if locked, use the lock value. Otherwise use auto-detected.
-  const effectiveAngle = tempLockAngle ?? settings.lockedOrientation ?? orientationAngle;
+  // === CRITICAL FIX: orientation is 100% VIEWPORT-DRIVEN — no lock overrides ===
+  // The old chain `tempLockAngle ?? settings.lockedOrientation ?? orientationAngle`
+  // let a STALE PERSISTED `lockedOrientation: 90` (saved by a since-removed lock
+  // feature) force the LANDSCAPE layout into a PORTRAIT viewport: timer clipped
+  // at the right edge, controls pushed entirely off-screen, rotate button
+  // unreachable — a deadlock. Worse, when a lock was active the effect below
+  // returned early WITHOUT attaching resize listeners, so physically rotating
+  // the phone could never fix it.
+  //
+  // Now the layout ALWAYS matches the actual viewport:
+  //   tall viewport (h > w)  → portrait layout
+  //   wide viewport (w > h)  → landscape layout
+  // No manual state forcing anywhere — resize/orientationchange events are the
+  // single source of truth.
+  const effectiveAngle = orientationAngle;
 
   // === Orientation detection — viewport-based, NOT sensor-based ===
-  // Replaces the old deviceorientation sensor approach which caused severe
-  // landscape layout bugs (rotated portrait-sized div had only ~390px for
-  // flex row → controls squeezed → buttons cut off → rotate invisible).
-  //
-  // Now: just detect if the viewport is landscape (innerWidth > innerHeight).
+  // Detect if the viewport is landscape (innerWidth > innerHeight).
   // The browser handles the actual rotation. No manual CSS rotation needed.
   // Listen to resize + orientationchange + visibilitychange to update on rotate
   // AND on app return (minimize → reopen doesn't always fire resize).
+  // Listeners are ALWAYS attached — no early return, no lock branch.
   useEffect(() => {
-    const lockAngle = tempLockAngle ?? settings.lockedOrientation;
-    if (lockAngle !== null && lockAngle !== undefined) {
-      const normalized = ((lockAngle % 360) + 360) % 360;
-      orientationAngleRef.current = normalized;
-      setOrientationAngle(normalized);
-      return;
-    }
-
     const readViewportAngle = (): number => {
       // 0 = portrait, 90 = landscape. (No 180°/270° — browser handles those
       // automatically by flipping the viewport, so we always see 0 or 90.)
@@ -161,7 +157,7 @@ export function FocusTimer() {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('pageshow', onVisibilityChange);
     };
-  }, [tempLockAngle, settings.lockedOrientation]);
+  }, []);
 
   // === Waste flash — shows when returning from background after > 60s away ===
   // === BUG FIX (B3 + B6): Previous effect used `wastedSeconds > lastWastedRef.current + 2`
@@ -248,16 +244,10 @@ export function FocusTimer() {
       }
     } catch {}
 
-    // Request iOS motion permission (harmless on Android/desktop)
-    const requestMotionPermission = async () => {
-      try {
-        const anyDeviceOrientation = (window as any).DeviceOrientationEvent;
-        if (anyDeviceOrientation && typeof anyDeviceOrientation.requestPermission === 'function') {
-          await anyDeviceOrientation.requestPermission().catch(() => {});
-        }
-      } catch {}
-    };
-    requestMotionPermission();
+    // === REMOVED: iOS DeviceOrientationEvent.requestPermission() ===
+    // Orientation is now 100% viewport-based (resize events) — the motion
+    // sensor is never read. Requesting motion permission on iOS showed a
+    // pointless system prompt on every FocusTimer open for nothing.
 
     // === Unmount: lock back to PORTRAIT so the main app is never in landscape ===
     return () => {
@@ -452,14 +442,19 @@ export function FocusTimer() {
         style={{
           width: '100%',
           height: '100%',
+          position: 'relative',
           display: 'flex',
           // Portrait: column (top → center → bottom).
           // Landscape: row (timer-left | controls-right) — uses the wide space.
+          // The landscape header is absolutely positioned (see below) so only
+          // the timer + controls consume flex width.
           flexDirection: isLandscape ? 'row' : 'column',
           alignItems: 'center',
           justifyContent: isLandscape ? 'space-between' : 'flex-start',
           gap: isLandscape ? '2rem' : undefined,
-          padding: isLandscape ? '1.25rem 2rem' : '1.25rem 1.25rem',
+          // Landscape: extra top padding so the absolutely-positioned header
+          // (subject line) never collides with the vertically-centered timer.
+          padding: isLandscape ? '3.5rem 2rem 1.25rem' : '1.25rem 1.25rem',
           backgroundImage: dimmed ? 'none' : bgOverlay,
           backgroundColor: '#000000',
           overflow: 'hidden',
@@ -578,9 +573,17 @@ export function FocusTimer() {
 
       {/* Top section: labels — HIDDEN when minimalMode. When dimmed, fades to
           low opacity (NOT fully invisible) so the user keeps minimal context.
-          === LANDSCAPE: Compact single-line layout (no stacked badges). === */}
+          === LANDSCAPE: absolutely positioned at the top — a flex-row child
+              would steal horizontal width from the timer + controls, which is
+              exactly what squeezed the timer off-screen before. === */}
       {!minimalMode && (
-      <div className={cn('text-center transition-opacity duration-1000 shrink-0', dimmed ? 'opacity-30' : 'opacity-100')}>
+      <div className={cn(
+        'text-center transition-opacity duration-1000',
+        dimmed ? 'opacity-30' : 'opacity-100',
+        isLandscape
+          ? 'absolute top-4 left-0 right-0 z-10 px-4'
+          : 'shrink-0'
+      )}>
         {/* Landscape: single-line compact header. Portrait: stacked badges. */}
         {isLandscape ? (
           <div className="flex items-center gap-2 text-xs">
@@ -912,19 +915,21 @@ export function FocusTimer() {
                   e.stopPropagation();
                   handleInteraction();
                   vibrate(8);
-                  // Toggle between portrait and landscape via Screen Orientation API.
-                  // In browser mode this may not work (orientation lock requires fullscreen/PWA),
-                  // but the user can always just rotate their phone physically.
+                  // === Rotate via Screen Orientation API — NO local state forcing ===
+                  // PWA/fullscreen: lock() succeeds → viewport actually rotates →
+                  //   resize fires → our listener updates the layout. Always correct.
+                  // Browser tab: lock() fails silently → the user physically rotates
+                  //   their phone → resize fires → layout updates. Correct too.
+                  // (Previously we also forced setOrientationAngle(90) for "instant
+                  // feedback" — that painted a LANDSCAPE layout into a still-portrait
+                  // viewport: timer clipped, controls off-screen. Never again force
+                  // state that doesn't match the real viewport.)
                   try {
                     if (screen.orientation) {
                       const target = isLandscape ? 'portrait' : 'landscape';
                       (screen.orientation as any).lock?.(target).catch(() => {});
                     }
                   } catch {}
-                  // Also update our local state for instant visual feedback
-                  setOrientationAngle(isLandscape ? 0 : 90);
-                  if (settings.lockedOrientation !== null) settings.set('lockedOrientation', null);
-                  if (tempLockAngle !== null) setTempLockAngle(null);
                 }}
                 className="py-3 rounded-xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
                 title={isLandscape ? 'Switch to portrait' : 'Switch to landscape'}
@@ -1013,22 +1018,22 @@ export function FocusTimer() {
             {/* === FIX #4: "Min" → "Hide" (clearer label) === */}
             <ChevronDown size={16} /> Hide
           </button>
-          {/* Orientation rotate + lock button (portrait). */}
+          {/* Orientation rotate button (portrait). */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleInteraction();
               vibrate(8);
-              // Toggle between portrait and landscape via Screen Orientation API
+              // === Rotate via Screen Orientation API — NO local state forcing ===
+              // (see the landscape rotate button above for the full rationale —
+              // forcing setOrientationAngle painted a landscape layout into a
+              // portrait viewport in browser tabs)
               try {
                 if (screen.orientation) {
                   const target = isLandscape ? 'portrait' : 'landscape';
                   (screen.orientation as any).lock?.(target).catch(() => {});
                 }
               } catch {}
-              setOrientationAngle(isLandscape ? 0 : 90);
-              if (settings.lockedOrientation !== null) settings.set('lockedOrientation', null);
-              if (tempLockAngle !== null) setTempLockAngle(null);
             }}
             className="px-5 py-3 min-w-[56px] rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
             title={isLandscape ? 'Switch to portrait' : 'Switch to landscape'}
