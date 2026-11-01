@@ -441,37 +441,27 @@ export function FocusTimer() {
         transition: 'background-image 800ms ease-in-out, background-color 800ms ease-in-out',
       }}
     >
-      {/* === CONTENT DIV — uses ACTUAL viewport dimensions, NO rotation ===
-          Previous approach: always 100vmin × 100vmax (portrait) + CSS rotation.
-          That caused severe landscape bugs (controls squeezed into ~390px,
-          buttons cut off, rotate invisible).
-
-          Now: 100vw × 100vh (actual viewport). The browser handles rotation.
-          flexDirection: row for landscape (wide), column for portrait (tall).
-          No transform, no transformOrigin, no rotation math. */}
+      {/* === CONTENT DIV — DISTINCT layouts for portrait vs landscape ===
+          Mobile screens have very different aspect ratios in the two orientations:
+            Portrait  (e.g. 390×844): tall + narrow → vertical stack
+            Landscape (e.g. 844×390): short + wide  → side-by-side
+          Just swapping flexDirection (the old approach) produced a "rotated
+          portrait" look in landscape — the wide horizontal space was wasted and
+          the controls were squeezed. Now each orientation has its own structure. */}
       <div
         style={{
-          // Use 100% instead of 100vw/100vh — inherits from the fixed inset-0
-          // parent. 100vh on mobile excludes the dynamic toolbar inconsistently
-          // and can cause off-by-Npx overflow that pushes controls off-screen.
           width: '100%',
           height: '100%',
           display: 'flex',
+          // Portrait: column (top → center → bottom).
+          // Landscape: row (timer-left | controls-right) — uses the wide space.
           flexDirection: isLandscape ? 'row' : 'column',
           alignItems: 'center',
-          // space-between is a no-op once the center child has flex-1; use
-          // flex-start so the layout is predictable when content overflows.
-          justifyContent: isLandscape ? 'center' : 'flex-start',
-          gap: isLandscape ? '1.5rem' : undefined,
-          // Compact portrait padding — was 3rem (48px) top/bottom which ate
-          // ~96px of vertical space and pushed the bottom controls off-screen
-          // on phones with ~640px viewport height.
-          padding: isLandscape ? '1.5rem 2rem' : '1.25rem 1.25rem',
+          justifyContent: isLandscape ? 'space-between' : 'flex-start',
+          gap: isLandscape ? '2rem' : undefined,
+          padding: isLandscape ? '1.25rem 2rem' : '1.25rem 1.25rem',
           backgroundImage: dimmed ? 'none' : bgOverlay,
           backgroundColor: '#000000',
-          // Hard clip any overflow so the bottom controls never get pushed
-          // off-screen — they are flex-shrink-0 so they always keep their
-          // size; only the center (min-h-0) absorbs the squeeze.
           overflow: 'hidden',
         }}
       >
@@ -586,10 +576,11 @@ export function FocusTimer() {
         )}
       </AnimatePresence>
 
-      {/* Top section: labels — HIDDEN when dimmed OR minimalMode.
+      {/* Top section: labels — HIDDEN when minimalMode. When dimmed, fades to
+          low opacity (NOT fully invisible) so the user keeps minimal context.
           === LANDSCAPE: Compact single-line layout (no stacked badges). === */}
       {!minimalMode && (
-      <div className={cn('text-center transition-opacity duration-1000 shrink-0', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
+      <div className={cn('text-center transition-opacity duration-1000 shrink-0', dimmed ? 'opacity-30' : 'opacity-100')}>
         {/* Landscape: single-line compact header. Portrait: stacked badges. */}
         {isLandscape ? (
           <div className="flex items-center gap-2 text-xs">
@@ -687,27 +678,24 @@ export function FocusTimer() {
       </div>
       )}
 
-      {/* Center: massive timer.
-          === LANDSCAPE: Smaller badge margin (mb-3 vs mb-6) so the timer
-              doesn't get pushed down by the compact header. ===
-          === min-h-0: critical — without it, flex children default to
-              min-height:auto and REFUSE to shrink below their content's
-              natural size. That meant when top + bottom + timer exceeded the
-              viewport, the bottom controls were pushed off-screen instead of
-              the timer shrinking. With min-h-0 the center can shrink and the
-              bottom controls (flex-shrink-0) stay anchored on-screen. === */}
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center">
-        {/* Status badge — HIDDEN when dimmed OR minimalMode */}
+      {/* === Center: timer block ===
+          PORTRAIT: flex-1 min-h-0 — takes all vertical space between top and
+            bottom, can shrink if needed (min-h-0 is the critical flex fix).
+          LANDSCAPE: flex-1 min-w-0 — takes all horizontal space to the LEFT of
+            the controls column. min-w-0 allows it to shrink so the controls
+            column (shrink-0) always keeps its full width. */}
+      <div className={cn('flex flex-col items-center justify-center', isLandscape ? 'flex-1 min-w-0' : 'flex-1 min-h-0')}>
+        {/* Status badge — fades (not hides) when dimmed so the state is
+            still readable at a glance. */}
         <motion.div
           key={isPaused ? 'paused' : isWasting ? 'wasting' : 'studying'}
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: dimmed ? 0 : 1 }}
+          animate={{ scale: 1, opacity: dimmed ? 0.4 : 1 }}
           transition={{ duration: 1 }}
-          className={cn('px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg', isLandscape ? 'mb-3' : 'mb-3')}
+          className={cn('px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg mb-3')}
           style={{
             background: isWasting ? '#ef4444' : isPaused ? '#f59e0b' : '#22c55e',
             color: '#000',
-            pointerEvents: dimmed ? 'none' : 'auto',
             transition: 'background-color 1000ms ease-in-out',
             boxShadow: dimmed ? 'none' : `0 4px 16px -4px ${isWasting ? '#ef4444' : isPaused ? '#f59e0b' : '#22c55e'}80`,
           }}
@@ -835,20 +823,23 @@ export function FocusTimer() {
         )}
       </div>
 
-      {/* Bottom controls — HIDDEN when dimmed.
-          === LANDSCAPE: Compact 2-row grid so all 5 buttons fit without overlap.
-              Row 1: Pause (left) | Got Distracted (right)
-              Row 2: Done/Stop (left) | Hide (center) | Rotate (right)
-              Buttons are smaller (py-3 vs py-4, text-sm vs text-base) to fit
-              the shorter landscape viewport. ===
-          === PORTRAIT: Original stacked full-width layout. === */}
+      {/* === Bottom / Right controls — ALWAYS visible + ALWAYS clickable ===
+          CRITICAL FIX: Previously when dimmed, this div got `opacity-0
+          pointer-events-none`, making ALL buttons invisible AND unclickable.
+          The user saw a black screen with only the timer and reported
+          "everything gone off screen". Now: when dimmed the controls fade to
+          35% opacity (still readable) and STAY clickable — tapping any dimmed
+          button calls handleInteraction() which un-dims + performs the action.
+
+          PORTRAIT: stacked full-width buttons at the bottom (3 rows).
+          LANDSCAPE: 2-row grid in a fixed-width column on the RIGHT side of
+            the timer — uses the wide horizontal space instead of cramming
+            everything into a narrow strip. */}
       <div className={cn(
-        // shrink-0 — bottom controls must NEVER be squeezed off-screen.
-        // This is the anchor: top + center can flex, but Pause/Stop/Hide/Rotate
-        // stay visible at all times in portrait.
-        'w-full transition-opacity duration-1000 shrink-0',
-        dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100',
-        isLandscape ? 'max-w-md space-y-2' : 'max-w-sm space-y-2'
+        'transition-opacity duration-1000 shrink-0',
+        dimmed ? 'opacity-35' : 'opacity-100',
+        // Portrait: full-width stacked at bottom. Landscape: fixed-width column.
+        isLandscape ? 'w-[280px] space-y-2' : 'w-full max-w-sm space-y-2'
       )}>
         {isLandscape ? (
           /* === LANDSCAPE LAYOUT — 2-row grid === */

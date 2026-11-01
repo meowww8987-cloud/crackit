@@ -19,7 +19,12 @@ const DEFAULTS: Settings = {
   pomodoroWork: 50,
   pomodoroBreak: 10,
   burnProtection: true,
-  dimDelay: 5,
+  // === FIX: was 5s — far too short. After 5s the entire UI (buttons included)
+  // faded out, and because the controls had pointer-events-none when dimmed,
+  // the user literally could not tap Pause/Stop/Rotate. They reported
+  // "everything gone off screen". 15s is long enough to read the screen
+  // comfortably, short enough to still protect OLED from static digits.
+  dimDelay: 15,
   distractionTauntInterval: 2,
   autoDetectWasted: true,
   appTheme: 'dark',

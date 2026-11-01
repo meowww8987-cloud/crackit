@@ -9,6 +9,13 @@ export function PWARegister() {
   const [showInstall, setShowInstall] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [isFullscreenMode, setIsFullscreenMode] = useState(false);
+  // === FIX (hydration mismatch): fullscreenHintDismissed is only knowable on
+  // the client (localStorage). It starts `null` on both server and first client
+  // render so they match, then becomes `true`/`false` after mount. This prevents
+  // "Hydration failed because the server rendered HTML didn't match the client"
+  // which happened because the server rendered the hint (can't read localStorage)
+  // while the client skipped it (localStorage said dismissed). ===
+  const [fullscreenHintDismissed, setFullscreenHintDismissed] = useState<boolean | null>(null);
 
   // Check if the app is running in PWA fullscreen/standalone mode.
   // If NOT, the user is in a browser tab — we should encourage installation
@@ -27,6 +34,17 @@ export function PWARegister() {
       window.matchMedia('(display-mode: fullscreen)').removeEventListener('change', checkDisplayMode);
       window.matchMedia('(display-mode: standalone)').removeEventListener('change', checkDisplayMode);
     };
+  }, []);
+
+  // === FIX (hydration mismatch): read the fullscreen-hint dismissal flag ONLY
+  // after mount, so SSR and first client render both produce the same output
+  // (hint visible). The dismissal state is applied on the second render. ===
+  useEffect(() => {
+    try {
+      setFullscreenHintDismissed(localStorage.getItem('neet-fullscreen-hint-dismissed') === '1');
+    } catch {
+      setFullscreenHintDismissed(false);
+    }
   }, []);
 
   // Register service worker + clear old caches
@@ -150,44 +168,42 @@ export function PWARegister() {
 
       {/* === Fullscreen hint — shown when the app is NOT installed (running in
           a browser tab) and the user hasn't dismissed it. Encourages the user
-          to "Add to Home Screen" for true fullscreen. === */}
+          to "Add to Home Screen" for true fullscreen.
+          === FIX: uses fullscreenHintDismissed STATE (set after mount) instead
+          of reading localStorage during render. `null` means "not mounted yet"
+          → hint hidden until we know for sure, avoiding any hydration flash. === */}
       <AnimatePresence>
-        {!isFullscreenMode && !installPrompt && (() => {
-          // Only show this hint if there's no beforeinstallprompt (iOS Safari
-          // doesn't support it — those users need manual instructions).
-          const dismissed = typeof window !== 'undefined' && localStorage.getItem('neet-fullscreen-hint-dismissed');
-          if (dismissed) return null;
-          return (
-            <motion.div
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              transition={{ delay: 2 }}
-              className="fixed bottom-20 left-3 right-3 z-[140] max-w-md mx-auto"
-            >
-              <div className="glass rounded-2xl p-3 flex items-center gap-3 border border-purple-500/30 shadow-2xl">
-                <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0 text-lg">
-                  📱
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-purple-300">Add to Home Screen</div>
-                  <div className="text-[10px] text-muted-foreground">
-                    For true fullscreen (no status bar) → tap your browser menu → "Add to Home Screen"
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    localStorage.setItem('neet-fullscreen-hint-dismissed', '1');
-                    setShowInstall(false);
-                  }}
-                  className="text-muted-foreground hover:text-white p-1"
-                >
-                  <X size={14} />
-                </button>
+        {!isFullscreenMode && !installPrompt && fullscreenHintDismissed === false && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ delay: 2 }}
+            className="fixed bottom-20 left-3 right-3 z-[140] max-w-md mx-auto"
+          >
+            <div className="glass rounded-2xl p-3 flex items-center gap-3 border border-purple-500/30 shadow-2xl">
+              <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0 text-lg">
+                📱
               </div>
-            </motion.div>
-          );
-        })()}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-purple-300">Add to Home Screen</div>
+                <div className="text-[10px] text-muted-foreground">
+                  For true fullscreen (no status bar) → tap your browser menu → "Add to Home Screen"
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  try { localStorage.setItem('neet-fullscreen-hint-dismissed', '1'); } catch {}
+                  setFullscreenHintDismissed(true);
+                  setShowInstall(false);
+                }}
+                className="text-muted-foreground hover:text-white p-1"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </>
   );
