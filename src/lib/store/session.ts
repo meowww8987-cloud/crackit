@@ -15,6 +15,12 @@ interface SessionStore {
   lastInteractionAt: number;
   // Auto-detect wasted time state
   awaySince: number | null;
+  // === Dedupe guard: timestamp of the last handleReturn() call. ===
+  // On mobile, returning to the app fires visibilitychange + focus + pageshow
+  // + resume in quick succession (sometimes 3-4 events within 100ms). Without
+  // this guard, each event reads the same `awaySince` and double/triple-counts
+  // the wasted time. We ignore any handleReturn call within 1000ms of the last.
+  lastReturnAt: number;
   // Saved session pending mood selection
   pendingMoodSession: Omit<SavedSession, 'mood' | 'id'> | null;
 
@@ -53,6 +59,7 @@ export const useSession = create<SessionStore>()(
       focusOpen: false,
       lastInteractionAt: Date.now(),
       awaySince: null,
+      lastReturnAt: 0,
       pendingMoodSession: null,
 
       startSession: (opts) => {
@@ -145,12 +152,13 @@ export const useSession = create<SessionStore>()(
         const s = get().active;
         if (!s || s.paused) return;
         const now = Date.now();
-        // === FIX: Cap waste delta at 5 min when toggling ===
-        const MAX_WASTE_DELTA_SEC = 300; // 5 minutes
         if (s.wasting) {
-          // switch back to studying
+          // === Switch back to studying ===
+          // Manual waste has NO CAP — the user explicitly said "I'm distracted",
+          // so we count the full duration they were in wasting mode. (Auto-detect
+          // away time is still capped at 5 min, but that's a different path.)
           const wasteDelta = s.lastWasteStart
-            ? Math.min(MAX_WASTE_DELTA_SEC, Math.floor((now - s.lastWasteStart) / 1000))
+            ? Math.floor((now - s.lastWasteStart) / 1000)
             : 0;
           set({
             active: {
@@ -159,11 +167,12 @@ export const useSession = create<SessionStore>()(
               wastedSeconds: s.wastedSeconds + wasteDelta,
               lastWasteStart: null,
               lastResumeAt: now,
+              lastWasteThreshold: 0,
             },
             lastInteractionAt: now,
           });
         } else {
-          // switch to wasting
+          // === Switch to wasting ===
           const studyDelta = s.lastResumeAt ? Math.floor((now - s.lastResumeAt) / 1000) : 0;
           set({
             active: {
@@ -173,6 +182,9 @@ export const useSession = create<SessionStore>()(
               lastResumeAt: null,
               lastWasteStart: now,
               lastWasteThreshold: 0,
+              // === Mark the start of this wasting bout so the vibration
+              //     threshold logic can be relative to the bout, not total. ===
+              wasteBoutStartSeconds: s.wastedSeconds,
             },
             lastInteractionAt: now,
           });
@@ -306,50 +318,64 @@ export const useSession = create<SessionStore>()(
       markAway: () => {
         // Only set awaySince if not already away (avoid overwriting original away time)
         const state = get();
-        if (state.active && !state.active.paused && !state.awaySince) {
-          // Commit any in-flight study/waste time up to now
-          // This is the REAL "you just left" moment — commit the accurate delta
-          const committed = commitInflight(state.active);
-          set({
-            // Clear BOTH lastResumeAt AND lastWasteStart so nothing accumulates
-            // while the app is backgrounded. The away duration will be added
-            // as wasted time by handleReturn when the user comes back.
-            active: { ...committed, lastResumeAt: null, lastWasteStart: null },
-            awaySince: Date.now(),
-          });
-        }
+        if (!state.active || state.active.paused || state.awaySince) return;
+        // === Manual wasting protection ===
+        // If the user explicitly tapped "Got Distracted" (wasting: true), do NOT
+        // fire auto-detect. The wasting clock keeps running via periodic commit,
+        // and on return we just resume the waste clock — no away time is added.
+        // This prevents auto-detect from overriding the user's explicit intent.
+        if (state.active.wasting) return;
+        // === Also respect the autoDetectWasted setting ===
+        // When OFF, we still mark away (so the timer pauses correctly), but
+        // handleReturn will NOT add away time as waste — it just resumes silently.
+        const committed = commitInflight(state.active);
+        set({
+          // Clear BOTH lastResumeAt AND lastWasteStart so nothing accumulates
+          // while the app is backgrounded. The away duration will be added
+          // as wasted time by handleReturn when the user comes back.
+          active: { ...committed, lastResumeAt: null, lastWasteStart: null },
+          awaySince: Date.now(),
+        });
       },
 
       handleReturn: () => {
-        const { active, awaySince } = get();
-        if (!active || !awaySince) {
+        const { active, awaySince, lastReturnAt } = get();
+        // === Dedupe guard ===
+        // On mobile, returning fires visibilitychange + focus + pageshow + resume
+        // in quick succession. Ignore duplicate calls within 1 second.
+        const now = Date.now();
+        if (now - lastReturnAt < 1000) {
           set({ awaySince: null });
           return;
         }
-        const awayMs = Date.now() - awaySince;
-        if (awayMs > 2000) {
-          // === FIX: Cap away duration at 5 minutes ===
-          // Previously: if the app was backgrounded for 2 hours, the ENTIRE
-          // 2 hours was added as wasted time. This caused "15s waste → 2h waste"
-          // corruption when the phone was in the user's pocket.
-          //
-          // Now: cap at 5 minutes (300s). If you're away for more than 5 min,
-          // only 5 min is counted as wasted — the rest is treated as "app was
-          // not in use" (you weren't actively distracted, you just left).
-          const MAX_AWAY_SEC = 300; // 5 minutes
-          const awaySec = Math.min(MAX_AWAY_SEC, Math.floor(awayMs / 1000));
+        if (!active || !awaySince) {
+          set({ awaySince: null, lastReturnAt: now });
+          return;
+        }
+        const awayMs = now - awaySince;
+        const awaySec = Math.floor(awayMs / 1000);
+        const settings = useSettings.getState();
+        // === 60-SECOND THRESHOLD ===
+        // Away < 60s = silent resume (no waste counted, no flash). Brief aways
+        // for legit reasons (notification, system dialog, brief app switch)
+        // shouldn't be punished. Away > 60s = waste counted (capped at 5 min
+        // to prevent pocket-dial corruption), flash shows.
+        const AWAY_THRESHOLD_SEC = 60;
+        const MAX_AWAY_SEC = 300; // 5 min cap (pocket-dial protection)
+        if (awaySec > AWAY_THRESHOLD_SEC && settings.autoDetectWasted) {
+          const cappedAwaySec = Math.min(MAX_AWAY_SEC, awaySec);
           set({
             active: {
               ...active,
               wasting: false,
               lastWasteStart: null,
-              lastResumeAt: Date.now(), // Resume studying from now
-              wastedSeconds: active.wastedSeconds + awaySec,
+              lastResumeAt: now, // Resume studying from now
+              wastedSeconds: active.wastedSeconds + cappedAwaySec,
             },
             awaySince: null,
+            lastReturnAt: now,
           });
           // Optional: fire taunt notification
-          const settings = useSettings.getState();
           if (settings.distractionTauntInterval > 0 && settings.notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
             const taunts = [
               'Every minute you spend scrolling, someone else is studying.',
@@ -365,10 +391,13 @@ export const useSession = create<SessionStore>()(
             } catch {}
           }
         } else {
-          // Very brief away (< 2s) — just resume, no wasted time
+          // === Silent resume ===
+          // Away was < 60s OR autoDetectWasted is OFF. Just resume studying.
+          // No waste counted, no flash shown.
           set({
-            active: { ...active, lastResumeAt: Date.now() },
+            active: { ...active, lastResumeAt: now, wasting: false, lastWasteStart: null },
             awaySince: null,
+            lastReturnAt: now,
           });
         }
       },
@@ -412,15 +441,27 @@ export const useSession = create<SessionStore>()(
 
         const now = Date.now();
         if (s.wasting && s.lastWasteStart) {
+          // === Vibration: fire at 30s/60s/90s... of THIS BOUT (not cumulative) ===
+          // Previous logic used `totalWasted = wastedSeconds + elapsed` which meant
+          // the second bout's first vibration fired immediately (because totalWasted
+          // was already > 30 from the first bout). Now we use `elapsed` (inflight
+          // waste in current bout) relative to bout start, so each bout vibrates
+          // at 30s, 60s, 90s of THAT bout.
           const elapsed = Math.floor((now - s.lastWasteStart) / 1000);
-          const totalWasted = s.wastedSeconds + elapsed;
-          // Vibrate at 30s boundaries
           const settings = useSettings.getState();
-          if (settings.haptics && totalWasted >= (s.lastWasteThreshold + 1) * 30) {
+          if (settings.haptics && elapsed >= (s.lastWasteThreshold + 1) * 30) {
             vibrate(30);
             set({
               active: { ...s, lastWasteThreshold: s.lastWasteThreshold + 1 },
             });
+          }
+
+          // === Periodic commit for wasting mode too ===
+          // Commit inflight waste every 60s so it's not lost on app kill.
+          // (Same logic as study-time periodic commit below, but for waste.)
+          if (elapsed >= 60) {
+            const committed = commitInflight(s);
+            set({ active: committed });
           }
         }
 
@@ -465,14 +506,13 @@ function commitInflight(s: ActiveSession): ActiveSession {
   let lastResumeAt = s.lastResumeAt;
   let lastWasteStart = s.lastWasteStart;
 
-  // === FIX: Cap waste delta at 5 min, study delta has NO cap ===
-  // Study time: no cap — if you studied 11 min, you get 11 min.
-  // Waste time: cap at 5 min — if the app was backgrounded while in wasting
-  // mode for 2 hours, only 5 min is counted (prevents "15s → 2h" bug).
-  const MAX_WASTE_DELTA_SEC = 300; // 5 minutes
-
+  // === No cap on study OR waste deltas here ===
+  // The 5-min cap on AWAY time (auto-detect) is handled separately in
+  // handleReturn. Manual wasting (toggleWasting) and periodic commits
+  // count the full duration — the user explicitly said "I'm distracted",
+  // so we honor that. Study time never has a cap.
   if (s.wasting && s.lastWasteStart) {
-    const delta = Math.min(MAX_WASTE_DELTA_SEC, Math.floor((now - s.lastWasteStart) / 1000));
+    const delta = Math.floor((now - s.lastWasteStart) / 1000);
     wastedSeconds += delta;
     lastWasteStart = now;
   } else if (!s.wasting && !s.paused && s.lastResumeAt) {
@@ -504,12 +544,11 @@ export function getLiveWastedSeconds(s: ActiveSession | null): number {
   if (!s) return 0;
   const baseline = s.baselineWastedSeconds ?? 0;
   if (s.paused || !s.wasting || !s.lastWasteStart) return s.wastedSeconds + baseline;
-  // === FIX: Cap live waste delta at 5 minutes ===
-  // Same logic as handleReturn: if the app was backgrounded while in wasting
-  // mode, the live display shouldn't show 2 hours of waste. Cap at 5 min.
-  // The actual commit on pause/stop will also be capped.
-  const MAX_WASTE_DISPLAY_SEC = 300; // 5 minutes
-  const delta = Math.min(MAX_WASTE_DISPLAY_SEC, Math.floor((Date.now() - s.lastWasteStart) / 1000));
+  // === No cap on live waste display ===
+  // Manual wasting (user tapped "Got Distracted") should show the full duration.
+  // The 5-min cap only applies to AUTO-DETECT away time (handled in handleReturn),
+  // not to manual wasting. If the user said "I'm distracted" for 20 min, show 20 min.
+  const delta = Math.floor((Date.now() - s.lastWasteStart) / 1000);
   return s.wastedSeconds + delta + baseline;
 }
 

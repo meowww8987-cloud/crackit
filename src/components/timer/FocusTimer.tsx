@@ -246,25 +246,52 @@ export function FocusTimer() {
     };
   }, [computeAngleHysteresis, tempLockAngle, settings.lockedOrientation, dimmed]);
 
-  // Watch for wasted seconds increase (returning from background) — show flash
-  // that auto-dismisses after 2.5s. Only depends on wastedSeconds (not the
-  // full active object, which changes every tick and would re-run this effect
-  // constantly, clearing the timeout before it fires).
+  // === Waste flash — shows when returning from background after > 60s away ===
+  // === BUG FIX (B3 + B6): Previous effect used `wastedSeconds > lastWastedRef.current + 2`
+  //     as the guard, which broke when multiple state updates landed close together
+  //     (the ref got updated synchronously, so subsequent updates failed the guard,
+  //     the setTimeout was cleared but never re-set, and the flash stayed forever).
+  //     New approach: track the last SEEN value in a ref, fire the flash on ANY
+  //     positive jump, and use a HARD 4s timeout stored in a ref that ALWAYS fires
+  //     (cleared only by tap-to-dismiss or a new flash). The flash auto-dismisses
+  //     reliably regardless of subsequent state changes. ===
   const wastedSeconds = active?.wastedSeconds ?? 0;
+  const wasteFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!active) return;
-    if (wastedSeconds > lastWastedRef.current + 2) {
-      const added = wastedSeconds - lastWastedRef.current;
-      // === FIX #28: Update ref synchronously + extend to 4s ===
-      // Previously ref was updated inside setTimeout — could miss rapid waste additions.
-      // Now updated synchronously. Auto-hide extended from 2.5s to 4s for readability.
-      lastWastedRef.current = wastedSeconds;
-      setWasteFlash(added);
-      const t = setTimeout(() => setWasteFlash(null), 4000);
-      return () => clearTimeout(t);
-    }
+    // Only trigger on a positive jump (waste was added — auto-detect return)
+    const jump = wastedSeconds - lastWastedRef.current;
     lastWastedRef.current = wastedSeconds;
-  }, [wastedSeconds]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (jump >= 5) {  // 5s minimum — filters out tiny rounding noise
+      setWasteFlash(jump);
+      // Clear any existing timeout, then set a fresh HARD 4s timeout.
+      // This always fires unless explicitly cleared by tap-to-dismiss.
+      if (wasteFlashTimeoutRef.current) clearTimeout(wasteFlashTimeoutRef.current);
+      wasteFlashTimeoutRef.current = setTimeout(() => {
+        setWasteFlash(null);
+        wasteFlashTimeoutRef.current = null;
+      }, 4000);
+    }
+  }, [wastedSeconds, active]);
+
+  // Cleanup the flash timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (wasteFlashTimeoutRef.current) {
+        clearTimeout(wasteFlashTimeoutRef.current);
+        wasteFlashTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  // Tap-to-dismiss the flash
+  const dismissWasteFlash = () => {
+    if (wasteFlashTimeoutRef.current) {
+      clearTimeout(wasteFlashTimeoutRef.current);
+      wasteFlashTimeoutRef.current = null;
+    }
+    setWasteFlash(null);
+  };
 
   // Burn protection check
   // === HEAT FIX: Skip when tab hidden — dimming only matters when visible ===
@@ -399,6 +426,10 @@ export function FocusTimer() {
   const wastedSec = getLiveWastedSeconds(active);
   const isOverTime = active.expectedMinutes ? studySec > active.expectedMinutes * 60 : false;
 
+  // === Landscape detection ===
+  // Used to switch to a compact, non-overlapping landscape layout.
+  const isLandscape = effectiveAngle === 90 || effectiveAngle === 270;
+
   // Determine state
   const isPaused = active.paused;
   const isWasting = active.wasting;
@@ -532,17 +563,19 @@ export function FocusTimer() {
           backgroundColor: '#000000',
         }}
       >
-      {/* Wasted time flash — shows when returning from background.
+      {/* Wasted time flash — shows when returning from background after > 60s away.
           Uses FIXED positioning (not absolute) so it fills the ACTUAL viewport
           regardless of the content div's rotation. The radial-gradient stays
-          a perfect circle in all orientations. */}
+          a perfect circle in all orientations.
+          === Tap-to-dismiss: pointer-events-auto + onClick. === */}
       {wasteFlash !== null && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
+          onClick={dismissWasteFlash}
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center cursor-pointer"
           style={{
             background: 'radial-gradient(circle, rgba(239,68,68,0.25) 0%, rgba(0,0,0,0.95) 70%)',
           }}
@@ -564,9 +597,9 @@ export function FocusTimer() {
               Total wasted: {formatHM(wastedSec)}
             </div>
             <div className="text-[10px] text-muted-foreground/60 mt-3">
-              {/* === FIX #29: Clearer wording — explains what happened === */}
               Timer auto-resumed — tap Pause if you need a break
             </div>
+            <div className="text-[9px] text-muted-foreground/40 mt-2">tap to dismiss</div>
           </motion.div>
         </motion.div>
       )}
@@ -620,10 +653,29 @@ export function FocusTimer() {
       </AnimatePresence>
 
       {/* Top section: labels — HIDDEN when dimmed OR minimalMode.
-          Improved contrast: bumped label opacity from /40 → /70, sizes up.
-          === FIX #24: Hidden in minimalMode for deep focus === */}
+          === LANDSCAPE: Compact single-line layout (no stacked badges). === */}
       {!minimalMode && (
-      <div className={cn('text-center transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
+      <div className={cn('text-center transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100', isLandscape && 'shrink-0')}>
+        {/* Landscape: single-line compact header. Portrait: stacked badges. */}
+        {isLandscape ? (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color.hex }} />
+            <span className="font-bold" style={{ color: color.hex }}>{active.subject}</span>
+            {active.chapter && (
+              <>
+                <span className="text-muted-foreground">·</span>
+                <span className="text-foreground font-medium truncate max-w-[120px]">{active.chapter}</span>
+              </>
+            )}
+            {active.topic && (
+              <>
+                <span className="text-muted-foreground">·</span>
+                <span className="text-muted-foreground truncate max-w-[100px]">{active.topic}</span>
+              </>
+            )}
+          </div>
+        ) : (
+        <>
         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-foreground/10 border border-border mb-2">
           <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color.hex }} />
           <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">
@@ -696,10 +748,14 @@ export function FocusTimer() {
           } catch {}
           return null;
         })()}
+        </>
+        )}
       </div>
       )}
 
-      {/* Center: massive timer */}
+      {/* Center: massive timer.
+          === LANDSCAPE: Smaller badge margin (mb-3 vs mb-6) so the timer
+              doesn't get pushed down by the compact header. === */}
       <div className="flex-1 flex flex-col items-center justify-center">
         {/* Status badge — HIDDEN when dimmed OR minimalMode */}
         <motion.div
@@ -707,12 +763,12 @@ export function FocusTimer() {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: dimmed ? 0 : 1 }}
           transition={{ duration: 1 }}
-          className="mb-6 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg"
+          className={cn('px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg', isLandscape ? 'mb-3' : 'mb-6')}
           style={{
             background: isWasting ? '#ef4444' : isPaused ? '#f59e0b' : '#22c55e',
             color: '#000',
             pointerEvents: dimmed ? 'none' : 'auto',
-            transition: 'background-color 600ms ease-in-out',
+            transition: 'background-color 1000ms ease-in-out',
             boxShadow: dimmed ? 'none' : `0 4px 16px -4px ${isWasting ? '#ef4444' : isPaused ? '#f59e0b' : '#22c55e'}80`,
           }}
           role="status"
@@ -744,10 +800,10 @@ export function FocusTimer() {
         >
           {dimmed ? (
             <div
-              className="text-7xl sm:text-8xl font-bold tabular tracking-tight text-center"
+              className={cn('font-bold tabular tracking-tight text-center', isLandscape ? 'text-6xl' : 'text-7xl sm:text-8xl')}
               style={{
                 color: timerColor,
-                transition: 'color 600ms ease-in-out',
+                transition: 'color 1000ms ease-in-out',
               }}
             >
               {formatClock(displayTime)}
@@ -756,14 +812,15 @@ export function FocusTimer() {
             <FlipTimer
               value={formatClock(displayTime)}
               className={cn(
-                'text-7xl sm:text-8xl font-bold tabular tracking-tight text-center',
+                'font-bold tabular tracking-tight text-center',
+                isLandscape ? 'text-6xl' : 'text-7xl sm:text-8xl',
                 // === NEW: Breathing glow makes timer feel alive ===
                 !reduceAnim && 'timer-breathe'
               )}
               style={{
                 color: timerColor,
                 textShadow: `0 0 40px ${timerColor}40`,
-                transition: 'color 600ms ease-in-out, text-shadow 600ms ease-in-out',
+                transition: 'color 1000ms ease-in-out, text-shadow 1000ms ease-in-out',
                 ['--timer-glow' as string]: `${timerColor}50`,
               }}
             />
@@ -784,20 +841,39 @@ export function FocusTimer() {
           )}
         </motion.div>
 
-        {/* Wasted display + Focus quality — HIDDEN when dimmed */}
-        {/* === FIX #30: Added focus quality % indicator === */}
-        {!isWasting && wastedSec > 0 && (
-          <div className={cn('mt-4 text-sm text-red-400/85 tabular font-semibold transition-opacity duration-1000', dimmed ? 'opacity-0' : 'opacity-100')}>
-            Wasted: {formatHM(wastedSec)} · {(() => {
-              const total = studySec + wastedSec;
-              const pct = total > 0 ? Math.round((studySec / total) * 100) : 100;
-              return `${pct}% focus`;
-            })()}
-          </div>
-        )}
+        {/* Wasted display + Focus quality — HIDDEN when dimmed.
+            === B7 FIX: Auto-hide after 30s of clean studying so the user can
+               recover without a demoralizing red label staring at them all
+               session. Reappears briefly if waste is added again (the wasteFlash
+               overlay handles that).
+            === LANDSCAPE: Hidden entirely — the wasteFlash overlay already shows
+               waste on return, and the permanent label takes too much vertical
+               space in the short landscape viewport. === */}
+        {!isWasting && wastedSec > 0 && !isLandscape && (() => {
+          // If currently studying and the last waste was > 30s ago, hide.
+          // We approximate "last waste was > 30s ago" by checking if the
+          // live study delta since last resume is > 30s.
+          const studySinceResume = active.lastResumeAt
+            ? Math.floor((Date.now() - active.lastResumeAt) / 1000)
+            : 0;
+          const showWasted = studySinceResume < 30;
+          if (!showWasted) return null;
+          return (
+            <div className={cn('mt-4 text-sm text-red-400/85 tabular font-semibold transition-opacity duration-1000', dimmed ? 'opacity-0' : 'opacity-100')}>
+              Wasted: {formatHM(wastedSec)} · {(() => {
+                const total = studySec + wastedSec;
+                const pct = total > 0 ? Math.round((studySec / total) * 100) : 100;
+                return `${pct}% focus`;
+              })()}
+            </div>
+          );
+        })()}
 
-        {/* Expected time progress — HIDDEN when dimmed */}
-        {active.expectedMinutes && (
+        {/* Expected time progress — HIDDEN when dimmed.
+            === LANDSCAPE: Also hidden — the progress bar takes too much vertical
+                space in the short landscape viewport. The timer + status badge
+                + compact header is enough context. === */}
+        {active.expectedMinutes && !isLandscape && (
           <div className={cn('mt-6 w-64 transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
             <div className="flex justify-between text-[11px] text-foreground mb-1 tabular font-medium">
               <span>{formatHM(studySec)} done</span>
@@ -816,8 +892,152 @@ export function FocusTimer() {
         )}
       </div>
 
-      {/* Bottom controls — HIDDEN when dimmed */}
-      <div className={cn('w-full max-w-sm space-y-3 transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
+      {/* Bottom controls — HIDDEN when dimmed.
+          === LANDSCAPE: Compact 2-row grid so all 5 buttons fit without overlap.
+              Row 1: Pause (left) | Got Distracted (right)
+              Row 2: Done/Stop (left) | Hide (center) | Rotate (right)
+              Buttons are smaller (py-3 vs py-4, text-sm vs text-base) to fit
+              the shorter landscape viewport. ===
+          === PORTRAIT: Original stacked full-width layout. === */}
+      <div className={cn(
+        'w-full transition-opacity duration-1000',
+        dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100',
+        isLandscape ? 'max-w-md space-y-2' : 'max-w-sm space-y-3'
+      )}>
+        {isLandscape ? (
+          /* === LANDSCAPE LAYOUT — 2-row grid === */
+          <>
+            {/* Row 1: Pause + Got Distracted */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleInteraction();
+                  vibrate(12);
+                  if (isPaused) resume();
+                  else pause();
+                }}
+                className="py-3 rounded-xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+              >
+                {isPaused ? <><Play size={16} fill="currentColor" /> Resume</> : <><Pause size={16} fill="currentColor" /> Pause</>}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleInteraction();
+                  toggleWasting();
+                }}
+                className={cn(
+                  'py-3 rounded-xl font-bold text-sm active:scale-[0.98] transition flex items-center justify-center gap-1.5',
+                  isWasting ? 'bg-green-500 text-black' : 'bg-red-500/90 text-white'
+                )}
+              >
+                {isWasting ? (
+                  <><Play size={16} fill="currentColor" /> Resume Study</>
+                ) : (
+                  <><AlertTriangle size={16} /> Distracted</>
+                )}
+              </button>
+            </div>
+            {/* Row 2: Done/Stop + Hide + Rotate */}
+            <div className="grid grid-cols-3 gap-2">
+              {active?.targetId ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleInteraction(); handleDone(); }}
+                  className="py-3 rounded-xl font-bold text-sm bg-green-500 text-black active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                  aria-label="Done — mark target complete"
+                >
+                  <CheckCircle2 size={18} /> Done
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleInteraction(); handleStop(); }}
+                  className="py-3 rounded-xl font-bold text-sm bg-red-500/15 text-red-400 active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                  aria-label="Stop — end session"
+                >
+                  <Square size={18} fill="currentColor" /> Stop
+                </button>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleInteraction();
+                  setFocusOpen(false);
+                  setWidgetHidden(false);
+                }}
+                className="py-3 rounded-xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                aria-label="Hide timer"
+              >
+                <ChevronDown size={16} /> Hide
+              </button>
+              <button
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  handleInteraction();
+                  rotateLongPressRef.current = setTimeout(() => {
+                    const isCurrentlyLocked = settings.lockedOrientation !== null;
+                    if (isCurrentlyLocked) {
+                      settings.set('lockedOrientation', null);
+                      setTempLockAngle(null);
+                      setLockToast('🔓 Orientation unlocked — auto-rotate on');
+                      vibrate([10, 30, 10]);
+                    } else {
+                      settings.set('lockedOrientation', effectiveAngle);
+                      setLockToast(`🔒 Locked at ${effectiveAngle}°`);
+                      vibrate([10, 30, 10, 30, 50]);
+                    }
+                    setTimeout(() => setLockToast(null), 2500);
+                    rotateLongPressRef.current = null;
+                  }, 500);
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  if (rotateLongPressRef.current === null) return;
+                  clearTimeout(rotateLongPressRef.current);
+                  rotateLongPressRef.current = null;
+                  window.dispatchEvent(new Event('neet-rotate-tap'));
+                  const now = Date.now();
+                  const isDoubleTap = now - lastRotateTapRef.current < 300;
+                  lastRotateTapRef.current = now;
+                  if (isDoubleTap) {
+                    if (tempLockAngle !== null) {
+                      setTempLockAngle(null);
+                      setLockToast('🔓 Temp lock released');
+                      vibrate([10, 30]);
+                    } else if (settings.lockedOrientation === null) {
+                      setTempLockAngle(effectiveAngle);
+                      setLockToast(`⏸ Temp locked at ${effectiveAngle}°`);
+                      vibrate([10, 30]);
+                    }
+                    setTimeout(() => setLockToast(null), 2000);
+                  } else {
+                    if (settings.lockedOrientation !== null) settings.set('lockedOrientation', null);
+                    if (tempLockAngle !== null) setTempLockAngle(null);
+                    setOrientationAngle((prev) => (prev + 90) % 360);
+                    vibrate(8);
+                  }
+                }}
+                onPointerLeave={() => {
+                  if (rotateLongPressRef.current) {
+                    clearTimeout(rotateLongPressRef.current);
+                    rotateLongPressRef.current = null;
+                  }
+                }}
+                className="py-3 rounded-xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
+                title={`Rotate (current: ${effectiveAngle}°${settings.lockedOrientation !== null ? ' · locked' : ''}${tempLockAngle !== null ? ' · temp-locked' : ''})`}
+                aria-label="Rotate or lock orientation"
+              >
+                {(settings.lockedOrientation !== null || tempLockAngle !== null) ? (
+                  <Lock size={18} className="text-amber-400" style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
+                ) : (
+                  <RotateCw size={18} style={{ transform: `rotate(${effectiveAngle}deg)`, transition: 'transform 0.3s ease' }} />
+                )}
+              </button>
+            </div>
+          </>
+        ) : (
+          /* === PORTRAIT LAYOUT — original stacked full-width buttons === */
+          <>
         {/* Pause/Resume */}
         <button
           onClick={(e) => {
@@ -894,13 +1114,7 @@ export function FocusTimer() {
             {/* === FIX #4: "Min" → "Hide" (clearer label) === */}
             <ChevronDown size={16} /> Hide
           </button>
-          {/* Orientation rotate + lock button.
-              - Single tap: cycle through 4 angles (0°→90°→180°→270°→0°).
-              - Double-tap: temporary lock at current angle (current session only).
-              - Long-press (500ms): persistent lock (saved to settings, survives
-                app restart). Long-press again to unlock.
-              When locked, shows a Lock icon; when unlocked, shows RotateCw.
-              The icon rotates to match the current orientation. */}
+          {/* Orientation rotate + lock button (portrait). */}
           <button
             onPointerDown={(e) => {
               e.stopPropagation();
@@ -1010,6 +1224,8 @@ export function FocusTimer() {
               5+ times in a session after dismissing with "Got it"). */}
           <RotateHintToast />
         </div>
+        </>
+        )}
       </div>
       </div>
       </div>

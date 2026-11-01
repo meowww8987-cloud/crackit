@@ -336,6 +336,14 @@ export function AppShell() {
   }, [tick, focusOpen, activePaperTestId, activePractice]);
 
   // ====== Auto-detect tab switching / app backgrounding ======
+  // === REMOVED: blur/focus listeners ===
+  // On mobile, `blur` fires spuriously when an <input> gets focus, the iOS
+  // keyboard slides up, a system permission dialog appears, or a notification
+  // banner drops down. Each spurious blur → markAway → handleReturn was
+  // adding phantom wasted seconds. Now we rely on `visibilitychange` (the
+  // browser's official "tab/app is hidden" signal) + `pagehide`/`pageshow`
+  // (mobile app backgrounding) + `freeze`/`resume` (Android PWA). These only
+  // fire when the app is ACTUALLY hidden, not on every focus shift.
   useEffect(() => {
     const markAway = () => {
       useSession.getState().markAway();
@@ -348,27 +356,25 @@ export function AppShell() {
       // covers the full viewport without needing OS-level fullscreen.
     };
 
-    // visibilitychange — fires when tab is hidden/shown (desktop + mobile)
+    // visibilitychange — fires when tab is hidden/shown (desktop + mobile).
+    // This is the MOST reliable signal across all platforms.
     const onVisibility = () => {
       if (document.hidden) markAway();
       else handleReturn();
     };
 
-    // blur/focus — catches when app loses focus (mobile app switch)
-    const onBlur = () => markAway();
-    const onFocus = () => handleReturn();
-
-    // pagehide/pageshow — catches mobile app backgrounding (iOS/Android)
+    // pagehide/pageshow — catches mobile app backgrounding (iOS/Android).
+    // More reliable than visibilitychange on iOS Safari.
     const onPageHide = () => markAway();
     const onPageShow = () => handleReturn();
 
-    // freeze/resume — catches PWA going to background (Android)
+    // freeze/resume — catches PWA going to background (Android).
+    // The Page Lifecycle API's freeze event is the definitive "OS suspended
+    // this app" signal on Android.
     const onFreeze = () => markAway();
     const onResume = () => handleReturn();
 
     document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('blur', onBlur);
-    window.addEventListener('focus', onFocus);
     window.addEventListener('pagehide', onPageHide);
     window.addEventListener('pageshow', onPageShow);
     document.addEventListener('freeze', onFreeze);
@@ -392,8 +398,6 @@ export function AppShell() {
 
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('blur', onBlur);
-      window.removeEventListener('focus', onFocus);
       window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('pageshow', onPageShow);
       document.removeEventListener('freeze', onFreeze);

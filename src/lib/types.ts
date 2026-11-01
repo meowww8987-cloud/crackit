@@ -65,6 +65,10 @@ export interface ActiveSession {
    *  Undefined = not started from a routine block (normal target/free study). */
   plannedSlotId?: string;
   baselineWastedSeconds?: number;
+  /** Value of `wastedSeconds` at the start of the current wasting bout.
+   *  Used by the tick() vibration logic to fire haptics at 30s/60s/90s of
+   *  EACH bout (not cumulative). Reset when toggling wasting off→on. */
+  wasteBoutStartSeconds?: number;
 }
 
 export interface SavedSession {
