@@ -25,6 +25,52 @@ export function FloatingWidget() {
   const x = useMotionValue(typeof window !== 'undefined' ? window.innerWidth - 210 : 100);
   const y = useMotionValue(typeof window !== 'undefined' ? window.innerHeight - 280 : 100);
 
+  // === FIX (widget disappears after rotating the phone) ===
+  // The position was computed ONCE at mount (window.innerWidth - 210). When the
+  // viewport later changes size — phone rotated landscape→portrait, split screen,
+  // returning from background — the widget kept its old coordinates. A widget
+  // parked at x≈630 in a 844px-wide landscape viewport lands 240px PAST the right
+  // edge of a 390px-wide portrait viewport → completely off-screen and invisible.
+  // The user reported this as "the floating widget disappeared".
+  //
+  // Fix: on every viewport change, re-clamp the position into the new bounds.
+  // An in-bounds widget is never moved (no surprise jumps) — only one that would
+  // end up (partially) off-screen is pulled back to the nearest safe edge,
+  // matching the snap margins used at drag-end (20px right / 180px bottom).
+  useEffect(() => {
+    const WIDGET_W = 184;
+    const reclamp = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const maxX = Math.max(0, w - WIDGET_W - 20); // same 20px margin as snap
+      const maxY = Math.max(0, h - 180);          // same bottom margin as snap
+      const cx = x.get();
+      const cy = y.get();
+      const nx = cx > maxX ? maxX : Math.max(0, cx);
+      const ny = cy > maxY ? maxY : Math.max(0, cy);
+      if (nx !== cx) x.set(nx);
+      if (ny !== cy) y.set(ny);
+    };
+    reclamp(); // also covers mount (no-op when already in bounds)
+    window.addEventListener('resize', reclamp);
+    window.addEventListener('orientationchange', reclamp);
+    if (typeof screen !== 'undefined' && screen.orientation) {
+      screen.orientation.addEventListener('change', reclamp);
+    }
+    const onVis = () => { if (!document.hidden) reclamp(); };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('pageshow', onVis);
+    return () => {
+      window.removeEventListener('resize', reclamp);
+      window.removeEventListener('orientationchange', reclamp);
+      if (typeof screen !== 'undefined' && screen.orientation) {
+        screen.orientation.removeEventListener('change', reclamp);
+      }
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('pageshow', onVis);
+    };
+  }, [x, y]);
+
   // Live ticking — skip when widget is hidden (saves CPU on low-end devices)
   // === HEAT FIX: Also skip when tab is hidden ===
   useEffect(() => {

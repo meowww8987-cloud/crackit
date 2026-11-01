@@ -220,35 +220,32 @@ export function FocusTimer() {
     return () => clearInterval(i);
   }, [settings.burnProtection, settings.dimDelay, active]);
 
-  // === Orientation lifecycle: unlock on mount, restore portrait on unmount ===
+  // === Orientation lifecycle: portrait on unmount ONLY — no unlock on mount ===
   //
   // The main app (AppShell, tabs, sheets) is PORTRAIT-ONLY — its layouts are not
-  // optimized for landscape. ONLY the FocusTimer full-screen is allowed to rotate
-  // to landscape (for desk-study with the phone sideways).
+  // optimized for landscape. ONLY the FocusTimer full-screen can go landscape.
   //
-  // Lifecycle:
-  //   Mount (FocusTimer opens):   unlock() → free rotation allowed (portrait + landscape)
-  //   Unmount (FocusTimer hides/stops/dones): lock('portrait') → main app back to portrait
+  // === FIX (screen flapping portrait↔landscape mid-session) ===
+  // Previously this effect also called screen.orientation.unlock() ON MOUNT,
+  // "to allow free rotation while studying". In an installed PWA that RELEASES
+  // the portrait lock the app normally holds, so Android auto-rotate took over
+  // and the display flipped to landscape whenever the phone was held at a
+  // diagonal — then back to portrait when the user tilted it upright. The timer
+  // layout jumped portrait→landscape→portrait within seconds and the buttons
+  // appeared to vanish during each flip.
   //
-  // This fixes: "hide from FocusTimer → screen stays in landscape → main app broken".
-  // Now hiding the timer always restores portrait for the rest of the app.
+  // New behavior — orientation is only ever changed EXPLICITLY:
+  //   • While the timer is open: orientation stays whatever the app holds
+  //     (portrait in PWA). To study in landscape the user taps the Rotate
+  //     button, which locks 'landscape'. Tap again → back to 'portrait'.
+  //   • Unmount (hide/stop/done): lock('portrait') → main app is portrait.
+  //   • Browser tab (no PWA): lock() is a no-op — physical rotation drives the
+  //     layout via resize events, exactly as before.
   //
   // NOTE: screen.orientation.lock() only works in fullscreen/PWA mode. In a
   // regular browser tab it fails silently and the browser follows the phone's
   // physical orientation — acceptable fallback.
   useEffect(() => {
-    // === Mount: unlock orientation — allow free rotation while in FocusTimer ===
-    try {
-      if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).unlock === 'function') {
-        (screen.orientation as any).unlock();
-      }
-    } catch {}
-
-    // === REMOVED: iOS DeviceOrientationEvent.requestPermission() ===
-    // Orientation is now 100% viewport-based (resize events) — the motion
-    // sensor is never read. Requesting motion permission on iOS showed a
-    // pointless system prompt on every FocusTimer open for nothing.
-
     // === Unmount: lock back to PORTRAIT so the main app is never in landscape ===
     return () => {
       try {
@@ -693,7 +690,7 @@ export function FocusTimer() {
         <motion.div
           key={isPaused ? 'paused' : isWasting ? 'wasting' : 'studying'}
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: dimmed ? 0.4 : 1 }}
+          animate={{ scale: 1, opacity: dimmed ? 0.45 : 1 }}
           transition={{ duration: 1 }}
           className={cn('px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg mb-3')}
           style={{
@@ -725,7 +722,11 @@ export function FocusTimer() {
           transition={{ type: 'spring', stiffness: 60, damping: 20 }}
           className="transition-opacity duration-1000"
           style={{
-            opacity: dimmed ? Math.max(0.05, settings.screenDimOpacity / 100) : 1,
+            // === FIX: dimmed timer floor raised 0.05 → 0.15 — at 5% the digits
+            // were subliminal on OLED black and users read the screen as
+            // "completely gone". 15% keeps burn protection while staying
+            // clearly readable. ===
+            opacity: dimmed ? Math.max(0.15, settings.screenDimOpacity / 100) : 1,
             filter: dimmed ? 'drop-shadow(0 0 40px rgba(255,255,255,0.1))' : 'none',
           }}
         >
@@ -831,8 +832,10 @@ export function FocusTimer() {
           pointer-events-none`, making ALL buttons invisible AND unclickable.
           The user saw a black screen with only the timer and reported
           "everything gone off screen". Now: when dimmed the controls fade to
-          35% opacity (still readable) and STAY clickable — tapping any dimmed
-          button calls handleInteraction() which un-dims + performs the action.
+          45% opacity (was 35% — still too easy to read as "vanished" on OLED
+          black, especially in bright surroundings) and STAY clickable — tapping
+          any dimmed button calls handleInteraction() which un-dims + performs
+          the action.
 
           PORTRAIT: stacked full-width buttons at the bottom (3 rows).
           LANDSCAPE: 2-row grid in a fixed-width column on the RIGHT side of
@@ -840,7 +843,7 @@ export function FocusTimer() {
             everything into a narrow strip. */}
       <div className={cn(
         'transition-opacity duration-1000 shrink-0',
-        dimmed ? 'opacity-35' : 'opacity-100',
+        dimmed ? 'opacity-45' : 'opacity-100',
         // Portrait: full-width stacked at bottom. Landscape: fixed-width column.
         isLandscape ? 'w-[280px] space-y-2' : 'w-full max-w-sm space-y-2'
       )}>

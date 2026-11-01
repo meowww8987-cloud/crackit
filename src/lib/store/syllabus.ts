@@ -494,10 +494,15 @@ export const useSyllabus = create<SyllabusStore>()(
     }),
     {
       name: 'neet-syllabus',
-      migrate: (persisted: any) => {
+      // === FIX: migrate() receives the persisted STATE object directly, not
+      // the {state, version} envelope (zustand 5 convention). The old
+      // `persisted?.state?.lectures` check was always undefined → this
+      // migration never ran. ===
+      migrate: (persistedState: any) => {
+        const s = persistedState ?? {};
         // Migrate old lectures to new model with all stats fields
-        if (persisted?.state?.lectures) {
-          persisted.state.lectures = persisted.state.lectures.map((l: any) => ({
+        if (s.lectures) {
+          s.lectures = s.lectures.map((l: any) => ({
             ...l,
             dppDone: l.dppDone ?? false,
             notesDone: l.notesDone ?? false,
@@ -508,7 +513,7 @@ export const useSyllabus = create<SyllabusStore>()(
             doneDate: l.doneDate ?? undefined,
           }));
         }
-        return persisted;
+        return s;
       },
       version: 3,
     }

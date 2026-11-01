@@ -78,34 +78,64 @@ export const useSettings = create<SettingsStore>()(
     }),
     {
       name: 'neet-settings',
-      version: 4,
-      migrate: (persisted: any) => {
+      version: 5,
+      // === FIX: migrate() receives the persisted STATE object directly —
+      // NOT the {state, version} storage envelope (that's zustand v4's old
+      // calling convention; zustand 5 passes `deserializedStorageValue.state`).
+      // Every check below used to read `persisted.state.*`, which was always
+      // `undefined`, so NO migration ever ran — stale values (e.g. dimDelay: 5
+      // from the old default, lockedOrientation: 90 from the removed lock
+      // feature) survived forever on existing installs. ===
+      migrate: (persistedState: any) => {
+        const s = persistedState ?? {};
         // Add bg3DMode default for users who saved settings before this field existed
-        if (persisted?.state && persisted.state.bg3DMode === undefined) {
-          persisted.state.bg3DMode = 'auto';
+        if (s.bg3DMode === undefined) {
+          s.bg3DMode = 'auto';
         }
         // Add animation control defaults for existing users
-        if (persisted?.state && persisted.state.reduceAnimations === undefined) {
-          persisted.state.reduceAnimations = false;
+        if (s.reduceAnimations === undefined) {
+          s.reduceAnimations = false;
         }
-        if (persisted?.state && persisted.state.animationIntensity === undefined) {
-          persisted.state.animationIntensity = 60;
+        if (s.animationIntensity === undefined) {
+          s.animationIntensity = 60;
         }
         // Add tutorial mode default for existing users
-        if (persisted?.state && persisted.state.tutorialMode === undefined) {
-          persisted.state.tutorialMode = false;
+        if (s.tutorialMode === undefined) {
+          s.tutorialMode = false;
         }
         // Migrate any persisted 'lavender' theme to 'dark' (lavender theme removed in v2.12.7)
-        if (persisted?.state && persisted.state.appTheme === 'lavender') {
-          persisted.state.appTheme = 'dark';
+        if (s.appTheme === 'lavender') {
+          s.appTheme = 'dark';
         }
         // Add routineGracePeriod default for existing users
-        if (persisted?.state && persisted.state.routineGracePeriod === undefined) {
-          persisted.state.routineGracePeriod = 10;
+        if (s.routineGracePeriod === undefined) {
+          s.routineGracePeriod = 10;
+        }
+        // === v5 migrations (fix two stale values that caused real bugs) ===
+        //
+        // (a) dimDelay: the OLD default was 5 seconds — the whole UI (buttons
+        //     included) faded out 5s after opening the timer, which users read
+        //     as "everything disappeared". The default is now 15s and the
+        //     settings slider's minimum is 10s, so any persisted value below
+        //     10 comes from the old default (or an impossible slider position)
+        //     and is bumped to 15. Deliberate 10s+ choices are untouched.
+        if (typeof s.dimDelay === 'number' && s.dimDelay < 10) {
+          s.dimDelay = 15;
+        }
+        //
+        // (b) lockedOrientation: the manual orientation-lock feature was
+        //     removed from FocusTimer, but a stale persisted `90` still forced
+        //     the LANDSCAPE layout into PORTRAIT viewports in the old code
+        //     path (controls pushed off the right edge, rotate unreachable —
+        //     a deadlock). The current FocusTimer ignores this field entirely;
+        //     clearing it is belt-and-braces so no other code path can ever
+        //     resurrect it.
+        if (s.lockedOrientation != null) {
+          s.lockedOrientation = null;
         }
         // (focusTheme setting was removed in v2.13.3 — no migration needed since the
         // field is just dropped; the Focus Timer always uses pure black now.)
-        return persisted;
+        return s;
       },
       onRehydrateStorage: () => (state) => {
         if (state && typeof window !== 'undefined') {

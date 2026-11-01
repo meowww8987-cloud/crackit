@@ -202,8 +202,10 @@ export function AppShell() {
 
   // === PORTRAIT LOCK for the main app ===
   // The main app (tabs, sheets, cards) is PORTRAIT-ONLY — layouts are not
-  // optimized for landscape. ONLY the FocusTimer full-screen is allowed to
-  // rotate (it unlocks on mount and re-locks portrait on unmount).
+  // optimized for landscape. ONLY the FocusTimer full-screen can go landscape
+  // (explicitly, via its Rotate button; it re-locks portrait on unmount — it
+  // no longer unlocks on mount, which caused the display to flap
+  // portrait↔landscape mid-session whenever the phone was held at a diagonal).
   // This lock runs on app mount so the app never starts or stays in landscape.
   // NOTE: only works in fullscreen/PWA mode; silently no-ops in browser tabs.
   useEffect(() => {

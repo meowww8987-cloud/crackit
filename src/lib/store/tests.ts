@@ -650,10 +650,15 @@ export const useTests = create<TestsStore>()(
     {
       name: 'neet-tests',
       version: 2,
-      migrate: (persisted: any) => {
+      // === FIX: migrate() receives the persisted STATE object directly, not
+      // the {state, version} envelope (zustand 5 convention). The old
+      // `persisted?.state?.tests` check was always undefined → this
+      // migration never ran. ===
+      migrate: (persistedState: any) => {
+        const s = persistedState ?? {};
         // Set defaults for new fields on existing tests
-        if (persisted?.state?.tests) {
-          persisted.state.tests = persisted.state.tests.map((t: any) => ({
+        if (s.tests) {
+          s.tests = s.tests.map((t: any) => ({
             ...t,
             coachingSource: t.coachingSource ?? 'Self',
             duration: t.duration ?? (t.type === 'Full Syllabus' || t.type === 'AITS' ? 200 : 180),
@@ -662,7 +667,7 @@ export const useTests = create<TestsStore>()(
             timerPausedSec: t.timerPausedSec ?? 0,
           }));
         }
-        return persisted;
+        return s;
       },
     }
   )

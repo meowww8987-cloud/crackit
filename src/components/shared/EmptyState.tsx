@@ -95,3 +95,4 @@ export function EmptyState({ tab, className }: Props) {
     </div>
   );
 }
+
