@@ -99,7 +99,51 @@ export function FocusTimer() {
   //   wide viewport (w > h)  → landscape layout
   // No manual state forcing anywhere — resize/orientationchange events are the
   // single source of truth.
+  //
+  // === FIX (portrait shows "rotated landscape" layout on real phones) ===
+  // The user reported: open FocusTimer in landscape, rotate to portrait — the
+  // LANDSCAPE layout stayed on screen in the portrait viewport, looking like
+  // "just a rotated version of landscape" with wasted vertical space and
+  // buttons clustered in the middle.
+  //
+  // Root cause: SAME bug as the FloatingWidget off-screen issue. On real phones
+  // the `resize` event after a rotation can fire while `window.innerWidth` still
+  // reports the OLD (pre-rotation) value. `readViewportAngle()` then reads the
+  // stale dimensions, computes the OLD angle, sees it equals the current state,
+  // and does nothing. If no further event fires with fresh dimensions, the
+  // layout is stranded in the wrong orientation forever.
+  //
+  // Fix — 4 INDEPENDENT layers, mirroring the FloatingWidget fix so no single
+  // browser quirk can strand the layout:
+  //   1. Event triggers (resize / orientationchange / screen.orientation /
+  //      visibilitychange / pageshow) — each one re-checks again on the next
+  //      animation frames and after short timeouts, healing stale-dimension
+  //      cases (fresh dimensions settle a frame or two after the event fires).
+  //   2. visualViewport 'resize' — reliable on mobile, also covers URL-bar
+  //      and keyboard viewport changes.
+  //   3. ResizeObserver on <html> — fires AFTER layout settles, so the
+  //      dimensions read inside it are always fresh.
+  //   4. Per-render check using LIVE viewport dimensions (not the cached state).
+  //      The component re-renders every second while visible (live ticking),
+  //      so even if ALL events above fail the layout self-corrects within ~1s.
   const effectiveAngle = orientationAngle;
+
+  // Layer 4 (per-render): compute the angle from the LIVE viewport on every
+  // render. If it disagrees with the cached state, sync the state immediately
+  // so the CURRENT render uses the correct layout. This is the safety net that
+  // guarantees the layout can never stay wrong for more than ~1s — it heals on
+  // the very next render even if every event listener fails.
+  // (typeof window guard for SSR; runs only in the browser.)
+  if (typeof window !== 'undefined') {
+    const liveAngle = window.innerWidth > window.innerHeight ? 90 : 0;
+    if (liveAngle !== orientationAngleRef.current) {
+      orientationAngleRef.current = liveAngle;
+      // setState during render is allowed by React when the value actually
+      // changes (it triggers a re-render before commit). This is the official
+      // "adjust state during render" pattern from the React docs.
+      setOrientationAngle(liveAngle);
+    }
+  }
 
   // === Orientation detection — viewport-based, NOT sensor-based ===
   // Detect if the viewport is landscape (innerWidth > innerHeight).
@@ -122,13 +166,39 @@ export function FocusTimer() {
       }
     };
 
-    applyAngle(readViewportAngle());
+    // Layers 1–3: trigger re-reads on the next frames + short timeouts so a
+    // single event with stale dimensions doesn't strand the layout.
+    let raf1 = 0;
+    let raf2 = 0;
+    let t1: ReturnType<typeof setTimeout> | undefined;
+    let t2: ReturnType<typeof setTimeout> | undefined;
+    const trigger = () => {
+      applyAngle(readViewportAngle());
+      cancelAnimationFrame(raf1);
+      raf1 = requestAnimationFrame(() => {
+        applyAngle(readViewportAngle());
+        cancelAnimationFrame(raf2);
+        raf2 = requestAnimationFrame(() => applyAngle(readViewportAngle()));
+      });
+      clearTimeout(t1); t1 = setTimeout(() => applyAngle(readViewportAngle()), 150);
+      clearTimeout(t2); t2 = setTimeout(() => applyAngle(readViewportAngle()), 400);
+    };
 
-    const onResize = () => applyAngle(readViewportAngle());
+    trigger(); // also covers mount (no-op when already correct)
+
+    const onResize = () => trigger();
     window.addEventListener('resize', onResize);
     window.addEventListener('orientationchange', onResize);
     if (typeof screen !== 'undefined' && screen.orientation) {
       screen.orientation.addEventListener('change', onResize);
+    }
+    // Layer 2: visualViewport (fires for rotation + URL bar + keyboard)
+    window.visualViewport?.addEventListener('resize', onResize);
+    // Layer 3: ResizeObserver on <html> — always fires AFTER layout settles
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => trigger());
+      ro.observe(document.documentElement);
     }
 
     // === CRITICAL: Re-read orientation when app becomes visible ===
@@ -142,7 +212,7 @@ export function FocusTimer() {
       if (!document.hidden) {
         // Small delay — the viewport dimensions may not be updated yet when
         // visibilitychange fires. 100ms is enough for the browser to settle.
-        setTimeout(() => applyAngle(readViewportAngle()), 100);
+        setTimeout(() => trigger(), 100);
       }
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -154,8 +224,14 @@ export function FocusTimer() {
       if (typeof screen !== 'undefined' && screen.orientation) {
         screen.orientation.removeEventListener('change', onResize);
       }
+      window.visualViewport?.removeEventListener('resize', onResize);
+      ro?.disconnect();
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('pageshow', onVisibilityChange);
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      clearTimeout(t1);
+      clearTimeout(t2);
     };
   }, []);
 
