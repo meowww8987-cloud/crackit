@@ -644,18 +644,16 @@ export function FocusTimer() {
         )}
       </AnimatePresence>
 
-      {/* Top section: labels — HIDDEN when minimalMode. When dimmed, fades to
-          low opacity (NOT fully invisible) so the user keeps minimal context.
-          === FIX (user reported "dim and other things disappear"): the previous
-              0.30 floor was too low on OLED black — header looked fully gone.
-              Raised to 0.55 so the subject/chapter stays readable when dimmed. ===
+      {/* Top section: labels — HIDDEN when minimalMode. When dimmed, FADES
+          OUT entirely (opacity 0) so only the timer remains on screen — this
+          is the intended burn-protection / distraction-reduction behavior.
           === LANDSCAPE: absolutely positioned at the top — a flex-row child
               would steal horizontal width from the timer + controls, which is
               exactly what squeezed the timer off-screen before. === */}
       {!minimalMode && (
       <div className={cn(
         'text-center transition-opacity duration-1000',
-        dimmed ? 'opacity-55' : 'opacity-100',
+        dimmed ? 'opacity-0' : 'opacity-100',
         isLandscape
           ? 'absolute top-4 left-0 right-0 z-10 px-4'
           : 'shrink-0'
@@ -764,14 +762,14 @@ export function FocusTimer() {
             the controls column. min-w-0 allows it to shrink so the controls
             column (shrink-0) always keeps its full width. */}
       <div className={cn('flex flex-col items-center justify-center', isLandscape ? 'flex-1 min-w-0' : 'flex-1 min-h-0')}>
-        {/* Status badge — fades (not hides) when dimmed so the state is
-            still readable at a glance.
-            === FIX: was 0.45 — too dim on OLED black, pill looked invisible.
-                Raised to 0.65 so the colored status stays clearly visible. === */}
+        {/* Status badge — FADES OUT entirely when dimmed (opacity 0). Only the
+            timer should remain visible in burn-protection mode. The badge is
+            non-essential context (the timer color already signals state) so
+            it disappears cleanly. */}
         <motion.div
           key={isPaused ? 'paused' : isWasting ? 'wasting' : 'studying'}
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: dimmed ? 0.65 : 1 }}
+          animate={{ scale: 1, opacity: dimmed ? 0 : 1 }}
           transition={{ duration: 1 }}
           className={cn('px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg mb-3')}
           style={{
@@ -841,20 +839,20 @@ export function FocusTimer() {
               }}
             />
           )}
-          {/* Timer label — small caption so the meaning is unambiguous */}
+          {/* Timer label — small caption so the meaning is unambiguous.
+              HIDDEN when dimmed (only the timer digits should be visible). */}
           {!dimmed && (
             <div className="text-center mt-1 text-[10px] uppercase tracking-widest text-foreground font-semibold">
               {isPaused ? 'Paused at' : isWasting ? 'Wasting for' : 'Studied for'}
             </div>
           )}
-          {/* === FIX #9: Minimal context when dimmed ===
-              Shows subject · chapter at low opacity so context survives
-              without burning the screen. */}
-          {dimmed && (
-            <div className="text-center mt-3 text-[10px] text-white/20 font-medium">
-              {active.subject}{active.chapter ? ` · ${active.chapter}` : ''}
-            </div>
-          )}
+          {/* === FIX #9 (revised): NO context label when dimmed — the user's
+              intended burn-protection behavior is "EVERYTHING disappears except
+              the timer". An earlier version showed subject · chapter at 20%
+              opacity "for context", but the user confirmed that even this faint
+              text counts as clutter that should vanish. The timer color already
+              signals state (green=studying, amber=paused, red=wasting), so no
+              text caption is needed. === */}
         </motion.div>
 
         {/* Wasted display + Focus quality — HIDDEN when dimmed.
@@ -908,20 +906,21 @@ export function FocusTimer() {
         )}
       </div>
 
-      {/* === Bottom / Right controls — ALWAYS visible + ALWAYS clickable ===
-          CRITICAL FIX: Previously when dimmed, this div got `opacity-0
-          pointer-events-none`, making ALL buttons invisible AND unclickable.
-          The user saw a black screen with only the timer and reported
-          "everything gone off screen". Now: when dimmed the controls fade to
-          70% opacity (was 45% — still too easy to read as "vanished" on OLED
-          black, especially in bright surroundings) and STAY clickable — tapping
-          any dimmed button calls handleInteraction() which un-dims + performs
-          the action.
-          === FIX (user reported "buttons disappear after dim"): raised floor
-              from 0.45 → 0.70 so the action buttons stay clearly visible at
-              all times. Burn protection still works (background goes pure
-              black, header/timer dim), but the controls the user needs to
-              interact with never look "gone". ===
+      {/* === Bottom / Right controls — FADE OUT entirely when dimmed (opacity 0)
+          and become CLICK-THROUGH (pointer-events-none) so taps pass through to
+          the overlay's onClick (handleInteraction) which un-dims. This is the
+          intended burn-protection behavior: when dimmed, ONLY the timer is
+          visible. The buttons vanish from view to maximize focus + save screen
+          burn. The user taps anywhere → screen un-dims → buttons reappear →
+          tap the actual button. This prevents accidentally triggering Stop or
+          Distracted by tapping where an invisible button happens to be.
+          === BUG HISTORY: an earlier version kept pointer-events auto when
+              dimmed, so tapping to "un-dim" could accidentally hit an invisible
+              Stop button and end the session. ===
+          === HISTORY 2: an even earlier version set pointer-events-none but
+              ALSO on the overlay, making the dimmed screen a dead zone. The
+              overlay (parent motion.div) ALWAYS keeps pointer-events auto, so
+              taps always reach handleInteraction. ===
 
           PORTRAIT: stacked full-width buttons at the bottom (3 rows).
           LANDSCAPE: 2-row grid in a fixed-width column on the RIGHT side of
@@ -929,7 +928,7 @@ export function FocusTimer() {
             everything into a narrow strip. */}
       <div className={cn(
         'transition-opacity duration-1000 shrink-0',
-        dimmed ? 'opacity-70' : 'opacity-100',
+        dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100',
         // Portrait: full-width stacked at bottom. Landscape: fixed-width column.
         isLandscape ? 'w-[280px] space-y-2' : 'w-full max-w-sm space-y-2'
       )}>
