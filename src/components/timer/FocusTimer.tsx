@@ -646,13 +646,16 @@ export function FocusTimer() {
 
       {/* Top section: labels — HIDDEN when minimalMode. When dimmed, fades to
           low opacity (NOT fully invisible) so the user keeps minimal context.
+          === FIX (user reported "dim and other things disappear"): the previous
+              0.30 floor was too low on OLED black — header looked fully gone.
+              Raised to 0.55 so the subject/chapter stays readable when dimmed. ===
           === LANDSCAPE: absolutely positioned at the top — a flex-row child
               would steal horizontal width from the timer + controls, which is
               exactly what squeezed the timer off-screen before. === */}
       {!minimalMode && (
       <div className={cn(
         'text-center transition-opacity duration-1000',
-        dimmed ? 'opacity-30' : 'opacity-100',
+        dimmed ? 'opacity-55' : 'opacity-100',
         isLandscape
           ? 'absolute top-4 left-0 right-0 z-10 px-4'
           : 'shrink-0'
@@ -762,11 +765,13 @@ export function FocusTimer() {
             column (shrink-0) always keeps its full width. */}
       <div className={cn('flex flex-col items-center justify-center', isLandscape ? 'flex-1 min-w-0' : 'flex-1 min-h-0')}>
         {/* Status badge — fades (not hides) when dimmed so the state is
-            still readable at a glance. */}
+            still readable at a glance.
+            === FIX: was 0.45 — too dim on OLED black, pill looked invisible.
+                Raised to 0.65 so the colored status stays clearly visible. === */}
         <motion.div
           key={isPaused ? 'paused' : isWasting ? 'wasting' : 'studying'}
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: dimmed ? 0.45 : 1 }}
+          animate={{ scale: 1, opacity: dimmed ? 0.65 : 1 }}
           transition={{ duration: 1 }}
           className={cn('px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg mb-3')}
           style={{
@@ -798,11 +803,11 @@ export function FocusTimer() {
           transition={{ type: 'spring', stiffness: 60, damping: 20 }}
           className="transition-opacity duration-1000"
           style={{
-            // === FIX: dimmed timer floor raised 0.05 → 0.15 — at 5% the digits
+            // === FIX: dimmed timer floor raised 0.15 → 0.35 — at 15% the digits
             // were subliminal on OLED black and users read the screen as
-            // "completely gone". 15% keeps burn protection while staying
-            // clearly readable. ===
-            opacity: dimmed ? Math.max(0.15, settings.screenDimOpacity / 100) : 1,
+            // "completely gone". 35% keeps burn protection while staying
+            // clearly readable, so the timer never looks like it "disappeared". ===
+            opacity: dimmed ? Math.max(0.35, settings.screenDimOpacity / 100) : 1,
             filter: dimmed ? 'drop-shadow(0 0 40px rgba(255,255,255,0.1))' : 'none',
           }}
         >
@@ -908,10 +913,15 @@ export function FocusTimer() {
           pointer-events-none`, making ALL buttons invisible AND unclickable.
           The user saw a black screen with only the timer and reported
           "everything gone off screen". Now: when dimmed the controls fade to
-          45% opacity (was 35% — still too easy to read as "vanished" on OLED
+          70% opacity (was 45% — still too easy to read as "vanished" on OLED
           black, especially in bright surroundings) and STAY clickable — tapping
           any dimmed button calls handleInteraction() which un-dims + performs
           the action.
+          === FIX (user reported "buttons disappear after dim"): raised floor
+              from 0.45 → 0.70 so the action buttons stay clearly visible at
+              all times. Burn protection still works (background goes pure
+              black, header/timer dim), but the controls the user needs to
+              interact with never look "gone". ===
 
           PORTRAIT: stacked full-width buttons at the bottom (3 rows).
           LANDSCAPE: 2-row grid in a fixed-width column on the RIGHT side of
@@ -919,7 +929,7 @@ export function FocusTimer() {
             everything into a narrow strip. */}
       <div className={cn(
         'transition-opacity duration-1000 shrink-0',
-        dimmed ? 'opacity-45' : 'opacity-100',
+        dimmed ? 'opacity-70' : 'opacity-100',
         // Portrait: full-width stacked at bottom. Landscape: fixed-width column.
         isLandscape ? 'w-[280px] space-y-2' : 'w-full max-w-sm space-y-2'
       )}>

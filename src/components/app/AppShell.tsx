@@ -573,7 +573,17 @@ export function AppShell() {
         onTouchEnd={onTouchEndNav}
         className="flex-1 overflow-y-auto overflow-x-hidden scroll-area relative z-10"
         style={{
-          paddingBottom: 'calc(88px + env(safe-area-inset-bottom))',
+          // === FIX (floating widget covers Settings controls): when a session
+          // is active and the full-screen timer is closed, the floating widget
+          // (~160px tall) sits at the bottom of the viewport. The base 88px
+          // padding only clears the bottom nav — the widget then overlaps the
+          // last ~160px of scrollable content (e.g. the "Timer visibility when
+          // dimmed" slider in Settings → Focus). Add 180px of extra bottom
+          // padding so the user can always scroll every control above the
+          // widget. ===
+          paddingBottom: active && !focusOpen
+            ? 'calc(268px + env(safe-area-inset-bottom))'
+            : 'calc(88px + env(safe-area-inset-bottom))',
           // Top padding: just the safe-area-inset-top (status bar / notch).
           // The old 52px was reserving space for the removed TopBar — now gone.
           paddingTop: 'env(safe-area-inset-top, 0px)',

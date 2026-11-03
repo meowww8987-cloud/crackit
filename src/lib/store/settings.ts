@@ -46,7 +46,11 @@ const DEFAULTS: Settings = {
   tutorialMode: false,
   // Screen dimming opacity during focus timer (0-100%)
   // Percentage of timer visibility when dimmed. 100 = fully visible, 5 = barely visible.
-  screenDimOpacity: 30,
+  // === FIX: was 30 — too low, made the timer look "disappeared" on OLED black.
+  //     Raised to 50 so the timer stays clearly readable when dimmed while
+  //     still providing burn protection (background goes pure black + elements
+  //     fade). Users who want deeper dimming can lower it in Settings. ===
+  screenDimOpacity: 50,
   // Allow landscape rotation in focus timer
   allowLandscape: true,
   // Locked orientation for focus timer (null = auto-rotate, 0/90/180/270 = locked)
