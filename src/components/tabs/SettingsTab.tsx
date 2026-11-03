@@ -507,11 +507,11 @@ function FocusSection({ s, update }: { s: Settings; update: <K extends keyof Set
               </div>
               <ScrollAwareSlider>
                 <input
-                  type="range" min={10} max={60} step={5} value={s.dimDelay}
+                  type="range" min={3} max={15} step={1} value={s.dimDelay}
                   onChange={(e) => update('dimDelay', Number(e.target.value))}
                   className="w-full modern-slider"
                   style={{
-                    '--slider-pct': `${((s.dimDelay - 10) / 50) * 100}%`,
+                    '--slider-pct': `${((s.dimDelay - 3) / 12) * 100}%`,
                     '--slider-fill': `linear-gradient(90deg, ${BREAK_COLOR}, #f59e0b)`,
                     '--slider-track': 'var(--border)',
                   } as React.CSSProperties}

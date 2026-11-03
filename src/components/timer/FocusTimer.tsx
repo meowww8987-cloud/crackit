@@ -525,9 +525,14 @@ export function FocusTimer() {
           alignItems: 'center',
           justifyContent: isLandscape ? 'space-between' : 'flex-start',
           gap: isLandscape ? '2rem' : undefined,
-          // Landscape: extra top padding so the absolutely-positioned header
-          // (subject line) never collides with the vertically-centered timer.
-          padding: isLandscape ? '3.5rem 2rem 1.25rem' : '1.25rem 1.25rem',
+          // === FIX (top header hidden behind notch/status bar): add
+          // safe-area-inset-top to the top padding so the header isn't covered
+          // by the status bar on notched iPhones (≈47px) or the URL bar in
+          // mobile browsers. Landscape also gets safe-area-inset-left/right
+          // for the notch on the left edge when rotated. ===
+          padding: isLandscape
+            ? 'calc(env(safe-area-inset-top, 0px) + 1rem) calc(env(safe-area-inset-left, 0px) + 2rem) 1.25rem calc(env(safe-area-inset-right, 0px) + 2rem)'
+            : 'calc(env(safe-area-inset-top, 0px) + 1.25rem) 1.25rem 1.25rem 1.25rem',
           backgroundImage: dimmed ? 'none' : bgOverlay,
           backgroundColor: '#000000',
           overflow: 'hidden',
@@ -658,28 +663,39 @@ export function FocusTimer() {
           ? 'absolute top-4 left-0 right-0 z-10 px-4'
           : 'shrink-0'
       )}>
-        {/* Landscape: single-line compact header. Portrait: stacked badges. */}
+        {/* Landscape: prominent single-line header with a subject color bar.
+            Portrait: stacked badges with subject color accent. */}
         {isLandscape ? (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color.hex }} />
-            <span className="font-bold" style={{ color: color.hex }}>{active.subject}</span>
+          <div className="flex items-center justify-center gap-2.5">
+            {/* Subject color accent bar — 3px wide vertical strip, subject color.
+                More visible than the tiny 1.5px dot used before. */}
+            <span
+              className="inline-block w-[3px] h-4 rounded-full shrink-0"
+              style={{ background: color.hex, boxShadow: `0 0 8px ${color.hex}80` }}
+            />
+            <span className="font-bold text-sm" style={{ color: color.hex }}>{active.subject}</span>
             {active.chapter && (
               <>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-foreground font-medium truncate max-w-[120px]">{active.chapter}</span>
+                <span className="text-muted-foreground/60">·</span>
+                <span className="text-foreground/90 font-medium text-sm truncate max-w-[160px]">{active.chapter}</span>
               </>
             )}
-            {active.topic && (
+            {active.topic && active.topic !== active.chapter && (
               <>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-muted-foreground truncate max-w-[100px]">{active.topic}</span>
+                <span className="text-muted-foreground/40">·</span>
+                <span className="text-muted-foreground/80 text-xs truncate max-w-[120px]">{active.topic}</span>
               </>
             )}
           </div>
         ) : (
         <>
+        {/* Portrait header: subject color accent bar + badge + title.
+            More prominent than the tiny dot used before. */}
         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-foreground/10 border border-border mb-2">
-          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color.hex }} />
+          <span
+            className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ background: color.hex, boxShadow: `0 0 6px ${color.hex}80` }}
+          />
           <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">
             {active.mode === 'free' ? 'Free Study' : 'Focus Session'}
           </span>
@@ -933,57 +949,66 @@ export function FocusTimer() {
         isLandscape ? 'w-[280px] space-y-2' : 'w-full max-w-sm space-y-2'
       )}>
         {isLandscape ? (
-          /* === LANDSCAPE LAYOUT — 2-row grid === */
+          /* === LANDSCAPE LAYOUT — modern stacked controls ===
+             Redesigned for long study sessions: clear visual hierarchy with
+             primary action (Pause) full-width, alert action (Distracted)
+             full-width, then a compact 3-icon row for tertiary actions.
+             Equal widths, consistent pill shape, better touch targets. */
           <>
-            {/* Row 1: Pause + Got Distracted */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleInteraction();
-                  vibrate(12);
-                  if (isPaused) resume();
-                  else pause();
-                }}
-                className="py-3 rounded-xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5"
-              >
-                {isPaused ? <><Play size={16} fill="currentColor" /> Resume</> : <><Pause size={16} fill="currentColor" /> Pause</>}
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleInteraction();
-                  toggleWasting();
-                }}
-                className={cn(
-                  'py-3 rounded-xl font-bold text-sm active:scale-[0.98] transition flex items-center justify-center gap-1.5',
-                  isWasting ? 'bg-green-500 text-black' : 'bg-red-500/90 text-white'
-                )}
-              >
-                {isWasting ? (
-                  <><Play size={16} fill="currentColor" /> Back to Study</>
-                ) : (
-                  <><AlertTriangle size={16} /> Distracted</>
-                )}
-              </button>
-            </div>
-            {/* Row 2: Done/Stop + Hide + Rotate */}
+            {/* Primary action: Pause / Resume — full-width, prominent */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInteraction();
+                vibrate(12);
+                if (isPaused) resume();
+                else pause();
+              }}
+              className="w-full py-3.5 rounded-2xl font-bold text-sm bg-foreground/15 text-white active:scale-[0.98] transition flex items-center justify-center gap-2 border border-white/5"
+              style={{ backdropFilter: 'blur(8px)' }}
+            >
+              {isPaused ? <><Play size={16} fill="currentColor" /> Resume</> : <><Pause size={16} fill="currentColor" /> Pause</>}
+            </button>
+            {/* Alert action: Distracted / Back to Study — full-width, color-coded */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInteraction();
+                toggleWasting();
+              }}
+              className={cn(
+                'w-full py-3.5 rounded-2xl font-bold text-sm active:scale-[0.98] transition flex items-center justify-center gap-2',
+                isWasting
+                  ? 'bg-green-500 text-black'
+                  : 'bg-red-500/90 text-white'
+              )}
+            >
+              {isWasting ? (
+                <><Play size={16} fill="currentColor" /> Back to Study</>
+              ) : (
+                <><AlertTriangle size={16} /> Got Distracted</>
+              )}
+            </button>
+            {/* Tertiary row: Done/Stop + Hide + Rotate — equal-width icon buttons
+                with tiny labels. Clean, compact, unambiguous. */}
             <div className="grid grid-cols-3 gap-2">
               {active?.targetId ? (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleInteraction(); handleDone(); }}
-                  className="py-3 rounded-xl font-bold text-sm bg-green-500 text-black active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                  className="py-2.5 rounded-xl font-bold text-[11px] bg-green-500/15 text-green-400 active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5 border border-green-500/20"
                   aria-label="Done — mark target complete"
                 >
-                  <CheckCircle2 size={18} /> Done
+                  <CheckCircle2 size={18} />
+                  <span>Done</span>
                 </button>
               ) : (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleInteraction(); handleStop(); }}
-                  className="py-3 rounded-xl font-bold text-sm bg-red-500/15 text-red-400 active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                  className="py-2.5 rounded-xl font-bold text-[11px] bg-red-500/10 text-red-400 active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5 border border-red-500/20"
                   aria-label="Stop — end session"
                 >
-                  <Square size={18} fill="currentColor" /> Stop
+                  <Square size={18} fill="currentColor" />
+                  <span>Stop</span>
                 </button>
               )}
               <button
@@ -993,25 +1018,17 @@ export function FocusTimer() {
                   setFocusOpen(false);
                   setWidgetHidden(false);
                 }}
-                className="py-3 rounded-xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                className="py-2.5 rounded-xl font-bold text-[11px] bg-foreground/15 text-white active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5 border border-white/5"
                 aria-label="Hide timer"
               >
-                <ChevronDown size={16} /> Hide
+                <ChevronDown size={18} />
+                <span>Hide</span>
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleInteraction();
                   vibrate(8);
-                  // === Rotate via Screen Orientation API — NO local state forcing ===
-                  // PWA/fullscreen: lock() succeeds → viewport actually rotates →
-                  //   resize fires → our listener updates the layout. Always correct.
-                  // Browser tab: lock() fails silently → the user physically rotates
-                  //   their phone → resize fires → layout updates. Correct too.
-                  // (Previously we also forced setOrientationAngle(90) for "instant
-                  // feedback" — that painted a LANDSCAPE layout into a still-portrait
-                  // viewport: timer clipped, controls off-screen. Never again force
-                  // state that doesn't match the real viewport.)
                   try {
                     if (screen.orientation) {
                       const target = isLandscape ? 'portrait' : 'landscape';
@@ -1019,11 +1036,12 @@ export function FocusTimer() {
                     }
                   } catch {}
                 }}
-                className="py-3 rounded-xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
+                className="py-2.5 rounded-xl font-bold text-[11px] bg-foreground/15 text-white active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5 border border-white/5 relative"
                 title={isLandscape ? 'Switch to portrait' : 'Switch to landscape'}
                 aria-label="Toggle orientation"
               >
                 <RotateCw size={18} />
+                <span>Rotate</span>
               </button>
             </div>
           </>

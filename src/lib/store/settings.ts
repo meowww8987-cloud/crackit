@@ -22,9 +22,10 @@ const DEFAULTS: Settings = {
   // === FIX: was 5s — far too short. After 5s the entire UI (buttons included)
   // faded out, and because the controls had pointer-events-none when dimmed,
   // the user literally could not tap Pause/Stop/Rotate. They reported
-  // "everything gone off screen". 15s is long enough to read the screen
-  // comfortably, short enough to still protect OLED from static digits.
-  dimDelay: 15,
+  // "everything gone off screen". 5s is the sweet spot — quick enough to
+  // engage burn protection during active study, but not so fast it dims while
+  // the user is still reading the buttons. Range is now 3-15s (was 10-60s).
+  dimDelay: 5,
   distractionTauntInterval: 2,
   autoDetectWasted: true,
   appTheme: 'dark',
@@ -115,16 +116,15 @@ export const useSettings = create<SettingsStore>()(
         if (s.routineGracePeriod === undefined) {
           s.routineGracePeriod = 10;
         }
-        // === v5 migrations (fix two stale values that caused real bugs) ===
-        //
-        // (a) dimDelay: the OLD default was 5 seconds — the whole UI (buttons
-        //     included) faded out 5s after opening the timer, which users read
-        //     as "everything disappeared". The default is now 15s and the
-        //     settings slider's minimum is 10s, so any persisted value below
-        //     10 comes from the old default (or an impossible slider position)
-        //     and is bumped to 15. Deliberate 10s+ choices are untouched.
-        if (typeof s.dimDelay === 'number' && s.dimDelay < 10) {
-          s.dimDelay = 15;
+        // === v6 migration (dimDelay range changed to 3-15s) ===
+        // The slider now allows 3-15s (was 10-60s). Any persisted value outside
+        // the new range is clamped into it. Old default was 15s (the previous
+        // max) — bump it down to the new default 5s so the user gets the
+        // faster dim they asked for.
+        if (typeof s.dimDelay === 'number') {
+          if (s.dimDelay > 15) s.dimDelay = 15;
+          if (s.dimDelay === 15) s.dimDelay = 5; // old default/max → new default
+          if (s.dimDelay < 3) s.dimDelay = 3;
         }
         //
         // (b) lockedOrientation: the manual orientation-lock feature was
