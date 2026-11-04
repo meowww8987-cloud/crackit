@@ -2,13 +2,15 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
-  Plus, X, Check, ChevronRight,
-  Flame, Eye, EyeOff, Play,
+  Plus, X, Check, ChevronRight, Flame, Eye, EyeOff, Play,
   BookOpen, FileText, Zap, RotateCcw, AlertTriangle,
+  Circle, Copy, Trophy, BarChart3,
 } from 'lucide-react';
 import { Reorder, motion, AnimatePresence } from 'framer-motion';
 import { useTargets } from '@/lib/store/targets';
 import { useSession, getLiveStudySeconds } from '@/lib/store/session';
+import { useRoutine } from '@/lib/store/routine';
+import { useNav } from '@/lib/store/nav';
 import { usePractice } from '@/lib/store/practice';
 import { useHistory } from '@/lib/store/history';
 import { useSettings } from '@/lib/store/settings';
@@ -267,6 +269,30 @@ export function StudyTab() {
     setShowQuickAdd(false);
   }, [quickAddSubject, addTarget, todayKeyStr, mounted]);
 
+  // === Copy yesterday's targets to today (used by returning EmptyState) ===
+  const copyYesterdayTargets = useCallback(() => {
+    const y = addDays(new Date(), -1);
+    const yKey = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`;
+    const yTargets = useTargets.getState().byDate[yKey] || [];
+    if (yTargets.length === 0) return;
+    yTargets.forEach((t) => {
+      addTarget({
+        date: todayKeyStr,
+        subject: t.subject,
+        activity: t.activity,
+        chapter: t.chapter,
+        lecture: t.lecture,
+        lectureId: t.lectureId,
+        chapterId: t.chapterId,
+        assignmentId: t.assignmentId,
+        isChapterTarget: t.isChapterTarget,
+        topic: t.topic,
+        expectedMinutes: t.expectedMinutes,
+      });
+    });
+    vibrate(15);
+  }, [addTarget, todayKeyStr]);
+
   // === Determine empty state type ===
   const emptyStateType: 'first-time' | 'returning' | 'all-done' | null = useMemo(() => {
     if (!mounted) return null;
@@ -375,6 +401,7 @@ export function StudyTab() {
           type={emptyStateType}
           yesterdayStats={yesterdayStats}
           onAddManual={() => { setEditingTarget(null); setShowAdd(true); }}
+          onCopyYesterday={copyYesterdayTargets}
         />
       )}
 
@@ -384,6 +411,8 @@ export function StudyTab() {
           studySecToday={studySecToday}
           doneCount={todayStats.doneCount}
           totalCount={sortedTargets.length}
+          streak={streak}
+          progressPct={progressPct}
           onAddMore={() => { setEditingTarget(null); setShowAdd(true); }}
         />
       )}
@@ -1345,111 +1374,421 @@ function SubjectContextMenu({
 }
 
 /* =========================================================================
-   SECTION 6: EMPTY STATE
-   Three states: first-time, returning, all-done
+   SECTION 6: EMPTY STATE (REDESIGNED)
+   Two variants + onboarding checklist + yesterday summary
+   - First-time: 📚 hero + 4-step onboarding checklist (tappable actions)
+   - Returning: 🎯 + yesterday summary card + "Repeat yesterday" CTA
    ========================================================================= */
 function EmptyState({
-  type, yesterdayStats, onAddManual,
+  type, yesterdayStats, onAddManual, onCopyYesterday,
 }: {
   type: 'first-time' | 'returning';
   yesterdayStats: { studySec: number; doneCount: number; totalCount: number };
   onAddManual: () => void;
+  onCopyYesterday: () => void;
 }) {
   // === HEAT FIX: Gate animations when tab hidden ===
   const isVisible = useVisibility();
   const reduceMotion = useReducedMotion();
   const animate = isVisible && !reduceMotion;
   const isFirstTime = type === 'first-time';
+  const setTab = useNav((s) => s.setTab);
+
+  // === Onboarding checklist data (first-time variant) ===
+  const hasTargets = useTargets((s) => Object.keys(s.byDate).length > 0);
+  const hasSessions = useHistory((s) => s.sessions.length > 0);
+  const hasRoutineBlocks = useRoutine((s) => s.blocks.length > 0);
+  const hasSyllabusLectures = useSyllabus((s) => s.lectures.length > 0);
+
+  const checklist = useMemo(() => [
+    {
+      key: 'target',
+      label: 'Add a study target',
+      desc: 'Plan what you\'ll study today',
+      done: hasTargets,
+      action: onAddManual,
+    },
+    {
+      key: 'session',
+      label: 'Start a focus session',
+      desc: 'Tap ▶ on any target card',
+      done: hasSessions,
+      action: undefined,
+    },
+    {
+      key: 'routine',
+      label: 'Build your routine',
+      desc: 'Schedule weekly study blocks',
+      done: hasRoutineBlocks,
+      action: () => setTab('settings'),
+    },
+    {
+      key: 'syllabus',
+      label: 'Add syllabus lectures',
+      desc: 'Track chapter-by-chapter progress',
+      done: hasSyllabusLectures,
+      action: () => setTab('syllabus'),
+    },
+  ], [hasTargets, hasSessions, hasRoutineBlocks, hasSyllabusLectures, onAddManual, setTab]);
+
+  const doneCount = checklist.filter((c) => c.done).length;
+  const yPct = yesterdayStats.totalCount > 0
+    ? Math.round((yesterdayStats.doneCount / yesterdayStats.totalCount) * 100)
+    : 0;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-2xl p-6 text-center space-y-4"
+      className="rounded-2xl p-5 relative overflow-hidden"
+      style={{
+        background: 'color-mix(in oklch, var(--card) 80%, transparent)',
+        border: '1px solid var(--border)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+      }}
     >
-      {/* Illustration */}
-      <div className="flex justify-center">
-        <motion.div
-          animate={{ y: [0, -4, 0] }}
-          transition={{ duration: 3, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
-          className="text-5xl"
-        >
-          {isFirstTime ? '📚' : '🎯'}
-        </motion.div>
-      </div>
+      {/* Decorative radial glow */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          top: '-30%', left: '50%', transform: 'translateX(-50%)',
+          width: '80%', height: '60%',
+          background: 'radial-gradient(ellipse, rgba(20,184,166,0.12) 0%, transparent 70%)',
+        }}
+      />
 
-      {/* Title */}
-      <div>
-        <h3 className="text-base font-bold mb-1" style={{ color: 'var(--foreground)' }}>
-          {isFirstTime ? 'Welcome! Let\'s plan your first study day' : 'Nothing planned for today yet'}
-        </h3>
-        {!isFirstTime && yesterdayStats.totalCount > 0 && (
-          <p className="text-[11px]" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
-            Yesterday: {formatHM(yesterdayStats.studySec)} · {yesterdayStats.doneCount}/{yesterdayStats.totalCount} done
+      <div className="relative">
+        {/* Illustration + title */}
+        <div className="text-center mb-4">
+          <motion.div
+            animate={{ y: [0, -4, 0] }}
+            transition={{ duration: 3, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
+            className="text-5xl mb-2 inline-block"
+          >
+            {isFirstTime ? '📚' : '🎯'}
+          </motion.div>
+          <h3 className="text-base font-bold" style={{ color: 'var(--foreground)' }}>
+            {isFirstTime ? 'Welcome to CrackIt!' : 'Nothing planned today yet'}
+          </h3>
+          <p className="text-[11px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            {isFirstTime ? 'Let\'s set up your study system' : 'Add targets to get back on track'}
           </p>
+        </div>
+
+        {/* === FIRST-TIME: Onboarding checklist === */}
+        {isFirstTime && (
+          <div className="space-y-1.5 mb-4">
+            {checklist.map((item, i) => (
+              <motion.button
+                key={item.key}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.06 }}
+                onClick={() => { if (item.action) { vibrate(8); item.action(); } }}
+                disabled={item.done}
+                className={cn(
+                  'w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left transition',
+                  item.action && !item.done && 'active:scale-[0.98]',
+                  item.done && 'opacity-60'
+                )}
+                style={{
+                  background: item.done
+                    ? 'rgba(34,197,94,0.06)'
+                    : 'var(--muted)',
+                  border: `1px solid ${item.done ? 'rgba(34,197,94,0.20)' : 'var(--border)'}`,
+                }}
+              >
+                {item.done ? (
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(34,197,94,0.15)' }}
+                  >
+                    <Check size={13} strokeWidth={3} className="text-green-500" />
+                  </div>
+                ) : (
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                    style={{ border: '1.5px solid var(--border)' }}
+                  >
+                    <Circle size={6} style={{ color: 'var(--muted-foreground)', fill: 'currentColor' }} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12px] font-semibold" style={{ color: 'var(--foreground)' }}>
+                    {item.label}
+                  </div>
+                  <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
+                    {item.done ? 'Done' : item.desc}
+                  </div>
+                </div>
+                {!item.done && item.action && (
+                  <ChevronRight size={13} style={{ color: 'var(--muted-foreground)' }} />
+                )}
+              </motion.button>
+            ))}
+
+            {/* Progress dots */}
+            <div className="flex items-center justify-center gap-1.5 pt-2">
+              <span className="text-[10px] font-bold tabular-nums" style={{ color: 'var(--muted-foreground)' }}>
+                {doneCount} of 4 done
+              </span>
+              {checklist.map((c) => (
+                <span
+                  key={c.key}
+                  className="w-1.5 h-1.5 rounded-full transition-colors"
+                  style={{
+                    background: c.done ? '#22c55e' : 'var(--border)',
+                    boxShadow: c.done ? '0 0 4px rgba(34,197,94,0.5)' : 'none',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
         )}
-      </div>
 
-      {/* CTA */}
-      <div className="flex flex-col gap-2">
-        <button
-          onClick={onAddManual}
-          className="w-full font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition flex items-center justify-center gap-1.5"
-          style={{ background: 'linear-gradient(90deg, #0d9488, #16a34a)', color: '#fff' }}
+        {/* === RETURNING: Yesterday summary === */}
+        {!isFirstTime && yesterdayStats.totalCount > 0 && (
+          <div
+            className="rounded-xl p-3 mb-4"
+            style={{
+              background: 'var(--muted)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span
+                className="text-[9px] font-bold uppercase tracking-[0.8px]"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                Yesterday
+              </span>
+              <span className="text-[10px] tabular-nums font-semibold" style={{ color: 'var(--foreground)' }} suppressHydrationWarning>
+                {formatHM(yesterdayStats.studySec)} studied
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="flex-1 h-1.5 rounded-full overflow-hidden"
+                style={{ background: 'var(--bar-track, rgba(255,255,255,0.08))' }}
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: 'linear-gradient(90deg, #14b8a6, #22c55e)' }}
+                  initial={false}
+                  animate={{ width: `${yPct}%` }}
+                  transition={{ type: 'spring', stiffness: 80, damping: 18 }}
+                />
+              </div>
+              <span className="text-[10px] tabular-nums shrink-0" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
+                {yesterdayStats.doneCount}/{yesterdayStats.totalCount} done
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* === CTAs === */}
+        <div className="flex flex-col gap-2">
+          {!isFirstTime && yesterdayStats.totalCount > 0 ? (
+            <>
+              <button
+                onClick={() => { vibrate(15); onCopyYesterday(); }}
+                className="w-full font-bold py-2.5 rounded-xl text-sm active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                style={{ background: 'linear-gradient(135deg, #0d9488, #16a34a)', color: '#fff', boxShadow: '0 4px 12px -2px rgba(20,184,166,0.45)' }}
+              >
+                <Copy size={14} />
+                Repeat yesterday · {yesterdayStats.totalCount} target{yesterdayStats.totalCount === 1 ? '' : 's'}
+              </button>
+              <button
+                onClick={onAddManual}
+                className="w-full font-semibold py-2.5 rounded-xl text-sm border transition active:scale-[0.98] flex items-center justify-center gap-1.5"
+                style={{ background: 'var(--muted)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+              >
+                <Plus size={14} />
+                Add a new target
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={onAddManual}
+              className="w-full font-bold py-2.5 rounded-xl text-sm active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+              style={{ background: 'linear-gradient(135deg, #0d9488, #16a34a)', color: '#fff', boxShadow: '0 4px 12px -2px rgba(20,184,166,0.45)' }}
+            >
+              <Plus size={14} />
+              {isFirstTime ? 'Add your first target' : 'Add a target for today'}
+            </button>
+          )}
+        </div>
+
+        {/* Tip */}
+        <p
+          className="text-[10px] italic pt-3 mt-3 text-center"
+          style={{ borderTop: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
         >
-          <Plus size={14} />
-          {isFirstTime ? 'Add your first target' : 'Add a target for today'}
-        </button>
+          💡 Tip: Aim for 4-6 targets per day for balanced prep.
+        </p>
       </div>
-
-      {/* Tip */}
-      <p className="text-[10px] italic pt-2 border-t border-foreground/10" style={{ color: 'var(--muted-foreground)' }}>
-        💡 Tip: Aim for 4-6 targets per day for balanced prep.
-      </p>
     </motion.div>
   );
 }
 
+/* =========================================================================
+   ALL-DONE STATE (REDESIGNED)
+   Confetti burst + today's stats + streak chip + CTAs
+   ========================================================================= */
 function AllDoneState({
-  studySecToday, doneCount, totalCount, onAddMore,
+  studySecToday, doneCount, totalCount, streak, progressPct, onAddMore,
 }: {
   studySecToday: number;
   doneCount: number;
   totalCount: number;
+  streak: number;
+  progressPct: number;
   onAddMore: () => void;
 }) {
   // === HEAT FIX: Gate animations when tab hidden ===
   const isVisible = useVisibility();
   const reduceMotion = useReducedMotion();
   const animate = isVisible && !reduceMotion;
+  const setTab = useNav((s) => s.setTab);
+
+  // === Confetti particles (generated once per mount) ===
+  const particles = useMemo(() => {
+    const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7', '#ec4899', '#14b8a6'];
+    return Array.from({ length: 16 }, (_, i) => ({
+      x: (Math.random() - 0.5) * 240,
+      y: -(50 + Math.random() * 100),
+      rotate: (Math.random() - 0.5) * 540,
+      color: colors[i % colors.length],
+      delay: Math.random() * 0.35,
+      size: 4 + Math.random() * 5,
+      round: Math.random() > 0.5,
+    }));
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="glass rounded-2xl p-6 text-center space-y-3"
-      style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(20,184,166,0.05))' }}
+      className="rounded-2xl p-5 relative overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg, rgba(34,197,94,0.10), rgba(20,184,166,0.05)), color-mix(in oklch, var(--card) 80%, transparent)',
+        border: '1px solid rgba(34,197,94,0.25)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+      }}
     >
-      <motion.div
-        animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
-        transition={{ duration: 2, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
-        className="text-5xl"
-      >
-        🎉
-      </motion.div>
-      <div>
-        <h3 className="text-base font-bold mb-1" style={{ color: 'var(--foreground)' }}>All done for today!</h3>
-        <p className="text-[11px]" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
-          {formatHM(studySecToday)} studied · {doneCount}/{totalCount} complete
-        </p>
+      {/* Confetti burst */}
+      {animate && (
+        <div className="absolute inset-x-0 top-8 pointer-events-none" style={{ height: 0 }}>
+          {particles.map((p, i) => (
+            <motion.span
+              key={i}
+              className="absolute"
+              style={{
+                left: '50%', top: 0,
+                width: p.size, height: p.size,
+                background: p.color,
+                borderRadius: p.round ? '50%' : '1px',
+              }}
+              initial={{ x: 0, y: 0, opacity: 1, rotate: 0, scale: 0 }}
+              animate={{
+                x: p.x, y: p.y, rotate: p.rotate, scale: [0, 1, 0.8],
+                opacity: [1, 1, 0],
+              }}
+              transition={{ duration: 1.6, delay: p.delay, ease: 'easeOut' }}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="relative">
+        {/* Hero */}
+        <div className="text-center mb-4">
+          <motion.div
+            animate={{ scale: [1, 1.12, 1], rotate: [0, 6, -6, 0] }}
+            transition={{ duration: 2.2, repeat: animate ? Infinity : 0, ease: 'easeInOut' }}
+            className="text-5xl mb-2 inline-block"
+          >
+            🎉
+          </motion.div>
+          <h3 className="text-base font-bold flex items-center justify-center gap-1.5" style={{ color: 'var(--foreground)' }}>
+            All done for today!
+            <Trophy size={15} className="text-amber-500" />
+          </h3>
+          <p className="text-[11px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            You crushed it. Every target complete.
+          </p>
+        </div>
+
+        {/* Today's stats */}
+        <div
+          className="grid grid-cols-3 gap-2 mb-3 py-3"
+          style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
+        >
+          <div className="text-center">
+            <div className="text-[16px] font-black tabular-nums leading-none" style={{ color: '#22c55e' }} suppressHydrationWarning>
+              {formatHM(studySecToday)}
+            </div>
+            <div className="text-[8.5px] font-bold uppercase tracking-[0.6px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              Focused
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-[16px] font-black tabular-nums leading-none" style={{ color: 'var(--foreground)' }} suppressHydrationWarning>
+              {doneCount}/{totalCount}
+            </div>
+            <div className="text-[8.5px] font-bold uppercase tracking-[0.6px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              Targets
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-[16px] font-black tabular-nums leading-none" style={{ color: '#14b8a6' }} suppressHydrationWarning>
+              {progressPct}%
+            </div>
+            <div className="text-[8.5px] font-bold uppercase tracking-[0.6px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              Of goal
+            </div>
+          </div>
+        </div>
+
+        {/* Streak chip */}
+        {streak >= 2 && (
+          <div className="flex justify-center mb-3">
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
+              style={{
+                background: 'rgba(249,115,22,0.15)',
+                border: '1px solid rgba(249,115,22,0.35)',
+                color: '#f97316',
+              }}
+            >
+              <Flame size={11} />
+              {streak}-day streak — keep it alive!
+            </span>
+          </div>
+        )}
+
+        {/* CTAs */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => { vibrate(12); onAddMore(); }}
+            className="flex-1 font-bold py-2.5 rounded-xl text-[12px] active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+            style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', boxShadow: '0 4px 12px -2px rgba(34,197,94,0.45)' }}
+          >
+            <Plus size={13} />
+            Add more targets
+          </button>
+          <button
+            onClick={() => { vibrate(10); setTab('stats'); }}
+            className="px-4 py-2.5 rounded-xl text-[12px] font-bold transition active:scale-95 flex items-center justify-center gap-1.5"
+            style={{ background: 'var(--muted)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+          >
+            <BarChart3 size={13} />
+            Stats
+          </button>
+        </div>
       </div>
-      <button
-        onClick={onAddMore}
-        className="text-[11px] font-semibold px-4 py-2 rounded-lg border border-border hover:bg-foreground/5 transition inline-flex items-center gap-1"
-        style={{ color: 'var(--foreground)' }}
-      >
-        <Plus size={12} />
-        Add more
-      </button>
     </motion.div>
   );
 }
