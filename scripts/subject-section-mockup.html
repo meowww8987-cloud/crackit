@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SubjectSection Modernization Plan</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    background: #0a0c14;
+    color: #e5e7eb;
+    padding: 40px;
+    width: 1280px;
+  }
+  .page-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 4px;
+    letter-spacing: -0.5px;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-bottom: 28px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 390px 1fr;
+    gap: 36px;
+    align-items: start;
+  }
+
+  /* === PHONE FRAME === */
+  .phone {
+    width: 390px;
+    background: linear-gradient(180deg, #0a0c14 0%, #0e1118 100%);
+    border-radius: 36px;
+    padding: 14px 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  /* === SECTION TITLE INSIDE PHONE === */
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px 10px;
+  }
+  .section-label .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #14b8a6;
+    box-shadow: 0 0 8px #14b8a6;
+  }
+  .section-label .text {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    color: #64748b;
+    text-transform: uppercase;
+  }
+
+  /* === SUBJECT HERO CARD (NEW DESIGN) === */
+  .subject-card {
+    border-radius: 18px;
+    padding: 14px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid;
+  }
+  .subject-card.physics {
+    background: linear-gradient(135deg, rgba(59,130,246,0.10) 0%, rgba(59,130,246,0.03) 60%, transparent 100%);
+    border-color: rgba(59,130,246,0.45);
+    box-shadow: 0 0 0 1px rgba(59,130,246,0.20), 0 12px 32px -8px rgba(59,130,246,0.25);
+  }
+  .subject-card.chemistry {
+    background: linear-gradient(135deg, rgba(249,115,22,0.08) 0%, rgba(249,115,22,0.02) 60%, transparent 100%);
+    border-color: rgba(249,115,22,0.25);
+  }
+  .subject-card.botany {
+    background: linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(34,197,94,0.02) 60%, transparent 100%);
+    border-color: rgba(34,197,94,0.25);
+  }
+  /* Active "studying now" radial glow */
+  .subject-card.active::before {
+    content: '';
+    position: absolute;
+    top: -40%; right: -10%;
+    width: 60%; height: 80%;
+    background: radial-gradient(ellipse, rgba(59,130,246,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* === HEADER ROW === */
+  .subj-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .subj-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .subj-icon.physics   { background: rgba(59,130,246,0.18); box-shadow: 0 0 0 1px rgba(59,130,246,0.35), 0 0 16px rgba(59,130,246,0.30); }
+  .subj-icon.chemistry { background: rgba(249,115,22,0.18); box-shadow: 0 0 0 1px rgba(249,115,22,0.30); }
+  .subj-icon.botany    { background: rgba(34,197,94,0.18); box-shadow: 0 0 0 1px rgba(34,197,94,0.30); }
+  .subj-icon svg { width: 18px; height: 18px; }
+
+  .subj-name-block {
+    flex: 1;
+    min-width: 0;
+  }
+  .subj-name {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .subj-name.physics   { color: #60a5fa; }
+  .subj-name.chemistry { color: #fb923c; }
+  .subj-name.botany    { color: #4ade80; }
+  .subj-meta {
+    margin-top: 4px;
+    font-size: 10px;
+    color: #94a3b8;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .subj-meta .sep { color: #475569; }
+
+  /* "Studying now" chip */
+  .now-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px 2px 5px;
+    border-radius: 999px;
+    background: rgba(59,130,246,0.18);
+    border: 1px solid rgba(59,130,246,0.45);
+    font-size: 9px;
+    font-weight: 700;
+    color: #93c5fd;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .now-chip .pulse {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #60a5fa;
+    box-shadow: 0 0 6px #60a5fa;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* Mini ring (24px) */
+  .mini-ring {
+    width: 30px; height: 30px;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .mini-ring svg { transform: rotate(-90deg); }
+  .mini-ring .pct {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* === CHAPTER PILLS STRIP === */
+  .pill-strip {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin: 0 -2px 4px;
+    padding-left: 2px; padding-right: 2px;
+    scrollbar-width: none;
+  }
+  .pill-strip::-webkit-scrollbar { display: none; }
+  .chapter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .pill-idle {
+    background: rgba(255,255,255,0.04);
+    color: #cbd5e1;
+    border-color: rgba(255,255,255,0.06);
+  }
+  .pill-progress {
+    background: rgba(59,130,246,0.15);
+    color: #93c5fd;
+    border-color: rgba(59,130,246,0.35);
+  }
+  .pill-progress-orange {
+    background: rgba(249,115,22,0.15);
+    color: #fdba74;
+    border-color: rgba(249,115,22,0.35);
+  }
+  .pill-progress-green {
+    background: rgba(34,197,94,0.15);
+    color: #86efac;
+    border-color: rgba(34,197,94,0.35);
+  }
+  .pill-done {
+    background: rgba(34,197,94,0.10);
+    color: #4ade80;
+    border-color: rgba(34,197,94,0.20);
+  }
+  .pill-active {
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    color: #fff;
+    border-color: rgba(96,165,250,0.6);
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.25), 0 4px 12px -2px rgba(59,130,246,0.5);
+  }
+  .pill-add {
+    background: transparent;
+    color: #64748b;
+    border-color: rgba(255,255,255,0.08);
+    border-style: dashed;
+  }
+  .pill-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .pill-check {
+    width: 11px; height: 11px;
+    flex-shrink: 0;
+  }
+
+  /* === EXPANDED CHAPTER CONTENT === */
+  .expanded-chapter {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(59,130,246,0.15);
+  }
+  .expanded-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 0 2px;
+  }
+  .expanded-header .chev {
+    color: #60a5fa;
+    font-size: 10px;
+  }
+  .expanded-header .name {
+    font-size: 10px;
+    font-weight: 700;
+    color: #cbd5e1;
+    flex: 1;
+  }
+  .expanded-header .stat {
+    font-size: 9px;
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* mini target card row */
+  .target-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 6px;
+    position: relative;
+  }
+  .target-row.active-target {
+    background: linear-gradient(135deg, rgba(59,130,246,0.10), rgba(59,130,246,0.03));
+    border-color: rgba(59,130,246,0.35);
+  }
+  .target-row.done-target { opacity: 0.55; }
+  .target-row .stripe {
+    width: 3px;
+    height: 28px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .target-row .stripe.lecture { background: #3b82f6; }
+  .target-row .stripe.dpp { background: #f97316; }
+  .target-row .stripe.notes { background: #22c55e; }
+  .target-info { flex: 1; min-width: 0; }
+  .target-info .t-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #e5e7eb;
+    line-height: 1.2;
+    text-decoration: none;
+  }
+  .target-row.done-target .t-name {
+    text-decoration: line-through;
+  }
+  .target-info .t-meta {
+    font-size: 9px;
+    color: #64748b;
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .target-progress {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .target-bar {
+    width: 36px;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+  }
+  .target-bar .fill {
+    height: 100%;
+    border-radius: 2px;
+    background: #3b82f6;
+  }
+  .target-pct {
+    font-size: 9px;
+    font-weight: 700;
+    color: #cbd5e1;
+    font-variant-numeric: tabular-nums;
+    min-width: 24px;
+    text-align: right;
+  }
+  .play-btn {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .play-btn svg { width: 11px; height: 11px; fill: #fff; }
+  .pause-btn {
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+  }
+  .check-circle {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(34,197,94,0.15);
+    border: 1.5px solid #22c55e;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .check-circle svg { width: 11px; height: 11px; fill: none; stroke: #4ade80; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* === FOOTER QUICK ACTIONS === */
+  .subj-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .start-btn {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    box-shadow: 0 4px 12px -2px rgba(59,130,246,0.4);
+  }
+  .start-btn svg { width: 11px; height: 11px; fill: #fff; }
+  .add-btn {
+    width: 30px; height: 30px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #cbd5e1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .add-btn svg { width: 13px; height: 13px; stroke: #cbd5e1; stroke-width: 2.5; fill: none; stroke-linecap: round; }
+
+  /* === ANNOTATIONS PANEL === */
+  .annotations {
+    padding-top: 4px;
+  }
+  .ann-section-title {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+    color: #14b8a6;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(20,184,166,0.2);
+  }
+  .ann-item {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+  }
+  .ann-num {
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px -2px rgba(20,184,166,0.4);
+  }
+  .ann-body { flex: 1; padding-top: 1px; }
+  .ann-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 3px;
+    line-height: 1.3;
+  }
+  .ann-desc {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+  .ann-desc strong {
+    color: #cbd5e1;
+    font-weight: 600;
+  }
+
+  /* === BEFORE/AFTER LABELS === */
+  .stage-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .stage-label.new {
+    background: rgba(20,184,166,0.15);
+    color: #5eead4;
+    border: 1px solid rgba(20,184,166,0.35);
+  }
+
+  /* === PROBLEMS STRIP (current) === */
+  .problems {
+    margin-top: 32px;
+    padding: 18px;
+    border-radius: 14px;
+    background: rgba(239,68,68,0.05);
+    border: 1px solid rgba(239,68,68,0.20);
+  }
+  .problems-title {
+    font-size: 11px;
+    font-weight: 800;
+    color: #fca5a5;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .problems-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 16px;
+  }
+  .problem-item {
+    font-size: 11px;
+    color: #cbd5e1;
+    line-height: 1.5;
+    padding-left: 14px;
+    position: relative;
+  }
+  .problem-item::before {
+    content: '✕';
+    position: absolute;
+    left: 0; top: 0;
+    color: #ef4444;
+    font-weight: 800;
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-title">SubjectSection + ChapterSection — Modernization Plan</div>
+<div class="page-subtitle">Next section after SmartPlan removal. One section, fully modernized before moving on.</div>
+
+<div class="layout">
+
+  <!-- ============================ PHONE MOCKUP ============================ -->
+  <div>
+    <div class="stage-label new">
+      <span style="width:5px;height:5px;border-radius:50%;background:#5eead4;box-shadow:0 0 6px #5eead4;"></span>
+      Proposed · Dark theme · iPhone 14 (390×844)
+    </div>
+
+    <div class="phone">
+      <div class="section-label">
+        <div class="dot"></div>
+        <div class="text">Today · 5 targets · 3 subjects</div>
+      </div>
+
+      <!-- =================== SUBJECT 1: PHYSICS (ACTIVE) =================== -->
+      <div class="subject-card physics active">
+        <div class="subj-header">
+          <div class="subj-icon physics">
+            <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#60a5fa"/></svg>
+          </div>
+          <div class="subj-name-block">
+            <div class="subj-name physics">Physics</div>
+            <div class="subj-meta">
+              <span>1h 20m / 2h 30m</span>
+              <span class="sep">·</span>
+              <span>3/5 done</span>
+              <span class="sep">·</span>
+              <span class="now-chip"><span class="pulse"></span>Studying now</span>
+            </div>
+          </div>
+          <!-- Mini ring -->
+          <div class="mini-ring">
+            <svg width="30" height="30" viewBox="0 0 30 30">
+              <circle cx="15" cy="15" r="12" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+              <circle cx="15" cy="15" r="12" fill="none" stroke="#60a5fa" stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-dasharray="75.4" stroke-dashoffset="22.6"
+                      style="filter: drop-shadow(0 0 3px #3b82f6);"/>
+            </svg>
+            <div class="pct">70%</div>
+          </div>
+        </div>
+
+        <!-- Chapter pills strip -->
+        <div class="pill-strip">
+          <div class="chapter-pill pill-active">
+            <span class="pill-dot" style="background:#fff;"></span>
+            Mechanics
+          </div>
+          <div class="chapter-pill pill-progress">
+            <span class="pill-dot" style="background:#60a5fa;"></span>
+            Thermo
+          </div>
+          <div class="chapter-pill pill-done">
+            <svg class="pill-check" viewBox="0 0 16 16" fill="none" stroke="#4ade80" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 8 7 12 13 4"/></svg>
+            Optics
+          </div>
+          <div class="chapter-pill pill-add">+ New</div>
+        </div>
+
+        <!-- Expanded Mechanics chapter -->
+        <div class="expanded-chapter">
+          <div class="expanded-header">
+            <span class="chev">▾</span>
+            <span class="name">Mechanics</span>
+            <span class="stat">2/3 done · 40m left</span>
+          </div>
+
+          <div class="target-row done-target">
+            <div class="stripe lecture"></div>
+            <div class="target-info">
+              <div class="t-name">Newton's Laws — L8</div>
+              <div class="t-meta">Lecture · 45m · done 9:42 AM</div>
+            </div>
+            <div class="check-circle">
+              <svg viewBox="0 0 16 16"><polyline points="3 8 7 12 13 4"/></svg>
+            </div>
+          </div>
+
+          <div class="target-row active-target">
+            <div class="stripe dpp"></div>
+            <div class="target-info">
+              <div class="t-name">DPP: Kinematics Set 3</div>
+              <div class="t-meta">DPP · 30m · 18m studied</div>
+            </div>
+            <div class="target-progress">
+              <div class="target-bar"><div class="fill" style="width:60%;"></div></div>
+              <div class="target-pct">60%</div>
+            </div>
+            <div class="play-btn pause-btn">
+              <svg viewBox="0 0 12 12"><rect x="2" y="2" width="3" height="8" rx="0.5"/><rect x="7" y="2" width="3" height="8" rx="0.5"/></svg>
+            </div>
+          </div>
+
+          <div class="target-row" style="margin-bottom:0;">
+            <div class="stripe notes"></div>
+            <div class="target-info">
+              <div class="t-name">Notes: Friction formulas</div>
+              <div class="t-meta">Notes · 25m · not started</div>
+            </div>
+            <div class="target-progress">
+              <div class="target-bar"><div class="fill" style="width:0%;"></div></div>
+              <div class="target-pct">0%</div>
+            </div>
+            <div class="play-btn">
+              <svg viewBox="0 0 12 12"><polygon points="3,2 3,10 10,6"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer quick actions -->
+        <div class="subj-footer">
+          <div class="start-btn">
+            <svg viewBox="0 0 12 12"><polygon points="3,2 3,10 10,6"/></svg>
+            Start next: Notes — Friction
+          </div>
+          <div class="add-btn">
+            <svg viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- =================== SUBJECT 2: CHEMISTRY (INACTIVE) =================== -->
+      <div class="subject-card chemistry">
+        <div class="subj-header">
+          <div class="subj-icon chemistry">
+            <svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="3" fill="#fb923c"/></svg>
+          </div>
+          <div class="subj-name-block">
+            <div class="subj-name chemistry">Chemistry</div>
+            <div class="subj-meta">
+              <span>0m / 1h 0m</span>
+              <span class="sep">·</span>
+              <span>0/2 done</span>
+            </div>
+          </div>
+          <div class="mini-ring">
+            <svg width="30" height="30" viewBox="0 0 30 30">
+              <circle cx="15" cy="15" r="12" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+              <circle cx="15" cy="15" r="12" fill="none" stroke="#fb923c" stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-dasharray="75.4" stroke-dashoffset="75.4"/>
+            </svg>
+            <div class="pct" style="color:#fb923c;">0%</div>
+          </div>
+        </div>
+
+        <div class="pill-strip">
+          <div class="chapter-pill pill-progress-orange">
+            <span class="pill-dot" style="background:#fb923c;"></span>
+            Organic
+          </div>
+          <div class="chapter-pill pill-idle">
+            <span class="pill-dot" style="background:#64748b;"></span>
+            Inorganic
+          </div>
+          <div class="chapter-pill pill-add">+ New</div>
+        </div>
+      </div>
+
+      <!-- =================== SUBJECT 3: BOTANY (INACTIVE) =================== -->
+      <div class="subject-card botany">
+        <div class="subj-header">
+          <div class="subj-icon botany">
+            <svg viewBox="0 0 16 16"><path d="M8 2 L14 14 L2 14 Z" fill="#4ade80"/></svg>
+          </div>
+          <div class="subj-name-block">
+            <div class="subj-name botany">Botany</div>
+            <div class="subj-meta">
+              <span>0m / 45m</span>
+              <span class="sep">·</span>
+              <span>0/1 done</span>
+            </div>
+          </div>
+          <div class="mini-ring">
+            <svg width="30" height="30" viewBox="0 0 30 30">
+              <circle cx="15" cy="15" r="12" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+              <circle cx="15" cy="15" r="12" fill="none" stroke="#4ade80" stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-dasharray="75.4" stroke-dashoffset="75.4"/>
+            </svg>
+            <div class="pct" style="color:#4ade80;">0%</div>
+          </div>
+        </div>
+
+        <div class="pill-strip">
+          <div class="chapter-pill pill-progress-green">
+            <span class="pill-dot" style="background:#4ade80;"></span>
+            Physiology
+          </div>
+          <div class="chapter-pill pill-add">+ New</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================ ANNOTATIONS ============================ -->
+  <div class="annotations">
+    <div class="ann-section-title">8 Design Decisions</div>
+
+    <div class="ann-item">
+      <div class="ann-num">1</div>
+      <div class="ann-body">
+        <div class="ann-title">Subject as a "Hero Card" — not a list row</div>
+        <div class="ann-desc">Each subject becomes a prominent card with a <strong>colored halo icon (36×36)</strong>, gradient tint background, and a glowing border. Active subject gets a <strong>radial glow</strong> in the top-right corner so you instantly see what you're studying.</div>
+      </div>
+    </div>
+
+    <div class="ann-item">
+      <div class="ann-num">2</div>
+      <div class="ann-body">
+        <div class="ann-title">Mini progress ring (30px) replaces the thin bar</div>
+        <div class="ann-desc">A <strong>circular ring</strong> with the subject's color shows % complete at a glance, with a soft glow. The number sits inside the ring. Far more legible than a 1.5px bar — and visually anchors the right side of the header.</div>
+      </div>
+    </div>
+
+    <div class="ann-item">
+      <div class="ann-num">3</div>
+      <div class="ann-body">
+        <div class="ann-title">Time + Done count shown inline</div>
+        <div class="ann-desc">"1h 20m / 2h 30m" and "3/5 done" appear under the subject name in tabular numerals. You see <strong>actual vs expected</strong> in one glance — no need to expand anything to know where you stand.</div>
+      </div>
+    </div>
+
+    <div class="ann-item">
+      <div class="ann-num">4</div>
+      <div class="ann-body">
+        <div class="ann-title">"Studying now" pulsing chip</div>
+        <div class="ann-desc">When a session is active for this subject, a small <strong>pulsing chip</strong> with a live dot appears in the header. No more guessing which subject the floating widget belongs to — the card itself tells you.</div>
+      </div>
+    </div>
+
+    <div class="ann-item">
+      <div class="ann-num">5</div>
+      <div class="ann-body">
+        <div class="ann-title">Chapter pills strip — no more nested accordions</div>
+        <div class="ann-desc">Chapters become <strong>horizontally scrollable pills</strong>: filled pill = in-progress, green check pill = done, dashed "+ Chapter" = add new. <strong>Tap a pill</strong> to expand that chapter inline (only one open at a time). Saves 60% vertical space vs the old chevron-accordion.</div>
+      </div>
+    </div>
+
+    <div class="ann-item">
+      <div class="ann-num">6</div>
+      <div class="ann-body">
+        <div class="ann-title">Inline expanded chapter — targets stay in context</div>
+        <div class="ann-desc">When you tap a chapter pill, the TargetCards appear <strong>inline in a recessed panel</strong> (darker background, soft border) — not in a separate section. The expanded header shows "2/3 done · 40m left" so you always know what's left.</div>
+      </div>
+    </div>
+
+    <div class="ann-item">
+      <div class="ann-num">7</div>
+      <div class="ann-body">
+        <div class="ann-title">"Start next" primary action button</div>
+        <div class="ann-desc">A <strong>gradient Start button</strong> in the card footer launches a focus session for the next incomplete target in this subject — skipping the expand → find → tap dance. The button label even tells you <strong>which target</strong> it'll start ("Start next: Notes — Friction").</div>
+      </div>
+    </div>
+
+    <div class="ann-item">
+      <div class="ann-num">8</div>
+      <div class="ann-body">
+        <div class="ann-title">Add (+) tertiary button + long-press menu</div>
+        <div class="ann-desc">A small icon button next to Start adds a target to this subject (opens AddTargetSheet pre-filled). <strong>Long-press the card</strong> opens a context menu: collapse all chapters, mark all done, jump to syllabus, archive.</div>
+      </div>
+    </div>
+
+    <!-- ============================ PROBLEMS WITH CURRENT ============================ -->
+    <div class="problems">
+      <div class="problems-title">
+        <span style="font-size:13px;">✕</span> Problems with current SubjectSection
+      </div>
+      <div class="problems-grid">
+        <div class="problem-item">Flat 1.5px progress bar — invisible at a glance</div>
+        <div class="problem-item">Subject + Chapter look identical (both just chevron + text)</div>
+        <div class="problem-item">Two-level nested accordions = too many taps</div>
+        <div class="problem-item">No way to start a session from subject level</div>
+        <div class="problem-item">Active subject only differs by a faint glow-pulse class</div>
+        <div class="problem-item">No "time vs expected" shown — only "X/Y done"</div>
+        <div class="problem-item">Chapter header + bar takes a full row each (wasted space)</div>
+        <div class="problem-item">No quick add-to-subject — must open full sheet</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
