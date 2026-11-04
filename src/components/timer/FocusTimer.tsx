@@ -654,64 +654,67 @@ export function FocusTimer() {
           is the intended burn-protection / distraction-reduction behavior.
           === LANDSCAPE: absolutely positioned at the top — a flex-row child
               would steal horizontal width from the timer + controls, which is
-              exactly what squeezed the timer off-screen before. === */}
+              exactly what squeezed the timer off-screen before. ===
+          === THEME FIX: all text here uses text-white (NOT text-foreground) so
+              it stays visible on the pure-black FocusTimer background in EVERY
+              theme. The subject color appears ONLY in the accent bar/dot, never
+              as text color — so it's always readable. ===
+          === LAYOUT FIX: chapter name is stacked BELOW the subject (not
+              inline beside it), so long names wrap to 2-3 lines instead of
+              getting truncated with "...". No more hidden chapter names. ===
+          === PREMIUM: wrapped in a frosted-glass pill (subtle blur + border)
+              so the header stands out from the black background — like iOS 16+
+              media controls. === */}
       {!minimalMode && (
       <div className={cn(
         'text-center transition-opacity duration-1000',
         dimmed ? 'opacity-0' : 'opacity-100',
         isLandscape
-          ? 'absolute top-4 left-0 right-0 z-10 px-4'
+          ? 'absolute z-10'
           : 'shrink-0'
-      )}>
-        {/* Landscape: prominent single-line header with a subject color bar.
-            Portrait: stacked badges with subject color accent. */}
-        {isLandscape ? (
-          <div className="flex items-center justify-center gap-2.5">
-            {/* Subject color accent bar — 3px wide vertical strip, subject color.
-                More visible than the tiny 1.5px dot used before. */}
+      )} style={isLandscape ? {
+        top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
+        left: '50%',
+        transform: 'translateX(-50%)',
+      } : undefined}>
+        {/* Frosted-glass pill wrapper — premium look, works in all themes */}
+        <div
+          className="inline-flex flex-col items-center gap-1 px-4 py-2 rounded-2xl"
+          style={{
+            background: 'rgba(255, 255, 255, 0.06)',
+            border: '1px solid rgba(255, 255, 255, 0.10)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            maxWidth: isLandscape ? '90vw' : '340px',
+          }}
+        >
+          {/* Line 1: mode badge with subject color dot — small, subtle */}
+          <div className="inline-flex items-center gap-1.5">
             <span
-              className="inline-block w-[3px] h-4 rounded-full shrink-0"
-              style={{ background: color.hex, boxShadow: `0 0 8px ${color.hex}80` }}
+              className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+              style={{ background: color.hex, boxShadow: `0 0 6px ${color.hex}80` }}
             />
-            <span className="font-bold text-sm" style={{ color: color.hex }}>{active.subject}</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-white/60">
+              {active.mode === 'free' ? 'Free Study' : 'Focus Session'}
+            </span>
+          </div>
+          {/* Line 2: subject name (bold white) + chapter (dim white, wraps) */}
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="font-bold text-white text-sm leading-tight">{active.subject}</span>
             {active.chapter && (
-              <>
-                <span className="text-muted-foreground/60">·</span>
-                <span className="text-foreground/90 font-medium text-sm truncate max-w-[160px]">{active.chapter}</span>
-              </>
+              <span className="text-white/70 font-medium text-xs leading-tight text-center break-words"
+                style={{ maxWidth: isLandscape ? '60vw' : '280px', wordBreak: 'break-word' }}>
+                {active.chapter}
+              </span>
             )}
             {active.topic && active.topic !== active.chapter && (
-              <>
-                <span className="text-muted-foreground/40">·</span>
-                <span className="text-muted-foreground/80 text-xs truncate max-w-[120px]">{active.topic}</span>
-              </>
+              <span className="text-white/45 text-[10px] leading-tight text-center break-words"
+                style={{ maxWidth: isLandscape ? '50vw' : '240px', wordBreak: 'break-word' }}>
+                {active.topic}
+              </span>
             )}
           </div>
-        ) : (
-        <>
-        {/* Portrait header: subject color accent bar + badge + title.
-            More prominent than the tiny dot used before. */}
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-foreground/10 border border-border mb-2">
-          <span
-            className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-            style={{ background: color.hex, boxShadow: `0 0 6px ${color.hex}80` }}
-          />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">
-            {active.mode === 'free' ? 'Free Study' : 'Focus Session'}
-          </span>
         </div>
-        <div className="flex items-center justify-center gap-2 text-base">
-          <span className="font-bold" style={{ color: color.hex }}>{active.subject}</span>
-          {active.chapter && (
-            <>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-foreground font-medium">{active.chapter}</span>
-            </>
-          )}
-        </div>
-        {active.topic && (
-          <div className="text-xs text-foreground mt-0.5">{active.topic}</div>
-        )}
         {/* === Smart Study Routine: block context ===
          * === FIX #2: Wrong-subject warning ===
          * === FIX #31: Next block preview ===
@@ -766,8 +769,6 @@ export function FocusTimer() {
           } catch {}
           return null;
         })()}
-        </>
-        )}
       </div>
       )}
 
