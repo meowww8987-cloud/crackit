@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Home Page — Phase 2 Proposal: "Your Journey" Tail Zone</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    background: #0a0c14;
+    color: #e5e7eb;
+    padding: 40px;
+    width: 1440px;
+  }
+  .page-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 4px; letter-spacing: -0.5px; }
+  .page-subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 26px; }
+
+  .layout { display: grid; grid-template-columns: 390px 390px 1fr; gap: 28px; align-items: start; }
+  .phone {
+    background: linear-gradient(180deg, #0a0c14 0%, #0e1118 100%);
+    border-radius: 36px; padding: 14px 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .col-label { text-align: center; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+  .col-label.before { color: #f87171; }
+  .col-label.after  { color: #22c55e; }
+  .col-wrap { display: flex; flex-direction: column; }
+
+  .card { border-radius: 16px; padding: 12px; margin-bottom: 12px; background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.08); }
+  .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .card-head .t { font-size: 11px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: #cbd5e1; }
+
+  /* === BEFORE: badges + heatmap + sessions === */
+  .badge-rail { display: flex; gap: 8px; overflow: hidden; }
+  .badge { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .heat-row { display: flex; gap: 6px; }
+  .heat-sq { flex: 1; aspect-ratio: 1; border-radius: 9px; background: rgba(255,255,255,0.05); }
+  .heat-lbl { display: flex; gap: 6px; margin-top: 4px; }
+  .heat-lbl span { flex: 1; text-align: center; font-size: 8px; color: #475569; }
+  .sessions-row { display: flex; align-items: center; justify-content: space-between; }
+  .sessions-row .lbl { font-size: 10.5px; color: #94a3b8; margin-bottom: 3px; }
+  .sessions-row .big { font-size: 22px; font-weight: 800; color: #e2e8f0; }
+  .keep-tag { font-size: 9px; font-weight: 700; color: #22c55e; background: rgba(34,197,94,0.10); border: 1px solid rgba(34,197,94,0.28); padding: 2px 8px; border-radius: 99px; margin-left: auto; }
+
+  /* ============ AFTER: Your Journey ============ */
+  .journey-card {
+    border-radius: 18px; padding: 14px; margin-bottom: 12px; position: relative; overflow: hidden;
+    background:
+      radial-gradient(ellipse 90% 60% at 85% -10%, rgba(249,115,22,0.14) 0%, transparent 60%),
+      linear-gradient(160deg, rgba(20,184,166,0.06), transparent 50%), rgba(255,255,255,0.035);
+    border: 1px solid rgba(249,115,22,0.28);
+    box-shadow: 0 12px 32px -10px rgba(249,115,22,0.15);
+  }
+  .j-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .j-flame {
+    width: 34px; height: 34px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+    background: radial-gradient(circle at 30% 25%, rgba(249,115,22,0.40), rgba(249,115,22,0.10));
+    box-shadow: 0 0 0 1px rgba(249,115,22,0.40), 0 4px 14px -4px rgba(249,115,22,0.45);
+  }
+  .j-title { font-size: 13px; font-weight: 800; color: #f1f5f9; }
+  .j-sub { font-size: 9.5px; color: #64748b; margin-top: 1px; }
+  .j-chip {
+    margin-left: auto; font-size: 10px; font-weight: 800; color: #f97316;
+    background: rgba(249,115,22,0.12); border: 1px solid rgba(249,115,22,0.35);
+    padding: 4px 10px; border-radius: 99px;
+  }
+
+  /* bar chart */
+  .bars { display: flex; align-items: flex-end; gap: 7px; height: 88px; margin: 4px 2px 6px; position: relative; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .bar-val { font-size: 8.5px; font-weight: 800; color: #94a3b8; margin-bottom: 3px; }
+  .bar-val.hot { color: #2dd4bf; }
+  .bar {
+    width: 100%; border-radius: 7px 7px 3px 3px;
+    background: linear-gradient(180deg, #2dd4bf, #14b8a6 60%, rgba(20,184,166,0.45));
+    box-shadow: 0 0 12px -2px rgba(20,184,166,0.45);
+  }
+  .bar.today { background: linear-gradient(180deg, #34d399, #22c55e 60%, rgba(34,197,94,0.45)); box-shadow: 0 0 14px 0 rgba(34,197,94,0.5); }
+  .bar.empty { height: 3px !important; background: rgba(255,255,255,0.10); box-shadow: none; border-radius: 3px; }
+  .bar-dots { font-size: 8px; color: #475569; margin-top: 4px; font-weight: 700; }
+  .day-lbl { display: flex; gap: 7px; margin: 0 2px; }
+  .day-lbl span { flex: 1; text-align: center; font-size: 8px; font-weight: 700; color: #64748b; }
+  .day-lbl span.today { color: #22c55e; }
+
+  /* stats row */
+  .j-stats {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px;
+  }
+  .jstat {
+    border-radius: 13px; padding: 9px 6px; text-align: center;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+  }
+  .jstat .v { font-size: 15px; font-weight: 800; line-height: 1.1; }
+  .jstat .l { font-size: 8px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: #64748b; margin-top: 3px; }
+  .jstat.sessions .v { color: #2dd4bf; }
+  .jstat.hours .v { color: #4ade80; }
+  .jstat.avg .v { color: #e2e8f0; }
+
+  .best-row {
+    margin-top: 10px; border-radius: 12px; padding: 8px 11px; display: flex; align-items: center; gap: 7px;
+    background: rgba(250,204,21,0.07); border: 1px solid rgba(250,204,21,0.22);
+    font-size: 10px; color: #e2e8f0;
+  }
+  .best-row b { font-weight: 800; }
+
+  /* ============ DECISIONS ============ */
+  .decisions { display: flex; flex-direction: column; gap: 9px; }
+  .decision { display: flex; gap: 11px; align-items: flex-start; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 12px; }
+  .d-num {
+    width: 22px; height: 22px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #fff;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    box-shadow: 0 4px 10px -3px rgba(249,115,22,0.5);
+  }
+  .d-body b { font-size: 11.5px; color: #f1f5f9; display: block; margin-bottom: 2px; }
+  .d-body span { font-size: 10px; color: #94a3b8; line-height: 1.45; }
+  .phase-note {
+    margin-top: 14px; border-radius: 12px; padding: 11px 13px;
+    background: rgba(59,130,246,0.07); border: 1px solid rgba(59,130,246,0.25);
+    font-size: 10.5px; color: #93c5fd; line-height: 1.5;
+  }
+  .phase-note b { color: #bfdbfe; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Home Page — Phase 2 Proposal: “Your Journey” Tail Zone</div>
+<div class="page-subtitle">Merges the two weakest tail cards — MiniHeatmap + Total Sessions — into one hero journey card · Achievements &amp; Projected Score stay untouched</div>
+
+<div class="layout">
+
+  <!-- ============ BEFORE ============ -->
+  <div class="col-wrap">
+    <div class="col-label before">Current — 3 disconnected cards</div>
+    <div class="phone">
+      <div class="card">
+        <div class="card-head" style="justify-content:space-between">
+          <span class="t">Achievements</span>
+          <span style="font-size:9.5px;color:#64748b">0/22 unlocked</span>
+        </div>
+        <div class="badge-rail">
+          <div class="badge">🥇</div><div class="badge">⏰</div><div class="badge">⭐</div><div class="badge">💯</div><div class="badge">👑</div><div class="badge">⚡</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span style="font-size:13px">📅</span><span class="t">Last 7 Days</span>
+          <span style="margin-left:auto;font-size:10px;color:#94a3b8">avg 0.4h/day</span>
+        </div>
+        <div class="heat-row">
+          <div class="heat-sq" style="background:rgba(34,197,94,0.5)"></div>
+          <div class="heat-sq"></div>
+          <div class="heat-sq" style="background:rgba(34,197,94,0.25)"></div>
+          <div class="heat-sq" style="background:rgba(34,197,94,0.75)"></div>
+          <div class="heat-sq"></div>
+          <div class="heat-sq" style="background:rgba(34,197,94,1)"></div>
+          <div class="heat-sq" style="background:rgba(34,197,94,0.25)"></div>
+        </div>
+        <div class="heat-lbl">
+          <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sessions-row">
+          <div>
+            <div class="lbl">Total Sessions</div>
+            <div class="big">0</div>
+          </div>
+          <span style="font-size:22px;color:rgba(45,212,191,0.4)">↗</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ AFTER ============ -->
+  <div class="col-wrap">
+    <div class="col-label after">Proposed — one “Your Journey” hero card</div>
+    <div class="phone">
+      <div class="journey-card">
+        <div class="j-head">
+          <div class="j-flame">🔥</div>
+          <div>
+            <div class="j-title">Your Journey</div>
+            <div class="j-sub">since May 2, 2026 · 187 days in</div>
+          </div>
+          <div class="j-chip">12-day streak</div>
+        </div>
+
+        <!-- 7-day bars -->
+        <div class="bars">
+          <div class="bar-col"><div class="bar-val">1.5h</div><div class="bar" style="height:34%"></div></div>
+          <div class="bar-col"><div class="bar-val">·</div><div class="bar empty"></div></div>
+          <div class="bar-col"><div class="bar-val">3h</div><div class="bar" style="height:52%"></div></div>
+          <div class="bar-col"><div class="bar-val">6.5h</div><div class="bar" style="height:88%"></div></div>
+          <div class="bar-col"><div class="bar-val">·</div><div class="bar empty"></div></div>
+          <div class="bar-col"><div class="bar-val">2h</div><div class="bar" style="height:38%"></div></div>
+          <div class="bar-col"><div class="bar-val hot">45m</div><div class="bar today" style="height:14%"></div></div>
+        </div>
+        <div class="day-lbl">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span class="today">Today</span>
+        </div>
+
+        <!-- stats row -->
+        <div class="j-stats">
+          <div class="jstat sessions"><div class="v">128</div><div class="l">Sessions</div></div>
+          <div class="jstat hours"><div class="v">342h</div><div class="l">Focused</div></div>
+          <div class="jstat avg"><div class="v">1.8h</div><div class="l">Avg / day</div></div>
+        </div>
+
+        <!-- best day -->
+        <div class="best-row">🏆 <span><b>Best day: Wed, Nov 4</b> — 6.5h of deep focus</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head" style="justify-content:space-between">
+          <span class="t">Achievements</span>
+          <span style="font-size:9.5px;color:#64748b">0/22 unlocked</span>
+        </div>
+        <div class="badge-rail">
+          <div class="badge">🥇</div><div class="badge">⏰</div><div class="badge">⭐</div><div class="badge">💯</div><div class="badge">👑</div><div class="badge">⚡</div>
+        </div>
+        <div style="text-align:center;margin-top:8px"><span class="keep-tag">kept as-is (Phase 2 scope)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DECISIONS ============ -->
+  <div class="decisions">
+    <div class="decision"><div class="d-num">1</div><div class="d-body"><b>Journey hero header</b><span>Orange flame halo (matches StreakFlame color language) + “since &lt;prep start&gt; · N days in” sub + live streak chip. One glance = how long you’ve been on the grind.</span></div></div>
+    <div class="decision"><div class="d-num">2</div><div class="d-body"><b>7-day bars replace flat squares</b><span>Rounded-top gradient bars (teal→green), height ∝ hours studied. Empty days become 3px baseline dots instead of big gray squares — no more “unstyled placeholder” look.</span></div></div>
+    <div class="decision"><div class="d-num">3</div><div class="d-body"><b>Today bar highlighted</b><span>Green gradient + soft glow + pulsing (pulse-soft). Value labels above every bar ≥ 1h (“6.5h”), “·” for rest days.</span></div></div>
+    <div class="decision"><div class="d-num">4</div><div class="d-body"><b>Stats row replaces Total Sessions card</b><span>Sessions (animated NumberMorph, existing component) · Total focused hours · Avg/day. Three meaningful numbers instead of one lonely “0”.</span></div></div>
+    <div class="decision"><div class="d-num">5</div><div class="d-body"><b>Best-day callout</b><span>🏆 “Best day: Wed, Nov 4 — 6.5h of deep focus” — computed from history (max studySeconds day). Rewarded, not just measured.</span></div></div>
+    <div class="decision"><div class="d-num">6</div><div class="d-body"><b>Tap → Stats tab</b><span>Whole card deep-links to the Stats tab for the full story (trends, calendar, breakdowns).</span></div></div>
+    <div class="decision"><div class="d-num">7</div><div class="d-body"><b>Two weak cards merged into one</b><span>MiniHeatmap + Total Sessions collapse into a single hero card — combined tail gets ~30% shorter and finally tells a story.</span></div></div>
+    <div class="decision"><div class="d-num">8</div><div class="d-body"><b>Achievements untouched</b><span>Badge rail already has its own identity (0/22 counter + horizontal scroll) — kept as its own card, zero risk.</span></div></div>
+    <div class="decision"><div class="d-num">9</div><div class="d-body"><b>Live-session aware + theme-safe</b><span>Bars/stats include live session time (same todaySec logic as HomeTab). All colors via CSS vars + rgba tokens — verified in dark + light.</span></div></div>
+
+    <div class="phase-note">
+      <b>Phase 3 (final): hero polish</b> — soften CountdownCard’s red pace alert into a calmer amber “improving” state, ProgressRings zero-state empty hints, and unify header spacing. After that, the Home page is fully modernized.
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
