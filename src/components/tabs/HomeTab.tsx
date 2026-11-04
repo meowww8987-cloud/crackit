@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, TrendingUp, Calendar, FileText, Clock, Moon } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { useSession, getLiveStudySeconds } from '@/lib/store/session';
 import { usePractice } from '@/lib/store/practice';
 
@@ -14,13 +14,14 @@ const cardEntrance = {
   transition: { type: 'spring' as const, stiffness: 300, damping: 25 },
   viewport: { once: true, margin: '-30px' as const },
 };
-// Fix #6: whileTap for all cards
-const cardTap = { scale: 0.98 };
 import { useHistory } from '@/lib/store/history';
 import { useSettings } from '@/lib/store/settings';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useTests } from '@/lib/store/tests';
 import { useTimetable } from '@/lib/store/timetable';
+import { useNav } from '@/lib/store/nav';
+import { subjectColor } from '@/lib/colors';
+import type { Subject, TimetableSlot } from '@/lib/types';
 import { useRecall } from '@/lib/store/recall';
 import { formatHM, longDate, diffDays, todayKey, isRevisionOverdue, vibrate } from '@/lib/utils';
 import { AchievementBadges } from '@/components/shared/AchievementBadges';
@@ -430,31 +431,17 @@ export function HomeTab() {
       {/* === AI Study Coach === */}
       <motion.div {...cardEntrance}><CoachCard /></motion.div>
 
-      {/* Today's Schedule */}
+      {/* === DAILY VITALS ZONE (redesigned) ===
+          Order matches approved mockup: Subject Pulse -> Schedule timeline -> Vitals strip */}
+      <motion.div {...cardEntrance} className="minimal-hide"><SubjectPulseCard /></motion.div>
+
       {todaySlots.length > 0 && (
-        <motion.div {...cardEntrance} className="glass rounded-2xl p-3 minimal-hide">
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar size={14} className="text-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Today's Schedule</span>
-          </div>
-          <div className="space-y-1">
-            {todaySlots.map((slot) => (
-              <div key={slot.id} className="flex items-center gap-2 text-xs">
-                <Clock size={12} style={{ color: 'var(--muted-foreground)' }} />
-                <span className="tabular" style={{ color: 'var(--muted-foreground)' }}>{slot.startHour}:00 - {slot.endHour}:00</span>
-                <span style={{ color: 'var(--foreground)' }}>{slot.subject}</span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+        <motion.div {...cardEntrance} className="minimal-hide"><ScheduleStrip slots={todaySlots} /></motion.div>
       )}
 
-      {/* Subject Health Scores */}
-      <motion.div {...cardEntrance} className="minimal-hide"><SubjectHealthCard /></motion.div>
-
-      {/* Sleep & Energy + Doubts — sheets are rendered at top level to avoid transform positioning issues */}
+      {/* Daily Vitals strip — sheets are rendered at top level to avoid transform positioning issues */}
       <motion.div {...cardEntrance} className="minimal-hide">
-        <SleepAndDoubtCard
+        <DailyVitalsCard
           onOpenSleepLog={() => setShowSleepLog(true)}
           onOpenReport={() => setShowSleepReport(true)}
           onOpenPlan={() => setShowSleepPlan(true)}
@@ -489,47 +476,14 @@ export function HomeTab() {
   );
 }
 
-function RingComparison({
-  title, innerSec, outerSec, innerPct, outerPct, trend, label, sublabel,
-}: {
-  title: string; innerSec: number; outerSec: number; innerPct: number; outerPct: number; trend: number; label: string; sublabel: string;
-}) {
-  const innerColor = trend >= 5 ? '#22c55e' : trend <= -5 ? '#ef4444' : '#f59e0b';
-  const trendColor = trend >= 5 ? 'text-green-400' : trend <= -5 ? 'text-red-400' : 'text-amber-400';
-  const trendArrow = trend >= 5 ? '↑' : trend <= -5 ? '↓' : '→';
-
-  return (
-    <div className="glass rounded-2xl p-3 flex flex-col items-center">
-      <div className="text-[10px] uppercase tracking-widest mb-2 text-center" style={{ color: 'var(--muted-foreground)' }}>{title}</div>
-      <div className="relative w-24 h-24">
-        <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
-          <circle cx="48" cy="48" r="42" fill="none" stroke="var(--ring-track)" strokeWidth="4" />
-          <motion.circle
-            cx="48" cy="48" r="42" fill="none" stroke="var(--ring-outer)" strokeWidth="4" strokeLinecap="round"
-            animate={{ strokeDasharray: `${(outerPct / 100) * 263.89} 263.89` }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-          />
-          <circle cx="48" cy="48" r="32" fill="none" stroke="var(--ring-track)" strokeWidth="4" />
-          <motion.circle
-            cx="48" cy="48" r="32" fill="none" stroke={innerColor} strokeWidth="4" strokeLinecap="round"
-            animate={{ strokeDasharray: `${(innerPct / 100) * 201.06} 201.06` }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>{label}</div>
-          <div className="text-sm font-bold tabular">{formatHM(innerSec)}</div>
-        </div>
-      </div>
-      <div className={`text-xs font-semibold mt-2 tabular ${trendColor}`}>
-        {trendArrow} {trend > 0 ? '+' : ''}{trend}%
-      </div>
-      <div className="text-[10px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{sublabel}</div>
-    </div>
-  );
-}
-
-function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
+/* =========================================================================
+   DAILY VITALS (REDESIGNED — was the tall "Sleep & Energy + Doubts" card)
+   8. Three compact tiles: Sleep / Energy / Doubts (~40% shorter)
+   9. Zero functionality lost: tap sleep -> report (or log when no history),
+      long-press -> report, NEET-logo sleep start untouched, energy inline
+      picker, doubts navigation, Sleep Plan pill preserved.
+   ========================================================================= */
+function DailyVitalsCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
   onOpenSleepLog: () => void;
   onOpenReport: () => void;
   onOpenPlan: () => void;
@@ -538,10 +492,7 @@ function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
   const isVisible = useVisibility();
   const reduceMotion = useReducedMotion();
   const animate = isVisible && !reduceMotion;
-  // FIXED: Subscribe to raw data (stable references) + compute derived values
-  // in useMemo. Previous code called s.getToday(), s.getDurationForDate(),
-  // s.getAverageHours(), s.doubts.filter() in the selector — these create
-  // NEW values on every render, causing excessive re-renders.
+
   const dailyLogState = useDailyLog((s) => s);
   const todayLog = useMemo(() => dailyLogState.getToday(), [dailyLogState]);
   const allDoubts = useDoubts((s) => s.doubts);
@@ -550,6 +501,7 @@ function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
   const sleepHistory = useSleep((s) => s.history);
   const activeSleep = useSleep((s) => s.activeSleep);
   const setEnergy = useDailyLog((s) => s.setEnergy);
+  const [showEnergyPicker, setShowEnergyPicker] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const todaySleepSec = useMemo(() => {
@@ -565,196 +517,507 @@ function SleepAndDoubtCard({ onOpenSleepLog, onOpenReport, onOpenPlan }: {
   const todaySleepHours = todaySleepSec / 3600;
   const hasTodaySleep = todaySleepSec > 0;
   const hasAnySleepHistory = sleepHistory.length > 0;
+  const energyLevel = todayLog?.energyLevel ?? 0;
+  const energyEmoji = energyLevel === 0 ? '➕' : energyLevel <= 1 ? '😫' : energyLevel === 2 ? '😦' : energyLevel === 3 ? '😐' : energyLevel === 4 ? '🙂' : '😄';
+  const energyColor = energyLevel <= 2 ? '#dc2626' : energyLevel === 3 ? '#d97706' : '#16a34a';
+
+  // Sleep tile tap = same semantics as the old sleep block
+  const handleSleepTap = () => {
+    if (activeSleep) return;
+    if (hasAnySleepHistory) onOpenReport();
+    else onOpenSleepLog();
+  };
+
+  // Sleep tile content by state
+  const sleepTile = activeSleep
+    ? { big: 'Sleeping', sub: 'logo to wake' }
+    : hasTodaySleep
+      ? { big: `${todaySleepHours.toFixed(1)}h`, sub: `avg ${avgSleepHours.toFixed(1)}h` }
+      : todayLog
+        ? { big: `${todayLog.sleepHours}h`, sub: 'manual' }
+        : { big: '—', sub: hasAnySleepHistory ? 'tap for report' : 'tap to log' };
 
   return (
-    <>
-      <div className="glass rounded-2xl p-3" style={{ border: '1px solid var(--border)' }}>
-        {/* Header row */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm">😴</span>
-            <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>Sleep & Energy</span>
-          </div>
-          <button
-            onClick={() => onOpenPlan()}
-            className="text-[9px] px-2 py-0.5 rounded-full font-semibold active:scale-95 transition"
-            style={{ background: 'rgba(99,102,241,0.15)', color: '#6366f1' }}
-          >
-            Sleep Plan →
-          </button>
-        </div>
-
-        {/* === Sleep block — tap to start sleep OR view report === */}
+    <div
+      className="rounded-2xl p-3.5 relative overflow-hidden"
+      style={{
+        background: 'linear-gradient(160deg, rgba(99,102,241,0.08), transparent 55%), color-mix(in oklch, var(--card) 80%, transparent)',
+        border: '1px solid rgba(99,102,241,0.25)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[13px]">🔋</span>
+        <span className="text-[11px] font-extrabold uppercase tracking-[0.8px]" style={{ color: 'var(--foreground)' }}>Daily Vitals</span>
         <button
-          onClick={() => {
-            if (activeSleep) return;
-            if (hasAnySleepHistory) onOpenReport();
-            else onOpenSleepLog();
-          }}
-          onTouchStart={() => {
-            longPressTimer.current = setTimeout(() => onOpenReport(), 500);
-          }}
-          onTouchEnd={() => {
-            if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-          }}
-          onTouchCancel={() => {
-            if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-          }}
-          className="w-full text-left rounded-xl p-2.5 transition mb-2 active:scale-[0.99]"
-          style={{ background: 'var(--muted)' }}
+          onClick={() => onOpenPlan()}
+          className="ml-auto text-[9px] px-2.5 py-1 rounded-full font-bold active:scale-95 transition"
+          style={{ background: 'rgba(99,102,241,0.15)', color: '#6366f1' }}
         >
-          {activeSleep ? (
-            <div className="flex items-center gap-2">
-              <motion.div
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: animate ? Infinity : 0 }}
-                className="text-xl"
-              >🌙</motion.div>
-              <div className="flex-1">
-                <div className="text-xs font-semibold" style={{ color: '#6366f1' }}>Sleeping now…</div>
-                <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>Tap NEET logo to wake · Long-press for report</div>
-              </div>
-            </div>
-          ) : hasTodaySleep ? (
-            <div className="flex items-center gap-2">
-              <div className="text-xl">😴</div>
-              <div className="flex-1">
-                <div className="text-sm font-bold tabular" style={{ color: '#6366f1' }}>{todaySleepHours.toFixed(1)}h today</div>
-                <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>7-day avg: {avgSleepHours.toFixed(1)}h · Long-press for report</div>
-              </div>
-              <Moon size={14} style={{ color: '#6366f1', opacity: 0.6 }} />
-            </div>
-          ) : todayLog ? (
-            <div className="flex items-center gap-2">
-              <div className="text-xl">😴</div>
-              <div className="flex-1">
-                <div className="text-sm font-bold tabular" style={{ color: '#6366f1' }}>{todayLog.sleepHours}h (manual)</div>
-                <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>Long-press for report</div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <div className="text-xl">😴</div>
-              <div className="flex-1">
-                <div className="text-sm font-semibold" style={{ color: 'var(--muted-foreground)' }}>Tap NEET logo to sleep</div>
-                <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>Long-press here for sleep report</div>
-              </div>
-              <Moon size={14} style={{ color: '#6366f1', opacity: 0.6 }} />
-            </div>
-          )}
-        </button>
-
-        {/* === Energy block === */}
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>Energy</span>
-          <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
-          <span className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>{todayLog ? `last: ${todayLog.energyLevel}/5` : 'tap to rate'}</span>
-        </div>
-        <div className="flex gap-1">
-          {[1, 2, 3, 4, 5].map((lvl) => {
-            const current = todayLog?.energyLevel ?? 0;
-            const isFilled = lvl <= current;
-            const fillColor = lvl <= 2 ? '#dc2626' : lvl === 3 ? '#d97706' : '#16a34a';
-            return (
-              <button
-                key={lvl}
-                onClick={() => setEnergy(lvl)}
-                className="flex-1 py-1.5 rounded-lg text-sm transition active:scale-95"
-                style={{
-                  background: isFilled ? `${fillColor}20` : 'var(--muted)',
-                  color: isFilled ? fillColor : 'var(--muted-foreground)',
-                  border: isFilled ? `1px solid ${fillColor}40` : '1px solid var(--border)',
-                }}
-              >
-                {lvl <= 1 ? '😫' : lvl === 2 ? '😦' : lvl === 3 ? '😐' : lvl === 4 ? '🙂' : '😄'}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Doubts mini-row */}
-        <button
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent('navigate-doubts'));
-          }}
-          className="w-full mt-2 flex items-center gap-2 rounded-lg p-2 transition"
-          style={{ background: 'var(--muted)' }}
-        >
-          <span className="text-sm">❓</span>
-          <span className="text-[10px] font-bold flex-1 text-left" style={{ color: 'var(--muted-foreground)' }}>Doubts</span>
-          <span className="text-xs font-bold tabular" style={{ color: '#d97706' }}>{pendingDoubts}</span>
-          <span className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>· {resolvedDoubts} resolved</span>
+          Sleep Plan →
         </button>
       </div>
-    </>
+
+      {/* Three tiles */}
+      <div className="grid grid-cols-3 gap-2">
+        {/* Sleep tile */}
+        <button
+          onClick={handleSleepTap}
+          onTouchStart={() => { longPressTimer.current = setTimeout(() => onOpenReport(), 500); }}
+          onTouchEnd={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } }}
+          onTouchCancel={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } }}
+          className="rounded-xl p-2.5 text-center active:scale-[0.97] transition"
+          style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
+        >
+          <div className="text-[14px] mb-0.5">
+            {activeSleep ? (
+              <motion.span
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: animate ? Infinity : 0 }}
+                className="inline-block"
+              >
+                💤
+              </motion.span>
+            ) : '😴'}
+          </div>
+          <div className="text-[13px] font-extrabold leading-none tabular-nums" style={{ color: '#818cf8' }} suppressHydrationWarning>
+            {sleepTile.big}
+          </div>
+          <div className="text-[8px] font-extrabold uppercase tracking-[0.8px] mt-1.5" style={{ color: 'var(--muted-foreground)' }}>Sleep</div>
+          <div className="text-[8px] mt-0.5" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>{sleepTile.sub}</div>
+        </button>
+
+        {/* Energy tile */}
+        <button
+          onClick={() => { vibrate(8); setShowEnergyPicker(v => !v); }}
+          className="rounded-xl p-2.5 text-center active:scale-[0.97] transition"
+          style={{ background: 'var(--muted)', border: showEnergyPicker ? `1px solid ${energyColor}55` : '1px solid var(--border)' }}
+        >
+          <div className="text-[14px] mb-0.5">{energyEmoji}</div>
+          <div
+            className="text-[13px] font-extrabold leading-none"
+            style={{ color: energyLevel > 0 ? energyColor : 'var(--muted-foreground)' }}
+            suppressHydrationWarning
+          >
+            {energyLevel > 0 ? energyLevel : '?'}<span className="text-[9px] font-bold" style={{ color: 'var(--muted-foreground)' }}>/5</span>
+          </div>
+          <div className="text-[8px] font-extrabold uppercase tracking-[0.8px] mt-1.5" style={{ color: 'var(--muted-foreground)' }}>Energy</div>
+          <div className="text-[8px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{energyLevel > 0 ? 'tap to adjust' : 'tap to rate'}</div>
+        </button>
+
+        {/* Doubts tile */}
+        <button
+          onClick={() => { vibrate(8); window.dispatchEvent(new CustomEvent('navigate-doubts')); }}
+          className="rounded-xl p-2.5 text-center active:scale-[0.97] transition"
+          style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
+        >
+          <div className="text-[14px] mb-0.5">❓</div>
+          <div
+            className="text-[13px] font-extrabold leading-none tabular-nums"
+            style={{ color: pendingDoubts > 0 ? '#d97706' : 'var(--foreground)' }}
+            suppressHydrationWarning
+          >
+            {pendingDoubts}
+          </div>
+          <div className="text-[8px] font-extrabold uppercase tracking-[0.8px] mt-1.5" style={{ color: 'var(--muted-foreground)' }}>Doubts</div>
+          <div className="text-[8px] mt-0.5" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>{resolvedDoubts} solved</div>
+        </button>
+      </div>
+
+      {/* Inline energy picker (slides open on energy tile tap) */}
+      <AnimatePresence>
+        {showEnergyPicker && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="flex gap-1.5 pt-2.5">
+              {[1, 2, 3, 4, 5].map((lvl) => {
+                const current = todayLog?.energyLevel ?? 0;
+                const isFilled = lvl <= current;
+                const fillColor = lvl <= 2 ? '#dc2626' : lvl === 3 ? '#d97706' : '#16a34a';
+                return (
+                  <button
+                    key={lvl}
+                    onClick={() => {
+                      vibrate(6);
+                      setEnergy(lvl);
+                      setShowEnergyPicker(false);
+                    }}
+                    className="flex-1 py-2 rounded-lg text-base transition active:scale-95"
+                    style={{
+                      background: isFilled ? `${fillColor}20` : 'var(--muted)',
+                      border: isFilled ? `1px solid ${fillColor}40` : '1px solid var(--border)',
+                    }}
+                  >
+                    {lvl <= 1 ? '😫' : lvl === 2 ? '😦' : lvl === 3 ? '😐' : lvl === 4 ? '🙂' : '😄'}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
-function SubjectHealthCard() {
+/* =========================================================================
+   SUBJECT PULSE (REDESIGNED — was flat "Subject Health" list)
+   1. Teal halo hero header + formula hint + average chip
+   2. Per-subject colored halo icons (geometric shapes, matches Study tab)
+   3. Gradient glow bars in each subject's own color
+   4. Status chips (Strong / Steady / Needs work) + crown/warn badges
+   5. Smart insight footer about weakest subject -> tap opens Syllabus
+   ========================================================================= */
+function SubjectPulseCard() {
   const sessions = useHistory((s) => s.sessions);
   const lectures = useSyllabus((s) => s.lectures);
   const chapters = useSyllabus((s) => s.chapters);
   const subjects = useSyllabus((s) => s.subjects);
   const tests = useTests((s) => s.tests);
+  const setTab = useNav((s) => s.setTab);
 
   const healthScores = useMemo(() => {
     const weightage: Record<string, number> = { Physics: 100, Chemistry: 100, Botany: 100, Zoology: 100, General: 0 };
     return getSubjectHealthScores(lectures, chapters, subjects, sessions, tests, weightage);
   }, [lectures, chapters, subjects, sessions, tests]);
 
-  const weakest = healthScores.filter(h => h.score > 0).sort((a, b) => a.score - b.score)[0];
-  const strongest = healthScores.filter(h => h.score > 0).sort((a, b) => b.score - a.score)[0];
+  // Same visibility rule as the old card: scored subjects OR subjects with lectures
+  const visible = useMemo(() => healthScores.filter(h => h.score > 0 || lectures.some(l => {
+    const ch = chapters.find(c => c.id === l.chapterId);
+    const subj = subjects.find(s => s.id === ch?.subjectId);
+    return subj?.name === h.subject;
+  })), [healthScores, lectures, chapters, subjects]);
+
+  const scored = visible.filter(h => h.score > 0);
+  const weakest = scored.length > 0 ? [...scored].sort((a, b) => a.score - b.score)[0] : null;
+  const strongest = scored.length > 0 ? [...scored].sort((a, b) => b.score - a.score)[0] : null;
+  const avg = scored.length > 0 ? Math.round(scored.reduce((a, h) => a + h.score, 0) / scored.length) : 0;
+
+  const statusFor = (score: number) => {
+    if (score >= 70) return { label: 'Strong', color: '#16a34a', bg: 'rgba(34,197,94,0.13)', border: 'rgba(34,197,94,0.30)' };
+    if (score >= 40) return { label: 'Steady', color: '#d97706', bg: 'rgba(245,158,11,0.13)', border: 'rgba(245,158,11,0.30)' };
+    return { label: 'Needs work', color: '#dc2626', bg: 'rgba(239,68,68,0.13)', border: 'rgba(239,68,68,0.30)' };
+  };
+
+  const insight = (() => {
+    if (weakest && weakest.score < 40) {
+      return {
+        emoji: '⚠️',
+        text: `${weakest.subject} needs attention — your weakest subject (${weakest.score}). A focused session on it today would help.`,
+        bg: 'rgba(239,68,68,0.07)', border: 'rgba(239,68,68,0.22)',
+      };
+    }
+    if (strongest && strongest.score >= 70) {
+      return {
+        emoji: '👑',
+        text: `${strongest.subject} is leading with ${strongest.score} — keep the momentum.`,
+        bg: 'rgba(34,197,94,0.07)', border: 'rgba(34,197,94,0.22)',
+      };
+    }
+    return {
+      emoji: '📈',
+      text: 'Scores update as you study, take tests and rate confidence.',
+      bg: 'var(--muted)', border: 'var(--border)',
+    };
+  })();
 
   return (
-    <div className="glass rounded-2xl p-3" style={{ border: '1px solid var(--border)' }}>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-sm">🏥</span>
-        <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>Subject Health</span>
+    <div
+      className="rounded-2xl p-3.5 relative overflow-hidden"
+      style={{
+        background: 'linear-gradient(160deg, rgba(20,184,166,0.08), transparent 55%), color-mix(in oklch, var(--card) 80%, transparent)',
+        border: '1px solid rgba(20,184,166,0.30)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+      }}
+    >
+      {/* Hero header */}
+      <div className="flex items-center gap-2.5 mb-3">
+        <div
+          className="w-[34px] h-[34px] rounded-xl flex items-center justify-center shrink-0 text-[15px]"
+          style={{
+            background: 'radial-gradient(circle at 30% 25%, rgba(20,184,166,0.35), rgba(20,184,166,0.10))',
+            boxShadow: '0 0 0 1px rgba(20,184,166,0.35), 0 4px 14px -4px rgba(20,184,166,0.4)',
+          }}
+        >
+          🩺
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] font-extrabold" style={{ color: 'var(--foreground)' }}>Subject Pulse</div>
+          <div className="text-[9px]" style={{ color: 'var(--muted-foreground)' }}>completion · confidence · time · tests</div>
+        </div>
+        {scored.length > 0 && (
+          <span
+            className="text-[10px] font-extrabold px-2.5 py-1 rounded-full shrink-0"
+            style={{ background: 'rgba(20,184,166,0.12)', color: '#0d9488', border: '1px solid rgba(20,184,166,0.30)' }}
+            suppressHydrationWarning
+          >
+            avg {avg}
+          </span>
+        )}
       </div>
-      <div className="space-y-2.5">
-        {healthScores.filter(h => h.score > 0 || lectures.some(l => {
-          const ch = chapters.find(c => c.id === l.chapterId);
-          const subj = subjects.find(s => s.id === ch?.subjectId);
-          return subj?.name === h.subject;
-        })).map((h, i) => {
-          const isWeakest = weakest?.subject === h.subject && h.score > 0 && h.score < 40;
-          const isStrongest = strongest?.subject === h.subject && h.score >= 70;
-          return (
-            <div key={h.subject} className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold w-16 shrink-0" style={{ color: 'var(--foreground)' }}>{h.subject}</span>
-              <div className="flex-1 h-2.5 rounded-full overflow-hidden relative" style={{ background: 'var(--muted)' }}>
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{
-                    background: `linear-gradient(90deg, ${h.color}, ${h.color}cc)`,
-                    boxShadow: h.score > 0 ? `0 0 4px ${h.color}80` : 'none',
-                  }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${h.score}%` }}
-                  transition={{ duration: 0.6, delay: i * 0.1 }}
-                />
-                {/* Glow overlay for strong subjects */}
-                {isStrongest && (
-                  <div
-                    className="absolute inset-0 rounded-full"
-                    style={{ background: `linear-gradient(90deg, transparent, ${h.color}20)`, width: `${h.score}%` }}
-                  />
-                )}
-              </div>
-              <span className="text-[10px] font-bold tabular w-7 text-right" style={{ color: h.color }}>
-                {h.score}
-              </span>
-              {isWeakest && <span className="text-[9px]">⚠</span>}
-              {isStrongest && <span className="text-[9px]">👑</span>}
-            </div>
-          );
-        })}
-      </div>
-      {weakest && weakest.score < 40 && (
-        <p className="text-[10px] mt-2" style={{ color: '#dc2626' }}>⚠ {weakest.subject} needs urgent attention</p>
+
+      {visible.length === 0 ? (
+        /* Empty hint — no lectures & nothing scored yet */
+        <button
+          onClick={() => { vibrate(8); setTab('syllabus'); }}
+          className="w-full rounded-xl p-3 text-center active:scale-[0.99] transition"
+          style={{ background: 'var(--muted)', border: '1px dashed var(--border)' }}
+        >
+          <div className="text-[11px] font-semibold" style={{ color: 'var(--foreground)' }}>Add syllabus lectures to unlock your pulse</div>
+          <div className="text-[9px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>Tap to open the Syllabus tab</div>
+        </button>
+      ) : (
+        <>
+          {/* Subject rows */}
+          <div className="space-y-2.5">
+            {visible.map((h, i) => {
+              const color = subjectColor(h.subject);
+              const st = statusFor(h.score);
+              // Old thresholds kept (warn < 40, crown >= 70) + mutual exclusion so
+              // a single subject can never wear both badges (ties on empty data)
+              const isWeakest = scored.length > 1 && weakest?.subject === h.subject && strongest?.subject !== h.subject && h.score < 40;
+              const isStrongest = scored.length > 1 && strongest?.subject === h.subject && weakest?.subject !== h.subject && h.score >= 70;
+              return (
+                <button
+                  key={h.subject}
+                  onClick={() => { vibrate(8); setTab('syllabus'); }}
+                  className="w-full text-left active:scale-[0.99] transition"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div
+                      className="w-[26px] h-[26px] rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: `${color.hex}1f`, boxShadow: `0 0 0 1px ${color.hex}55` }}
+                    >
+                      <SubjectIcon subject={h.subject} color={color.hex} size={13} />
+                    </div>
+                    <span className="text-[11.5px] font-bold truncate" style={{ color: 'var(--foreground)' }}>{h.subject}</span>
+                    {isWeakest && <span className="text-[10px] shrink-0">⚠️</span>}
+                    {isStrongest && <span className="text-[10px] shrink-0">👑</span>}
+                    <span
+                      className="ml-auto text-[9px] font-extrabold px-2 py-[3px] rounded-full shrink-0"
+                      style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}
+                      suppressHydrationWarning
+                    >
+                      {st.label} · {h.score}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--muted)', marginLeft: 34 }}>
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{
+                        background: `linear-gradient(90deg, ${color.hex}, ${color.hex}cc)`,
+                        boxShadow: h.score > 0 ? `0 0 8px ${color.hex}66` : 'none',
+                      }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${h.score}%` }}
+                      transition={{ duration: 0.6, delay: i * 0.08 }}
+                    />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Smart insight footer */}
+          <button
+            onClick={() => { vibrate(8); setTab('syllabus'); }}
+            className="mt-3 w-full rounded-xl p-2.5 flex items-start gap-2 text-left active:scale-[0.99] transition"
+            style={{ background: insight.bg, border: `1px solid ${insight.border}` }}
+          >
+            <span className="text-[11px] leading-none mt-[2px] shrink-0">{insight.emoji}</span>
+            <span className="flex-1 text-[10px] leading-relaxed" style={{ color: 'var(--foreground)' }}>{insight.text}</span>
+            <span className="text-[9px] font-bold shrink-0 self-center" style={{ color: 'var(--muted-foreground)' }}>→</span>
+          </button>
+        </>
       )}
-      {strongest && strongest.score >= 70 && (
-        <p className="text-[10px] mt-1" style={{ color: '#16a34a' }}>👑 {strongest.subject} is your strongest subject</p>
+    </div>
+  );
+}
+
+/* === Subject shapes — same geometric language as the Study tab === */
+function SubjectIcon({ subject, color, size = 13 }: { subject: Subject; color: string; size?: number }) {
+  const shape = subject === 'Physics'
+    ? <circle cx="8" cy="8" r="6" fill={color} />
+    : subject === 'Chemistry'
+      ? <rect x="2" y="2" width="12" height="12" rx="3" fill={color} />
+      : subject === 'Botany'
+        ? <path d="M8 2 L14 14 L2 14 Z" fill={color} />
+        : subject === 'Zoology'
+          ? <path d="M8 2 L14 8 L8 14 L2 8 Z" fill={color} />
+          : <rect x="4" y="4" width="8" height="8" rx="1" fill={color} />;
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" className="shrink-0">
+      {shape}
+    </svg>
+  );
+}
+
+/* =========================================================================
+   SCHEDULE STRIP (REDESIGNED — was plain "Today's Schedule" text list)
+   6. 6AM–12AM timeline rail with colored subject segments (matches Study tab)
+      + pulsing "now" line
+   7. Next-up row with gradient Start CTA that launches a real session
+   ========================================================================= */
+function ScheduleStrip({ slots }: { slots: TimetableSlot[] }) {
+  const startSession = useSession((s) => s.startSession);
+  const setFocusOpen = useSession((s) => s.setFocusOpen);
+  const activeSession = useSession((s) => s.active);
+
+  // 60s tick so the "now" line keeps moving
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const i = setInterval(() => {
+      if (!document.hidden) tick(t => t + 1);
+    }, 60000);
+    return () => clearInterval(i);
+  }, []);
+
+  // 6 AM – 12 AM window (same as Study tab CurrentBlockCard)
+  const DAY_START = 6;
+  const DAY_HOURS = 18;
+  const now = new Date();
+  const nowHour = now.getHours() + now.getMinutes() / 60;
+  const pct = (h: number) => ((h - DAY_START) / DAY_HOURS) * 100;
+  const nowPct = pct(nowHour);
+
+  const fmtTime = (h: number) => {
+    const hr = ((h % 24) + 11) % 12 + 1;
+    const ap = h < 12 || h >= 24 ? 'AM' : 'PM';
+    return `${hr}:00 ${ap}`;
+  };
+
+  const current = slots.find(s => nowHour >= s.startHour && nowHour < s.endHour) || null;
+  const next = slots.find(s => s.startHour > nowHour) || null;
+  // Current block takes priority ("Now:"), otherwise fall forward to the
+  // next upcoming block ("Next:"). When a block is live we show that one —
+  // starting the currently-running block is the most relevant CTA.
+  const featured = current || next;
+  const featuredColor = featured ? subjectColor(featured.subject) : null;
+
+  const handleStart = (slot: TimetableSlot) => {
+    vibrate(12);
+    startSession({
+      targetId: null,
+      subject: slot.subject,
+      chapter: 'Timetable',
+      topic: `${slot.subject} (scheduled)`,
+      mode: 'focus',
+      expectedMinutes: Math.round((slot.endHour - slot.startHour) * 60),
+    });
+    setFocusOpen(true);
+  };
+
+  return (
+    <div
+      className="rounded-2xl p-3.5"
+      style={{
+        background: 'color-mix(in oklch, var(--card) 80%, transparent)',
+        border: '1px solid var(--border)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <span className="text-[13px]">📅</span>
+        <span className="text-[11px] font-extrabold uppercase tracking-[0.8px]" style={{ color: 'var(--foreground)' }}>Today's Schedule</span>
+        <span
+          className="ml-auto text-[9px] font-bold px-2 py-0.5 rounded-full"
+          style={{ background: 'var(--muted)', color: 'var(--muted-foreground)', border: '1px solid var(--border)' }}
+        >
+          {slots.length} block{slots.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      {/* Timeline rail */}
+      <div className="relative mx-1 mt-5 mb-1.5" suppressHydrationWarning>
+        <div className="h-3.5 rounded-full relative overflow-hidden" style={{ background: 'var(--muted)' }}>
+          {slots.map((slot) => {
+            const color = subjectColor(slot.subject);
+            const left = Math.max(0, pct(slot.startHour));
+            const right = Math.min(100, pct(slot.endHour));
+            const width = Math.max(0, right - left);
+            if (width <= 0) return null;
+            const isActive = current?.id === slot.id;
+            return (
+              <div
+                key={slot.id}
+                className="absolute top-0 h-full"
+                style={{
+                  left: `${left}%`,
+                  width: `${width}%`,
+                  borderRadius: 4,
+                  background: `linear-gradient(180deg, ${color.hex}, ${color.hex}cc)`,
+                  boxShadow: isActive ? `0 0 10px ${color.hex}` : 'none',
+                }}
+              />
+            );
+          })}
+        </div>
+        {/* Now line (inside window only) */}
+        {nowPct >= 0 && nowPct <= 100 && (
+          <div
+            className="absolute top-[-3px] bottom-[-3px] z-10"
+            style={{ left: `${nowPct}%`, width: 2, background: 'var(--foreground)', boxShadow: '0 0 6px var(--foreground)', borderRadius: 1 }}
+          >
+            <div
+              className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full"
+              style={{ background: 'var(--foreground)', boxShadow: '0 0 8px var(--foreground)', animation: 'pulse-soft 1.6s ease-in-out infinite' }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Hour labels */}
+      <div className="flex justify-between px-1 text-[8px] font-bold" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
+        <span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span>
+      </div>
+
+      {/* Next-up / now row */}
+      {featured && featuredColor && (
+        <div
+          className="mt-3 rounded-xl p-2.5 flex items-center gap-2.5"
+          style={{ background: 'var(--muted)', border: `1px solid ${featuredColor.hex}33` }}
+        >
+          <div
+            className="w-2 h-2 rounded-full shrink-0"
+            style={{
+              background: featuredColor.hex,
+              boxShadow: `0 0 6px ${featuredColor.hex}`,
+              animation: current ? 'pulse-soft 1.6s ease-in-out infinite' : 'none',
+            }}
+          />
+          <div className="flex-1 min-w-0">
+            <div className="text-[11.5px] font-bold leading-tight truncate" style={{ color: 'var(--foreground)' }} suppressHydrationWarning>
+              {current ? 'Now: ' : 'Next: '}{featured.subject}
+            </div>
+            <div className="text-[9px] mt-0.5" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
+              {current
+                ? `until ${fmtTime(featured.endHour)}`
+                : `at ${fmtTime(featured.startHour)} · ${featured.endHour - featured.startHour}h`}
+            </div>
+          </div>
+          {!activeSession && (
+            <button
+              onClick={() => handleStart(featured)}
+              className="px-3.5 py-1.5 rounded-full text-[10px] font-extrabold text-white shrink-0 active:scale-95 transition"
+              style={{
+                background: `linear-gradient(135deg, ${featuredColor.hex}, ${featuredColor.hex}cc)`,
+                boxShadow: `0 4px 12px -2px ${featuredColor.hex}66`,
+              }}
+            >
+              Start
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
