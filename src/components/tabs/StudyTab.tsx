@@ -284,31 +284,32 @@ export function StudyTab() {
 
   return (
     <div className="pt-2 pb-32 space-y-4">
-      {/* ============ SECTION 1: HEADER ROW ============ */}
-      <HeaderRow
+      {/* ============ SECTION 1+2: HERO PROGRESS CARD (merged header + progress) ============
+          === COMBINED DESIGN (Option B frosted-glass card + Option C bigger/prominent
+              + segmented bar idea) ===
+          Top row: date + greeting (left) + Sparkles + Eye icons (right)
+          Middle: big ring (96px) + big "39m" studied + "8% of goal"
+          Bottom: segmented bar (studied/wasted/remaining) + pace chip + focus chip
+          Frosted-glass background with subtle gradient — theme-aware (uses
+          var(--foreground), NOT text-white, so it works in light themes too). */}
+      <HeroProgressCard
         streak={streak}
         studySecToday={studySecToday}
+        wastedSec={todayStats.wastedSec}
+        goalSec={goalSec}
+        dailyGoal={dailyGoal}
+        progressPct={progressPct}
         doneCount={todayStats.doneCount}
         totalCount={sortedTargets.length}
-        progressPct={progressPct}
+        liveFocus={liveFocus}
+        livePractice={livePractice}
+        savedStudySec={todayStats.studySec}
+        activeSubject={activeSubject}
         widgetHidden={widgetHidden}
         setWidgetHidden={setWidgetHidden}
         setFocusOpen={setFocusOpen}
         activeSession={!!activeSession}
         onToggleSuggestions={() => setShowSuggestions((s) => !s)}
-        mounted={mounted}
-      />
-
-      {/* ============ SECTION 2: PROGRESS CARD ============ */}
-      <ProgressCard
-        progressPct={progressPct}
-        studySecToday={studySecToday}
-        goalSec={goalSec}
-        dailyGoal={dailyGoal}
-        liveFocus={liveFocus}
-        livePractice={livePractice}
-        savedStudySec={todayStats.studySec}
-        activeSubject={activeSubject}
         mounted={mounted}
       />
 
@@ -443,19 +444,41 @@ export function StudyTab() {
 }
 
 /* =========================================================================
-   SECTION 1: HEADER ROW
-   Streak flame + date + eye button on row 1
-   One-line summary on row 2
-   ========================================================================= */
-function HeaderRow({
-  streak, studySecToday, doneCount, totalCount, progressPct,
-  widgetHidden, setWidgetHidden, setFocusOpen, activeSession, onToggleSuggestions, mounted,
+   SECTION 1+2: HERO PROGRESS CARD (merged HeaderRow + ProgressCard)
+   === COMBINED DESIGN (Option B frosted-glass + Option C bigger/prominent
+       + segmented bar) the user approved ===
+
+   Layout (top to bottom):
+   Row 1: date + greeting (left) | Sparkles + Eye icons (right)
+   Row 2: BIG ring (96px) | big "39m" studied + "8% of goal" + pace chip
+   Row 3: segmented bar (studied green | wasted red | remaining gray)
+   Row 4: breakdown chips (Focus / Practice / Targets)
+
+   === THEME-SAFE: uses var(--foreground) / var(--muted-foreground) for text
+       so it works in ALL themes (dark, light, rose, sage, ocean, etc.).
+       The frosted-glass background uses rgba of the theme's foreground color
+       so it adapts to light/dark automatically. ===
+   === NO REDUNDANCY: this replaces both the old HeaderRow (stats line) and
+       the old ProgressCard. The stats ("39m studied · 0/0 done · 8% of goal")
+       are now shown ONCE, here, in a cleaner layout. === */
+function HeroProgressCard({
+  streak, studySecToday, wastedSec, goalSec, dailyGoal, progressPct,
+  doneCount, totalCount, liveFocus, livePractice, savedStudySec,
+  activeSubject, widgetHidden, setWidgetHidden, setFocusOpen, activeSession,
+  onToggleSuggestions, mounted,
 }: {
   streak: number;
   studySecToday: number;
+  wastedSec: number;
+  goalSec: number;
+  dailyGoal: number;
+  progressPct: number;
   doneCount: number;
   totalCount: number;
-  progressPct: number;
+  liveFocus: number;
+  livePractice: number;
+  savedStudySec: number;
+  activeSubject: Subject | null;
   widgetHidden: boolean;
   setWidgetHidden: (v: boolean) => void;
   setFocusOpen: (v: boolean) => void;
@@ -463,104 +486,13 @@ function HeaderRow({
   onToggleSuggestions: () => void;
   mounted: boolean;
 }) {
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-sm">
-        {/* Streak flame */}
-        <div className="flex items-center gap-1.5 min-w-0">
-          {mounted && streak >= 2 ? (
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30"
-              title={`${streak}-day streak — keep it up!`}
-            >
-              <Flame size={12} className="text-orange-400" />
-              <span className="text-[11px] font-bold text-orange-600 dark:text-orange-300 tabular">{streak}</span>
-            </motion.div>
-          ) : (
-            <div suppressHydrationWarning className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
-              {shortDate()}
-            </div>
-          )}
-        </div>
-
-        {/* Date (when streak showing) */}
-        {mounted && streak >= 2 && (
-          <div className="text-[11px] tabular" suppressHydrationWarning style={{ color: 'var(--muted-foreground)' }}>
-            {shortDate()}
-          </div>
-        )}
-
-        {/* Right: Suggestions + Eye */}
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={onToggleSuggestions}
-            className="w-8 h-8 rounded-lg glass flex items-center justify-center hover:bg-foreground/10 transition active:scale-95"
-            aria-label="Toggle smart plan suggestions"
-            title="Smart suggestions"
-          >
-            <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
-          </button>
-          <button
-            onClick={() => {
-              vibrate(10);
-              if (widgetHidden) {
-                // Unhiding — also close FocusTimer if open so widget is visible
-                setFocusOpen(false);
-              }
-              setWidgetHidden(!widgetHidden);
-            }}
-            className={cn(
-              'w-8 h-8 rounded-lg glass flex items-center justify-center hover:bg-foreground/10 transition active:scale-95',
-              !activeSession && 'opacity-40'
-            )}
-            aria-label={widgetHidden ? 'Show floating widget' : 'Hide floating widget'}
-            title={widgetHidden ? 'Show widget' : 'Hide widget'}
-            disabled={!activeSession}
-          >
-            {/* === FIX: Icon was inverted ===
-                When the widget is HIDDEN, show an OPEN Eye (the ACTION is "show").
-                When the widget is VISIBLE, show EyeOff (the ACTION is "hide"). */}
-            {widgetHidden ? <Eye size={15} /> : <EyeOff size={15} />}
-          </button>
-        </div>
-      </div>
-
-      {/* Row 2: One-line summary */}
-      <div className="text-[11px] tabular flex items-center gap-1.5" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
-        <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{formatHM(studySecToday)}</span>
-        <span>studied ·</span>
-        <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{doneCount}</span>
-        <span>/{totalCount} done ·</span>
-        <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{progressPct}%</span>
-        <span>of goal</span>
-      </div>
-    </div>
-  );
-}
-
-/* =========================================================================
-   SECTION 2: PROGRESS CARD
-   Circular ring + pace indicator + breakdown
-   ========================================================================= */
-function ProgressCard({
-  progressPct, studySecToday, goalSec, dailyGoal,
-  liveFocus, livePractice, savedStudySec, activeSubject, mounted,
-}: {
-  progressPct: number;
-  studySecToday: number;
-  goalSec: number;
-  dailyGoal: number;
-  liveFocus: number;
-  livePractice: number;
-  savedStudySec: number;
-  activeSubject: Subject | null;
-  mounted: boolean;
-}) {
   const remainingSec = Math.max(0, goalSec - studySecToday);
   const ringColor = activeSubject ? subjectColor(activeSubject).hex : '#14b8a6';
   const ringColor2 = activeSubject ? subjectColor(activeSubject).hex : '#22c55e';
+
+  // Greeting based on time of day
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : hour < 21 ? 'Good evening' : 'Good night';
 
   // Pace calculation: assumes 16-hour active day (6am to 10pm)
   const now = new Date();
@@ -572,46 +504,105 @@ function ProgressCard({
   const paceDiff = progressPct - expectedPct;
   const paceStatus: 'ahead' | 'on-pace' | 'behind' = paceDiff >= 5 ? 'ahead' : paceDiff <= -10 ? 'behind' : 'on-pace';
   const paceColor = paceStatus === 'ahead' ? '#22c55e' : paceStatus === 'behind' ? '#ef4444' : '#f59e0b';
-  const paceLabel = paceStatus === 'ahead' ? '🔥 ahead of pace' : paceStatus === 'behind' ? '⏰ behind pace' : '✓ on pace';
+  const paceLabel = paceStatus === 'ahead' ? '🔥 ahead' : paceStatus === 'behind' ? '⏰ behind' : '✓ on pace';
 
   const isComplete = progressPct >= 100;
 
+  // Segmented bar percentages (relative to goal)
+  const goalMin = goalSec / 60;
+  const studiedPct = goalSec > 0 ? Math.min(100, (studySecToday / goalSec) * 100) : 0;
+  const wastedPct = goalSec > 0 ? Math.min(100 - studiedPct, (wastedSec / goalSec) * 100) : 0;
+  const remainingPct = Math.max(0, 100 - studiedPct - wastedPct);
+
   return (
     <motion.div
-      initial={false}
-      className="glass rounded-2xl p-3 relative overflow-hidden"
+      initial={mounted ? { opacity: 0, y: 8 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="rounded-3xl p-4 relative overflow-hidden"
+      style={{
+        // Frosted-glass background — uses theme foreground at low opacity so
+        // it adapts to light/dark themes automatically.
+        background: 'color-mix(in oklch, var(--card) 80%, transparent)',
+        border: '1px solid var(--border)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        // Subtle gradient overlay for depth (Option C: "subtle gradient background")
+        backgroundImage: `linear-gradient(135deg, color-mix(in oklch, ${ringColor} 8%, transparent) 0%, transparent 50%)`,
+      }}
     >
-      <div className="flex items-center gap-3">
-        {/* Circular ring */}
-        <div className="relative shrink-0" style={{ width: 64, height: 64 }}>
-          <svg width="64" height="64" viewBox="0 0 64 64" className="-rotate-90">
-            <circle cx="32" cy="32" r="26" fill="none" stroke="var(--bar-track, rgba(255,255,255,0.08))" strokeWidth="6" />
+      {/* === ROW 1: date + greeting (left) | icons (right) === */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          {mounted && streak >= 2 ? (
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full shrink-0"
+              style={{ background: 'rgba(249, 115, 22, 0.15)', border: '1px solid rgba(249, 115, 22, 0.30)' }}
+              title={`${streak}-day streak — keep it up!`}
+            >
+              <Flame size={12} className="text-orange-400" />
+              <span className="text-[11px] font-bold text-orange-600 dark:text-orange-300 tabular">{streak}</span>
+            </motion.div>
+          ) : null}
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold truncate" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
+              {shortDate()} · {greeting}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={onToggleSuggestions}
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-95"
+            style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
+            aria-label="Toggle smart plan suggestions"
+            title="Smart suggestions"
+          >
+            <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
+          </button>
+          <button
+            onClick={() => { vibrate(10); if (widgetHidden) setFocusOpen(false); setWidgetHidden(!widgetHidden); }}
+            className={cn(
+              'w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-95',
+              !activeSession && 'opacity-40'
+            )}
+            style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
+            aria-label={widgetHidden ? 'Show floating widget' : 'Hide floating widget'}
+            title={widgetHidden ? 'Show widget' : 'Hide widget'}
+            disabled={!activeSession}
+          >
+            {widgetHidden ? <Eye size={15} /> : <EyeOff size={15} />}
+          </button>
+        </div>
+      </div>
+
+      {/* === ROW 2: big ring + big stats === */}
+      <div className="flex items-center gap-4 mb-3">
+        {/* BIG ring (96px — was 64px in the old ProgressCard) */}
+        <div className="relative shrink-0" style={{ width: 96, height: 96 }}>
+          <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
+            <circle cx="48" cy="48" r="40" fill="none" stroke="var(--bar-track, rgba(255,255,255,0.08))" strokeWidth="7" />
             <motion.circle
-              cx="32" cy="32" r="26" fill="none"
+              cx="48" cy="48" r="40" fill="none"
               stroke={ringColor}
-              strokeWidth="6"
+              strokeWidth="7"
               strokeLinecap="round"
               initial={false}
-              animate={{ strokeDashoffset: 163.36 - (163.36 * progressPct) / 100 }}
+              animate={{ strokeDashoffset: 251.33 - (251.33 * progressPct) / 100 }}
               transition={{ type: 'spring', stiffness: 60, damping: 20, mass: 1 }}
-              style={{
-                strokeDasharray: 163.36,
-                boxShadow: `0 0 6px ${ringColor}80`,
-              }}
+              style={{ strokeDasharray: 251.33, filter: `drop-shadow(0 0 6px ${ringColor}80)` }}
             />
           </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
             <motion.span
-              key={Math.floor(progressPct / 5)}  // group by 5% increments to reduce pop frequency
+              key={Math.floor(progressPct / 5)}
               initial={{ scale: 0.85, opacity: 0.6 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 200, damping: 18 }}
-              className="text-sm font-bold tabular"
+              className="text-xl font-black tabular leading-none"
               style={{
-                // Use backgroundImage (long-form) instead of background (shorthand).
-                // Mixing `background:` with `backgroundClip:` triggers a React
-                // warning because the shorthand resets backgroundClip behind
-                // React's back on re-render.
                 backgroundImage: isComplete
                   ? 'linear-gradient(135deg, #22c55e, #16a34a)'
                   : `linear-gradient(135deg, ${ringColor}, ${ringColor2})`,
@@ -623,64 +614,100 @@ function ProgressCard({
             >
               {progressPct}%
             </motion.span>
+            <span className="text-[8px] font-bold uppercase tracking-widest mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+              of goal
+            </span>
           </div>
           {isComplete && (
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
-              className="absolute -top-1 -right-1 text-xs"
-              style={{ boxShadow: '0 0 4px rgba(34,197,94,0.6)' }}
+              className="absolute -top-1 -right-1 text-base"
             >
               🏆
             </motion.div>
           )}
         </div>
 
-        {/* Stats + breakdown */}
-        <div className="flex-1 min-w-0 space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold tabular" style={{ color: 'var(--foreground)' }} suppressHydrationWarning>
+        {/* Big "39m" studied + pace chip */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-3xl font-black tabular leading-none" style={{ color: 'var(--foreground)' }} suppressHydrationWarning>
               {formatHM(studySecToday)}
             </span>
-            <span className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
+            <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
               studied
             </span>
-            <span className="text-[10px] tabular" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
-              · {formatHM(remainingSec)} to go
-            </span>
           </div>
-
-          {/* Pace pill */}
-          <div className="flex items-center gap-1.5">
+          <div className="text-[11px] tabular mt-1" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
+            {formatHM(remainingSec)} to go · {doneCount}/{totalCount} done
+          </div>
+          {/* Pace chip + goal */}
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             <span
-              className="text-[9px] font-bold px-1.5 py-0.5 rounded-md tabular"
-              style={{ background: `${paceColor}20`, color: paceColor, border: `1px solid ${paceColor}30` }}
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full tabular"
+              style={{ background: `${paceColor}20`, color: paceColor, border: `1px solid ${paceColor}40` }}
             >
               {paceLabel}
             </span>
-            <span className="text-[9px] tabular" style={{ color: 'var(--muted-foreground)' }}>
+            <span className="text-[10px] tabular" style={{ color: 'var(--muted-foreground)' }}>
               goal {dailyGoal}h
             </span>
           </div>
-
-          {/* Breakdown chips */}
-          <div className="flex items-center gap-1 flex-wrap">
-            {liveFocus > 0 && (
-              <BreakdownChip label="Focus" sec={liveFocus} color="#3b82f6" icon={<Zap size={8} />} />
-            )}
-            {livePractice > 0 && (
-              <BreakdownChip label="Practice" sec={livePractice} color="#f59e0b" icon={<Play size={8} fill="currentColor" />} />
-            )}
-            {savedStudySec > 0 && (
-              <BreakdownChip label="Targets" sec={savedStudySec} color="#22c55e" icon={<Check size={8} />} />
-            )}
-            {liveFocus === 0 && livePractice === 0 && savedStudySec === 0 && (
-              <span className="text-[10px] italic" style={{ color: 'var(--muted-foreground)' }}>
-                Start a session to begin
-              </span>
-            )}
-          </div>
         </div>
+      </div>
+
+      {/* === ROW 3: SEGMENTED BAR (studied green | wasted red | remaining gray) ===
+          Shows the full day's progress at a glance — more informative than a
+          single-progress ring. Only shows the wasted segment if there IS waste. */}
+      <div className="mb-2">
+        <div className="h-2.5 rounded-full overflow-hidden flex" style={{ background: 'var(--bar-track, rgba(255,255,255,0.08))' }}>
+          {studiedPct > 0 && (
+            <motion.div
+              initial={false}
+              animate={{ width: `${studiedPct}%` }}
+              transition={{ type: 'spring', stiffness: 60, damping: 20 }}
+              style={{ background: `linear-gradient(90deg, ${ringColor}, ${ringColor2})` }}
+            />
+          )}
+          {wastedPct > 0 && (
+            <motion.div
+              initial={false}
+              animate={{ width: `${wastedPct}%` }}
+              transition={{ type: 'spring', stiffness: 60, damping: 20 }}
+              style={{ background: '#ef4444' }}
+            />
+          )}
+          {remainingPct > 0 && (
+            <div style={{ width: `${remainingPct}%` }} />
+          )}
+        </div>
+        {/* Tiny labels under the bar */}
+        <div className="flex items-center justify-between mt-1 text-[9px] tabular" style={{ color: 'var(--muted-foreground)' }}>
+          <span><span style={{ color: ringColor }}>●</span> {formatHM(studySecToday)}</span>
+          {wastedSec > 0 && (
+            <span><span style={{ color: '#ef4444' }}>●</span> {formatHM(wastedSec)} wasted</span>
+          )}
+          <span>{formatHM(remainingSec)} left</span>
+        </div>
+      </div>
+
+      {/* === ROW 4: breakdown chips (Focus / Practice / Targets) === */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {liveFocus > 0 && (
+          <BreakdownChip label="Focus" sec={liveFocus} color="#3b82f6" icon={<Zap size={8} />} />
+        )}
+        {livePractice > 0 && (
+          <BreakdownChip label="Practice" sec={livePractice} color="#f59e0b" icon={<Play size={8} fill="currentColor" />} />
+        )}
+        {savedStudySec > 0 && (
+          <BreakdownChip label="Targets" sec={savedStudySec} color="#22c55e" icon={<Check size={8} />} />
+        )}
+        {liveFocus === 0 && livePractice === 0 && savedStudySec === 0 && (
+          <span className="text-[10px] italic" style={{ color: 'var(--muted-foreground)' }}>
+            Start a session to begin
+          </span>
+        )}
       </div>
 
       {/* Completion glow */}
@@ -690,10 +717,8 @@ function ProgressCard({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 pointer-events-none rounded-2xl"
-            style={{
-              background: 'radial-gradient(ellipse at 50% 100%, rgba(34,197,94,0.15) 0%, transparent 70%)',
-            }}
+            className="absolute inset-0 pointer-events-none rounded-3xl"
+            style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(34,197,94,0.15) 0%, transparent 70%)' }}
           />
         )}
       </AnimatePresence>
