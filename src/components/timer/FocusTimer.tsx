@@ -1028,27 +1028,13 @@ export function FocusTimer() {
           );
         })()}
 
-        {/* Expected time progress — HIDDEN when dimmed.
-            === LANDSCAPE: Also hidden — the progress bar takes too much vertical
-                space in the short landscape viewport. The timer + status badge
-                + compact header is enough context. === */}
-        {active.expectedMinutes && !isLandscape && (
-          <div className={cn('mt-3 w-64 transition-opacity duration-1000', dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>
-            <div className="flex justify-between text-[11px] text-foreground mb-1 tabular font-medium">
-              <span>{formatHM(studySec)} done</span>
-              <span>{active.expectedMinutes}m goal</span>
-            </div>
-            <div className="h-2 rounded-full bg-foreground/20 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${Math.min(100, (studySec / (active.expectedMinutes * 60)) * 100)}%`,
-                  background: `linear-gradient(90deg, ${color.hex}, ${color.hex}88)`,
-                }}
-              />
-            </div>
-          </div>
-        )}
+        {/* === REMOVED: Horizontal progress bar (was below the timer when
+            expectedMinutes was set). This was REDUNDANT with the circular
+            progress ring (#1) that now sits behind the timer — both showed
+            the same % of goal, causing visual clutter and overlap in portrait.
+            The ring is the single source of truth for progress now.
+            === The "Wasted: Xm · Y% focus" label above still shows briefly
+            when waste is added, so the user still gets waste feedback. === */}
       </div>
 
       {/* === Bottom / Right controls — MODERN GLASSMORPHIC DESIGN (#5, #6, #7, #8)
