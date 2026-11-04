@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  Plus, Sparkles, X, Check, ChevronRight,
+  Plus, X, Check, ChevronRight,
   Flame, Eye, EyeOff, RefreshCw, Play,
   BookOpen, FileText, Zap, RotateCcw, AlertTriangle,
 } from 'lucide-react';
@@ -15,7 +15,6 @@ import { useSettings } from '@/lib/store/settings';
 import { useSyllabus } from '@/lib/store/syllabus';
 import { useDoubts } from '@/lib/store/doubts';
 import { subjectColor } from '@/lib/colors';
-import { generateSmartPlan } from '@/lib/smartPlan';
 import type { Subject, ActivityType, Target } from '@/lib/types';
 import { cn, shortDate, formatHM, todayKey, addDays, vibrate } from '@/lib/utils';
 import { TargetCard } from '@/components/study/TargetCard';
@@ -45,7 +44,6 @@ export function StudyTab() {
   const [detailTarget, setDetailTarget] = useState<Target | null>(null);
   const [showDoubts, setShowDoubts] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Floating widget visibility
   const widgetHidden = useSession((s) => s.widgetHidden);
@@ -216,8 +214,6 @@ export function StudyTab() {
     return () => clearTimeout(t);
   }, []);
 
-  // === Smart Plan state ===
-  const showSmartPlan = mounted && (sortedTargets.length === 0 || showSuggestions);
   const hasEverAddedTargets = useTargets((s) => Object.keys(s.byDate).length > 0);
   const hasYesterdayTargets = useMemo(() => {
     const y = addDays(new Date(), -1);
@@ -287,7 +283,7 @@ export function StudyTab() {
       {/* ============ SECTION 1+2: HERO PROGRESS CARD (merged header + progress) ============
           === COMBINED DESIGN (Option B frosted-glass card + Option C bigger/prominent
               + segmented bar idea) ===
-          Top row: date + greeting (left) + Sparkles + Eye icons (right)
+          Top row: date + greeting (left) + Eye icon (right)
           Middle: big ring (96px) + big "39m" studied + "8% of goal"
           Bottom: segmented bar (studied/wasted/remaining) + pace chip + focus chip
           Frosted-glass background with subtle gradient — theme-aware (uses
@@ -309,18 +305,8 @@ export function StudyTab() {
         setWidgetHidden={setWidgetHidden}
         setFocusOpen={setFocusOpen}
         activeSession={!!activeSession}
-        onToggleSuggestions={() => setShowSuggestions((s) => !s)}
         mounted={mounted}
       />
-
-      {/* ============ SECTION 3: SMART PLAN (always accessible) ============ */}
-      {showSmartPlan && (
-        <SmartPlan
-          onAcceptAll={() => setShowSuggestions(false)}
-          onDismiss={() => setShowSuggestions(false)}
-          forceShow={showSuggestions}
-        />
-      )}
 
       {/* ============ SECTIONS 4 + 5: SUBJECT + CHAPTER GROUPS ============ */}
       {mounted && subjectGroups.length > 0 && (
@@ -373,7 +359,6 @@ export function StudyTab() {
         <EmptyState
           type={emptyStateType}
           yesterdayStats={yesterdayStats}
-          onSmartPlan={() => setShowSuggestions(true)}
           onAddManual={() => { setEditingTarget(null); setShowAdd(true); }}
         />
       )}
@@ -449,7 +434,7 @@ export function StudyTab() {
        + segmented bar) the user approved ===
 
    Layout (top to bottom):
-   Row 1: date + greeting (left) | Sparkles + Eye icons (right)
+   Row 1: date + greeting (left) | Eye icon (right)
    Row 2: BIG ring (96px) | big "39m" studied + "8% of goal" + pace chip
    Row 3: segmented bar (studied green | wasted red | remaining gray)
    Row 4: breakdown chips (Focus / Practice / Targets)
@@ -465,7 +450,7 @@ function HeroProgressCard({
   streak, studySecToday, wastedSec, goalSec, dailyGoal, progressPct,
   doneCount, totalCount, liveFocus, livePractice, savedStudySec,
   activeSubject, widgetHidden, setWidgetHidden, setFocusOpen, activeSession,
-  onToggleSuggestions, mounted,
+  mounted,
 }: {
   streak: number;
   studySecToday: number;
@@ -483,7 +468,6 @@ function HeroProgressCard({
   setWidgetHidden: (v: boolean) => void;
   setFocusOpen: (v: boolean) => void;
   activeSession: boolean;
-  onToggleSuggestions: () => void;
   mounted: boolean;
 }) {
   const remainingSec = Math.max(0, goalSec - studySecToday);
@@ -547,15 +531,6 @@ function HeroProgressCard({
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={onToggleSuggestions}
-            className="w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-95"
-            style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
-            aria-label="Toggle smart plan suggestions"
-            title="Smart suggestions"
-          >
-            <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
-          </button>
           <button
             onClick={() => { vibrate(10); if (widgetHidden) setFocusOpen(false); setWidgetHidden(!widgetHidden); }}
             className={cn(
@@ -718,133 +693,6 @@ function BreakdownChip({ label, sec, color, icon }: { label: string; sec: number
       <span>{label}</span>
       <span className="opacity-80">{formatHM(sec)}</span>
     </div>
-  );
-}
-
-/* =========================================================================
-   SECTION 3: SMART PLAN
-   Always accessible, per-card accept, refresh, total time
-   ========================================================================= */
-function SmartPlan({ onAcceptAll, onDismiss, forceShow }: { onAcceptAll: () => void; onDismiss: () => void; forceShow: boolean }) {
-  const addTarget = useTargets((s) => s.addTarget);
-  const [dismissed, setDismissed] = useState(false);
-  const [regenKey, setRegenKey] = useState(0);
-  const sessions = useHistory((s) => s.sessions);
-  const syllabus = useSyllabus();
-  const todayKeyStr = todayKey();
-  const todayTargets = useTargets((s) => s.byDate[todayKeyStr] || EMPTY_TARGETS);
-
-  const suggestions = useMemo(() => {
-    const excludeTopics = todayTargets.map((t) => t.topic);
-    return generateSmartPlan(
-      sessions, syllabus.lectures, syllabus.chapters, syllabus.subjects, excludeTopics
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessions, syllabus.lectures, syllabus.chapters, syllabus.subjects, todayTargets, regenKey]);
-
-  const totalTime = suggestions.reduce((a, s) => a + s.expectedMinutes, 0);
-  const subjectCount = new Set(suggestions.map((s) => s.subject)).size;
-
-  if (dismissed && !forceShow) return null;
-
-  const handleAcceptOne = (idx: number) => {
-    const s = suggestions[idx];
-    addTarget({ ...s, date: todayKeyStr });
-    vibrate(12);
-  };
-
-  const handleAcceptAll = () => {
-    suggestions.forEach((s) => addTarget({ ...s, date: todayKeyStr }));
-    vibrate(15);
-    onAcceptAll();
-  };
-
-  const handleRefresh = () => {
-    vibrate(8);
-    setRegenKey((k) => k + 1);
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="glass rounded-2xl p-3 border border-teal-400/20"
-    >
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-2.5">
-        <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
-        <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Suggested for today</span>
-        <button onClick={handleRefresh} className="ml-auto w-6 h-6 rounded-md flex items-center justify-center hover:bg-foreground/10 transition" aria-label="Regenerate suggestions" title="Regenerate">
-          <RefreshCw size={12} className="text-muted-foreground" />
-        </button>
-        <button onClick={() => { setDismissed(true); onDismiss(); }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-foreground/10 transition" aria-label="Dismiss">
-          <X size={14} className="text-muted-foreground" />
-        </button>
-      </div>
-
-      {/* Suggestion cards */}
-      <div className="space-y-1.5 mb-3">
-        {suggestions.length === 0 && (
-          <div className="text-[11px] italic py-2 text-center" style={{ color: 'var(--muted-foreground)' }}>
-            No suggestions available — add some lectures to your syllabus first.
-          </div>
-        )}
-        {suggestions.map((s, i) => {
-          const c = subjectColor(s.subject);
-          return (
-            <motion.div
-              key={`${regenKey}-${i}`}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="flex items-center gap-2 p-2 rounded-lg hover:bg-foreground/5 transition group"
-              style={{ background: `${c.hex}15` }}
-            >
-              <div className="w-1 h-8 rounded-full shrink-0" style={{ background: c.hex }} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[12px] font-medium truncate" style={{ color: 'var(--foreground)' }}>{s.topic}</div>
-                <div className="text-[9px] flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
-                  <span style={{ color: c.hex }}>{s.subject}</span>
-                  <span>·</span>
-                  <span>{s.activity}</span>
-                  <span>·</span>
-                  <span className="tabular">{s.expectedMinutes}m</span>
-                </div>
-                <div className="text-[9px] italic mt-0.5 text-teal-600/80 dark:text-teal-600 dark:text-teal-400/70 truncate">{s.reason}</div>
-              </div>
-              <button
-                onClick={() => handleAcceptOne(i)}
-                className="w-7 h-7 rounded-md flex items-center justify-center bg-teal-500/15 hover:bg-teal-500/30 text-teal-600 dark:text-teal-400 transition active:scale-90 shrink-0"
-                aria-label={`Accept ${s.topic}`}
-                title="Add this target"
-              >
-                <Check size={13} />
-              </button>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Footer: total + accept all */}
-      {suggestions.length > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] tabular" style={{ color: 'var(--muted-foreground)' }}>
-            Total <span className="font-bold" style={{ color: 'var(--foreground)' }}>{Math.floor(totalTime / 60)}h {totalTime % 60}m</span>
-            <span className="mx-1">·</span>
-            <span className="font-bold" style={{ color: 'var(--foreground)' }}>{subjectCount}</span> subject{subjectCount === 1 ? '' : 's'}
-          </span>
-          <button
-            onClick={handleAcceptAll}
-            className="ml-auto text-[11px] font-semibold px-3 py-1.5 rounded-lg active:scale-95 transition flex items-center gap-1"
-            style={{ background: 'linear-gradient(90deg, #0d9488, #16a34a)', color: '#fff' }}
-          >
-            <Check size={12} />
-            Accept all
-          </button>
-        </div>
-      )}
-    </motion.div>
   );
 }
 
@@ -1131,11 +979,10 @@ function ChapterSection({
    Three states: first-time, returning, all-done
    ========================================================================= */
 function EmptyState({
-  type, yesterdayStats, onSmartPlan, onAddManual,
+  type, yesterdayStats, onAddManual,
 }: {
   type: 'first-time' | 'returning';
   yesterdayStats: { studySec: number; doneCount: number; totalCount: number };
-  onSmartPlan: () => void;
   onAddManual: () => void;
 }) {
   // === HEAT FIX: Gate animations when tab hidden ===
@@ -1173,23 +1020,15 @@ function EmptyState({
         )}
       </div>
 
-      {/* CTAs */}
+      {/* CTA */}
       <div className="flex flex-col gap-2">
         <button
-          onClick={onSmartPlan}
+          onClick={onAddManual}
           className="w-full font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition flex items-center justify-center gap-1.5"
           style={{ background: 'linear-gradient(90deg, #0d9488, #16a34a)', color: '#fff' }}
         >
-          <Sparkles size={14} />
-          {isFirstTime ? 'Use Smart Plan' : 'Smart Plan from yesterday'}
-        </button>
-        <button
-          onClick={onAddManual}
-          className="w-full font-semibold py-2.5 rounded-xl text-sm border border-border hover:bg-foreground/5 transition flex items-center justify-center gap-1.5"
-          style={{ color: 'var(--foreground)' }}
-        >
           <Plus size={14} />
-          Add new target
+          {isFirstTime ? 'Add your first target' : 'Add a target for today'}
         </button>
       </div>
 
