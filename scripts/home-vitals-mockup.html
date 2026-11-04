@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Home Page — Daily Vitals Modernization Plan</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    background: #0a0c14;
+    color: #e5e7eb;
+    padding: 40px;
+    width: 1440px;
+  }
+  .page-title {
+    font-size: 22px; font-weight: 800; color: #fff;
+    margin-bottom: 4px; letter-spacing: -0.5px;
+  }
+  .page-subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 20px; }
+
+  /* === SURVEY STRIP === */
+  .survey {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    margin-bottom: 26px;
+  }
+  .survey-box {
+    border-radius: 14px; padding: 12px 16px; font-size: 11px; line-height: 1.5;
+  }
+  .survey-box.keep { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.25); }
+  .survey-box.fix  { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.30); }
+  .survey-box b { display: block; font-size: 11px; margin-bottom: 5px; letter-spacing: 0.4px; text-transform: uppercase; }
+  .survey-box.keep b { color: #22c55e; }
+  .survey-box.fix b { color: #f87171; }
+  .survey-box span { color: #94a3b8; }
+  .survey-box .name { color: #e5e7eb; font-weight: 600; }
+
+  .layout { display: grid; grid-template-columns: 390px 390px 1fr; gap: 28px; align-items: start; }
+
+  /* === PHONE FRAMES === */
+  .phone {
+    background: linear-gradient(180deg, #0a0c14 0%, #0e1118 100%);
+    border-radius: 36px; padding: 14px 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .col-label {
+    text-align: center; font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .col-label.before { color: #f87171; }
+  .col-label.after  { color: #22c55e; }
+  .col-wrap { display: flex; flex-direction: column; }
+
+  /* Generic app card */
+  .card {
+    border-radius: 16px; padding: 12px; margin-bottom: 12px;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .card-head .t { font-size: 11px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: #cbd5e1; }
+
+  /* ============ BEFORE: Subject Health (current, plain) ============ */
+  .before-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .before-row .nm { font-size: 10.5px; font-weight: 600; width: 64px; color: #cbd5e1; }
+  .before-row .bar { flex: 1; height: 10px; border-radius: 5px; background: rgba(255,255,255,0.06); overflow: hidden; }
+  .before-row .bar i { display: block; height: 100%; }
+  .before-row .sc { font-size: 10.5px; font-weight: 700; width: 26px; text-align: right; color: #ef4444; }
+  .before-warn { font-size: 10px; color: #dc2626; }
+
+  /* ============ BEFORE: Schedule (current, plain list) ============ */
+  .before-slot { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #94a3b8; margin-bottom: 6px; }
+  .before-slot b { color: #cbd5e1; font-weight: 600; }
+
+  /* ============ BEFORE: Sleep & Energy (current, busy) ============ */
+  .pillbtn {
+    margin-left: auto; font-size: 9px; padding: 3px 9px; border-radius: 99px;
+    background: rgba(99,102,241,0.15); color: #6366f1; font-weight: 700;
+  }
+  .sleep-block {
+    background: rgba(255,255,255,0.05); border-radius: 12px; padding: 10px;
+    font-size: 10px; color: #94a3b8; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+  }
+  .sleep-block b { display: block; font-size: 12px; color: #6366f1; font-weight: 700; }
+  .energy-row { display: flex; gap: 4px; margin-bottom: 8px; }
+  .energy-row .ebtn {
+    flex: 1; text-align: center; font-size: 13px; padding: 6px 0; border-radius: 9px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  }
+  .energy-row .ebtn.on { background: rgba(250,204,21,0.13); border-color: rgba(250,204,21,0.4); }
+  .doubt-row {
+    display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05);
+    border-radius: 10px; padding: 8px; font-size: 10px; color: #94a3b8;
+  }
+  .doubt-row b { color: #d97706; font-size: 11px; }
+
+  /* ============ AFTER: Subject Pulse ============ */
+  .pulse-card {
+    border-radius: 18px; padding: 14px; margin-bottom: 12px; position: relative; overflow: hidden;
+    background: linear-gradient(160deg, rgba(20,184,166,0.08) 0%, rgba(20,184,166,0.02) 45%, transparent 100%);
+    border: 1px solid rgba(20,184,166,0.30);
+    box-shadow: 0 12px 32px -10px rgba(20,184,166,0.20);
+  }
+  .pulse-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .halo {
+    width: 34px; height: 34px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; position: relative; flex-shrink: 0;
+    background: radial-gradient(circle at 30% 25%, rgba(20,184,166,0.35), rgba(20,184,166,0.10));
+    box-shadow: 0 0 0 1px rgba(20,184,166,0.35), 0 4px 14px -4px rgba(20,184,166,0.4);
+  }
+  .pulse-title { font-size: 13px; font-weight: 800; color: #f1f5f9; }
+  .pulse-sub { font-size: 9.5px; color: #64748b; margin-top: 1px; }
+  .avg-chip {
+    margin-left: auto; font-size: 10px; font-weight: 800; color: #14b8a6;
+    background: rgba(20,184,166,0.12); border: 1px solid rgba(20,184,166,0.30);
+    padding: 4px 10px; border-radius: 99px;
+  }
+  .subj-row { margin-bottom: 11px; }
+  .subj-row:last-of-type { margin-bottom: 0; }
+  .subj-top { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .s-halo {
+    width: 26px; height: 26px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; flex-shrink: 0;
+  }
+  .s-halo.phy { background: rgba(59,130,246,0.14); box-shadow: 0 0 0 1px rgba(59,130,246,0.35), 0 3px 10px -3px rgba(59,130,246,0.45); }
+  .s-halo.chem { background: rgba(168,85,247,0.14); box-shadow: 0 0 0 1px rgba(168,85,247,0.35), 0 3px 10px -3px rgba(168,85,247,0.45); }
+  .s-halo.bot { background: rgba(34,197,94,0.14); box-shadow: 0 0 0 1px rgba(34,197,94,0.35), 0 3px 10px -3px rgba(34,197,94,0.45); }
+  .s-halo.zoo { background: rgba(244,63,94,0.14); box-shadow: 0 0 0 1px rgba(244,63,94,0.35), 0 3px 10px -3px rgba(244,63,94,0.45); }
+  .s-name { font-size: 11.5px; font-weight: 700; color: #e2e8f0; }
+  .s-badge { font-size: 10px; }
+  .s-chip {
+    margin-left: auto; font-size: 9.5px; font-weight: 800; padding: 3px 9px; border-radius: 99px;
+  }
+  .s-chip.good { background: rgba(34,197,94,0.13); color: #22c55e; border: 1px solid rgba(34,197,94,0.30); }
+  .s-chip.mid  { background: rgba(245,158,11,0.13); color: #f59e0b; border: 1px solid rgba(245,158,11,0.30); }
+  .s-chip.bad  { background: rgba(239,68,68,0.13); color: #ef4444; border: 1px solid rgba(239,68,68,0.30); }
+  .s-bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: hidden; position: relative; margin-left: 34px; }
+  .s-bar i { display: block; height: 100%; border-radius: 99px; position: relative; }
+  .s-bar.phy i { width: 62%; background: linear-gradient(90deg, #3b82f6, #60a5fa); box-shadow: 0 0 8px rgba(59,130,246,0.5); }
+  .s-bar.chem i { width: 28%; background: linear-gradient(90deg, #a855f7, #c084fc); box-shadow: 0 0 8px rgba(168,85,247,0.5); }
+  .s-bar.bot i { width: 74%; background: linear-gradient(90deg, #22c55e, #4ade80); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+  .s-bar.zoo i { width: 45%; background: linear-gradient(90deg, #f43f5e, #fb7185); box-shadow: 0 0 8px rgba(244,63,94,0.5); }
+  .insight {
+    margin-top: 11px; border-radius: 12px; padding: 9px 11px; font-size: 10px; line-height: 1.45;
+    background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.22); color: #fca5a5;
+    display: flex; gap: 7px; align-items: flex-start;
+  }
+  .insight .ic { flex-shrink: 0; font-size: 11px; margin-top: 1px; }
+
+  /* ============ AFTER: Schedule timeline ============ */
+  .sched-card {
+    border-radius: 18px; padding: 14px; margin-bottom: 12px;
+    background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.08);
+  }
+  .sched-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .sched-chip {
+    margin-left: auto; font-size: 9.5px; font-weight: 700; color: #94a3b8;
+    background: rgba(255,255,255,0.06); padding: 3px 9px; border-radius: 99px;
+    border: 1px solid rgba(255,255,255,0.10);
+  }
+  .tl-wrap { position: relative; margin: 16px 2px 6px; }
+  .tl-rail { height: 14px; border-radius: 99px; background: rgba(255,255,255,0.05); position: relative; overflow: hidden; }
+  .tl-seg { position: absolute; top: 0; height: 100%; border-radius: 4px; }
+  .tl-seg.phy { background: linear-gradient(180deg, #60a5fa, #3b82f6); box-shadow: 0 0 10px rgba(59,130,246,0.6); }
+  .tl-seg.zoo { background: linear-gradient(180deg, #fb7185, #f43f5e); box-shadow: 0 0 10px rgba(244,63,94,0.6); }
+  .tl-seg.brk { background: rgba(255,255,255,0.16); }
+  .tl-now {
+    position: absolute; top: -5px; width: 2px; height: 24px; background: #fff;
+    border-radius: 2px; box-shadow: 0 0 6px rgba(255,255,255,0.9);
+  }
+  .tl-now::after {
+    content: 'now'; position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    font-size: 8px; font-weight: 800; color: #fff; letter-spacing: 0.5px;
+  }
+  .tl-labels { display: flex; justify-content: space-between; margin-top: 5px; font-size: 8px; color: #64748b; font-weight: 600; }
+  .next-up {
+    margin-top: 11px; border-radius: 12px; padding: 9px 11px; display: flex; align-items: center; gap: 8px;
+    background: rgba(244,63,94,0.06); border: 1px solid rgba(244,63,94,0.22);
+  }
+  .next-up .dot { width: 8px; height: 8px; border-radius: 99px; background: #f43f5e; box-shadow: 0 0 6px rgba(244,63,94,0.7); }
+  .next-up .txt { font-size: 10.5px; color: #e2e8f0; font-weight: 600; }
+  .next-up .txt small { display: block; color: #64748b; font-weight: 500; font-size: 9px; margin-top: 1px; }
+  .next-up .go {
+    margin-left: auto; font-size: 9.5px; font-weight: 800; color: #fff; padding: 5px 12px; border-radius: 99px;
+    background: linear-gradient(135deg, #f43f5e, #e11d48);
+  }
+
+  /* ============ AFTER: Vitals strip ============ */
+  .vitals-card {
+    border-radius: 18px; padding: 14px; margin-bottom: 12px;
+    background: linear-gradient(160deg, rgba(99,102,241,0.08) 0%, transparent 55%);
+    border: 1px solid rgba(99,102,241,0.25);
+  }
+  .vitals-head { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; }
+  .vitals-head .t { font-size: 11px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: #cbd5e1; }
+  .sleep-pill {
+    margin-left: auto; font-size: 9px; padding: 4px 10px; border-radius: 99px;
+    background: rgba(99,102,241,0.15); color: #818cf8; font-weight: 700;
+  }
+  .vitals-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .vtile {
+    border-radius: 13px; padding: 10px 8px; text-align: center;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+  }
+  .vtile .big { font-size: 16px; font-weight: 800; line-height: 1.1; }
+  .vtile .emo { font-size: 15px; margin-bottom: 3px; }
+  .vtile .lbl { font-size: 8.5px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: #64748b; margin-top: 3px; }
+  .vtile .sub { font-size: 8px; color: #475569; margin-top: 2px; }
+  .vtile.sleep .big { color: #818cf8; }
+  .vtile.energy .big { font-size: 18px; }
+  .vtile.doubt .big { color: #f59e0b; }
+
+  /* ============ DECISION LIST ============ */
+  .decisions { display: flex; flex-direction: column; gap: 9px; }
+  .decision {
+    display: flex; gap: 11px; align-items: flex-start;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px; padding: 10px 12px;
+  }
+  .d-num {
+    width: 22px; height: 22px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #fff;
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
+    box-shadow: 0 4px 10px -3px rgba(20,184,166,0.5);
+  }
+  .d-body b { font-size: 11.5px; color: #f1f5f9; display: block; margin-bottom: 2px; }
+  .d-body span { font-size: 10px; color: #94a3b8; line-height: 1.45; }
+  .phase-note {
+    margin-top: 14px; border-radius: 12px; padding: 11px 13px;
+    background: rgba(59,130,246,0.07); border: 1px solid rgba(59,130,246,0.25);
+    font-size: 10.5px; color: #93c5fd; line-height: 1.5;
+  }
+  .phase-note b { color: #bfdbfe; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Home Page — Section 1 Proposal: “Daily Vitals” Zone</div>
+<div class="page-subtitle">Subject Health (worst card on page) + Today’s Schedule + Sleep &amp; Energy → one cohesive modernized zone · theme-safe across all 8 themes</div>
+
+<!-- ===== SURVEY ===== -->
+<div class="survey">
+  <div class="survey-box keep">
+    <b>✓ Already modern — keep as is</b>
+    <span>Header · Countdown card · Progress rings · AI Coach · Projected score · Achievements · Study Together (paired state)</span>
+  </div>
+  <div class="survey-box fix">
+    <b>✗ Outdated — fix in this section</b>
+    <span><span class="name">Subject Health</span> flat monochrome bars, no depth · <span class="name">Today’s Schedule</span> plain text list · <span class="name">Sleep &amp; Energy</span> tall + busy · <span class="name">Total Sessions</span> + <span class="name">MiniHeatmap</span> (Phase 2)</span>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- ============ BEFORE COLUMN ============ -->
+  <div class="col-wrap">
+    <div class="col-label before">Current — 3 tired cards</div>
+    <div class="phone">
+      <div class="card">
+        <div class="card-head"><span style="font-size:13px">🏥</span><span class="t">Subject Health</span></div>
+        <div class="before-row"><span class="nm">Physics</span><div class="bar"><i style="width:62%;background:linear-gradient(90deg,#3b82f6,#3b82f6cc)"></i></div><span class="sc">62</span></div>
+        <div class="before-row"><span class="nm">Chemistry</span><div class="bar"><i style="width:28%;background:linear-gradient(90deg,#a855f7,#a855f7cc)"></i></div><span class="sc">28</span></div>
+        <div class="before-row"><span class="nm">Botany</span><div class="bar"><i style="width:74%;background:linear-gradient(90deg,#22c55e,#22c55ecc)"></i></div><span class="sc">74</span></div>
+        <div class="before-row"><span class="nm">Zoology</span><div class="bar"><i style="width:45%;background:linear-gradient(90deg,#f43f5e,#f43f5ecc)"></i></div><span class="sc">45</span></div>
+        <div class="before-warn">⚠ Chemistry needs urgent attention</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span style="font-size:13px">📅</span><span class="t">Today's Schedule</span></div>
+        <div class="before-slot">🕘 <span>18:00 - 20:00</span> <b>Physics</b></div>
+        <div class="before-slot">🕘 <span>21:00 - 22:00</span> <b>Zoology</b></div>
+        <div class="before-slot">🕘 <span>22:00 - 22:30</span> <b>Break</b></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span style="font-size:13px">😴</span><span class="t">Sleep &amp; Energy</span><span class="pillbtn">Sleep Plan →</span></div>
+        <div class="sleep-block">😴<span><b>7.2h today</b>7-day avg: 7.0h · Long-press for report</span></div>
+        <div style="font-size:8.5px;font-weight:800;letter-spacing:0.8px;color:#64748b;text-transform:uppercase;margin-bottom:5px">Energy</div>
+        <div class="energy-row">
+          <div class="ebtn">😫</div><div class="ebtn">😦</div><div class="ebtn">😐</div><div class="ebtn on">🙂</div><div class="ebtn">😄</div>
+        </div>
+        <div class="doubt-row">❓<span style="font-weight:800">Doubts</span><b>3</b><span>· 12 resolved</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ AFTER COLUMN ============ -->
+  <div class="col-wrap">
+    <div class="col-label after">Proposed — modernized vitals</div>
+    <div class="phone">
+
+      <!-- Subject Pulse -->
+      <div class="pulse-card">
+        <div class="pulse-head">
+          <div class="halo">🩺</div>
+          <div>
+            <div class="pulse-title">Subject Pulse</div>
+            <div class="pulse-sub">completion · confidence · time · tests</div>
+          </div>
+          <div class="avg-chip">avg 52</div>
+        </div>
+
+        <div class="subj-row">
+          <div class="subj-top">
+            <div class="s-halo phy">⚛️</div>
+            <span class="s-name">Physics</span>
+            <span class="s-chip mid">Steady · 62</span>
+          </div>
+          <div class="s-bar phy"><i></i></div>
+        </div>
+
+        <div class="subj-row">
+          <div class="subj-top">
+            <div class="s-halo chem">🧪</div>
+            <span class="s-name">Chemistry</span>
+            <span class="s-badge">⚠️</span>
+            <span class="s-chip bad">Needs work · 28</span>
+          </div>
+          <div class="s-bar chem"><i></i></div>
+        </div>
+
+        <div class="subj-row">
+          <div class="subj-top">
+            <div class="s-halo bot">🌿</div>
+            <span class="s-name">Botany</span>
+            <span class="s-badge">👑</span>
+            <span class="s-chip good">Strong · 74</span>
+          </div>
+          <div class="s-bar bot"><i></i></div>
+        </div>
+
+        <div class="subj-row">
+          <div class="subj-top">
+            <div class="s-halo zoo">🧬</div>
+            <span class="s-name">Zoology</span>
+            <span class="s-chip mid">Steady · 45</span>
+          </div>
+          <div class="s-bar zoo"><i></i></div>
+        </div>
+
+        <div class="insight">
+          <span class="ic">⚠️</span>
+          <span><b style="color:#f87171">Chemistry needs attention</b> — weakest subject (28). One 45-min DPP today would lift it to ~35.</span>
+        </div>
+      </div>
+
+      <!-- Schedule timeline -->
+      <div class="sched-card">
+        <div class="sched-head">
+          <span style="font-size:13px">📅</span>
+          <span class="t" style="font-size:11px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;color:#cbd5e1">Today's Schedule</span>
+          <span class="sched-chip">3 blocks</span>
+        </div>
+        <div class="tl-wrap">
+          <div class="tl-rail">
+            <div class="tl-seg phy" style="left:50%; width:9%"></div>
+            <div class="tl-seg zoo" style="left:62.5%; width:4.2%"></div>
+            <div class="tl-seg brk" style="left:66.7%; width:2.1%"></div>
+          </div>
+          <div class="tl-now" style="left:54%"></div>
+        </div>
+        <div class="tl-labels"><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+        <div class="next-up">
+          <div class="dot"></div>
+          <div class="txt">Zoology · 9:00 PM<small>Physics running now · 45m left</small></div>
+          <div class="go">Start</div>
+        </div>
+      </div>
+
+      <!-- Vitals strip -->
+      <div class="vitals-card">
+        <div class="vitals-head">
+          <span style="font-size:13px">🔋</span>
+          <span class="t">Daily Vitals</span>
+          <span class="sleep-pill">Sleep Plan →</span>
+        </div>
+        <div class="vitals-grid">
+          <div class="vtile sleep">
+            <div class="emo">😴</div>
+            <div class="big">7.2h</div>
+            <div class="lbl">Sleep</div>
+            <div class="sub">avg 7.0h</div>
+          </div>
+          <div class="vtile energy">
+            <div class="emo">🙂</div>
+            <div class="big">4<small style="font-size:9px;color:#64748b">/5</small></div>
+            <div class="lbl">Energy</div>
+            <div class="sub">tap to rate</div>
+          </div>
+          <div class="vtile doubt">
+            <div class="emo">❓</div>
+            <div class="big">3</div>
+            <div class="lbl">Doubts</div>
+            <div class="sub">12 solved</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ DECISIONS COLUMN ============ -->
+  <div class="decisions">
+    <div class="decision"><div class="d-num">1</div><div class="d-body"><b>Subject Pulse hero header</b><span>Teal halo icon + “completion · confidence · time · tests” formula hint + average score chip. Live-score formula stays untouched.</span></div></div>
+    <div class="decision"><div class="d-num">2</div><div class="d-body"><b>Colored halo icons per subject</b><span>26px subject-colored halos (Physics blue ⚛️ · Chemistry purple 🧪 · Botany green 🌿 · Zoology rose 🧬) matching Study tab hero cards.</span></div></div>
+    <div class="decision"><div class="d-num">3</div><div class="d-body"><b>Gradient glow bars</b><span>Rounded pill bars in each subject’s own color with soft glow — replacing today’s flat look. Same scores, real visual hierarchy.</span></div></div>
+    <div class="decision"><div class="d-num">4</div><div class="d-body"><b>Status chips instead of bare numbers</b><span>Green “Strong · 74” (≥70) · amber “Steady · 45” (40-69) · red “Needs work · 28” (&lt;40). 👑 strongest + ⚠️ weakest badges inline.</span></div></div>
+    <div class="decision"><div class="d-num">5</div><div class="d-body"><b>Smart insight footer</b><span>Auto sentence for the weakest subject: why it’s low + one concrete micro-action (“one 45-min DPP today”). Tinted box, tap → Syllabus tab.</span></div></div>
+    <div class="decision"><div class="d-num">6</div><div class="d-body"><b>Schedule as DayTimeline strip</b><span>Same 6 AM–12 AM rail language as Study tab: colored subject segments + pulsing “now” line + labels. Still hidden when day has no blocks.</span></div></div>
+    <div class="decision"><div class="d-num">7</div><div class="d-body"><b>Next-up row with Start CTA</b><span>“Zoology · 9:00 PM” with subject dot and gradient Start button → launches session via startSession, like Study tab’s next-target CTA.</span></div></div>
+    <div class="decision"><div class="d-num">8</div><div class="d-body"><b>Daily Vitals 3-tile strip</b><span>Sleep / Energy / Doubts as compact tiles — ~40% shorter than today’s tall card. Tap sleep → report, tap energy → inline picker, tap doubts → doubts view.</span></div></div>
+    <div class="decision"><div class="d-num">9</div><div class="d-body"><b>Zero functionality lost</b><span>NEET-logo sleep start, long-press sleep report, energy rating, doubts count, Sleep Plan pill — all preserved. Theme-safe via CSS vars + subjectColor tokens, verified dark + light.</span></div></div>
+
+    <div class="phase-note">
+      <b>Next phases (after approval):</b><br>
+      <b>Phase 2 — “Journey” tail:</b> merge MiniHeatmap + Total Sessions + streak into one “Your Journey” card (7-day bars, big session count, flame).<br>
+      <b>Phase 3 — hero polish:</b> soften Countdown’s red pace alert, ProgressRings zero-state niceties.
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
