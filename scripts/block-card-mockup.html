@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CurrentBlockCard Modernization Plan</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    background: #0a0c14;
+    color: #e5e7eb;
+    padding: 40px;
+    width: 1320px;
+  }
+  .page-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 4px;
+    letter-spacing: -0.5px;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-bottom: 28px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+    margin-bottom: 32px;
+  }
+
+  /* === STAGE LABELS === */
+  .stage-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .stage-label.a {
+    background: rgba(59,130,246,0.15);
+    color: #93c5fd;
+    border: 1px solid rgba(59,130,246,0.35);
+  }
+  .stage-label.b {
+    background: rgba(34,197,94,0.15);
+    color: #86efac;
+    border: 1px solid rgba(34,197,94,0.35);
+  }
+  .stage-label.c {
+    background: rgba(245,158,11,0.15);
+    color: #fcd34d;
+    border: 1px solid rgba(245,158,11,0.35);
+  }
+
+  /* === PHONE FRAME === */
+  .phone {
+    background: linear-gradient(180deg, #0a0c14 0%, #0e1118 100%);
+    border-radius: 24px;
+    padding: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 20px 50px -16px rgba(0,0,0,0.6);
+  }
+
+  /* === BLOCK CARD (NEW DESIGN) === */
+  .block-card {
+    border-radius: 18px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid;
+  }
+  .block-card.physics {
+    background: linear-gradient(135deg, rgba(59,130,246,0.14) 0%, rgba(59,130,246,0.04) 60%, transparent 100%);
+    border-color: rgba(59,130,246,0.40);
+  }
+  .block-card.chemistry {
+    background: linear-gradient(135deg, rgba(249,115,22,0.12) 0%, rgba(249,115,22,0.03) 60%, transparent 100%);
+    border-color: rgba(249,115,22,0.35);
+  }
+  .block-card.free {
+    background: linear-gradient(135deg, rgba(148,163,184,0.08) 0%, transparent 60%);
+    border-color: rgba(148,163,184,0.20);
+  }
+  .block-card.live {
+    box-shadow: 0 0 0 1px rgba(59,130,246,0.55), 0 12px 32px -8px rgba(59,130,246,0.40);
+  }
+  .block-card.live::before {
+    content: '';
+    position: absolute;
+    top: -40%; right: -10%;
+    width: 60%; height: 80%;
+    background: radial-gradient(ellipse, rgba(59,130,246,0.22) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* === DAY TIMELINE STRIP === */
+  .timeline {
+    margin: 0 -2px 12px;
+    padding: 0 2px;
+  }
+  .timeline-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 5px;
+  }
+  .timeline-label .now-label {
+    color: #fff;
+    background: rgba(255,255,255,0.10);
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 8px;
+  }
+  .timeline-bar {
+    position: relative;
+    height: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .timeline-segment {
+    position: absolute;
+    top: 0; bottom: 0;
+    border-radius: 3px;
+  }
+  .timeline-segment.physics   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+  .timeline-segment.chemistry { background: linear-gradient(90deg, #f97316, #fb923c); }
+  .timeline-segment.botany    { background: linear-gradient(90deg, #22c55e, #4ade80); }
+  .timeline-segment.break     { background: repeating-linear-gradient(45deg, rgba(148,163,184,0.30) 0 3px, transparent 3px 6px); }
+  .timeline-now {
+    position: absolute;
+    top: -3px; bottom: -3px;
+    width: 2px;
+    background: #fff;
+    box-shadow: 0 0 6px #fff, 0 0 12px rgba(255,255,255,0.5);
+    border-radius: 1px;
+    z-index: 5;
+  }
+  .timeline-now::before {
+    content: '';
+    position: absolute;
+    top: -4px; left: -3px;
+    width: 8px; height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #fff;
+  }
+  .timeline-hours {
+    display: flex;
+    justify-content: space-between;
+    font-size: 8px;
+    color: #475569;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* === HEADER ROW === */
+  .header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+
+  /* Big circular ring (64px) */
+  .ring {
+    width: 64px; height: 64px;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .ring svg { transform: rotate(-90deg); }
+  .ring-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .ring-time {
+    font-size: 16px;
+    font-weight: 800;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+  .ring-unit {
+    font-size: 8px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-top: 2px;
+  }
+
+  .header-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .header-label {
+    font-size: 9px;
+    font-weight: 800;
+    color: #60a5fa;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    line-height: 1;
+  }
+  .header-label.chemistry { color: #fb923c; }
+  .header-label.free { color: #94a3b8; }
+  .header-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-top: 4px;
+    line-height: 1.2;
+  }
+  .header-time {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .header-time svg { width: 10px; height: 10px; stroke: #64748b; fill: none; stroke-width: 2; }
+
+  /* LIVE chip */
+  .live-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px 2px 5px;
+    border-radius: 999px;
+    background: rgba(59,130,246,0.20);
+    border: 1px solid rgba(59,130,246,0.50);
+    font-size: 9px;
+    font-weight: 800;
+    color: #93c5fd;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-left: 6px;
+  }
+  .live-chip .pulse {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #60a5fa;
+    box-shadow: 0 0 6px #60a5fa;
+    animation: pulse-soft 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse-soft {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.65); }
+  }
+
+  /* === STATUS BADGES ROW === */
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 700;
+    border: 1px solid;
+  }
+  .badge.ontime { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.35); color: #4ade80; }
+  .badge.late   { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.35); color: #fbbf24; }
+  .badge.vlate  { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.35); color: #f87171; }
+  .badge.wasted { background: rgba(239,68,68,0.10); border-color: rgba(239,68,68,0.25); color: #fca5a5; }
+  .badge.remaining { background: rgba(148,163,184,0.10); border-color: rgba(148,163,184,0.25); color: #cbd5e1; }
+  .badge-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+
+  /* === CTA BUTTONS === */
+  .cta-primary {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 4px 12px -2px rgba(59,130,246,0.45);
+  }
+  .cta-primary svg { width: 11px; height: 11px; fill: #fff; }
+  .cta-pair { display: flex; gap: 6px; }
+  .cta-pause {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .cta-pause svg { width: 10px; height: 10px; fill: #fff; }
+  .cta-stop {
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(239,68,68,0.15);
+    color: #f87171;
+    border: 1px solid rgba(239,68,68,0.40);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .cta-stop svg { width: 10px; height: 10px; fill: currentColor; }
+  .cta-warn {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 4px 12px -2px rgba(245,158,11,0.45);
+  }
+
+  /* === QUICK ACTIONS === */
+  .quick-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .qa-btn {
+    flex: 1;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .qa-btn svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .qa-icon-btn {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #94a3b8;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .qa-icon-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* === NEXT BLOCK PREVIEW === */
+  .next-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .next-preview .label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .next-preview .info {
+    flex: 1;
+    min-width: 0;
+  }
+  .next-preview .name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #cbd5e1;
+  }
+  .next-preview .time {
+    font-size: 9.5px;
+    color: #64748b;
+    margin-top: 1px;
+    font-variant-numeric: tabular-nums;
+  }
+  .next-preview .arrow {
+    color: #475569;
+  }
+
+  /* === FREE TIME STATE === */
+  .free-hero {
+    text-align: center;
+    padding: 12px 0 14px;
+  }
+  .free-emoji {
+    font-size: 36px;
+    margin-bottom: 6px;
+    display: inline-block;
+  }
+  .free-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #cbd5e1;
+    margin-bottom: 4px;
+  }
+  .free-sub {
+    font-size: 11px;
+    color: #64748b;
+  }
+  .free-stats {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .free-stat {
+    text-align: center;
+  }
+  .free-stat .num {
+    font-size: 18px;
+    font-weight: 800;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .free-stat .lbl {
+    font-size: 8.5px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-top: 3px;
+  }
+
+  /* === ANNOTATIONS === */
+  .annotations {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    padding: 22px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+  }
+  .ann-section-title {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+    color: #14b8a6;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(20,184,166,0.20);
+  }
+  .ann-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px 22px;
+  }
+  .ann-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .ann-num {
+    width: 24px; height: 24px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 3px 8px -2px rgba(20,184,166,0.4);
+  }
+  .ann-body { flex: 1; padding-top: 1px; }
+  .ann-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 3px;
+    line-height: 1.3;
+  }
+  .ann-desc {
+    font-size: 10.5px;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+  .ann-desc strong {
+    color: #cbd5e1;
+    font-weight: 600;
+  }
+
+  /* === PROBLEMS STRIP === */
+  .problems {
+    margin-top: 22px;
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: rgba(239,68,68,0.04);
+    border: 1px solid rgba(239,68,68,0.18);
+  }
+  .problems-title {
+    font-size: 10px;
+    font-weight: 800;
+    color: #fca5a5;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 8px;
+  }
+  .problems-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px 18px;
+  }
+  .problem-item {
+    font-size: 10.5px;
+    color: #cbd5e1;
+    line-height: 1.4;
+    padding-left: 13px;
+    position: relative;
+  }
+  .problem-item::before {
+    content: '✕';
+    position: absolute;
+    left: 0; top: 0;
+    color: #ef4444;
+    font-weight: 800;
+    font-size: 9px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-title">CurrentBlockCard — Modernization Plan</div>
+<div class="page-subtitle">3 states shown: idle lecture block · live session · free time. Plus 8 design decisions.</div>
+
+<div class="layout">
+
+  <!-- =================== STATE A: IDLE STUDY BLOCK (PHYSICS) =================== -->
+  <div>
+    <div class="stage-label a">
+      <span style="width:5px;height:5px;border-radius:50%;background:#93c5fd;box-shadow:0 0 6px #93c5fd;"></span>
+      State A · Idle block · Physics lecture
+    </div>
+
+    <div class="phone">
+      <div class="block-card physics">
+
+        <!-- DAY TIMELINE STRIP -->
+        <div class="timeline">
+          <div class="timeline-label">
+            <span>Today's plan</span>
+            <span class="now-label">3:30 PM now</span>
+          </div>
+          <div class="timeline-bar">
+            <!-- 8 AM - 12 PM Physics (33% width) -->
+            <div class="timeline-segment physics" style="left:33%;width:17%;"></div>
+            <!-- 12 PM - 1 PM Break -->
+            <div class="timeline-segment break" style="left:50%;width:4%;"></div>
+            <!-- 1 PM - 4 PM Physics (current block, highlighted) -->
+            <div class="timeline-segment physics" style="left:54%;width:12%;box-shadow:0 0 0 1.5px #fff, 0 0 8px #60a5fa;"></div>
+            <!-- 4 PM - 6 PM Chemistry -->
+            <div class="timeline-segment chemistry" style="left:66%;width:9%;"></div>
+            <!-- 6 PM - 7 PM Break -->
+            <div class="timeline-segment break" style="left:75%;width:4%;"></div>
+            <!-- 7 PM - 9 PM Botany -->
+            <div class="timeline-segment botany" style="left:79%;width:8%;"></div>
+            <!-- NOW indicator (3:30 PM = 60% across 6 AM-12 AM window) -->
+            <div class="timeline-now" style="left:60%;"></div>
+          </div>
+          <div class="timeline-hours">
+            <span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span>
+          </div>
+        </div>
+
+        <!-- HEADER ROW: Big ring + block info -->
+        <div class="header-row">
+          <div class="ring">
+            <svg width="64" height="64" viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
+              <circle cx="32" cy="32" r="27" fill="none" stroke="#60a5fa" stroke-width="5"
+                      stroke-linecap="round"
+                      stroke-dasharray="169.6" stroke-dashoffset="92"
+                      style="filter: drop-shadow(0 0 4px #3b82f6);"/>
+            </svg>
+            <div class="ring-content">
+              <div class="ring-time">47m</div>
+              <div class="ring-unit">left</div>
+            </div>
+          </div>
+          <div class="header-info">
+            <div class="header-label">Physics · Lecture</div>
+            <div class="header-title">Mechanics — Newton's Laws</div>
+            <div class="header-time">
+              <svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="5"/><path d="M6 3 v3 l2 2"/></svg>
+              1:00 PM → 4:00 PM · 90 min total
+            </div>
+          </div>
+        </div>
+
+        <!-- STATUS BADGES -->
+        <div class="status-row">
+          <span class="badge ontime">
+            <span class="badge-dot" style="background:#4ade80;box-shadow:0 0 4px #4ade80;"></span>
+            On time
+          </span>
+          <span class="badge remaining">
+            43m studied · 47m left
+          </span>
+        </div>
+
+        <!-- CTA -->
+        <button class="cta-primary">
+          <svg viewBox="0 0 12 12"><polygon points="3,2 3,10 10,6"/></svg>
+          Start planned session
+        </button>
+
+        <!-- QUICK ACTIONS -->
+        <div class="quick-actions">
+          <button class="qa-btn">
+            <svg viewBox="0 0 12 12"><path d="M2 6 h8 M8 3 l3 3 -3 3"/></svg>
+            Skip
+          </button>
+          <button class="qa-btn">
+            <svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="4"/><path d="M6 4 v2 l1.5 1"/></svg>
+            Snooze 15m
+          </button>
+          <button class="qa-icon-btn" title="Edit routine">
+            <svg viewBox="0 0 14 14"><path d="M2 12 l2 -1 l7 -7 l-1 -1 l-7 7 z M10 3 l1 1"/></svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== STATE B: LIVE SESSION =================== -->
+  <div>
+    <div class="stage-label b">
+      <span style="width:5px;height:5px;border-radius:50%;background:#86efac;box-shadow:0 0 6px #86efac;"></span>
+      State B · Live session · Slightly late
+    </div>
+
+    <div class="phone">
+      <div class="block-card physics live">
+
+        <!-- DAY TIMELINE STRIP -->
+        <div class="timeline">
+          <div class="timeline-label">
+            <span>Today's plan</span>
+            <span class="now-label">3:30 PM now</span>
+          </div>
+          <div class="timeline-bar">
+            <div class="timeline-segment physics" style="left:33%;width:17%;"></div>
+            <div class="timeline-segment break" style="left:50%;width:4%;"></div>
+            <div class="timeline-segment physics" style="left:54%;width:12%;box-shadow:0 0 0 1.5px #fff, 0 0 8px #60a5fa;"></div>
+            <div class="timeline-segment chemistry" style="left:66%;width:9%;"></div>
+            <div class="timeline-segment break" style="left:75%;width:4%;"></div>
+            <div class="timeline-segment botany" style="left:79%;width:8%;"></div>
+            <div class="timeline-now" style="left:60%;"></div>
+          </div>
+          <div class="timeline-hours">
+            <span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span>
+          </div>
+        </div>
+
+        <!-- HEADER ROW -->
+        <div class="header-row">
+          <div class="ring">
+            <svg width="64" height="64" viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
+              <circle cx="32" cy="32" r="27" fill="none" stroke="#60a5fa" stroke-width="5"
+                      stroke-linecap="round"
+                      stroke-dasharray="169.6" stroke-dashoffset="92"
+                      style="filter: drop-shadow(0 0 6px #3b82f6);"/>
+            </svg>
+            <div class="ring-content">
+              <div class="ring-time">47m</div>
+              <div class="ring-unit">left</div>
+            </div>
+          </div>
+          <div class="header-info">
+            <div class="header-label">
+              Physics · Lecture
+              <span class="live-chip"><span class="pulse"></span>Live</span>
+            </div>
+            <div class="header-title">Mechanics — Newton's Laws</div>
+            <div class="header-time">
+              <svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="5"/><path d="M6 3 v3 l2 2"/></svg>
+              1:00 PM → 4:00 PM · started 1:08 PM
+            </div>
+          </div>
+        </div>
+
+        <!-- STATUS BADGES -->
+        <div class="status-row">
+          <span class="badge late">
+            <span class="badge-dot" style="background:#fbbf24;box-shadow:0 0 4px #fbbf24;"></span>
+            8 min late
+          </span>
+          <span class="badge wasted">
+            <span class="badge-dot" style="background:#f87171;"></span>
+            3m wasted
+          </span>
+          <span class="badge remaining">47m left in block</span>
+        </div>
+
+        <!-- CTA PAIR -->
+        <div class="cta-pair">
+          <button class="cta-pause">
+            <svg viewBox="0 0 10 10"><rect x="2" y="1" width="2" height="8" rx="0.5"/><rect x="6" y="1" width="2" height="8" rx="0.5"/></svg>
+            Pause
+          </button>
+          <button class="cta-stop">
+            <svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" rx="1"/></svg>
+            Stop
+          </button>
+        </div>
+
+        <!-- NEXT PREVIEW -->
+        <div class="next-preview">
+          <div style="width:3px;height:30px;border-radius:2px;background:#fb923c;flex-shrink:0;"></div>
+          <div class="info">
+            <div class="label">Next at 4:00 PM</div>
+            <div class="name">Chemistry · Self Study</div>
+            <div class="time">2 hours · DPP + Notes</div>
+          </div>
+          <span class="arrow">›</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== STATE C: FREE TIME =================== -->
+  <div>
+    <div class="stage-label c">
+      <span style="width:5px;height:5px;border-radius:50%;background:#fcd34d;box-shadow:0 0 6px #fcd34d;"></span>
+      State C · Free time · No active block
+    </div>
+
+    <div class="phone">
+      <div class="block-card free">
+
+        <!-- DAY TIMELINE STRIP -->
+        <div class="timeline">
+          <div class="timeline-label">
+            <span>Today's plan</span>
+            <span class="now-label">11:30 AM now</span>
+          </div>
+          <div class="timeline-bar">
+            <!-- 8 AM - 12 PM Chemistry (already passed, dimmer) -->
+            <div class="timeline-segment chemistry" style="left:33%;width:17%;opacity:0.55;"></div>
+            <!-- NOW indicator at 11:30 AM (47% across) -->
+            <div class="timeline-now" style="left:47%;"></div>
+            <!-- 1 PM - 4 PM Physics -->
+            <div class="timeline-segment physics" style="left:54%;width:12%;"></div>
+            <div class="timeline-segment break" style="left:66%;width:4%;"></div>
+            <div class="timeline-segment chemistry" style="left:70%;width:9%;"></div>
+            <div class="timeline-segment break" style="left:79%;width:4%;"></div>
+            <div class="timeline-segment botany" style="left:83%;width:8%;"></div>
+          </div>
+          <div class="timeline-hours">
+            <span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span>
+          </div>
+        </div>
+
+        <!-- FREE HERO -->
+        <div class="free-hero">
+          <div class="free-emoji">☕</div>
+          <div class="free-title">Free time</div>
+          <div class="free-sub">No scheduled block right now</div>
+          <div class="free-stats">
+            <div class="free-stat">
+              <div class="num">2h</div>
+              <div class="lbl">Done today</div>
+            </div>
+            <div class="free-stat">
+              <div class="num">5h</div>
+              <div class="lbl">Planned left</div>
+            </div>
+            <div class="free-stat">
+              <div class="num">3</div>
+              <div class="lbl">Blocks left</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NEXT PREVIEW -->
+        <div class="next-preview">
+          <div style="width:3px;height:30px;border-radius:2px;background:#60a5fa;flex-shrink:0;"></div>
+          <div class="info">
+            <div class="label">Next at 1:00 PM</div>
+            <div class="name">Physics · Lecture</div>
+            <div class="time">3 hours · Mechanics</div>
+          </div>
+          <span class="arrow">›</span>
+        </div>
+
+        <!-- QUICK ACTIONS -->
+        <div class="quick-actions">
+          <button class="qa-btn">
+            <svg viewBox="0 0 12 12"><polygon points="3,2 3,10 10,6"/></svg>
+            Free study
+          </button>
+          <button class="qa-btn">
+            <svg viewBox="0 0 12 12"><path d="M2 6 h8 M8 3 l3 3 -3 3"/></svg>
+            Browse routine
+          </button>
+          <button class="qa-icon-btn" title="Edit routine">
+            <svg viewBox="0 0 14 14"><path d="M2 12 l2 -1 l7 -7 l-1 -1 l-7 7 z M10 3 l1 1"/></svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ ANNOTATIONS ============================ -->
+  <div class="annotations">
+    <div class="ann-section-title">8 Design Decisions</div>
+    <div class="ann-grid">
+
+      <div class="ann-item">
+        <div class="ann-num">1</div>
+        <div class="ann-body">
+          <div class="ann-title">Day Timeline Strip</div>
+          <div class="ann-desc">A <strong>thin horizontal bar (10px)</strong> at the top of the card shows today's blocks as colored segments — Physics blue, Chemistry orange, Breaks hatched gray. A pulsing <strong>white "now" line</strong> with a glow shows where you are. Tap any segment to jump to that block's preview.</div>
+        </div>
+      </div>
+
+      <div class="ann-item">
+        <div class="ann-num">2</div>
+        <div class="ann-body">
+          <div class="ann-title">Big circular timer ring (64px)</div>
+          <div class="ann-desc">Replaces the thin 2px linear bar. Shows <strong>elapsed vs total time</strong> as a colored arc with glow. Inside: large remaining time ("47m") + "left" label. Way more visceral — you instantly feel how much time is left.</div>
+        </div>
+      </div>
+
+      <div class="ann-item">
+        <div class="ann-num">3</div>
+        <div class="ann-body">
+          <div class="ann-title">Hero card with live glow</div>
+          <div class="ann-desc">When a session is live for this block, the card gets a <strong>colored radial glow in the top-right</strong>, glowing border, and subtle gradient background using the subject's color. Same visual language as the redesigned SubjectSection.</div>
+        </div>
+      </div>
+
+      <div class="ann-item">
+        <div class="ann-num">4</div>
+        <div class="ann-body">
+          <div class="ann-title">"Live" chip with breathing dot</div>
+          <div class="ann-desc">Replaces the aggressive red pulsing "LIVE" badge with a <strong>calm blue chip + breathing dot</strong> (same <code>pulse-soft</code> animation as SubjectSection's "Studying now" chip). Consistent visual language across the app.</div>
+        </div>
+      </div>
+
+      <div class="ann-item">
+        <div class="ann-num">5</div>
+        <div class="ann-body">
+          <div class="ann-title">Status badges row</div>
+          <div class="ann-desc">Combines lateness + wasted time + remaining into a single row of <strong>small pill badges</strong> with colored dots: 🟢 On time / 🟡 N min late / 🔴 very late · ⚠ Nm wasted · Nm left. Replaces the scattered text rows in the current design.</div>
+        </div>
+      </div>
+
+      <div class="ann-item">
+        <div class="ann-num">6</div>
+        <div class="ann-body">
+          <div class="ann-title">Smart CTA — adapts to state</div>
+          <div class="ann-desc">Idle → <strong>gradient "Start planned session"</strong> button. Live → <strong>Pause + Stop pair</strong> (orange + red). Wrong subject → <strong>"Switch to planned: Physics"</strong> warning CTA. No more guessing what to tap.</div>
+        </div>
+      </div>
+
+      <div class="ann-item">
+        <div class="ann-num">7</div>
+        <div class="ann-body">
+          <div class="ann-title">Next block preview card</div>
+          <div class="ann-desc">A small <strong>recessed card at the bottom</strong> showing the next block: colored stripe + "Next at 4:00 PM" + subject + duration. Tappable to expand into a full preview. Way more present than the tiny "Next:" text line.</div>
+        </div>
+      </div>
+
+      <div class="ann-item">
+        <div class="ann-num">8</div>
+        <div class="ann-body">
+          <div class="ann-title">Quick actions row</div>
+          <div class="ann-desc"><strong>Skip / Snooze 15m / Edit</strong> icon buttons. Skip = mark block as skipped (won't count against adherence). Snooze = push the start time by 15m. Edit = open Routine Builder. Real actions, not just an edit pencil.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================ PROBLEMS WITH CURRENT ============================ -->
+    <div class="problems">
+      <div class="problems-title">✕ Problems with current CurrentBlockCard</div>
+      <div class="problems-grid">
+        <div class="problem-item">No day context — can't see where this block sits</div>
+        <div class="problem-item">2px linear progress bar — invisible at a glance</div>
+        <div class="problem-item">LIVE badge uses aggressive red pulse</div>
+        <div class="problem-item">Lateness shown as scattered text rows</div>
+        <div class="problem-item">"Next:" is tiny forgettable text</div>
+        <div class="problem-item">Only an edit pencil — no real quick actions</div>
+        <div class="problem-item">Free time state has no stats or context</div>
+        <div class="problem-item">Wrong-subject warning is a yellow strip</div>
+        <div class="problem-item">No visual hierarchy — looks like an info card</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
