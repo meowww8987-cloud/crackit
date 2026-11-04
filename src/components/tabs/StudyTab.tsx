@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Plus, Sparkles, X, Check, ChevronRight,
   Flame, Eye, EyeOff, RefreshCw, Play,
-  BookOpen, FileText, Zap, RotateCcw,
+  BookOpen, FileText, Zap, RotateCcw, AlertTriangle,
 } from 'lucide-react';
 import { Reorder, motion, AnimatePresence } from 'framer-motion';
 import { useTargets } from '@/lib/store/targets';
@@ -508,12 +508,6 @@ function HeroProgressCard({
 
   const isComplete = progressPct >= 100;
 
-  // Segmented bar percentages (relative to goal)
-  const goalMin = goalSec / 60;
-  const studiedPct = goalSec > 0 ? Math.min(100, (studySecToday / goalSec) * 100) : 0;
-  const wastedPct = goalSec > 0 ? Math.min(100 - studiedPct, (wastedSec / goalSec) * 100) : 0;
-  const remainingPct = Math.max(0, 100 - studiedPct - wastedPct);
-
   return (
     <motion.div
       initial={mounted ? { opacity: 0, y: 8 } : false}
@@ -614,8 +608,8 @@ function HeroProgressCard({
             >
               {progressPct}%
             </motion.span>
-            <span className="text-[8px] font-bold uppercase tracking-widest mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-              of goal
+            <span className="text-[8px] font-bold uppercase tracking-widest mt-0.5" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
+              of {dailyGoal}h
             </span>
           </div>
           {isComplete && (
@@ -629,7 +623,7 @@ function HeroProgressCard({
           )}
         </div>
 
-        {/* Big "39m" studied + pace chip */}
+        {/* Big "39m" studied + focus/wasted side-by-side + pace chip */}
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-1.5">
             <span className="text-3xl font-black tabular leading-none" style={{ color: 'var(--foreground)' }} suppressHydrationWarning>
@@ -642,6 +636,32 @@ function HeroProgressCard({
           <div className="text-[11px] tabular mt-1" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
             {formatHM(remainingSec)} to go · {doneCount}/{totalCount} done
           </div>
+
+          {/* === FOCUS vs WASTED — side by side ===
+              Focus time: calm blue/green with Zap icon (positive)
+              Wasted time: DANGER styling — red bg, warning icon, pulsing border
+              Only shows the wasted chip when there IS waste (no demoralizing
+              red label when the day is clean). */}
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <span
+              className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg tabular"
+              style={{ background: `${ringColor}18`, color: ringColor, border: `1px solid ${ringColor}35` }}
+            >
+              <Zap size={11} />
+              <span>{formatHM(studySecToday)} focus</span>
+            </span>
+            {wastedSec > 0 && (
+              <span
+                className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg tabular pulse-fast"
+                style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.45)' }}
+                title="Time wasted this session — minimized by staying focused!"
+              >
+                <AlertTriangle size={11} />
+                <span>{formatHM(wastedSec)} wasted</span>
+              </span>
+            )}
+          </div>
+
           {/* Pace chip + goal */}
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             <span
@@ -650,45 +670,7 @@ function HeroProgressCard({
             >
               {paceLabel}
             </span>
-            <span className="text-[10px] tabular" style={{ color: 'var(--muted-foreground)' }}>
-              goal {dailyGoal}h
-            </span>
           </div>
-        </div>
-      </div>
-
-      {/* === ROW 3: SEGMENTED BAR (studied green | wasted red | remaining gray) ===
-          Shows the full day's progress at a glance — more informative than a
-          single-progress ring. Only shows the wasted segment if there IS waste. */}
-      <div className="mb-2">
-        <div className="h-2.5 rounded-full overflow-hidden flex" style={{ background: 'var(--bar-track, rgba(255,255,255,0.08))' }}>
-          {studiedPct > 0 && (
-            <motion.div
-              initial={false}
-              animate={{ width: `${studiedPct}%` }}
-              transition={{ type: 'spring', stiffness: 60, damping: 20 }}
-              style={{ background: `linear-gradient(90deg, ${ringColor}, ${ringColor2})` }}
-            />
-          )}
-          {wastedPct > 0 && (
-            <motion.div
-              initial={false}
-              animate={{ width: `${wastedPct}%` }}
-              transition={{ type: 'spring', stiffness: 60, damping: 20 }}
-              style={{ background: '#ef4444' }}
-            />
-          )}
-          {remainingPct > 0 && (
-            <div style={{ width: `${remainingPct}%` }} />
-          )}
-        </div>
-        {/* Tiny labels under the bar */}
-        <div className="flex items-center justify-between mt-1 text-[9px] tabular" style={{ color: 'var(--muted-foreground)' }}>
-          <span><span style={{ color: ringColor }}>●</span> {formatHM(studySecToday)}</span>
-          {wastedSec > 0 && (
-            <span><span style={{ color: '#ef4444' }}>●</span> {formatHM(wastedSec)} wasted</span>
-          )}
-          <span>{formatHM(remainingSec)} left</span>
         </div>
       </div>
 
