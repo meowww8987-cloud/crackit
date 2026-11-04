@@ -1485,6 +1485,47 @@ html:not(.dark) .fill-white\/40 { fill: var(--muted-foreground, #6b7280) !import
   animation: timer-breathe 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* === #4 Colon pulse — the ':' between minutes and seconds gently pulses
+ *    every second, making the timer feel "alive". === */
+@keyframes colon-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+.colon-pulse {
+  animation: colon-pulse 1s ease-in-out infinite;
+}
+
+/* === #4 Minute-rollover bounce — all timer digits bounce gently when the
+ *    minute rolls over (e.g. 4:59 → 5:00). Triggered by key change. === */
+@keyframes minute-bounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.06); }
+  60% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+.minute-bounce {
+  animation: minute-bounce 0.6s ease-out;
+}
+
+/* === #3 State-change ripple — a soft wave expands from the timer center
+ *    when the state changes (studying → paused, etc). Keyed by stateRipple. === */
+@keyframes state-ripple {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0.5; }
+  100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+}
+.state-ripple {
+  animation: state-ripple 0.8s ease-out forwards;
+}
+
+/* === #7 Button tap ripple — Material-style ripple on button press === */
+@keyframes btn-ripple {
+  0% { transform: scale(0); opacity: 0.4; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+.btn-ripple {
+  animation: btn-ripple 0.5s ease-out forwards;
+}
+
 @keyframes flame-flicker {
   0%, 100% { transform: scale(1) rotate(-2deg); filter: brightness(1); }
   25% { transform: scale(1.06) rotate(1deg); filter: brightness(1.15); }

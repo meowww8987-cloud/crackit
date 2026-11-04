@@ -10,6 +10,7 @@ import { subjectColor } from '@/lib/colors';
 import { cn, formatClock, formatHM, vibrate } from '@/lib/utils';
 import { FlipTimer } from '@/components/timer/FlipTimer';
 import { useRoutine } from '@/lib/store/routine';
+import { playSound } from '@/lib/sounds';
 
 export function FocusTimer() {
   const { active, pause, resume, toggleWasting, stop, setFocusOpen, bumpInteraction, setWidgetHidden, tick } = useSession();
@@ -73,6 +74,13 @@ export function FocusTimer() {
   const orientationAngleRef = useRef(orientationAngle);
   const lastWastedRef = useRef(0);
   const lastInteractRef = useRef(Date.now());
+  // === #10 Minute-tick sound: play a soft tick when the minute rolls over ===
+  const lastMinuteRef = useRef(0);
+  // === #4 Minute-rollover bounce: trigger a bounce animation on the timer ===
+  const [minuteBounce, setMinuteBounce] = useState(0);
+  // === #3 Ripple on state change: keyed overlay that re-mounts on state change ===
+  const [stateRipple, setStateRipple] = useState(0);
+  const prevstateRef = useRef('');
 
   // Live ticking — 1000ms normally, 5s when dimmed (saves CPU on low-end devices)
   useEffect(() => {
@@ -81,9 +89,24 @@ export function FocusTimer() {
       setTick((t) => t + 1);
       // Drive the session store's periodic commit + waste-detection logic.
       try { tick(); } catch {}
+      // === #10 Minute-tick sound ===
+      // Play a soft tick when the study minute rolls over (e.g. 4:59 → 5:00).
+      // Only when sound is enabled + not paused + not wasting + tab visible.
+      if (active && !active.paused && !active.wasting && settings.soundEnabled) {
+        const totalSec = getLiveStudySeconds(active);
+        const currentMin = Math.floor(totalSec / 60);
+        if (currentMin !== lastMinuteRef.current && lastMinuteRef.current !== 0) {
+          try { playSound('tick'); } catch {}
+          // === #4 Minute-rollover bounce ===
+          setMinuteBounce((b) => b + 1);
+        }
+        lastMinuteRef.current = currentMin;
+      }
     }, dimmed ? 5000 : 1000);
     return () => clearInterval(i);
-  }, [dimmed, tick]);
+  }, [dimmed, tick, active, settings.soundEnabled]);
+
+  // === #3 Ripple on state change — moved below isPaused/isWasting declarations ===
 
   // === CRITICAL FIX: orientation is 100% VIEWPORT-DRIVEN — no lock overrides ===
   // The old chain `tempLockAngle ?? settings.lockedOrientation ?? orientationAngle`
@@ -421,6 +444,17 @@ export function FocusTimer() {
   // Determine state
   const isPaused = active.paused;
   const isWasting = active.wasting;
+
+  // === #3 Ripple on state change — fire a ripple wave from the timer center
+  // when isPaused/isWasting changes. Keyed by stateRipple so the overlay
+  // re-mounts and re-animates on each state transition. ===
+  useEffect(() => {
+    const stateKey = isPaused ? 'paused' : isWasting ? 'wasting' : 'studying';
+    if (prevstateRef.current && prevstateRef.current !== stateKey) {
+      setStateRipple((r) => r + 1);
+    }
+    prevstateRef.current = stateKey;
+  }, [isPaused, isWasting]);
   const isStudying = !isPaused && !isWasting;
 
   // Timer color
@@ -482,6 +516,27 @@ export function FocusTimer() {
     }
     // Trigger pulse wave then stop
     triggerStopPulse();
+  };
+
+  // === #7 Button tap ripple — Material-style ripple effect on button press.
+  //     Creates a temporary ripple element at the tap position that expands
+  //     and fades. Cleans up after the animation. ===
+  const tapRippleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleTapRipple = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const btn = e.currentTarget;
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = e.clientX - rect.left - size / 2;
+    const y = e.clientY - rect.top - size / 2;
+    const ripple = document.createElement('span');
+    ripple.className = 'btn-ripple';
+    ripple.style.cssText = `position:absolute;border-radius:50%;background:rgba(255,255,255,0.4);width:${size}px;height:${size}px;left:${x}px;top:${y}px;pointer-events:none;`;
+    // Ensure the button can position the ripple
+    if (getComputedStyle(btn).position === 'static') btn.style.position = 'relative';
+    btn.style.overflow = 'hidden';
+    btn.appendChild(ripple);
+    if (tapRippleRef.current) clearTimeout(tapRippleRef.current);
+    tapRippleRef.current = setTimeout(() => { if (ripple.parentNode) ripple.parentNode.removeChild(ripple); }, 600);
   };
 
   const displayTime = isWasting ? wastedSec : studySec;
@@ -777,8 +832,42 @@ export function FocusTimer() {
             bottom, can shrink if needed (min-h-0 is the critical flex fix).
           LANDSCAPE: flex-1 min-w-0 — takes all horizontal space to the LEFT of
             the controls column. min-w-0 allows it to shrink so the controls
-            column (shrink-0) always keeps its full width. */}
-      <div className={cn('flex flex-col items-center justify-center', isLandscape ? 'flex-1 min-w-0' : 'flex-1 min-h-0')}>
+            column (shrink-0) always keeps its full width.
+          === MODERN REDESIGN: includes circular progress ring (#1), ambient
+              glow (#9), state-change ripple (#3), minute-rollover bounce (#4),
+              colon pulse (#4). All wrapped in a relative container so the ring
+              and glow can position themselves behind the digits. === */}
+      <div className={cn('flex flex-col items-center justify-center relative', isLandscape ? 'flex-1 min-w-0' : 'flex-1 min-h-0')}>
+        {/* === #9 Ambient glow — soft radial gradient behind the timer that
+            matches the current state color. Very subtle (8% opacity) — just
+            enough to "feel" the state without being distracting. Fades out
+            when dimmed. === */}
+        {!dimmed && (
+          <div
+            className="absolute inset-0 pointer-events-none transition-opacity duration-1000"
+            style={{
+              background: `radial-gradient(circle at 50% 50%, ${timerColor}15 0%, transparent 60%)`,
+              opacity: dimmed ? 0 : 0.8,
+            }}
+          />
+        )}
+
+        {/* === #3 State-change ripple — a soft wave expands from the timer
+            center when the state changes (studying → paused, etc). Keyed by
+            stateRipple so it re-mounts and re-animates on each change. === */}
+        {stateRipple > 0 && !dimmed && (
+          <div
+            key={stateRipple}
+            className="state-ripple absolute left-1/2 top-1/2 pointer-events-none z-20"
+            style={{
+              width: 200,
+              height: 200,
+              borderRadius: '50%',
+              border: `2px solid ${timerColor}60`,
+            }}
+          />
+        )}
+
         {/* Status badge — FADES OUT entirely when dimmed (opacity 0). Only the
             timer should remain visible in burn-protection mode. The badge is
             non-essential context (the timer color already signals state) so
@@ -788,7 +877,7 @@ export function FocusTimer() {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: dimmed ? 0 : 1 }}
           transition={{ duration: 1 }}
-          className={cn('px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg mb-3')}
+          className={cn('px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg mb-3 relative z-10')}
           style={{
             background: isWasting ? '#ef4444' : isPaused ? '#f59e0b' : '#22c55e',
             color: '#000',
@@ -801,75 +890,114 @@ export function FocusTimer() {
           {isPaused ? (
             <span><span aria-hidden="true">⏸</span> PAUSED</span>
           ) : isWasting ? (
-            // FIX #7: pulse-fast back but gentler (1.8s opacity-only, was 0.9s with scale)
             <span className={cn('pulse-fast', dimmed && '!animate-none')}>⚠ DISTRACTED — tap Back to Study</span>
           ) : (
-            // FIX #35: pulse-slow stays alive — gentle breathing always on
-            // FIX #25: Disabled when reduceAnimations is on
             <span className={cn(!reduceAnim && !dimmed && 'pulse-slow', dimmed && '!animate-none')}>
               <span aria-hidden="true">●</span> STUDYING
             </span>
           )}
         </motion.div>
 
-        {/* Timer — dims to screenDimOpacity% but stays barely visible */}
+        {/* === #1 Circular progress ring + timer digits ===
+            The ring sits BEHIND the digits (absolute, z-0). Digits are above
+            (relative, z-10). Ring fills clockwise from 12 o'clock based on:
+              - If expectedMinutes is set: % of goal completed
+              - Else: % of a 50-min pomodoro cycle
+            Ring fades out when dimmed (only digits remain). */}
         <motion.div
           animate={{ x: timerPos.x, y: timerPos.y }}
           transition={{ type: 'spring', stiffness: 60, damping: 20 }}
-          className="transition-opacity duration-1000"
+          className="transition-opacity duration-1000 relative"
           style={{
-            // === FIX: dimmed timer floor raised 0.15 → 0.35 — at 15% the digits
-            // were subliminal on OLED black and users read the screen as
-            // "completely gone". 35% keeps burn protection while staying
-            // clearly readable, so the timer never looks like it "disappeared". ===
             opacity: dimmed ? Math.max(0.35, settings.screenDimOpacity / 100) : 1,
             filter: dimmed ? 'drop-shadow(0 0 40px rgba(255,255,255,0.1))' : 'none',
           }}
         >
-          {dimmed ? (
-            <div
-              className={cn('font-bold tabular tracking-tight text-center', isLandscape ? 'text-6xl' : 'text-6xl sm:text-7xl')}
-              style={{
-                color: timerColor,
-                transition: 'color 1000ms ease-in-out',
-              }}
-            >
-              {formatClock(displayTime)}
-            </div>
-          ) : (
-            <FlipTimer
-              value={formatClock(displayTime)}
-              className={cn(
-                'font-bold tabular tracking-tight text-center',
-                // text-6xl sm:text-7xl (was text-7xl sm:text-8xl) — saves
-                // ~32px of vertical space on phones, enough to keep the bottom
-                // controls on-screen alongside the routine badges.
-                isLandscape ? 'text-6xl' : 'text-6xl sm:text-7xl',
-                // === NEW: Breathing glow makes timer feel alive ===
-                !reduceAnim && 'timer-breathe'
-              )}
-              style={{
-                color: timerColor,
-                textShadow: `0 0 40px ${timerColor}40`,
-                transition: 'color 1000ms ease-in-out, text-shadow 1000ms ease-in-out',
-                ['--timer-glow' as string]: `${timerColor}50`,
-              }}
-            />
-          )}
-          {/* Timer label — small caption so the meaning is unambiguous.
-              HIDDEN when dimmed (only the timer digits should be visible). */}
-          {!dimmed && (
-            <div className="text-center mt-1 text-[10px] uppercase tracking-widest text-foreground font-semibold">
-              {isPaused ? 'Paused at' : isWasting ? 'Wasting for' : 'Studied for'}
-            </div>
-          )}
-          {/* === FIX #9 (revised): NO context label when dimmed — the user's
-              intended burn-protection behavior is "EVERYTHING disappears except
-              the timer". An earlier version showed subject · chapter at 20%
-              opacity "for context", but the user confirmed that even this faint
-              text counts as clutter that should vanish. The timer color already
-              signals state (green=studying, amber=paused, red=wasting), so no
-              text caption is needed. === */}
+          {/* === #1 Circular progress ring (SVG) — only when NOT dimmed ===
+              Size scales with orientation: 280px portrait, 240px landscape. */}
+          {!dimmed && (() => {
+            const ringSize = isLandscape ? 240 : 280;
+            const stroke = 3; // thin elegant ring
+            const radius = (ringSize / 2) - (stroke * 2);
+            const circumference = 2 * Math.PI * radius;
+            // Progress: % of goal (if set) or 50-min pomodoro cycle
+            const goalSec = active.expectedMinutes ? active.expectedMinutes * 60 : 50 * 60;
+            const progress = Math.min(1, (isWasting ? wastedSec : studySec) / goalSec);
+            const dashOffset = circumference * (1 - progress);
+            return (
+              <svg
+                width={ringSize}
+                height={ringSize}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ zIndex: 0, opacity: dimmed ? 0 : 0.9, transition: 'opacity 1000ms' }}
+              >
+                {/* Track (background ring) */}
+                <circle
+                  cx={ringSize / 2}
+                  cy={ringSize / 2}
+                  r={radius}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.08)"
+                  strokeWidth={stroke}
+                />
+                {/* Progress arc (subject/timer color) */}
+                <circle
+                  cx={ringSize / 2}
+                  cy={ringSize / 2}
+                  r={radius}
+                  fill="none"
+                  stroke={timerColor}
+                  strokeWidth={stroke}
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={dashOffset}
+                  transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
+                  style={{
+                    transition: 'stroke-dashoffset 1000ms ease-out, stroke 1000ms ease-in-out',
+                    filter: `drop-shadow(0 0 8px ${timerColor}60)`,
+                  }}
+                />
+              </svg>
+            );
+          })()}
+
+          {/* === #4 Minute-rollover bounce — keyed by minuteBounce so it
+              re-mounts and re-animates on each minute change. === */}
+          <div key={minuteBounce} className={cn(minuteBounce > 0 && !dimmed && 'minute-bounce')} style={{ position: 'relative', zIndex: 10 }}>
+            {dimmed ? (
+              <div
+                className={cn('font-bold tabular tracking-tight text-center', isLandscape ? 'text-6xl' : 'text-6xl sm:text-7xl')}
+                style={{
+                  color: timerColor,
+                  transition: 'color 1000ms ease-in-out',
+                }}
+              >
+                {formatClock(displayTime)}
+              </div>
+            ) : (
+              <FlipTimer
+                value={formatClock(displayTime)}
+                className={cn(
+                  'font-bold tabular tracking-tight text-center',
+                  isLandscape ? 'text-6xl' : 'text-6xl sm:text-7xl',
+                  !reduceAnim && 'timer-breathe'
+                )}
+                style={{
+                  color: timerColor,
+                  textShadow: `0 0 40px ${timerColor}40`,
+                  transition: 'color 1000ms ease-in-out, text-shadow 1000ms ease-in-out',
+                  ['--timer-glow' as string]: `${timerColor}50`,
+                }}
+              />
+            )}
+            {/* Timer label — small caption so the meaning is unambiguous.
+                HIDDEN when dimmed (only the timer digits should be visible). */}
+            {!dimmed && (
+              <div className="text-center mt-1 text-[10px] uppercase tracking-widest text-white/50 font-semibold">
+                {isPaused ? 'Paused at' : isWasting ? 'Wasting for' : 'Studied for'}
+              </div>
+            )}
+          </div>
         </motion.div>
 
         {/* Wasted display + Focus quality — HIDDEN when dimmed.
@@ -923,80 +1051,82 @@ export function FocusTimer() {
         )}
       </div>
 
-      {/* === Bottom / Right controls — FADE OUT entirely when dimmed (opacity 0)
-          and become CLICK-THROUGH (pointer-events-none) so taps pass through to
-          the overlay's onClick (handleInteraction) which un-dims. This is the
-          intended burn-protection behavior: when dimmed, ONLY the timer is
-          visible. The buttons vanish from view to maximize focus + save screen
-          burn. The user taps anywhere → screen un-dims → buttons reappear →
-          tap the actual button. This prevents accidentally triggering Stop or
-          Distracted by tapping where an invisible button happens to be.
-          === BUG HISTORY: an earlier version kept pointer-events auto when
-              dimmed, so tapping to "un-dim" could accidentally hit an invisible
-              Stop button and end the session. ===
-          === HISTORY 2: an even earlier version set pointer-events-none but
-              ALSO on the overlay, making the dimmed screen a dead zone. The
-              overlay (parent motion.div) ALWAYS keeps pointer-events auto, so
-              taps always reach handleInteraction. ===
+      {/* === Bottom / Right controls — MODERN GLASSMORPHIC DESIGN (#5, #6, #7, #8)
+          FADE OUT entirely when dimmed (opacity 0) + CLICK-THROUGH
+          (pointer-events-none) so taps pass through to the overlay's onClick
+          (handleInteraction) which un-dims.
 
-          PORTRAIT: stacked full-width buttons at the bottom (3 rows).
-          LANDSCAPE: 2-row grid in a fixed-width column on the RIGHT side of
-            the timer — uses the wide horizontal space instead of cramming
-            everything into a narrow strip. */}
+          === #5 Glassmorphic button cards ===
+              All buttons use frosted-glass: rgba(255,255,255,0.06) bg +
+              1px white/10 border + 12px backdrop-blur. Matches the header pill.
+
+          === #6 Better visual hierarchy ===
+              PRIMARY (Pause/Resume): solid accent fill + glow — the main action
+              ALERT (Got Distracted): red OUTLINE style (less aggressive than solid red)
+              TERTIARY (Stop/Hide/Rotate): compact glass icon buttons with labels
+
+          === #7 Ripple on tap ===
+              Every button gets a Material-style ripple at the tap position.
+
+          === #8 Contextual button states ===
+              When WASTING: the Distracted button shows a live timer of how long
+              you've been distracted, + becomes a calming green "Back to Study".
+
+          PORTRAIT: stacked full-width buttons at the bottom.
+          LANDSCAPE: fixed-width column on the RIGHT side of the timer. */}
       <div className={cn(
         'transition-opacity duration-1000 shrink-0',
         dimmed ? 'opacity-0 pointer-events-none' : 'opacity-100',
-        // Portrait: full-width stacked at bottom. Landscape: fixed-width column.
         isLandscape ? 'w-[280px] space-y-2' : 'w-full max-w-sm space-y-2'
       )}>
         {isLandscape ? (
-          /* === LANDSCAPE LAYOUT — modern stacked controls ===
-             Redesigned for long study sessions: clear visual hierarchy with
-             primary action (Pause) full-width, alert action (Distracted)
-             full-width, then a compact 3-icon row for tertiary actions.
-             Equal widths, consistent pill shape, better touch targets. */
+          /* === LANDSCAPE LAYOUT === */
           <>
-            {/* Primary action: Pause / Resume — full-width, prominent */}
+            {/* === #6 PRIMARY: Pause / Resume — solid accent fill + glow === */}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleInteraction();
-                vibrate(12);
-                if (isPaused) resume();
-                else pause();
+              onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); vibrate(12); if (isPaused) resume(); else pause(); }}
+              className="w-full py-3.5 rounded-2xl font-bold text-sm active:scale-[0.98] transition flex items-center justify-center gap-2"
+              style={{
+                background: isPaused ? '#22c55e' : 'rgba(255,255,255,0.08)',
+                color: isPaused ? '#000' : '#fff',
+                border: isPaused ? 'none' : '1px solid rgba(255,255,255,0.10)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                boxShadow: isPaused ? '0 4px 20px -4px rgba(34,197,94,0.6)' : 'none',
               }}
-              className="w-full py-3.5 rounded-2xl font-bold text-sm bg-foreground/15 text-white active:scale-[0.98] transition flex items-center justify-center gap-2 border border-white/5"
-              style={{ backdropFilter: 'blur(8px)' }}
             >
               {isPaused ? <><Play size={16} fill="currentColor" /> Resume</> : <><Pause size={16} fill="currentColor" /> Pause</>}
             </button>
-            {/* Alert action: Distracted / Back to Study — full-width, color-coded */}
+            {/* === #6 ALERT: Got Distracted — red OUTLINE style (less aggressive) ===
+                === #8 Contextual: shows live distracted timer when wasting === */}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleInteraction();
-                toggleWasting();
-              }}
+              onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); toggleWasting(); }}
               className={cn(
                 'w-full py-3.5 rounded-2xl font-bold text-sm active:scale-[0.98] transition flex items-center justify-center gap-2',
-                isWasting
-                  ? 'bg-green-500 text-black'
-                  : 'bg-red-500/90 text-white'
+                isWasting && 'pulse-fast'
               )}
+              style={{
+                background: isWasting ? '#22c55e' : 'rgba(239,68,68,0.10)',
+                color: isWasting ? '#000' : '#ef4444',
+                border: isWasting ? 'none' : '1px solid rgba(239,68,68,0.30)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                boxShadow: isWasting ? '0 4px 20px -4px rgba(34,197,94,0.6)' : 'none',
+              }}
             >
               {isWasting ? (
-                <><Play size={16} fill="currentColor" /> Back to Study</>
+                <><Play size={16} fill="currentColor" /> Back to Study · {formatClock(wastedSec)}</>
               ) : (
                 <><AlertTriangle size={16} /> Got Distracted</>
               )}
             </button>
-            {/* Tertiary row: Done/Stop + Hide + Rotate — equal-width icon buttons
-                with tiny labels. Clean, compact, unambiguous. */}
+            {/* === #6 TERTIARY: Done/Stop + Hide + Rotate — glass icon buttons === */}
             <div className="grid grid-cols-3 gap-2">
               {active?.targetId ? (
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleInteraction(); handleDone(); }}
-                  className="py-2.5 rounded-xl font-bold text-[11px] bg-green-500/15 text-green-400 active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5 border border-green-500/20"
+                  onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); handleDone(); }}
+                  className="py-2.5 rounded-xl font-bold text-[11px] active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5"
+                  style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
                   aria-label="Done — mark target complete"
                 >
                   <CheckCircle2 size={18} />
@@ -1004,8 +1134,9 @@ export function FocusTimer() {
                 </button>
               ) : (
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleInteraction(); handleStop(); }}
-                  className="py-2.5 rounded-xl font-bold text-[11px] bg-red-500/10 text-red-400 active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5 border border-red-500/20"
+                  onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); handleStop(); }}
+                  className="py-2.5 rounded-xl font-bold text-[11px] active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5"
+                  style={{ background: 'rgba(239,68,68,0.10)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
                   aria-label="Stop — end session"
                 >
                   <Square size={18} fill="currentColor" />
@@ -1013,31 +1144,18 @@ export function FocusTimer() {
                 </button>
               )}
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleInteraction();
-                  setFocusOpen(false);
-                  setWidgetHidden(false);
-                }}
-                className="py-2.5 rounded-xl font-bold text-[11px] bg-foreground/15 text-white active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5 border border-white/5"
+                onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); setFocusOpen(false); setWidgetHidden(false); }}
+                className="py-2.5 rounded-xl font-bold text-[11px] text-white active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
                 aria-label="Hide timer"
               >
                 <ChevronDown size={18} />
                 <span>Hide</span>
               </button>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleInteraction();
-                  vibrate(8);
-                  try {
-                    if (screen.orientation) {
-                      const target = isLandscape ? 'portrait' : 'landscape';
-                      (screen.orientation as any).lock?.(target).catch(() => {});
-                    }
-                  } catch {}
-                }}
-                className="py-2.5 rounded-xl font-bold text-[11px] bg-foreground/15 text-white active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5 border border-white/5 relative"
+                onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); vibrate(8); try { if (screen.orientation) { const target = isLandscape ? 'portrait' : 'landscape'; (screen.orientation as any).lock?.(target).catch(() => {}); } } catch {} }}
+                className="py-2.5 rounded-xl font-bold text-[11px] text-white active:scale-[0.98] transition flex flex-col items-center justify-center gap-0.5"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
                 title={isLandscape ? 'Switch to portrait' : 'Switch to landscape'}
                 aria-label="Toggle orientation"
               >
@@ -1047,111 +1165,83 @@ export function FocusTimer() {
             </div>
           </>
         ) : (
-          /* === PORTRAIT LAYOUT — original stacked full-width buttons === */
+          /* === PORTRAIT LAYOUT === */
           <>
-        {/* Pause/Resume — py-3 (was py-4) to save vertical space in portrait */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleInteraction();
-            vibrate(12);
-            if (isPaused) resume();
-            else pause();
-          }}
-          className="w-full py-3 rounded-2xl font-bold text-base bg-foreground/20 text-white  active:scale-[0.98] transition flex items-center justify-center gap-2"
-        >
-          {isPaused ? <><Play size={18} fill="currentColor" /> Resume</> : <><Pause size={18} fill="currentColor" /> Pause</>}
-        </button>
-
-        {/* Wasting toggle — works even when paused (auto-resumes + starts wasting) */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleInteraction();
-            toggleWasting();
-          }}
-          className={cn(
-            'w-full py-3 rounded-2xl font-bold text-base active:scale-[0.98] transition flex items-center justify-center gap-2',
-            isWasting
-              ? 'bg-green-500 text-black'
-              : 'bg-red-500/90 text-white'
-          )}
-        >
-          {isWasting ? (
-            <><Play size={18} fill="currentColor" /> Back to Study</>
-          ) : (
-            // === FIX #27: Softer wording — less accusatory ===
-            <><AlertTriangle size={18} /> Got Distracted</>
-          )}
-        </button>
-
-        {/* Done + Minimize row */}
-        <div className="flex gap-3">
-          {active?.targetId ? (
+            {/* === #6 PRIMARY: Pause / Resume — solid accent fill + glow === */}
             <button
-              onClick={(e) => { e.stopPropagation(); handleInteraction(); handleDone(); }}
-              className="flex-1 py-3 rounded-2xl font-bold text-base bg-green-500 text-black active:scale-[0.98] transition flex items-center justify-center gap-2"
-              aria-label="Done — mark target complete"
+              onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); vibrate(12); if (isPaused) resume(); else pause(); }}
+              className="w-full py-3.5 rounded-2xl font-bold text-base active:scale-[0.98] transition flex items-center justify-center gap-2"
+              style={{
+                background: isPaused ? '#22c55e' : 'rgba(255,255,255,0.08)',
+                color: isPaused ? '#000' : '#fff',
+                border: isPaused ? 'none' : '1px solid rgba(255,255,255,0.10)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                boxShadow: isPaused ? '0 4px 20px -4px rgba(34,197,94,0.6)' : 'none',
+              }}
             >
-              {/* === FIX #11: Shape differentiation for colorblind users ===
-                  Done = circle check (rounded-2xl + CheckCircle2) */}
-              <CheckCircle2 size={20} /> Done
+              {isPaused ? <><Play size={18} fill="currentColor" /> Resume</> : <><Pause size={18} fill="currentColor" /> Pause</>}
             </button>
-          ) : (
+            {/* === #6 ALERT: Got Distracted — red OUTLINE + #8 contextual timer === */}
             <button
-              onClick={(e) => { e.stopPropagation(); handleInteraction(); handleStop(); }}
-              className="flex-1 py-3 rounded-2xl font-bold text-base bg-red-500/15 text-red-400 active:scale-[0.98] transition flex items-center justify-center gap-2"
-              aria-label="Stop — end session"
+              onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); toggleWasting(); }}
+              className={cn('w-full py-3.5 rounded-2xl font-bold text-base active:scale-[0.98] transition flex items-center justify-center gap-2', isWasting && 'pulse-fast')}
+              style={{
+                background: isWasting ? '#22c55e' : 'rgba(239,68,68,0.10)',
+                color: isWasting ? '#000' : '#ef4444',
+                border: isWasting ? 'none' : '1px solid rgba(239,68,68,0.30)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                boxShadow: isWasting ? '0 4px 20px -4px rgba(34,197,94,0.6)' : 'none',
+              }}
             >
-              {/* === FIX #11: Shape differentiation ===
-                  Stop = square (rounded-2xl + Square filled) */}
-              <Square size={20} fill="currentColor" /> Stop
+              {isWasting ? (
+                <><Play size={18} fill="currentColor" /> Back to Study · {formatClock(wastedSec)}</>
+              ) : (
+                <><AlertTriangle size={18} /> Got Distracted</>
+              )}
             </button>
-          )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleInteraction();
-              setFocusOpen(false);
-              // === FIX: Reset widgetHidden so the floating widget appears ===
-              // Previously: if widgetHidden was true from a previous hide,
-              // minimizing FocusTimer wouldn't show the widget — it stayed
-              // hidden even though focusOpen was false.
-              setWidgetHidden(false);
-            }}
-            className="px-5 py-3 rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5"
-            aria-label="Hide timer"
-          >
-            {/* === FIX #4: "Min" → "Hide" (clearer label) === */}
-            <ChevronDown size={16} /> Hide
-          </button>
-          {/* Orientation rotate button (portrait). */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleInteraction();
-              vibrate(8);
-              // === Rotate via Screen Orientation API — NO local state forcing ===
-              // (see the landscape rotate button above for the full rationale —
-              // forcing setOrientationAngle painted a landscape layout into a
-              // portrait viewport in browser tabs)
-              try {
-                if (screen.orientation) {
-                  const target = isLandscape ? 'portrait' : 'landscape';
-                  (screen.orientation as any).lock?.(target).catch(() => {});
-                }
-              } catch {}
-            }}
-            className="px-5 py-3 min-w-[56px] rounded-2xl font-bold text-sm bg-foreground/20 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 relative"
-            title={isLandscape ? 'Switch to portrait' : 'Switch to landscape'}
-            aria-label="Toggle orientation"
-          >
-            <RotateCw size={20} />
-          </button>
-          {/* Rotate hint — removed (rotate button is now a simple toggle) */}
-          <RotateHintToast />
-        </div>
-        </>
+            {/* === #6 TERTIARY: Done/Stop + Hide + Rotate row === */}
+            <div className="flex gap-2.5">
+              {active?.targetId ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); handleDone(); }}
+                  className="flex-1 py-3 rounded-2xl font-bold text-sm active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                  style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+                  aria-label="Done — mark target complete"
+                >
+                  <CheckCircle2 size={18} /> Done
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); handleStop(); }}
+                  className="flex-1 py-3 rounded-2xl font-bold text-sm active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                  style={{ background: 'rgba(239,68,68,0.10)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+                  aria-label="Stop — end session"
+                >
+                  <Square size={18} fill="currentColor" /> Stop
+                </button>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); setFocusOpen(false); setWidgetHidden(false); }}
+                className="px-4 py-3 rounded-2xl font-bold text-sm text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+                aria-label="Hide timer"
+              >
+                <ChevronDown size={16} /> Hide
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleTapRipple(e); handleInteraction(); vibrate(8); try { if (screen.orientation) { const target = isLandscape ? 'portrait' : 'landscape'; (screen.orientation as any).lock?.(target).catch(() => {}); } } catch {} }}
+                className="px-4 py-3 min-w-[52px] rounded-2xl font-bold text-sm text-white active:scale-[0.98] transition flex items-center justify-center"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+                title={isLandscape ? 'Switch to portrait' : 'Switch to landscape'}
+                aria-label="Toggle orientation"
+              >
+                <RotateCw size={18} />
+              </button>
+            </div>
+            <RotateHintToast />
+          </>
         )}
       </div>
       </div>
