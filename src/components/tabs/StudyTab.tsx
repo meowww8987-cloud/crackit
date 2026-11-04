@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Plus, X, Check, ChevronRight,
-  Flame, Eye, EyeOff, RefreshCw, Play,
+  Flame, Eye, EyeOff, Play,
   BookOpen, FileText, Zap, RotateCcw, AlertTriangle,
 } from 'lucide-react';
 import { Reorder, motion, AnimatePresence } from 'framer-motion';
@@ -16,7 +16,7 @@ import { useSyllabus } from '@/lib/store/syllabus';
 import { useDoubts } from '@/lib/store/doubts';
 import { subjectColor } from '@/lib/colors';
 import type { Subject, ActivityType, Target } from '@/lib/types';
-import { cn, shortDate, formatHM, todayKey, addDays, vibrate } from '@/lib/utils';
+import { cn, shortDate, formatHM, formatShort, todayKey, addDays, vibrate } from '@/lib/utils';
 import { TargetCard } from '@/components/study/TargetCard';
 import { CurrentBlockCard } from '@/components/routine/CurrentBlockCard';
 import { AddTargetSheet } from '@/components/study/AddTargetSheet';
@@ -50,6 +50,7 @@ export function StudyTab() {
   const setWidgetHidden = useSession((s) => s.setWidgetHidden);
   const setFocusOpen = useSession((s) => s.setFocusOpen);
   const activeSession = useSession((s) => s.active);
+  const startSession = useSession((s) => s.startSession);
 
   // === SECTION 10: Reactive selectors (replacing all getState() calls) ===
   const allSessions = useHistory((s) => s.sessions);
@@ -334,6 +335,7 @@ export function StudyTab() {
                 expectedMin={subjStats.expectedMin}
                 subjPct={subjPct}
                 isActive={isSubjectActive}
+                activeTargetId={activeSession?.targetId ?? null}
                 sortedTargets={sortedTargets}
                 reorderToday={reorderToday}
                 onOpenDetail={(t) => setDetailTarget(t)}
@@ -343,6 +345,19 @@ export function StudyTab() {
                   // pick the active subject, or user can choose in step 1.
                   setEditingTarget(null);
                   setShowAdd(true);
+                }}
+                onStartNext={(t) => {
+                  vibrate(15);
+                  startSession({
+                    targetId: t.id,
+                    subject: t.subject,
+                    chapter: t.chapter,
+                    lecture: t.lecture,
+                    topic: t.topic,
+                    mode: 'focus',
+                    expectedMinutes: t.expectedMinutes,
+                  });
+                  setFocusOpen(true);
                 }}
                 perTargetStats={todayStats.perTarget}
               />
@@ -697,12 +712,21 @@ function BreakdownChip({ label, sec, color, icon }: { label: string; sec: number
 }
 
 /* =========================================================================
-   SECTION 4: SUBJECT SECTION
-   Collapsible, active glow, thick progress, +/⋯ buttons
+   SECTION 4: SUBJECT SECTION (REDESIGNED — Hero Card + Chapter Pills)
+   === Modernization plan implemented ===
+   - Subject as a Hero Card with colored halo icon + gradient tint + glow border
+   - Mini 30px circular progress ring replaces the flat 1.5px bar
+   - Time + done count inline ("1h 20m / 2h 30m · 3/5 done")
+   - Pulsing "Studying now" chip on active subject
+   - Chapter pills strip (horizontal scroll) replaces nested accordions
+   - Inline expanded chapter panel for TargetCards
+   - "Start next: <target>" gradient button in card footer
+   - Add (+) tertiary button + long-press context menu
    ========================================================================= */
 function SubjectSection({
   subject, color, chapters, allItems, studiedSec, doneCount, expectedMin,
-  subjPct, isActive, sortedTargets, reorderToday, onOpenDetail, onEdit, onAddToSubject, perTargetStats,
+  subjPct, isActive, activeTargetId, sortedTargets, reorderToday,
+  onOpenDetail, onEdit, onAddToSubject, perTargetStats, onStartNext,
 }: {
   subject: Subject;
   color: { hex: string; glow: string };
@@ -713,121 +737,407 @@ function SubjectSection({
   expectedMin: number;
   subjPct: number;
   isActive: boolean;
+  activeTargetId: string | null;
   sortedTargets: Target[];
   reorderToday: (newOrder: Target[]) => void;
   onOpenDetail: (t: Target) => void;
   onEdit: (t: Target) => void;
   onAddToSubject: () => void;
   perTargetStats: Map<string, { studiedSec: number; wastedSec: number; sessionCount: number }>;
+  onStartNext: (t: Target) => void;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const collapseKey = `${COLLAPSE_KEY_PREFIX}subj-${subject}`;
+  // === Expanded chapter index (only one chapter open at a time) ===
+  // Default to the chapter containing the active target, else the first
+  // chapter with an in-progress (not-done) target.
+  const initialExpandedIdx = useMemo(() => {
+    if (activeTargetId !== null) {
+      const idx = chapters.findIndex(ch => ch.items.some(t => t.id === activeTargetId));
+      if (idx >= 0) return idx;
+    }
+    const idx = chapters.findIndex(ch => ch.items.some(t => !t.done));
+    return idx >= 0 ? idx : 0;
+  }, [chapters, activeTargetId]);
 
-  // Load persisted collapse state
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(initialExpandedIdx);
+  const [showCtxMenu, setShowCtxMenu] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Persist expanded chapter across reloads (per-subject)
+  const expandKey = `${COLLAPSE_KEY_PREFIX}subj-expanded-${subject}`;
   useEffect(() => {
     try {
-      const v = localStorage.getItem(collapseKey);
-      if (v === '1') setCollapsed(true);
+      const v = localStorage.getItem(expandKey);
+      if (v !== null) {
+        const n = parseInt(v, 10);
+        if (!isNaN(n) && n >= 0 && n < chapters.length) setExpandedIdx(n);
+        else if (v === '-1') setExpandedIdx(null);
+      }
     } catch {}
-  }, [collapseKey]);
+  }, [expandKey, chapters.length]);
 
-  const toggleCollapse = () => {
-    const next = !collapsed;
-    setCollapsed(next);
-    try { localStorage.setItem(collapseKey, next ? '1' : '0'); } catch {}
+  const setExpanded = (idx: number | null) => {
+    setExpandedIdx(idx);
+    try { localStorage.setItem(expandKey, String(idx ?? -1)); } catch {}
   };
+
+  const toggleChapter = (idx: number) => {
+    vibrate(8);
+    setExpanded(expandedIdx === idx ? null : idx);
+  };
+
+  // === "Start next" target — first incomplete target in this subject ===
+  const nextTarget = useMemo(() => {
+    for (const ch of chapters) {
+      const found = ch.items.find(t => !t.done);
+      if (found) return found;
+    }
+    return null;
+  }, [chapters]);
+
+  // === Long-press handler — opens context menu ===
+  const handlePointerDown = useCallback(() => {
+    longPressFired.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      vibrate(15);
+      setShowCtxMenu(true);
+    }, 500);
+  }, []);
+
+  const handlePointerUp = useCallback(() => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  }, []);
+
+  // Close context menu on outside click (the listener is added on next tick
+  // so it doesn't catch the same pointerup/click that opened the menu)
+  useEffect(() => {
+    if (!showCtxMenu) return;
+    const handler = (e: MouseEvent) => {
+      // Don't close if the click was inside the menu itself
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-ctx-menu]')) return;
+      setShowCtxMenu(false);
+    };
+    const escHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCtxMenu(false); };
+    // Delay registration by one tick so the opening pointerup/click doesn't
+    // immediately fire the close handler.
+    const t = setTimeout(() => {
+      window.addEventListener('click', handler);
+      window.addEventListener('keydown', escHandler);
+      document.body.style.overflow = 'hidden';
+    }, 0);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('click', handler);
+      window.removeEventListener('keydown', escHandler);
+      document.body.style.overflow = '';
+    };
+  }, [showCtxMenu]);
+
+  const expectedSec = expectedMin * 60;
+  const ringRadius = 15;
+  const ringCirc = 2 * Math.PI * ringRadius;
+  const ringDash = ringCirc - (ringCirc * subjPct) / 100;
 
   return (
     <motion.div
       layout
-      className={cn(
-        'card-solid rounded-2xl p-3 space-y-3 relative overflow-hidden transition-all duration-300',
-        isActive && 'glow-pulse'
-      )}
+      ref={cardRef}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      onContextMenu={(e) => { e.preventDefault(); setShowCtxMenu(true); }}
+      className="rounded-2xl p-3 relative overflow-hidden transition-all duration-300"
       style={{
-        borderColor: isActive ? color.hex : `${color.hex}80`,
-        ['--glow-color' as string]: color.glow,
+        background: `linear-gradient(135deg, ${color.hex}14 0%, ${color.hex}06 60%, transparent 100%)`,
+        border: `1px solid ${isActive ? color.hex : `${color.hex}55`}`,
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        boxShadow: isActive
+          ? `0 0 0 1px ${color.hex}40, 0 12px 32px -8px ${color.glow}, 0 0 0 0px transparent`
+          : `0 4px 12px -4px ${color.hex}20`,
       }}
     >
-      <div
-        className="card-tint"
-        style={{ background: `linear-gradient(180deg, ${color.hex}26, ${color.hex}12)` }}
-      />
+      {/* Active radial glow (decorative, top-right) */}
+      {isActive && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            top: '-40%', right: '-10%',
+            width: '60%', height: '80%',
+            background: `radial-gradient(ellipse, ${color.hex}30 0%, transparent 70%)`,
+          }}
+        />
+      )}
 
-      <div className="relative space-y-2">
-        {/* Subject header */}
-        <button
-          onClick={toggleCollapse}
-          className="w-full flex items-center gap-2 px-1 py-1 -mx-1 rounded-md hover:bg-foreground/5 transition text-left"
-          aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${subject}`}
-          aria-expanded={!collapsed}
+      <div className="relative space-y-2.5">
+        {/* === HEADER ROW === */}
+        <div className="flex items-center gap-2.5">
+          {/* Colored halo icon */}
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 relative"
+            style={{
+              background: `${color.hex}1f`,
+              boxShadow: isActive
+                ? `0 0 0 1px ${color.hex}55, 0 0 14px ${color.hex}50`
+                : `0 0 0 1px ${color.hex}35`,
+            }}
+          >
+            <SubjectIcon subject={subject} color={color.hex} size={18} />
+          </div>
+
+          {/* Subject name + meta */}
+          <div className="flex-1 min-w-0">
+            <div
+              className="text-[13px] font-extrabold uppercase tracking-[1.4px] leading-none"
+              style={{ color: color.hex }}
+            >
+              {subject}
+            </div>
+            <div
+              className="text-[10px] mt-1 flex items-center gap-1.5 flex-wrap tabular-nums"
+              style={{ color: 'var(--muted-foreground)' }}
+              suppressHydrationWarning
+            >
+              <span>{formatShort(studiedSec)} / {formatShort(expectedSec)}</span>
+              <span style={{ color: 'var(--border)' }}>·</span>
+              <span><span className="font-bold" style={{ color: 'var(--foreground)' }}>{doneCount}</span>/{allItems.length} done</span>
+              {isActive && (
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-px rounded-full text-[8.5px] font-bold uppercase tracking-[0.6px]"
+                  style={{
+                    background: `${color.hex}26`,
+                    border: `1px solid ${color.hex}66`,
+                    color: color.hex,
+                  }}
+                >
+                  <span
+                    className="w-1 h-1 rounded-full"
+                    style={{
+                      background: color.hex,
+                      boxShadow: `0 0 5px ${color.hex}`,
+                      animation: 'pulse-soft 1.6s ease-in-out infinite',
+                    }}
+                  />
+                  Studying now
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Mini circular progress ring (36px) */}
+          <div className="relative shrink-0" style={{ width: 36, height: 36 }}>
+            <svg width="36" height="36" viewBox="0 0 36 36" className="-rotate-90">
+              <circle cx="18" cy="18" r={ringRadius} fill="none"
+                      stroke="var(--bar-track, rgba(255,255,255,0.08))" strokeWidth="4" />
+              <motion.circle
+                cx="18" cy="18" r={ringRadius} fill="none"
+                stroke={color.hex} strokeWidth="4" strokeLinecap="round"
+                initial={false}
+                animate={{ strokeDashoffset: ringDash }}
+                transition={{ type: 'spring', stiffness: 80, damping: 18 }}
+                style={{ strokeDasharray: ringCirc, filter: `drop-shadow(0 0 4px ${color.hex}90)` }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-extrabold tabular-nums leading-none"
+                 style={{ color: color.hex }}>
+              {subjPct}%
+            </div>
+          </div>
+        </div>
+
+        {/* === CHAPTER PILLS STRIP === */}
+        <div
+          className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          <motion.div animate={{ rotate: collapsed ? 0 : 90 }} transition={{ duration: 0.2 }}>
-            <ChevronRight size={14} style={{ color: color.hex }} />
-          </motion.div>
-          <SubjectIcon subject={subject} color={color.hex} />
-          <span className="text-sm font-bold uppercase tracking-wide" style={{ color: color.hex }}>
-            {subject}
-          </span>
-          <span className="text-xs ml-auto tabular" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
-            <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{doneCount}</span>/{allItems.length} · {formatHM(studiedSec)}
-          </span>
+          <style>{`.subject-${subject}-pills::-webkit-scrollbar{display:none}`}</style>
+          {chapters.map((chGroup, idx) => {
+            const chDone = chGroup.items.filter(t => t.done).length;
+            const chTotal = chGroup.items.length;
+            const chStudied = chGroup.items.reduce((a, t) => {
+              return a + (perTargetStats.get(t.id)?.studiedSec || 0);
+            }, 0);
+            const chExpectedSec = chGroup.items.reduce((a, t) => a + t.expectedMinutes, 0) * 60;
+            const chPct = chExpectedSec > 0 ? Math.min(100, Math.round((chStudied / chExpectedSec) * 100)) : 0;
+            const isDone = chDone === chTotal && chTotal > 0;
+            const isExpanded = expandedIdx === idx;
+            const hasActiveTarget = activeTargetId !== null && chGroup.items.some(t => t.id === activeTargetId);
+
+            const pillStyle: React.CSSProperties = isExpanded
+              ? {
+                  background: `linear-gradient(135deg, ${color.hex}, ${color.hex}cc)`,
+                  color: '#fff',
+                  border: `1px solid ${color.hex}`,
+                  boxShadow: `0 0 0 2px ${color.hex}30, 0 4px 10px -2px ${color.glow}`,
+                }
+              : isDone
+              ? {
+                  background: `${color.hex}12`,
+                  color: color.hex,
+                  border: `1px solid ${color.hex}30`,
+                }
+              : {
+                  background: 'var(--muted)',
+                  color: 'var(--foreground)',
+                  border: '1px solid var(--border)',
+                };
+
+            return (
+              <button
+                key={chGroup.chapter}
+                onClick={() => toggleChapter(idx)}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shrink-0 transition active:scale-95"
+                style={pillStyle}
+                aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${chGroup.chapter} chapter (${chDone}/${chTotal} done)`}
+                aria-expanded={isExpanded}
+              >
+                {/* Status indicator: dot / check / pulse */}
+                {isDone ? (
+                  <Check size={10} strokeWidth={3.5} style={{ color: color.hex }} />
+                ) : hasActiveTarget ? (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{
+                      background: isExpanded ? '#fff' : color.hex,
+                      boxShadow: `0 0 5px ${isExpanded ? '#fff' : color.hex}`,
+                      animation: 'pulse-soft 1.4s ease-in-out infinite',
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ background: isExpanded ? '#fff' : 'currentColor', opacity: isExpanded ? 1 : 0.5 }}
+                  />
+                )}
+                <span className="truncate max-w-[100px]">{chGroup.chapter}</span>
+                <span className="opacity-70 tabular-nums">{chDone}/{chTotal}</span>
+              </button>
+            );
+          })}
+
+          {/* + Add chapter pill */}
           <button
             onClick={(e) => { e.stopPropagation(); onAddToSubject(); }}
-            className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-foreground/10 transition active:scale-90"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shrink-0 transition active:scale-95"
+            style={{
+              background: 'transparent',
+              color: 'var(--muted-foreground)',
+              border: '1px dashed var(--border)',
+            }}
             aria-label={`Add target to ${subject}`}
             title="Add to this subject"
           >
-            <Plus size={12} style={{ color: color.hex }} />
+            <Plus size={10} />
+            New
           </button>
-        </button>
-
-        {/* Thick progress bar with glow */}
-        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}>
-          <motion.div
-            className="h-full rounded-full"
-            style={{
-              background: `linear-gradient(90deg, ${color.hex}, ${color.hex}aa)`,
-              boxShadow: `0 0 8px ${color.glow}`,
-            }}
-            initial={false}
-            animate={{ width: `${subjPct}%` }}
-            transition={{ type: 'spring', stiffness: 120, damping: 20 }}
-          />
         </div>
 
-        {/* Chapters (collapsible) */}
-        <AnimatePresence initial={false}>
-          {!collapsed && (
+        {/* === INLINE EXPANDED CHAPTER PANEL === */}
+        <AnimatePresence initial={false} mode="wait">
+          {expandedIdx !== null && chapters[expandedIdx] && (
             <motion.div
+              key={expandedIdx}
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: EASE_SMOOTH }}
-              className="overflow-hidden space-y-2"
+              transition={{ duration: 0.28, ease: EASE_SMOOTH }}
+              className="overflow-hidden"
             >
-              {chapters.map((chGroup) => (
-                <ChapterSection
-                  key={chGroup.chapter}
-                  chapter={chGroup.chapter}
-                  items={chGroup.items}
-                  color={color}
-                  sortedTargets={sortedTargets}
-                  reorderToday={reorderToday}
-                  onOpenDetail={onOpenDetail}
-                  onEdit={onEdit}
-                  perTargetStats={perTargetStats}
-                />
-              ))}
+              <ExpandedChapter
+                chapter={chapters[expandedIdx].chapter}
+                items={chapters[expandedIdx].items}
+                color={color}
+                sortedTargets={sortedTargets}
+                reorderToday={reorderToday}
+                onOpenDetail={onOpenDetail}
+                onEdit={onEdit}
+                perTargetStats={perTargetStats}
+                activeTargetId={activeTargetId}
+              />
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* === FOOTER: Start next + Add === */}
+        {nextTarget ? (
+          <div
+            className="flex items-center gap-2 pt-2"
+            style={{ borderTop: '1px solid var(--border)' }}
+          >
+            <button
+              onClick={() => onStartNext(nextTarget)}
+              className="flex-1 font-bold py-2 px-3 rounded-xl text-[11px] active:scale-[0.98] transition flex items-center justify-center gap-1.5 min-w-0"
+              style={{
+                background: `linear-gradient(135deg, ${color.hex}, ${color.hex}dd)`,
+                color: '#fff',
+                boxShadow: `0 4px 12px -2px ${color.glow}`,
+              }}
+              aria-label={`Start focus session for next target: ${nextTarget.topic}`}
+            >
+              <Play size={11} fill="#fff" strokeWidth={0} className="shrink-0" />
+              <span className="truncate">Start next: <span className="font-extrabold">{nextTarget.topic}</span></span>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onAddToSubject(); }}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-90 shrink-0"
+              style={{
+                background: 'var(--muted)',
+                border: '1px solid var(--border)',
+                color: 'var(--foreground)',
+              }}
+              aria-label={`Add another target to ${subject}`}
+              title="Add to this subject"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+        ) : (
+          // All-done state for this subject
+          <div
+            className="flex items-center justify-center gap-1.5 pt-2 text-[11px] font-semibold"
+            style={{ borderTop: '1px solid var(--border)', color: color.hex }}
+          >
+            <Check size={12} strokeWidth={3} />
+            All {allItems.length} target{allItems.length === 1 ? '' : 's'} done
+          </div>
+        )}
       </div>
+
+      {/* === LONG-PRESS CONTEXT MENU === */}
+      <AnimatePresence>
+        {showCtxMenu && (
+          <SubjectContextMenu
+            subject={subject}
+            color={color}
+            allItems={allItems}
+            onAddToSubject={() => { setShowCtxMenu(false); onAddToSubject(); }}
+            onMarkAllDone={() => {
+              setShowCtxMenu(false);
+              allItems.forEach(t => { if (!t.done) toggleDoneById(t.id); });
+              vibrate(20);
+            }}
+            onCollapseAll={() => {
+              setShowCtxMenu(false);
+              setExpanded(null);
+              vibrate(10);
+            }}
+            onClose={() => setShowCtxMenu(false)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
-function SubjectIcon({ subject, color }: { subject: Subject; color: string }) {
+// Helper — toggle done by id (avoids passing entire targets store down)
+function toggleDoneById(id: string) {
+  useTargets.getState().toggleDone(id);
+}
+
+function SubjectIcon({ subject, color, size = 16 }: { subject: Subject; color: string; size?: number }) {
   // Distinct shape per subject for at-a-glance recognition
   const shapes: Record<Subject, React.ReactNode> = {
     Physics:   <circle cx="8" cy="8" r="6" fill={color} />,
@@ -837,18 +1147,18 @@ function SubjectIcon({ subject, color }: { subject: Subject; color: string }) {
     General:   <rect x="4" y="4" width="8" height="8" rx="1" fill={color} />,
   };
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0">
+    <svg width={size} height={size} viewBox="0 0 16 16" className="shrink-0">
       {shapes[subject]}
     </svg>
   );
 }
 
-/* =========================================================================
-   SECTION 5: CHAPTER SECTION
-   Chevron + name + progress bar + collapse
-   ========================================================================= */
-function ChapterSection({
-  chapter, items, color, sortedTargets, reorderToday, onOpenDetail, onEdit, perTargetStats,
+/* === Inline expanded chapter panel ===
+   Renders TargetCards inside a recessed darker panel.
+   Shows chapter name + "X/Y done · Nm left" header. */
+function ExpandedChapter({
+  chapter, items, color, sortedTargets, reorderToday, onOpenDetail, onEdit,
+  perTargetStats, activeTargetId,
 }: {
   chapter: string;
   items: Target[];
@@ -858,119 +1168,179 @@ function ChapterSection({
   onOpenDetail: (t: Target) => void;
   onEdit: (t: Target) => void;
   perTargetStats: Map<string, { studiedSec: number; wastedSec: number; sessionCount: number }>;
+  activeTargetId: string | null;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const collapseKey = `${COLLAPSE_KEY_PREFIX}chap-${chapter}`;
-
-  useEffect(() => {
-    try {
-      const v = localStorage.getItem(collapseKey);
-      if (v === '1') setCollapsed(true);
-    } catch {}
-  }, [collapseKey]);
-
-  const toggleCollapse = () => {
-    const next = !collapsed;
-    setCollapsed(next);
-    try { localStorage.setItem(collapseKey, next ? '1' : '0'); } catch {}
-  };
-
-  const chDone = items.filter((t) => t.done).length;
-  const chStudied = items.reduce((a, t) => {
-    const stats = perTargetStats.get(t.id);
-    return a + (stats?.studiedSec || 0);
-  }, 0);
-  const chExpected = items.reduce((a, t) => a + t.expectedMinutes, 0);
-  const chPct = chExpected > 0 ? Math.min(100, Math.round((chStudied / 60 / chExpected) * 100)) : 0;
-  const chRemaining = Math.max(0, chExpected * 60 - chStudied);
+  const chDone = items.filter(t => t.done).length;
+  const chStudied = items.reduce((a, t) => a + (perTargetStats.get(t.id)?.studiedSec || 0), 0);
+  const chExpectedSec = items.reduce((a, t) => a + t.expectedMinutes, 0) * 60;
+  const chRemaining = Math.max(0, chExpectedSec - chStudied);
 
   return (
-    <div className="space-y-2">
-      {/* Chapter header — clickable to collapse */}
-      <button
-        onClick={toggleCollapse}
-        className="w-full flex items-center gap-1.5 px-1 py-1 rounded-md hover:bg-foreground/5 transition text-left"
-        aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${chapter}`}
-        aria-expanded={!collapsed}
-      >
-        <motion.div animate={{ rotate: collapsed ? 0 : 90 }} transition={{ duration: 0.2 }}>
-          <ChevronRight size={11} style={{ color: `${color.hex}80` }} />
-        </motion.div>
-        <span className="text-[11px] font-semibold truncate flex-1" style={{ color: 'var(--foreground)' }}>
+    <div
+      className="rounded-xl p-2.5 space-y-1.5"
+      style={{
+        background: 'color-mix(in oklch, var(--background) 50%, transparent)',
+        border: `1px solid ${color.hex}25`,
+      }}
+    >
+      {/* Chapter header */}
+      <div className="flex items-center gap-1.5 px-1 pb-1">
+        <ChevronRight size={10} style={{ color: color.hex, transform: 'rotate(90deg)' }} />
+        <span className="text-[10px] font-bold truncate flex-1" style={{ color: 'var(--foreground)' }}>
           {chapter}
         </span>
-        <span className="text-[9px] tabular shrink-0" style={{ color: 'var(--muted-foreground)' }}>
-          <span className="font-bold" style={{ color: 'var(--foreground)' }}>{chDone}</span>/{items.length} done
-        </span>
-      </button>
-
-      {/* Chapter progress + time */}
-      <div className="flex items-center gap-2 px-1">
-        <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--bar-track, rgba(255,255,255,0.06))' }}>
-          <motion.div
-            className="h-full rounded-full"
-            style={{
-              background: `linear-gradient(90deg, ${color.hex}, ${color.hex}aa)`,
-            }}
-            initial={false}
-            animate={{ width: `${chPct}%` }}
-            transition={{ type: 'spring', stiffness: 120, damping: 20 }}
-          />
-        </div>
-        <span className="text-[9px] tabular shrink-0" style={{ color: 'var(--muted-foreground)' }}>
-          {chPct}% · {formatHM(chRemaining)} left
+        <span className="text-[9px] tabular-nums shrink-0" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
+          <span className="font-bold" style={{ color: 'var(--foreground)' }}>{chDone}</span>/{items.length} done · {formatHM(chRemaining)} left
         </span>
       </div>
 
-      {/* Cards (collapsible) */}
-      <AnimatePresence initial={false}>
-        {!collapsed && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: EASE_SMOOTH }}
-            className="overflow-hidden"
-          >
-            <Reorder.Group
-              axis="y"
-              values={items}
-              onReorder={(newOrder) => {
-                const reorderedIds = newOrder.map(t => t.id);
-                const fullList = [...sortedTargets];
-                const result: Target[] = [];
-                let groupIdx = 0;
-                for (const t of fullList) {
-                  if (reorderedIds.includes(t.id)) {
-                    result.push(newOrder[groupIdx]);
-                    groupIdx++;
-                  } else {
-                    result.push(t);
-                  }
-                }
-                reorderToday(result);
-              }}
-              className="space-y-2"
-              layoutScroll
-              as="div"
-            >
-              {items.map((t, idx) => (
-                <TargetCard
-                  key={t.id}
-                  target={t}
-                  onOpenDetail={() => onOpenDetail(t)}
-                  onEdit={() => onEdit(t)}
-                  indexInChapter={idx + 1}
-                  chapterTotal={items.length}
-                  hasSiblings={items.length > 1}
-                  cardIndex={idx}
-                />
-              ))}
-            </Reorder.Group>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Reorder.Group
+        axis="y"
+        values={items}
+        onReorder={(newOrder) => {
+          const reorderedIds = newOrder.map(t => t.id);
+          const fullList = [...sortedTargets];
+          const result: Target[] = [];
+          let groupIdx = 0;
+          for (const t of fullList) {
+            if (reorderedIds.includes(t.id)) {
+              result.push(newOrder[groupIdx]);
+              groupIdx++;
+            } else {
+              result.push(t);
+            }
+          }
+          reorderToday(result);
+        }}
+        className="space-y-2"
+        layoutScroll
+        as="div"
+      >
+        {items.map((t, idx) => (
+          <TargetCard
+            key={t.id}
+            target={t}
+            onOpenDetail={() => onOpenDetail(t)}
+            onEdit={() => onEdit(t)}
+            indexInChapter={idx + 1}
+            chapterTotal={items.length}
+            hasSiblings={items.length > 1}
+            cardIndex={idx}
+          />
+        ))}
+      </Reorder.Group>
     </div>
+  );
+}
+
+/* === Long-press context menu ===
+   Shown when user long-presses the subject card.
+   Options: Add target, Mark all done, Collapse all chapters */
+function SubjectContextMenu({
+  subject, color, allItems, onAddToSubject, onMarkAllDone, onCollapseAll, onClose,
+}: {
+  subject: Subject;
+  color: { hex: string; glow: string };
+  allItems: Target[];
+  onAddToSubject: () => void;
+  onMarkAllDone: () => void;
+  onCollapseAll: () => void;
+  onClose: () => void;
+}) {
+  const undoneCount = allItems.filter(t => !t.done).length;
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100] bg-black/70"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+      />
+      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+          data-ctx-menu
+          className="w-[280px] max-w-[calc(100vw-2rem)] rounded-2xl border shadow-2xl pointer-events-auto overflow-hidden"
+          style={{
+            background: 'var(--popover, rgba(20,22,30,0.98))',
+            borderColor: `${color.hex}40`,
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div
+            className="px-4 py-3 flex items-center gap-2"
+            style={{ borderBottom: '1px solid var(--border)', background: `${color.hex}10` }}
+          >
+            <SubjectIcon subject={subject} color={color.hex} size={16} />
+            <span className="text-sm font-bold uppercase tracking-wide" style={{ color: color.hex }}>
+              {subject}
+            </span>
+            <button
+              onClick={onClose}
+              className="ml-auto w-6 h-6 rounded-md flex items-center justify-center hover:bg-foreground/10 transition"
+              aria-label="Close menu"
+            >
+              <X size={14} style={{ color: 'var(--muted-foreground)' }} />
+            </button>
+          </div>
+
+          {/* Menu items */}
+          <div className="py-1">
+            <button
+              onClick={onAddToSubject}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
+            >
+              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+                   style={{ background: `${color.hex}20`, color: color.hex }}>
+                <Plus size={14} />
+              </div>
+              <div>
+                <div className="text-[12px] font-medium" style={{ color: 'var(--foreground)' }}>Add target to {subject}</div>
+                <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Open the Add target sheet</div>
+              </div>
+            </button>
+
+            <button
+              onClick={onMarkAllDone}
+              disabled={undoneCount === 0}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left disabled:opacity-40"
+            >
+              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+                   style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>
+                <Check size={14} strokeWidth={3} />
+              </div>
+              <div>
+                <div className="text-[12px] font-medium" style={{ color: 'var(--foreground)' }}>
+                  {undoneCount === 0 ? 'All targets already done' : `Mark all ${undoneCount} as done`}
+                </div>
+                <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Bulk complete</div>
+              </div>
+            </button>
+
+            <button
+              onClick={onCollapseAll}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/10 active:bg-foreground/15 transition text-left"
+            >
+              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+                   style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}>
+                <ChevronRight size={14} style={{ transform: 'rotate(0deg)' }} />
+              </div>
+              <div>
+                <div className="text-[12px] font-medium" style={{ color: 'var(--foreground)' }}>Collapse all chapters</div>
+                <div className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>Hide expanded target lists</div>
+              </div>
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </>
   );
 }
 
