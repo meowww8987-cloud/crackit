@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp } from 'lucide-react';
 import { useSession, getLiveStudySeconds } from '@/lib/store/session';
 import { usePractice } from '@/lib/store/practice';
 
@@ -26,7 +25,7 @@ import { useRecall } from '@/lib/store/recall';
 import { formatHM, longDate, diffDays, todayKey, isRevisionOverdue, vibrate } from '@/lib/utils';
 import { AchievementBadges } from '@/components/shared/AchievementBadges';
 import { ScorePredictionCard } from '@/components/home/ScorePredictionCard';
-import { MiniHeatmap } from '@/components/home/MiniHeatmap';
+import { JourneyCard } from '@/components/home/JourneyCard';
 import { CoachCard } from '@/components/home/CoachCard';
 import { PartnerCard } from '@/components/home/PartnerCard';
 import { NextTestCard, TestDayMode } from '@/components/home/NextTestCard';
@@ -453,25 +452,18 @@ export function HomeTab() {
       {/* Predicted Score */}
       <motion.div {...cardEntrance}><ScorePredictionCard /></motion.div>
 
-      {/* Achievement Badges */}
+      {/* Achievement Badges — kept as its own card (DECISION 8: untouched) */}
       <motion.div {...cardEntrance} className="minimal-hide"><AchievementBadges /></motion.div>
 
-      {/* Mini Heatmap */}
-      <motion.div {...cardEntrance} className="minimal-hide"><MiniHeatmap /></motion.div>
-
-      {/* Sessions count */}
-      <motion.div {...cardEntrance} className="glass rounded-2xl p-4 flex items-center justify-between minimal-hide">
-        <div>
-          <div className="text-xs mb-1" style={{ color: 'var(--muted-foreground)' }}>Total Sessions</div>
-          <NumberMorph
-            key={sessions.length}
-            value={sessions.length}
-            duration={400}
-            className="text-2xl font-bold"
-          />
-        </div>
-        <TrendingUp size={24} className="text-teal-400/60" />
-      </motion.div>
+      {/* Your Journey — Phase 2: merges old MiniHeatmap + Total Sessions into one hero card */}
+      <JourneyCard
+        sessions={sessions}
+        todaySec={todaySec}
+        prepStart={prepStart}
+        prepDay={prepDay}
+        streak={streak}
+        totalStudyHours={totalStudyHours}
+      />
     </div>
   );
 }
