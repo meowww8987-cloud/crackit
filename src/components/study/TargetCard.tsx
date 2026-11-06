@@ -466,14 +466,26 @@ export function TargetCard({
         transitionTimingFunction: 'ease-out',
         // willChange removed — modern browsers handle GPU promotion
         // automatically. Permanent willChange wastes memory.
-        borderColor: flashGreen
+        //
+        // Border colors: use INDIVIDUAL longhands (borderTopColor, etc.)
+        // instead of the borderColor shorthand, because borderLeftColor is
+        // set separately below to the activity accent color. Mixing the
+        // borderColor shorthand with borderLeftColor longhand triggers
+        // React's "mixing shorthand and non-shorthand" warning.
+        borderTopColor: flashGreen
           ? '#22c55e'
           : isThisActive
-          ? active!.wasting
-            ? '#ef4444'
-            : active!.paused
-            ? '#f59e0b'
-            : color.hex
+          ? active!.wasting ? '#ef4444' : active!.paused ? '#f59e0b' : color.hex
+          : `${color.hex}55`,
+        borderRightColor: flashGreen
+          ? '#22c55e'
+          : isThisActive
+          ? active!.wasting ? '#ef4444' : active!.paused ? '#f59e0b' : color.hex
+          : `${color.hex}55`,
+        borderBottomColor: flashGreen
+          ? '#22c55e'
+          : isThisActive
+          ? active!.wasting ? '#ef4444' : active!.paused ? '#f59e0b' : color.hex
           : `${color.hex}55`,
         ['--glow-color' as string]: isThisActive
           ? active!.wasting
@@ -485,8 +497,10 @@ export function TargetCard({
         boxShadow: isThisActive && !active!.paused && !active!.wasting
           ? `0 0 24px -4px ${color.hex}80, 0 4px 16px -2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.16)`
           : undefined,
-        // Activity-color left border (#6) — 2px solid strip
-        borderLeft: `2px solid ${activityMeta.accent}`,
+        // Activity-color left border — 2px solid strip (accent color).
+        borderLeftWidth: '2px',
+        borderLeftStyle: 'solid',
+        borderLeftColor: activityMeta.accent,
       }}
       onPointerDown={handlePointerDownLong}
       onPointerUp={handlePointerUp}

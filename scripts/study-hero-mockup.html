@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Study Page — Phase 1: Hero Progress Card Redesign</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    background: #0a0c14;
+    color: #e5e7eb;
+    padding: 40px;
+    width: 1440px;
+  }
+  .page-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 4px; letter-spacing: -0.5px; }
+  .page-subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 26px; max-width: 920px; line-height: 1.5; }
+  .layout { display: grid; grid-template-columns: 390px 390px 1fr; gap: 28px; align-items: start; }
+  .phone {
+    background: linear-gradient(180deg, #0a0c14 0%, #0e1118 100%);
+    border-radius: 36px; padding: 14px 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .col-label { text-align: center; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+  .col-label.before { color: #f87171; }
+  .col-label.after  { color: #22c55e; }
+  .col-wrap { display: flex; flex-direction: column; gap: 14px; }
+
+  /* Hero card shell */
+  .hero {
+    border-radius: 20px; padding: 16px; position: relative; overflow: hidden;
+    background: color-mix(in oklch, #1a1d28 80%, transparent);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(16px);
+  }
+  .hero.after {
+    background:
+      linear-gradient(135deg, rgba(20,184,166,0.08) 0%, transparent 50%),
+      color-mix(in oklch, #1a1d28 80%, transparent);
+  }
+
+  /* Row 1: date + greeting | icons */
+  .row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .streak-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 800;
+    background: rgba(249,115,22,0.15); border: 1px solid rgba(249,115,22,0.30);
+    color: #fb923c;
+  }
+  .greeting { font-size: 11px; font-weight: 600; color: #94a3b8; }
+  .greeting.context { color: #2dd4bf; font-weight: 700; }
+  .eye-btn {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+    color: #64748b; font-size: 13px;
+  }
+  .eye-btn.disabled { opacity: 0.4; }
+  .eye-btn.hidden { display: none; }
+
+  /* Row 2: ring + stats */
+  .row2 { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+  .ring-wrap { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
+  .ring-center {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .ring-pct { font-size: 20px; font-weight: 900; line-height: 1; }
+  .ring-pct.teal { color: #2dd4bf; }
+  .ring-pct.green { color: #4ade80; }
+  .ring-pct.muted { color: #94a3b8; font-size: 18px; }
+  .ring-sub { font-size: 8px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #64748b; margin-top: 2px; }
+
+  .stats { flex: 1; min-width: 0; }
+  .big-time { font-size: 28px; font-weight: 900; line-height: 1; color: #f1f5f9; }
+  .big-time.muted { color: #94a3b8; }
+  .stat-label { font-size: 11px; color: #94a3b8; margin-left: 4px; }
+  .stat-line { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .stat-line .em { color: #94a3b8; }
+
+  /* Chips */
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 3px 8px; border-radius: 8px; font-size: 10px; font-weight: 700;
+  }
+  .chip.focus { background: rgba(20,184,166,0.15); color: #2dd4bf; border: 1px solid rgba(20,184,166,0.30); }
+  .chip.wasted { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.40); }
+  .chip.pace-ahead { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.35); }
+  .chip.pace-on { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.35); }
+  .chip.pace-behind { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.40); }
+
+  /* CTA */
+  .cta {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 12px; border-radius: 99px; font-size: 11px; font-weight: 800;
+    background: rgba(20,184,166,0.15); color: #2dd4bf;
+    border: 1px solid rgba(20,184,166,0.35);
+    margin-top: 8px;
+  }
+
+  /* Breakdown chips row */
+  .breakdown { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
+  .bd-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 6px; border-radius: 6px; font-size: 9px; font-weight: 600;
+  }
+  .bd-focus { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.25); }
+  .bd-practice { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+  .bd-targets { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+  .bd-empty { font-size: 10px; font-style: italic; color: #64748b; }
+
+  /* Live indicator */
+  .live-dot {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 99px; font-size: 9px; font-weight: 800;
+    background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.35);
+  }
+  .live-dot::before {
+    content: ''; width: 5px; height: 5px; border-radius: 50%;
+    background: #4ade80; box-shadow: 0 0 4px #4ade80;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* DECISIONS */
+  .decisions { display: flex; flex-direction: column; gap: 9px; }
+  .decision { display: flex; gap: 11px; align-items: flex-start; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 12px; }
+  .d-num {
+    width: 22px; height: 22px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #fff;
+    background: linear-gradient(135deg, #2dd4bf, #14b8a6);
+    box-shadow: 0 4px 10px -3px rgba(20,184,166,0.5);
+  }
+  .d-body b { font-size: 11.5px; color: #f1f5f9; display: block; margin-bottom: 2px; }
+  .d-body span { font-size: 10px; color: #94a3b8; line-height: 1.45; }
+  .d-body code { background: rgba(45,212,191,0.12); color: #2dd4bf; padding: 1px 4px; border-radius: 4px; font-size: 9.5px; }
+
+  .phase-note {
+    margin-top: 14px; border-radius: 12px; padding: 11px 13px;
+    background: rgba(59,130,246,0.07); border: 1px solid rgba(59,130,246,0.25);
+    font-size: 10.5px; color: #93c5fd; line-height: 1.5;
+  }
+  .phase-note b { color: #bfdbfe; }
+
+  /* SVG ring */
+  .ring-track { stroke: rgba(127,127,127,0.2); }
+  .ring-fill-teal { stroke: #2dd4bf; filter: drop-shadow(0 0 6px rgba(45,212,191,0.5)); }
+  .ring-fill-green { stroke: #4ade80; filter: drop-shadow(0 0 6px rgba(74,222,128,0.5)); }
+  .ring-fill-muted { stroke: #64748b; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Study Page — Phase 1: Hero Progress Card Redesign</div>
+<div class="page-subtitle">
+  The current hero card is cluttered and demoralizing in empty state: "⏰ behind" red chip with 0s studied, "0s focus" chip when no sessions, "0/0 done" meaningless with no targets, and Eye icon at 40% opacity looks broken. The redesign makes every state communicate clearly — context-aware greeting, hidden noise, actionable CTAs, and a clean single stat line.
+</div>
+
+<div class="layout">
+
+  <!-- ============ BEFORE ============ -->
+  <div class="col-wrap">
+    <div class="col-label before">Current — 3 states, all cluttered</div>
+
+    <!-- BEFORE: Empty state -->
+    <div class="phone">
+      <div class="hero">
+        <div class="row1">
+          <div class="greeting">Fri, Nov 6 · Good afternoon</div>
+          <div class="eye-btn disabled">👁</div>
+        </div>
+        <div class="row2">
+          <div class="ring-wrap">
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              <g transform="rotate(-90 48 48)">
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-track" stroke-width="7"/>
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-fill-muted" stroke-width="7" stroke-linecap="round" stroke-dasharray="251.33" stroke-dashoffset="251.33"/>
+              </g>
+            </svg>
+            <div class="ring-center">
+              <span class="ring-pct muted">0%</span>
+              <span class="ring-sub">of 8h</span>
+            </div>
+          </div>
+          <div class="stats">
+            <div>
+              <span class="big-time muted">0s</span>
+              <span class="stat-label">studied</span>
+            </div>
+            <div class="stat-line">8h 0m to go · <span style="color:#ef4444">0/0 done</span></div>
+            <div class="chips">
+              <span class="chip focus">⚡ 0s focus</span>
+              <span class="chip pace-behind">⏰ behind</span>
+            </div>
+          </div>
+        </div>
+        <div class="breakdown">
+          <span class="bd-empty">Start a session to begin</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BEFORE: Mid-progress state -->
+    <div class="phone">
+      <div class="hero">
+        <div class="row1">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="streak-chip">🔥 5</span>
+            <span class="greeting">Fri, Nov 6 · Good afternoon</span>
+          </div>
+          <div class="eye-btn">👁</div>
+        </div>
+        <div class="row2">
+          <div class="ring-wrap">
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              <g transform="rotate(-90 48 48)">
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-track" stroke-width="7"/>
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-fill-teal" stroke-width="7" stroke-linecap="round" stroke-dasharray="251.33" stroke-dashoffset="151.33"/>
+              </g>
+            </svg>
+            <div class="ring-center">
+              <span class="ring-pct teal">40%</span>
+              <span class="ring-sub">of 8h</span>
+            </div>
+          </div>
+          <div class="stats">
+            <div>
+              <span class="big-time">3h 12m</span>
+              <span class="stat-label">studied</span>
+            </div>
+            <div class="stat-line">4h 48m to go · 2/5 done</div>
+            <div class="chips">
+              <span class="chip focus">⚡ 3h 12m focus</span>
+              <span class="chip pace-behind">⏰ behind</span>
+            </div>
+          </div>
+        </div>
+        <div class="breakdown">
+          <span class="bd-chip bd-focus">⚡ Focus 1h 30m</span>
+          <span class="bd-chip bd-practice">▶ Practice 45m</span>
+          <span class="bd-chip bd-targets">✓ Targets 57m</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ AFTER ============ -->
+  <div class="col-wrap">
+    <div class="col-label after">Proposed — 3 states, each clean</div>
+
+    <!-- AFTER: Empty state -->
+    <div class="phone">
+      <div class="hero after">
+        <div class="row1">
+          <div class="greeting context">Ready to study?</div>
+          <!-- Eye icon HIDDEN when no active session (DECISION 5) -->
+        </div>
+        <div class="row2">
+          <div class="ring-wrap">
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              <g transform="rotate(-90 48 48)">
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-track" stroke-width="7"/>
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-fill-muted" stroke-width="7" stroke-linecap="round" stroke-dasharray="251.33" stroke-dashoffset="251.33"/>
+              </g>
+            </svg>
+            <div class="ring-center">
+              <!-- DECISION 6: merged "0%" + "of 8h" into "0/8h" -->
+              <span class="ring-pct muted">0/8h</span>
+              <span class="ring-sub">goal</span>
+            </div>
+          </div>
+          <div class="stats">
+            <div>
+              <span class="big-time muted">0m</span>
+              <span class="stat-label">studied</span>
+            </div>
+            <!-- DECISION 4: empty-state CTA instead of "8h 0m to go · 0/0 done" -->
+            <div class="cta">+ Add your first target →</div>
+            <!-- DECISION 2 + 3: NO pace chip, NO focus chip when empty -->
+          </div>
+        </div>
+        <!-- DECISION 8: no breakdown row in empty state -->
+      </div>
+    </div>
+
+    <!-- AFTER: Mid-progress state -->
+    <div class="phone">
+      <div class="hero after">
+        <div class="row1">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="streak-chip">🔥 5</span>
+            <span class="greeting context">Keep going!</span>
+            <!-- DECISION 1: context-aware greeting -->
+          </div>
+          <div class="eye-btn">👁</div>
+        </div>
+        <div class="row2">
+          <div class="ring-wrap">
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              <g transform="rotate(-90 48 48)">
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-track" stroke-width="7"/>
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-fill-teal" stroke-width="7" stroke-linecap="round" stroke-dasharray="251.33" stroke-dashoffset="151.33"/>
+              </g>
+            </svg>
+            <div class="ring-center">
+              <!-- DECISION 6: merged into "3.2/8h" -->
+              <span class="ring-pct teal">3.2h</span>
+              <span class="ring-sub">of 8h</span>
+            </div>
+          </div>
+          <div class="stats">
+            <div>
+              <span class="big-time">3h 12m</span>
+              <span class="stat-label">studied</span>
+            </div>
+            <!-- DECISION 7: single clean stat line -->
+            <div class="stat-line">4h 48m to goal · <span class="em">2/5 done</span></div>
+            <div class="chips">
+              <!-- DECISION 3: focus chip only when > 0 -->
+              <span class="chip focus">⚡ 3h 12m focus</span>
+              <!-- DECISION 2: pace chip only with targets -->
+              <span class="chip pace-on">✓ on pace</span>
+            </div>
+          </div>
+        </div>
+        <div class="breakdown">
+          <span class="bd-chip bd-focus">⚡ Focus 1h 30m</span>
+          <span class="bd-chip bd-practice">▶ Practice 45m</span>
+          <span class="bd-chip bd-targets">✓ Targets 57m</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- AFTER: Live session state -->
+    <div class="phone">
+      <div class="hero after">
+        <div class="row1">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="live-dot">LIVE</span>
+            <span class="greeting context">Keep going!</span>
+          </div>
+          <div class="eye-btn">👁</div>
+        </div>
+        <div class="row2">
+          <div class="ring-wrap">
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              <g transform="rotate(-90 48 48)">
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-track" stroke-width="7"/>
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-fill-green" stroke-width="7" stroke-linecap="round" stroke-dasharray="251.33" stroke-dashoffset="100.53"/>
+              </g>
+            </svg>
+            <div class="ring-center">
+              <span class="ring-pct green">5.2h</span>
+              <span class="ring-sub">of 8h</span>
+            </div>
+          </div>
+          <div class="stats">
+            <div>
+              <span class="big-time">5h 12m</span>
+              <span class="stat-label">studied</span>
+            </div>
+            <div class="stat-line">2h 48m to goal · <span class="em">3/5 done</span></div>
+            <div class="chips">
+              <span class="chip focus">⚡ 5h 12m focus</span>
+              <span class="chip pace-ahead">🔥 ahead</span>
+            </div>
+          </div>
+        </div>
+        <div class="breakdown">
+          <span class="bd-chip bd-focus">⚡ Focus 3h 12m</span>
+          <span class="bd-chip bd-practice">▶ Practice 2h 0m</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- AFTER: Goal hit state -->
+    <div class="phone">
+      <div class="hero after" style="background: linear-gradient(135deg, rgba(34,197,94,0.12) 0%, transparent 50%), color-mix(in oklch, #1a1d28 80%, transparent); border-color: rgba(34,197,94,0.30);">
+        <div class="row1">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="streak-chip">🔥 5</span>
+            <span class="greeting context" style="color:#4ade80">🎉 Great work!</span>
+          </div>
+          <div class="eye-btn">👁</div>
+        </div>
+        <div class="row2">
+          <div class="ring-wrap">
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              <g transform="rotate(-90 48 48)">
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-track" stroke-width="7"/>
+                <circle cx="48" cy="48" r="40" fill="none" class="ring-fill-green" stroke-width="7" stroke-linecap="round" stroke-dasharray="251.33" stroke-dashoffset="0"/>
+              </g>
+            </svg>
+            <div class="ring-center">
+              <span class="ring-pct green">8.2h</span>
+              <span class="ring-sub" style="color:#4ade80">✓ done</span>
+            </div>
+          </div>
+          <div class="stats">
+            <div>
+              <span class="big-time" style="color:#4ade80">8h 12m</span>
+              <span class="stat-label">studied</span>
+            </div>
+            <div class="stat-line" style="color:#4ade80">Goal hit! · <span class="em">5/5 done</span></div>
+            <div class="chips">
+              <span class="chip focus">⚡ 8h 12m focus</span>
+              <span class="chip pace-ahead">🔥 ahead</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DECISIONS ============ -->
+  <div class="decisions">
+    <div class="decision"><div class="d-num">1</div><div class="d-body"><b>Context-aware greeting</b><span>"Good afternoon" → <code>"Ready to study?"</code> (empty) / <code>"Keep going!"</code> (live or in-progress) / <code>"🎉 Great work!"</code> (goal hit). Greets the user with intent, not just the time of day.</span></div></div>
+    <div class="decision"><div class="d-num">2</div><div class="d-body"><b>Hide pace chip when no targets</b><span><code>"⏰ behind"</code> red chip is demoralizing and illogical with 0 targets. Only show pace chip when <code>totalCount > 0</code> (there's actual progress to compare against expected pace).</span></div></div>
+    <div class="decision"><div class="d-num">3</div><div class="d-body"><b>Hide focus/wasted chips when zero</b><span><code>"⚡ 0s focus"</code> is noise. Only render the focus chip when <code>studySecToday > 0</code>. Wasted chip already has this gate — extend it to focus chip too.</span></div></div>
+    <div class="decision"><div class="d-num">4</div><div class="d-body"><b>Empty-state CTA</b><span>Replace <code>"8h 0m to go · 0/0 done"</code> with a teal <code>"+ Add your first target →"</code> pill CTA when <code>totalCount === 0</code>. When targets exist: <code>"Xh Ym to goal · N/M done"</code> (one clean line, not three).</span></div></div>
+    <div class="decision"><div class="d-num">5</div><div class="d-body"><b>Hide Eye icon when no active session</b><span>Currently rendered at 40% opacity + disabled — looks broken. Hide entirely when <code>!activeSession</code>. Show only when there's a widget to toggle.</span></div></div>
+    <div class="decision"><div class="d-num">6</div><div class="d-body"><b>Merge ring "X%" + "of 8h" into one value</b><span>Was: big <code>"0%"</code> + tiny <code>"of 8h"</code>. Now: <code>"0/8h"</code> (empty), <code>"3.2h"</code> + <code>"of 8h"</code> (mid), <code>"8.2h"</code> + <code>"✓ done"</code> (hit). One clean value communicates both progress and goal.</span></div></div>
+    <div class="decision"><div class="d-num">7</div><div class="d-body"><b>Single clean stat line</b><span>Was: big number + <code>"8h 0m to go · 0/0 done"</code> + focus chip + pace chip = 4 elements. Now: big number + <code>"Xh Ym to goal · N/M done"</code> + chips (only when relevant) = 2-3 elements max.</span></div></div>
+    <div class="decision"><div class="d-num">8</div><div class="d-body"><b>No breakdown row in empty state</b><span><code>"Start a session to begin"</code> italic is replaced by decision 4's actionable CTA. Breakdown chips (Focus/Practice/Targets) only render when there's actual live or saved time.</span></div></div>
+
+    <div class="phase-note">
+      <b>Phase 2: TargetCard review</b> — verify the 1126-line TargetCard is still modern (it was redesigned in <code>437d60e</code> but needs a visual check). Then <b>Phase 3: Day Strip</b> modernization, <b>Phase 4: FAB consolidation</b> (Add + Doubt FABs).
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

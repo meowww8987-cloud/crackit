@@ -518,9 +518,19 @@ function HeroProgressCard({
   const ringColor = activeSubject ? subjectColor(activeSubject).hex : '#14b8a6';
   const ringColor2 = activeSubject ? subjectColor(activeSubject).hex : '#22c55e';
 
-  // Greeting based on time of day
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : hour < 21 ? 'Good evening' : 'Good night';
+  // === DECISION 1: Context-aware greeting ===
+  // Was: generic time-of-day greeting ("Good afternoon")
+  // Now: intent-based greeting that matches the user's state
+  const isComplete = progressPct >= 100;
+  const hasTargets = totalCount > 0;
+  const hasStudyTime = studySecToday > 0;
+  const greeting = isComplete
+    ? '🎉 Great work!'
+    : (activeSession || hasStudyTime)
+      ? 'Keep going!'
+      : hasTargets
+        ? 'Ready when you are'
+        : 'Ready to study?';
 
   // Pace calculation: assumes 16-hour active day (6am to 10pm)
   const now = new Date();
@@ -533,8 +543,9 @@ function HeroProgressCard({
   const paceStatus: 'ahead' | 'on-pace' | 'behind' = paceDiff >= 5 ? 'ahead' : paceDiff <= -10 ? 'behind' : 'on-pace';
   const paceColor = paceStatus === 'ahead' ? '#22c55e' : paceStatus === 'behind' ? '#ef4444' : '#f59e0b';
   const paceLabel = paceStatus === 'ahead' ? '🔥 ahead' : paceStatus === 'behind' ? '⏰ behind' : '✓ on pace';
-
-  const isComplete = progressPct >= 100;
+  // === DECISION 2: Hide pace chip when no targets ===
+  // "⏰ behind" with 0 targets is demoralizing and illogical.
+  const showPaceChip = hasTargets && hasStudyTime;
 
   return (
     <motion.div
@@ -553,7 +564,9 @@ function HeroProgressCard({
         backgroundImage: `linear-gradient(135deg, color-mix(in oklch, ${ringColor} 8%, transparent) 0%, transparent 50%)`,
       }}
     >
-      {/* === ROW 1: date + greeting (left) | icons (right) === */}
+      {/* === ROW 1: greeting (left) | icons (right) ===
+       * DECISION 1: Context-aware greeting replaces "shortDate · Good afternoon".
+       * DECISION 5: Eye icon hidden entirely when no active session (was 40% opacity). */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 min-w-0">
           {mounted && streak >= 2 ? (
@@ -569,66 +582,90 @@ function HeroProgressCard({
             </motion.div>
           ) : null}
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold truncate" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
-              {shortDate()} · {greeting}
+            {/* DECISION 1: context-aware greeting, teal when actionable */}
+            <div
+              className="text-[12px] font-bold truncate"
+              style={{
+                color: isComplete ? '#22c55e' : (!hasTargets && !hasStudyTime) ? '#14b8a6' : 'var(--foreground)',
+              }}
+              suppressHydrationWarning
+            >
+              {greeting}
+            </div>
+            {/* Show short date as a subtle sub-line (was in the same line as greeting) */}
+            <div className="text-[9px] font-medium truncate" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
+              {shortDate()}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={() => { vibrate(10); if (widgetHidden) setFocusOpen(false); setWidgetHidden(!widgetHidden); }}
-            className={cn(
-              'w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-95',
-              !activeSession && 'opacity-40'
-            )}
-            style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
-            aria-label={widgetHidden ? 'Show floating widget' : 'Hide floating widget'}
-            title={widgetHidden ? 'Show widget' : 'Hide widget'}
-            disabled={!activeSession}
-          >
-            {widgetHidden ? <Eye size={15} /> : <EyeOff size={15} />}
-          </button>
-        </div>
+        {/* DECISION 5: only show Eye toggle when there's an active session */}
+        {activeSession && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => { vibrate(10); if (widgetHidden) setFocusOpen(false); setWidgetHidden(!widgetHidden); }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-95"
+              style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
+              aria-label={widgetHidden ? 'Show floating widget' : 'Hide floating widget'}
+              title={widgetHidden ? 'Show widget' : 'Hide widget'}
+            >
+              {widgetHidden ? <Eye size={15} /> : <EyeOff size={15} />}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* === ROW 2: big ring + big stats === */}
+      {/* === ROW 2: big ring + big stats ===
+       * DECISION 6: ring center shows "X/8h" (or "X.Xh") instead of "X%" + "of 8h".
+       * DECISION 7: single clean stat line replaces 3 cluttered elements. */}
       <div className="flex items-center gap-4 mb-3">
-        {/* BIG ring (96px — was 64px in the old ProgressCard) */}
+        {/* BIG ring (96px) */}
         <div className="relative shrink-0" style={{ width: 96, height: 96 }}>
           <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
             <circle cx="48" cy="48" r="40" fill="none" stroke="var(--bar-track, rgba(255,255,255,0.08))" strokeWidth="7" />
             <motion.circle
               cx="48" cy="48" r="40" fill="none"
-              stroke={ringColor}
+              stroke={isComplete ? '#22c55e' : ringColor}
               strokeWidth="7"
               strokeLinecap="round"
               initial={false}
               animate={{ strokeDashoffset: 251.33 - (251.33 * progressPct) / 100 }}
               transition={{ type: 'spring', stiffness: 60, damping: 20, mass: 1 }}
-              style={{ strokeDasharray: 251.33, filter: `drop-shadow(0 0 6px ${ringColor}80)` }}
+              style={{ strokeDasharray: 251.33, filter: `drop-shadow(0 0 6px ${isComplete ? '#22c55e' : ringColor}80)` }}
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
+            {/* DECISION 6: merged "X%" + "of 8h" → "X/8h" or "X.Xh" */}
             <motion.span
               key={Math.floor(progressPct / 5)}
               initial={{ scale: 0.85, opacity: 0.6 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 200, damping: 18 }}
-              className="text-xl font-black tabular leading-none"
+              className="text-lg font-black tabular leading-none"
               style={{
                 backgroundImage: isComplete
                   ? 'linear-gradient(135deg, #22c55e, #16a34a)'
-                  : `linear-gradient(135deg, ${ringColor}, ${ringColor2})`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
+                  : hasStudyTime
+                    ? `linear-gradient(135deg, ${ringColor}, ${ringColor2})`
+                    : 'none',
+                WebkitBackgroundClip: hasStudyTime || isComplete ? 'text' : undefined,
+                WebkitTextFillColor: hasStudyTime || isComplete ? 'transparent' : 'var(--muted-foreground)',
+                backgroundClip: hasStudyTime || isComplete ? 'text' : undefined,
+                color: (!hasStudyTime && !isComplete) ? 'var(--muted-foreground)' : undefined,
               }}
               suppressHydrationWarning
             >
-              {progressPct}%
+              {isComplete
+                ? `${dailyGoal}h`
+                : hasStudyTime
+                  ? `${(studySecToday / 3600).toFixed(studySecToday >= 36000 ? 0 : 1)}h`
+                  : `0/${dailyGoal}h`}
             </motion.span>
-            <span className="text-[8px] font-bold uppercase tracking-widest mt-0.5" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
-              of {dailyGoal}h
+            <span
+              className="text-[8px] font-bold uppercase tracking-widest mt-0.5"
+              style={{ color: isComplete ? '#22c55e' : 'var(--muted-foreground)' }}
+              suppressHydrationWarning
+            >
+              {isComplete ? '✓ done' : `of ${dailyGoal}h`}
             </span>
           </div>
           {isComplete && (
@@ -642,74 +679,98 @@ function HeroProgressCard({
           )}
         </div>
 
-        {/* Big "39m" studied + focus/wasted side-by-side + pace chip */}
+        {/* Big "3h 12m" studied + clean stat line */}
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-3xl font-black tabular leading-none" style={{ color: 'var(--foreground)' }} suppressHydrationWarning>
+            <span
+              className="text-3xl font-black tabular leading-none"
+              style={{ color: isComplete ? '#22c55e' : 'var(--foreground)' }}
+              suppressHydrationWarning
+            >
               {formatHM(studySecToday)}
             </span>
             <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
               studied
             </span>
           </div>
-          <div className="text-[11px] tabular mt-1" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
-            {formatHM(remainingSec)} to go · {doneCount}/{totalCount} done
-          </div>
 
-          {/* === FOCUS vs WASTED — side by side ===
-              Focus time: calm blue/green with Zap icon (positive)
-              Wasted time: DANGER styling — red bg, warning icon, pulsing border
-              Only shows the wasted chip when there IS waste (no demoralizing
-              red label when the day is clean). */}
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span
-              className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg tabular"
-              style={{ background: `${ringColor}18`, color: ringColor, border: `1px solid ${ringColor}35` }}
+          {/* DECISION 4 + 7: empty-state CTA vs clean stat line */}
+          {hasTargets ? (
+            <div className="text-[11px] tabular mt-1" style={{ color: 'var(--muted-foreground)' }} suppressHydrationWarning>
+              {isComplete
+                ? <span style={{ color: '#22c55e' }}>Goal hit! · {doneCount}/{totalCount} done</span>
+                : <>{formatHM(remainingSec)} to goal · <span style={{ color: 'var(--foreground)' }}>{doneCount}/{totalCount} done</span></>
+              }
+            </div>
+          ) : (
+            // DECISION 4: empty-state CTA — actionable, not passive
+            <div
+              className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full mt-1.5 tabular"
+              style={{
+                background: 'rgba(20,184,166,0.15)',
+                color: '#14b8a6',
+                border: '1px solid rgba(20,184,166,0.35)',
+              }}
             >
-              <Zap size={11} />
-              <span>{formatHM(studySecToday)} focus</span>
-            </span>
-            {wastedSec > 0 && (
-              <span
-                className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg tabular pulse-fast"
-                style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.45)' }}
-                title="Time wasted this session — minimized by staying focused!"
-              >
-                <AlertTriangle size={11} />
-                <span>{formatHM(wastedSec)} wasted</span>
-              </span>
-            )}
-          </div>
+              <Plus size={11} />
+              <span>Add your first target →</span>
+            </div>
+          )}
 
-          {/* Pace chip + goal */}
-          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-            <span
-              className="text-[10px] font-bold px-2 py-0.5 rounded-full tabular"
-              style={{ background: `${paceColor}20`, color: paceColor, border: `1px solid ${paceColor}40` }}
-            >
-              {paceLabel}
-            </span>
-          </div>
+          {/* === DECISION 2 + 3: chips only when relevant ===
+           * Focus chip: only when studySecToday > 0
+           * Wasted chip: only when wastedSec > 0 (already gated)
+           * Pace chip: only when hasTargets && hasStudyTime */}
+          {(hasStudyTime || wastedSec > 0 || showPaceChip) && (
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {hasStudyTime && (
+                <span
+                  className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg tabular"
+                  style={{ background: `${ringColor}18`, color: ringColor, border: `1px solid ${ringColor}35` }}
+                >
+                  <Zap size={11} />
+                  <span>{formatHM(studySecToday)} focus</span>
+                </span>
+              )}
+              {wastedSec > 0 && (
+                <span
+                  className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg tabular pulse-fast"
+                  style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.45)' }}
+                  title="Time wasted this session — minimized by staying focused!"
+                >
+                  <AlertTriangle size={11} />
+                  <span>{formatHM(wastedSec)} wasted</span>
+                </span>
+              )}
+              {showPaceChip && (
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full tabular"
+                  style={{ background: `${paceColor}20`, color: paceColor, border: `1px solid ${paceColor}40` }}
+                >
+                  {paceLabel}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* === ROW 4: breakdown chips (Focus / Practice / Targets) === */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {liveFocus > 0 && (
-          <BreakdownChip label="Focus" sec={liveFocus} color="#3b82f6" icon={<Zap size={8} />} />
-        )}
-        {livePractice > 0 && (
-          <BreakdownChip label="Practice" sec={livePractice} color="#f59e0b" icon={<Play size={8} fill="currentColor" />} />
-        )}
-        {savedStudySec > 0 && (
-          <BreakdownChip label="Targets" sec={savedStudySec} color="#22c55e" icon={<Check size={8} />} />
-        )}
-        {liveFocus === 0 && livePractice === 0 && savedStudySec === 0 && (
-          <span className="text-[10px] italic" style={{ color: 'var(--muted-foreground)' }}>
-            Start a session to begin
-          </span>
-        )}
-      </div>
+      {/* === ROW 4: breakdown chips (Focus / Practice / Targets) ===
+       * DECISION 8: no breakdown row in empty state — replaced by CTA above.
+       * Only render when there's actual live or saved time. */}
+      {(liveFocus > 0 || livePractice > 0 || savedStudySec > 0) && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {liveFocus > 0 && (
+            <BreakdownChip label="Focus" sec={liveFocus} color="#3b82f6" icon={<Zap size={8} />} />
+          )}
+          {livePractice > 0 && (
+            <BreakdownChip label="Practice" sec={livePractice} color="#f59e0b" icon={<Play size={8} fill="currentColor" />} />
+          )}
+          {savedStudySec > 0 && (
+            <BreakdownChip label="Targets" sec={savedStudySec} color="#22c55e" icon={<Check size={8} />} />
+          )}
+        </div>
+      )}
 
       {/* Completion glow */}
       <AnimatePresence>
