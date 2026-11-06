@@ -289,11 +289,18 @@ export function ProgressRings({
               celebrate={celebrateToday}
               colorScheme="teal"
               themeColors={themeColors}
+              dailyGoalHours={dailyGoalHours}
             />
-            {/* Trend badge */}
-            <TrendBadge trend={trendToday} themeColors={themeColors} />
-            <div className="text-[9px] mt-1" style={{ color: '#dc2626' }}>
-              Yesterday: {formatHM(yestSec)}
+            {/* Trend badge — DECISION 4 + 9: state-aware */}
+            <TrendBadge
+              trend={trendToday}
+              themeColors={themeColors}
+              currentValue={todaySec}
+              priorValue={yestSec}
+            />
+            {/* DECISION 2 + 3: muted label, "rest" when value is 0 */}
+            <div className="text-[9px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              Yesterday: {yestSec > 0 ? formatHM(yestSec) : <span style={{ fontStyle: 'italic', opacity: 0.7 }}>rest</span>}
             </div>
           </motion.button>
 
@@ -313,31 +320,54 @@ export function ProgressRings({
               celebrate={celebrateWeek}
               colorScheme="green"
               themeColors={themeColors}
+              dailyGoalHours={dailyGoalHours}
             />
-            {/* Trend badge */}
-            <TrendBadge trend={trendWeek} themeColors={themeColors} />
-            <div className="text-[9px] mt-1" style={{ color: '#dc2626' }}>
-              Last: {formatHM(lastWeek)}
+            {/* Trend badge — DECISION 4 + 9: state-aware */}
+            <TrendBadge
+              trend={trendWeek}
+              themeColors={themeColors}
+              currentValue={thisWeek}
+              priorValue={lastWeek}
+            />
+            {/* DECISION 2 + 3: muted label, "—" when value is 0 */}
+            <div className="text-[9px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              Last week: {lastWeek > 0 ? formatHM(lastWeek) : <span style={{ fontStyle: 'italic', opacity: 0.7 }}>—</span>}
             </div>
           </motion.button>
         </div>
 
-        {/* Wasted time footer */}
+        {/* Wasted time footer — DECISION 8: amber instead of red.
+         * Wasted time is a warning, not an error. Keeps the Zap icon. */}
         {wastedToday > 60 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex items-center justify-center gap-1.5 mt-3 pt-2 text-[10px] relative z-10"
-            style={{ borderTop: '1px solid var(--border)', color: '#dc2626' }}
+            style={{ borderTop: '1px solid var(--border)', color: '#d97706' }}
           >
             <Zap size={10} />
             <span className="font-semibold">{formatHM(wastedToday)} wasted today</span>
           </motion.div>
         )}
 
-        {/* Goal hint */}
-        <div className="text-center text-[9px] mt-2 relative z-10" style={{ color: 'var(--muted-foreground)' }}>
-          Goal: {dailyGoalHours}h/day · Tap rings for details
+        {/* Goal hint — DECISION 6: contextual footer.
+         * - todaySec=0 → "Tap Study tab to begin →" (action teal)
+         * - 0<todayPct<100 → "Xh Ym to reach today's goal" (warn amber)
+         * - >=100% → "🎉 Daily goal hit!" (hit green) */}
+        <div
+          className="text-center text-[9px] mt-2 relative z-10 font-semibold"
+          style={{
+            color:
+              todayPct >= 100 ? themeColors.goalHit
+              : todaySec === 0 ? themeColors.teal.primary
+              : '#d97706',
+          }}
+        >
+          {todayPct >= 100
+            ? '🎉 Daily goal hit!'
+            : todaySec === 0
+              ? 'Tap Study tab to begin →'
+              : `${formatHM(Math.max(0, dailyGoalHours * 3600 - todaySec))} to reach today's goal`}
         </div>
       </motion.div>
 
@@ -370,6 +400,7 @@ function AdvancedRing({
   celebrate,
   colorScheme,
   themeColors,
+  dailyGoalHours,
 }: {
   innerPct: number;
   outerPct: number;
@@ -380,6 +411,7 @@ function AdvancedRing({
   celebrate: boolean;
   colorScheme: 'teal' | 'green';
   themeColors: ThemeColors;
+  dailyGoalHours: number;
 }) {
   const size = 110;
   const center = size / 2;
@@ -446,18 +478,30 @@ function AdvancedRing({
           </filter>
         </defs>
 
-        {/* Outer ring track (yesterday/last week) */}
-        <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="var(--muted)" strokeWidth={strokeWidth - 1} />
-        {/* Outer ring progress — RED for comparison (yesterday/last week) */}
+        {/* Outer ring track (yesterday/last week)
+         * DECISION 7: when outerPct = 0, track slightly more visible so empty
+         * yesterday doesn't look like a missing ring. */}
+        <circle
+          cx={center}
+          cy={center}
+          r={outerRadius}
+          fill="none"
+          stroke={outerPct === 0 ? 'var(--muted-foreground)' : 'var(--muted)'}
+          strokeWidth={strokeWidth - 1}
+          opacity={outerPct === 0 ? 0.35 : 1}
+        />
+        {/* Outer ring progress — NEUTRAL GRAY for comparison (DECISION 1)
+         * Was hardcoded red #dc2626 which made yesterday look like an error.
+         * Red is reserved for actual alerts (behind pace, wasted time warning). */}
         <motion.circle
           cx={center}
           cy={center}
           r={outerRadius}
           fill="none"
-          stroke="#dc2626"
+          stroke="var(--muted-foreground)"
           strokeWidth={strokeWidth - 1}
           strokeLinecap="round"
-          opacity="0.8"
+          opacity="0.7"
           strokeDasharray={outerCircumference}
           initial={{ strokeDashoffset: outerCircumference }}
           animate={{ strokeDashoffset: outerCircumference - (outerPct / 100) * outerCircumference }}
@@ -521,13 +565,19 @@ function AdvancedRing({
         <circle cx={center} cy={center - innerRadius} r="2.5" fill={ringColor} stroke={colors.outline} strokeWidth="0.5" opacity={goalPct >= 100 ? 1 : 0.4} />
       </svg>
 
-      {/* Center content */}
+      {/* Center content
+       * DECISION 5: when todaySec=0 and not live, show "0/8h" instead of "0s"
+       * and label "TODAY · GOAL 8H" so the target is visible. */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
         <div className="text-[8px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted-foreground)' }}>
-          {label}
+          {timeSec === 0 && !isLive && colorScheme === 'teal'
+            ? `${label} · GOAL ${dailyGoalHours}H`
+            : label}
         </div>
         <div className="text-sm font-bold tabular" style={{ color: ringColor }}>
-          {formatHM(timeSec)}
+          {timeSec === 0 && !isLive && colorScheme === 'teal'
+            ? `0/${dailyGoalHours}h`
+            : formatHM(timeSec)}
         </div>
         <div className="text-[8px] tabular" style={{ color: goalPct >= 100 ? themeColors.goalHit : 'var(--muted-foreground)' }}>
           {Math.round(goalPct)}%
@@ -579,12 +629,48 @@ function AdvancedRing({
 }
 
 // =====================================================
-// Trend Badge
+// Trend Badge — DECISION 4 + 9: state-aware
+//   - both values 0 → hide badge entirely (no −0% noise)
+//   - prior=0 + current>0 → "NEW" orange pill instead of meaningless +100%
+//   - |trend| < 5 → neutral "—" pill instead of −0% / +0%
+//   - otherwise → real % delta (only meaningful when both > 0)
 // =====================================================
 
-function TrendBadge({ trend, themeColors }: { trend: number; themeColors: ThemeColors }) {
+function TrendBadge({
+  trend,
+  themeColors,
+  currentValue,
+  priorValue,
+}: {
+  trend: number;
+  themeColors: ThemeColors;
+  currentValue: number;
+  priorValue: number;
+}) {
+  // DECISION 4: hide when both values are 0
+  if (currentValue === 0 && priorValue === 0) return null;
+
+  // DECISION 4: "NEW" pill when prior was 0 and current > 0
+  if (priorValue === 0 && currentValue > 0) {
+    const color = '#fb923c'; // orange-400
+    return (
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full mt-1.5"
+        style={{ background: `${color}20` }}
+      >
+        <span className="text-[9px] font-bold tabular" style={{ color }}>
+          NEW
+        </span>
+      </motion.div>
+    );
+  }
+
+  // DECISION 9: neutral "—" when |trend| < 5 (flat)
   const isUp = trend >= 5;
   const isDown = trend <= -5;
+  const isFlat = !isUp && !isDown;
   const color = isUp ? themeColors.goalHit : isDown ? '#dc2626' : themeColors.below25;
   const Icon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
 
@@ -597,7 +683,7 @@ function TrendBadge({ trend, themeColors }: { trend: number; themeColors: ThemeC
     >
       <Icon size={9} style={{ color }} />
       <span className="text-[9px] font-bold tabular" style={{ color }}>
-        {trend > 0 ? '+' : ''}{trend}%
+        {isFlat ? '—' : `${trend > 0 ? '+' : ''}${trend}%`}
       </span>
     </motion.div>
   );

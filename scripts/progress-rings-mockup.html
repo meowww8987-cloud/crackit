@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Home Page — Progress Rings State-Aware Redesign</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    background: #0a0c14;
+    color: #e5e7eb;
+    padding: 40px;
+    width: 1440px;
+  }
+  .page-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 4px; letter-spacing: -0.5px; }
+  .page-subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 26px; max-width: 900px; line-height: 1.5; }
+  .layout { display: grid; grid-template-columns: 390px 390px 1fr; gap: 28px; align-items: start; }
+  .phone {
+    background: linear-gradient(180deg, #0a0c14 0%, #0e1118 100%);
+    border-radius: 36px; padding: 14px 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .col-label { text-align: center; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+  .col-label.before { color: #f87171; }
+  .col-label.after  { color: #22c55e; }
+  .col-wrap { display: flex; flex-direction: column; }
+
+  /* Card shell */
+  .ring-card {
+    border-radius: 16px; padding: 14px;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.08);
+    position: relative; overflow: hidden;
+  }
+  .ring-card.after {
+    background:
+      radial-gradient(circle at 30% 50%, rgba(20,184,166,0.07), transparent 50%),
+      radial-gradient(circle at 70% 50%, rgba(34,197,94,0.07), transparent 50%),
+      rgba(255,255,255,0.035);
+  }
+  .ring-head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .ring-head .ico { font-size: 14px; color: #2dd4bf; }
+  .ring-head .t { font-size: 11px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: #cbd5e1; }
+  .ring-head .live {
+    margin-left: auto; font-size: 9px; font-weight: 800; color: #22c55e;
+    background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.35);
+    padding: 2px 7px; border-radius: 99px; display: flex; align-items: center; gap: 4px;
+  }
+  .live-dot { width: 4px; height: 4px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 4px #22c55e; }
+
+  /* Two-ring layout */
+  .rings-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ring-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .ring-svg { width: 110px; height: 110px; }
+  .ring-center { position: relative; width: 110px; height: 110px; }
+  .ring-center .label {
+    position: absolute; top: 28%; left: 0; right: 0; text-align: center;
+    font-size: 8px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+    color: #64748b;
+  }
+  .ring-center .label.with-goal { color: #94a3b8; }
+  .ring-center .value {
+    position: absolute; top: 42%; left: 0; right: 0; text-align: center;
+    font-size: 14px; font-weight: 800; color: #dc2626;
+  }
+  .ring-center .value.teal { color: #2dd4bf; }
+  .ring-center .value.green { color: #4ade80; }
+  .ring-center .value.muted { color: #94a3b8; font-size: 13px; }
+  .ring-center .pct {
+    position: absolute; top: 65%; left: 0; right: 0; text-align: center;
+    font-size: 8px; color: #64748b; font-weight: 700;
+  }
+  .ring-center .pct.hit { color: #4ade80; }
+
+  /* Trend badge */
+  .trend {
+    display: inline-flex; align-items: center; gap: 2px;
+    padding: 2px 7px; border-radius: 99px;
+    font-size: 9px; font-weight: 800;
+  }
+  .trend.up { background: rgba(74,222,128,0.15); color: #4ade80; }
+  .trend.down { background: rgba(220,38,38,0.15); color: #f87171; }
+  .trend.flat { background: rgba(100,116,139,0.15); color: #64748b; }
+  .trend.new { background: rgba(249,115,22,0.15); color: #fb923c; }
+
+  /* Comparison label below ring */
+  .cmp-label { font-size: 9px; color: #dc2626; text-align: center; }
+  .cmp-label.muted { color: #64748b; }
+  .cmp-label .em { color: #94a3b8; font-style: italic; }
+
+  /* Footer */
+  .footer { text-align: center; font-size: 9px; color: #64748b; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); }
+  .footer.action { color: #2dd4bf; font-weight: 700; }
+  .footer.warn { color: #d97706; }
+  .footer.hit { color: #4ade80; font-weight: 700; }
+
+  /* Wasted row */
+  .wasted {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);
+    font-size: 10px; font-weight: 600;
+  }
+  .wasted.red { color: #dc2626; }
+  .wasted.amber { color: #d97706; }
+
+  /* DECISIONS */
+  .decisions { display: flex; flex-direction: column; gap: 9px; }
+  .decision { display: flex; gap: 11px; align-items: flex-start; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 12px; }
+  .d-num {
+    width: 22px; height: 22px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #fff;
+    background: linear-gradient(135deg, #2dd4bf, #14b8a6);
+    box-shadow: 0 4px 10px -3px rgba(20,184,166,0.5);
+  }
+  .d-body b { font-size: 11.5px; color: #f1f5f9; display: block; margin-bottom: 2px; }
+  .d-body span { font-size: 10px; color: #94a3b8; line-height: 1.45; }
+  .d-body code { background: rgba(45,212,191,0.12); color: #2dd4bf; padding: 1px 4px; border-radius: 4px; font-size: 9.5px; }
+
+  /* SVG styles for ring mockups */
+  .ring-track { stroke: rgba(127,127,127,0.3); }
+  .ring-track-boost { stroke: rgba(148,163,184,0.35); }
+  .ring-outer-red { stroke: #dc2626; opacity: 0.8; }
+  .ring-outer-neutral { stroke: #94a3b8; opacity: 0.7; }
+  .ring-inner-teal { stroke: url(#gradTeal); }
+  .ring-inner-green { stroke: url(#gradGreen); }
+  .ring-outline { stroke: rgba(255,255,255,0.25); opacity: 0.6; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Home Page — Progress Rings: State-Aware Redesign</div>
+<div class="page-subtitle">
+  The current card feels outdated and punitive: yesterday's comparison ring is hard red, "0s" labels look like errors, trend badges show meaningless −0% / +100%, and the footer doesn't tell you what to do. The redesign makes every state communicate clearly — neutral comparison, friendly empty-states, actionable footer, and trend pills that only show when they mean something.
+</div>
+
+<div class="layout">
+
+  <!-- ============ BEFORE ============ -->
+  <div class="col-wrap">
+    <div class="col-label before">Current — punitive, confusing</div>
+    <div class="phone">
+      <div class="ring-card">
+        <div class="ring-head">
+          <span class="ico">📊</span><span class="t">Progress</span>
+        </div>
+        <div class="rings-row">
+          <!-- TODAY ring -->
+          <div class="ring-col">
+            <div class="ring-center">
+              <svg class="ring-svg" viewBox="0 0 110 110">
+                <defs>
+                  <linearGradient id="gradTeal" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2dd4bf"/><stop offset="100%" stop-color="#14b8a6"/></linearGradient>
+                </defs>
+                <g transform="rotate(-90 55 55)">
+                  <!-- outer (yesterday) - RED -->
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-track" stroke-width="6"/>
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-outer-red" stroke-width="6" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="301.6"/>
+                  <!-- inner (today) - empty -->
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-track" stroke-width="7"/>
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-inner-teal" stroke-width="7" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="226.2"/>
+                </g>
+              </svg>
+              <div class="label">TODAY</div>
+              <div class="value">0s</div>
+              <div class="pct">0%</div>
+            </div>
+            <span class="trend down">↓ 0%</span>
+            <div class="cmp-label">Yesterday: 0s</div>
+          </div>
+          <!-- WEEK ring -->
+          <div class="ring-col">
+            <div class="ring-center">
+              <svg class="ring-svg" viewBox="0 0 110 110">
+                <defs>
+                  <linearGradient id="gradGreen" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4ade80"/><stop offset="100%" stop-color="#22c55e"/></linearGradient>
+                </defs>
+                <g transform="rotate(-90 55 55)">
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-track" stroke-width="6"/>
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-outer-red" stroke-width="6" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="301.6"/>
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-track" stroke-width="7"/>
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-inner-green" stroke-width="7" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="84.8"/>
+                </g>
+              </svg>
+              <div class="label">WEEK</div>
+              <div class="value green">14h 15m</div>
+              <div class="pct">25%</div>
+            </div>
+            <span class="trend up">↑ 100%</span>
+            <div class="cmp-label">Last: 0s</div>
+          </div>
+        </div>
+        <div class="wasted red">⚡ 1h 30m wasted today</div>
+        <div class="footer">Goal: 8h/day · Tap rings for details</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ AFTER ============ -->
+  <div class="col-wrap">
+    <div class="col-label after">Proposed — state-aware, friendly</div>
+    <div class="phone">
+      <div class="ring-card after">
+        <div class="ring-head">
+          <span class="ico">📊</span><span class="t">Progress</span>
+        </div>
+        <div class="rings-row">
+          <!-- TODAY ring (empty state) -->
+          <div class="ring-col">
+            <div class="ring-center">
+              <svg class="ring-svg" viewBox="0 0 110 110">
+                <defs>
+                  <linearGradient id="gradTeal2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2dd4bf"/><stop offset="100%" stop-color="#14b8a6"/></linearGradient>
+                </defs>
+                <g transform="rotate(-90 55 55)">
+                  <!-- outer (yesterday) - NEUTRAL GRAY, slightly visible track -->
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-track-boost" stroke-width="6"/>
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-outer-neutral" stroke-width="6" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="301.6"/>
+                  <!-- inner (today) - empty -->
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-track" stroke-width="7"/>
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-inner-teal" stroke-width="7" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="226.2"/>
+                </g>
+              </svg>
+              <div class="label with-goal">TODAY · GOAL 8H</div>
+              <div class="value muted">0/8h</div>
+              <div class="pct">0%</div>
+            </div>
+            <!-- no trend badge (both 0 → hidden) -->
+            <div class="cmp-label muted">Yesterday: <span class="em">rest</span></div>
+          </div>
+          <!-- WEEK ring (with data) -->
+          <div class="ring-col">
+            <div class="ring-center">
+              <svg class="ring-svg" viewBox="0 0 110 110">
+                <defs>
+                  <linearGradient id="gradGreen2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4ade80"/><stop offset="100%" stop-color="#22c55e"/></linearGradient>
+                </defs>
+                <g transform="rotate(-90 55 55)">
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-track-boost" stroke-width="6"/>
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-outer-neutral" stroke-width="6" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="301.6"/>
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-track" stroke-width="7"/>
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-inner-green" stroke-width="7" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="84.8"/>
+                </g>
+              </svg>
+              <div class="label">WEEK</div>
+              <div class="value green">14h 15m</div>
+              <div class="pct">25%</div>
+            </div>
+            <!-- last week was 0, this week > 0 → NEW pill instead of +100% -->
+            <span class="trend new">NEW</span>
+            <div class="cmp-label muted">Last week: <span class="em">—</span></div>
+          </div>
+        </div>
+        <!-- No wasted row shown in this state -->
+        <div class="footer action">Tap Study tab to begin →</div>
+      </div>
+
+      <!-- Second phone: middle-of-day state with real comparison -->
+      <div class="ring-card after" style="margin-top: 14px;">
+        <div class="ring-head">
+          <span class="ico">📊</span><span class="t">Progress</span>
+          <span class="live"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="rings-row">
+          <!-- TODAY ring (live, mid-progress) -->
+          <div class="ring-col">
+            <div class="ring-center">
+              <svg class="ring-svg" viewBox="0 0 110 110">
+                <g transform="rotate(-90 55 55)">
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-track-boost" stroke-width="6"/>
+                  <!-- yesterday 50% -->
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-outer-neutral" stroke-width="6" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="150.8"/>
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-track" stroke-width="7"/>
+                  <!-- today 40% -->
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-inner-teal" stroke-width="7" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="135.7"/>
+                </g>
+              </svg>
+              <div class="label">TODAY</div>
+              <div class="value teal">3h 12m</div>
+              <div class="pct">40%</div>
+            </div>
+            <span class="trend down">↓ 20%</span>
+            <div class="cmp-label muted">Yesterday: 4h 0m</div>
+          </div>
+          <!-- WEEK ring -->
+          <div class="ring-col">
+            <div class="ring-center">
+              <svg class="ring-svg" viewBox="0 0 110 110">
+                <g transform="rotate(-90 55 55)">
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-track-boost" stroke-width="6"/>
+                  <!-- last week 60% -->
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-outer-neutral" stroke-width="6" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="120.6"/>
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-track" stroke-width="7"/>
+                  <!-- this week 75% -->
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-inner-green" stroke-width="7" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="56.5"/>
+                </g>
+              </svg>
+              <div class="label">WEEK</div>
+              <div class="value green">42h 0m</div>
+              <div class="pct hit">75%</div>
+            </div>
+            <span class="trend up">↑ 25%</span>
+            <div class="cmp-label muted">Last week: 33h 36m</div>
+          </div>
+        </div>
+        <div class="wasted amber">⚡ 1h 30m wasted today</div>
+        <div class="footer warn">4h 48m to reach today's goal</div>
+      </div>
+
+      <!-- Third: goal-hit state -->
+      <div class="ring-card after" style="margin-top: 14px;">
+        <div class="ring-head">
+          <span class="ico">📊</span><span class="t">Progress</span>
+        </div>
+        <div class="rings-row">
+          <div class="ring-col">
+            <div class="ring-center">
+              <svg class="ring-svg" viewBox="0 0 110 110">
+                <g transform="rotate(-90 55 55)">
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-track-boost" stroke-width="6"/>
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-outer-neutral" stroke-width="6" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="60.3"/>
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-track" stroke-width="7"/>
+                  <!-- today 100% -->
+                  <circle cx="55" cy="55" r="36" fill="none" stroke="#4ade80" stroke-width="7" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="0"/>
+                </g>
+              </svg>
+              <div class="label">TODAY</div>
+              <div class="value green">8h 12m</div>
+              <div class="pct hit">100%</div>
+            </div>
+            <span class="trend up">↑ 105%</span>
+            <div class="cmp-label muted">Yesterday: 4h 0m</div>
+          </div>
+          <div class="ring-col">
+            <div class="ring-center">
+              <svg class="ring-svg" viewBox="0 0 110 110">
+                <g transform="rotate(-90 55 55)">
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-track-boost" stroke-width="6"/>
+                  <circle cx="55" cy="55" r="48" fill="none" class="ring-outer-neutral" stroke-width="6" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="120.6"/>
+                  <circle cx="55" cy="55" r="36" fill="none" class="ring-track" stroke-width="7"/>
+                  <circle cx="55" cy="55" r="36" fill="none" stroke="#4ade80" stroke-width="7" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="0"/>
+                </g>
+              </svg>
+              <div class="label">WEEK</div>
+              <div class="value green">56h 0m</div>
+              <div class="pct hit">100%</div>
+            </div>
+            <span class="trend up">↑ 67%</span>
+            <div class="cmp-label muted">Last week: 33h 36m</div>
+          </div>
+        </div>
+        <div class="footer hit">🎉 Daily goal hit!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DECISIONS ============ -->
+  <div class="decisions">
+    <div class="decision"><div class="d-num">1</div><div class="d-body"><b>Outer ring → neutral gray</b><span>Yesterday / last-week comparison ring switches from <code>#dc2626</code> red to <code>var(--muted-foreground)</code>. Red is reserved for actual alerts (behind pace, wasted time warning) — comparison data is neutral context, not an error.</span></div></div>
+    <div class="decision"><div class="d-num">2</div><div class="d-body"><b>Yesterday/Last labels → muted</b><span>The <code>Yesterday: 0s</code> and <code>Last: 0s</code> caption labels switch from hardcoded red to <code>var(--muted-foreground)</code>. They were screaming "error" for neutral information.</span></div></div>
+    <div class="decision"><div class="d-num">3</div><div class="d-body"><b>Zero-state shows context</b><span>When yesterday/last-week value is 0, label reads <code>Yesterday: rest</code> / <code>Last week: —</code> instead of <code>0s</code>. Removes the dead-zero feeling and frames 0 as a deliberate rest, not missing data.</span></div></div>
+    <div class="decision"><div class="d-num">4</div><div class="d-body"><b>Trend badge becomes state-aware</b><span>When both values are 0 → <b>hide the badge</b> (no <code>−0%</code> noise). When yesterday=0 + today&gt;0 → show <code>NEW</code> orange pill instead of meaningless <code>+100%</code>. Real <code>%</code> deltas (5–95% range) only show when both values &gt; 0.</span></div></div>
+    <div class="decision"><div class="d-num">5</div><div class="d-body"><b>Center empty-state shows goal</b><span>When <code>todaySec=0</code> and not live: center shows <code>0/8h</code> (or whatever daily goal) instead of bare <code>0s</code>, and label changes from <code>TODAY</code> to <code>TODAY · GOAL 8H</code> so the target is visible. When live or has data, keep current behavior.</span></div></div>
+    <div class="decision"><div class="d-num">6</div><div class="d-body"><b>Contextual footer</b><span>Replaces static <code>Goal: 8h/day · Tap rings for details</code>:<br>• <code>todaySec=0</code> → <code>Tap Study tab to begin →</code><br>• <code>0&lt;todayPct&lt;100</code> → <code>Xh Ym to reach today's goal</code><br>• <code>≥100%</code> → <code>🎉 Daily goal hit!</code></span></div></div>
+    <div class="decision"><div class="d-num">7</div><div class="d-body"><b>Outer ring track visibility boost</b><span>When <code>outerPct=0</code>, the track stroke goes from barely-visible <code>var(--muted)</code> to a slightly more visible <code>var(--muted-foreground)</code> at 35% opacity. Empty yesterday no longer looks like a missing/disabled ring.</span></div></div>
+    <div class="decision"><div class="d-num">8</div><div class="d-body"><b>Wasted-time color softens</b><span><code>Wasted today</code> footer changes from hard <code>#dc2626</code> red to <code>#d97706</code> amber. Wasted time is a warning, not an error — keeps the Zap icon, just less alarming.</span></div></div>
+    <div class="decision"><div class="d-num">9</div><div class="d-body"><b>Trend ±0% suppressed</b><span>When <code>|trend| &lt; 5</code>, the badge shows a neutral <code>—</code> pill instead of <code>−0%</code> or <code>+0%</code>. Removes meaningless noise from days where progress is essentially flat.</span></div></div>
+  </div>
+
+</div>
+
+</body>
+</html>
