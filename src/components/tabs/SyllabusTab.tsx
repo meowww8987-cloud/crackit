@@ -157,6 +157,8 @@ export function SyllabusTab() {
     // Build set of "active" chapter IDs (partial progress + recently touched)
     const activeChapterIds = new Set<string>();
     for (const ch of chapters) {
+      // Note: studyingCount just iterates + counts; no need to sort here.
+      // Sorting is applied only at display call-sites (lines ~651, 658, 883).
       const chLectures = lectures.filter((l) => l.chapterId === ch.id);
       if (chLectures.length === 0) continue;
       const doneRes = chLectures.filter((l) => l.done).length
@@ -253,6 +255,25 @@ export function SyllabusTab() {
     if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
     if (a.order !== undefined) return -1;
     if (b.order !== undefined) return 1;
+    return a.createdAt - b.createdAt;
+  });
+
+  // === Sort lectures so they always display top-down in stable order ===
+  // Lectures do NOT have a drag-to-reorder field (unlike chapters), so the only
+  // stable signals are lecNo and createdAt. We sort by:
+  //   1. isCustom asc — normal lectures (L1, L2...) before custom (C1, C2...)
+  //   2. lecNo asc — L1 above L2 above L3...
+  //   3. createdAt asc — tiebreaker for lecNo collisions (e.g. lectures added
+  //      out-of-order via BuildSyllabus with selective lecNos)
+  // Without this, lectures display in raw store-array order which can drift
+  // when lectures are deleted or selectively added (e.g. building only L1, L3,
+  // L5 stores them as lecNo 1, 2, 3 and they'd appear top-down correctly, but
+  // later deleting L2 then adding a new lecture appends to the end of the
+  // array → display order becomes L1, L3, L4(new) instead of L1, L3, L2(new)).
+  // Sorting on every render is cheap (chapters usually have <50 lectures).
+  const sortLectures = (list: typeof lectures) => [...list].sort((a, b) => {
+    if (a.isCustom !== b.isCustom) return a.isCustom ? 1 : -1;
+    if (a.lecNo !== b.lecNo) return a.lecNo - b.lecNo;
     return a.createdAt - b.createdAt;
   });
 
@@ -629,14 +650,14 @@ export function SyllabusTab() {
                 >
                   <SortableContext items={sortChapters(subjChapters).map((c) => c.id)} strategy={verticalListSortingStrategy}>
                     {sortChapters(subjChapters).map((ch) => {
-                      const chLectures = lectures.filter((l) => l.chapterId === ch.id);
+                      const chLectures = sortLectures(lectures.filter((l) => l.chapterId === ch.id));
                       return <SortableChapterCard key={ch.id} chapter={ch} color={color} lectureCount={chLectures.length} />;
                     })}
                   </SortableContext>
                 </DndContext>
               ) : null}
               {!reorderMode && subjChapters.map((ch, chIdx) => {
-                const chLectures = lectures.filter((l) => l.chapterId === ch.id);
+                const chLectures = sortLectures(lectures.filter((l) => l.chapterId === ch.id));
                 const chOverdue = chLectures.filter((l) => l.done && isRevisionOverdue(l.nextRevisionAt)).length;
                 const lecDone = chLectures.filter((l) => l.done).length;
                 const dppDone = chLectures.filter((l) => l.dppDone).length;
@@ -861,7 +882,14 @@ export function SyllabusTab() {
                         <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                           <div className="px-2.5 pb-2.5 pt-1 space-y-2">
                             {chLectures.length === 0 && (<p className="text-xs text-center py-3" style={{ color: 'var(--muted-foreground)' }}>No lectures yet — tap below to add</p>)}
-                            {chLectures.filter((l) => { if (progressFilter === 'done') return l.done; if (progressFilter === 'next') return !l.done; if (progressFilter === 'studying') return !l.done && l.revisionStage >= 0; if (progressFilter === 'overdue') return l.done && isRevisionOverdue(l.nextRevisionAt); return true; }).filter((l) => !search || matchesSearch(l.topic)).map((lec, lecIndex) => (<LectureResourceRow key={lec.id} lecture={lec} chapter={ch} subject={subj} index={lecIndex} onEdit={() => setDetailLecture({ lecture: lec, chapter: ch, subject: subj })} onEditLecture={() => setEditingLecture(lec)} />))}
+                            {chLectures.filter((l) => { if (progressFilter === 'done') return l.done; if (progressFilter === 'next') return !l.done; if (progressFilter === 'studying') return !l.done && l.revisionStage >= 0; if (progressFilter === 'overdue') return l.done && isRevisionOverdue(l.nextRevisionAt); return true; }).filter((l) => !search || matchesSearch(l.topic)).map((lec) => {
+                              // Use the lecture's position in the FULL sorted chLectures
+                              // list as the index (not the post-filter position), so
+                              // zebra striping stays consistent when filters change
+                              // and the row identity is stable.
+                              const stableIndex = chLectures.findIndex((l) => l.id === lec.id);
+                              return (<LectureResourceRow key={lec.id} lecture={lec} chapter={ch} subject={subj} index={stableIndex} onEdit={() => setDetailLecture({ lecture: lec, chapter: ch, subject: subj })} onEditLecture={() => setEditingLecture(lec)} />);
+                            })}
                             {/* Add lecture pill — same style as Add Assignment */}
                             <button
                               onClick={(e) => { e.stopPropagation(); setAddLectureFor({ chapter: ch, subject: subj }); vibrate(10); }}

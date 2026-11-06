@@ -12,7 +12,7 @@ interface SyllabusStore {
   lectures: Lecture[];
   addSubject: (name: Subject) => string;
   addChapter: (subjectId: string, name: string) => string;
-  addLecture: (chapterId: string, topic: string, date?: string) => string;
+  addLecture: (chapterId: string, topic: string, date?: string, lecNo?: number) => string;
   addCustomLecture: (chapterId: string, topic: string, date?: string) => string;
   bulkAddLectures: (chapterId: string, topics: string[]) => number;
   toggleLectureDone: (id: string) => void;
@@ -68,13 +68,17 @@ export const useSyllabus = create<SyllabusStore>()(
         return id;
       },
 
-      addLecture: (chapterId, topic, date) => {
+      addLecture: (chapterId, topic, date, lecNo) => {
         const id = uid();
+        // If caller provides an explicit lecNo (e.g. BuildSyllabusSheet
+        // preserving source lecNos 1, 3, 5, 7), use it. Otherwise auto-assign
+        // as count-of-existing + 1 (legacy behavior for ad-hoc adds).
         const chapterLecs = get().lectures.filter((l) => l.chapterId === chapterId && !l.isCustom);
+        const assignedLeqNo = lecNo ?? (chapterLecs.length + 1);
         const l: Lecture = {
           id,
           chapterId,
-          lecNo: chapterLecs.length + 1,
+          lecNo: assignedLeqNo,
           isCustom: false,
           topic,
           date,

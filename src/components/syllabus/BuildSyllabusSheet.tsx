@@ -152,7 +152,11 @@ export function BuildSyllabusSheet({ onClose, showToast }: Props) {
         );
         if (existingLec) continue;
 
-        const lecId = addLecture(chapterId, lec.topic);
+        // Pass the source lecNo so lectures preserve their original numbering
+        // (e.g. selecting only L1, L3, L5 keeps them as 1, 3, 5 in storage —
+        // not auto-renumbered to 1, 2, 3 — so the syllabus displays top-down
+        // with the correct NEET lecture labels).
+        const lecId = addLecture(chapterId, lec.topic, undefined, lec.lecNo);
         lecturesAdded++;
 
         // Add to today if requested and this lecture was explicitly selected

@@ -85,7 +85,10 @@ export function AddLectureSheet({ chapter, subject, onClose, showToast }: Props)
     let added = 0;
     for (const lecNo of nums) {
       const topicName = topic.trim() || `Lecture ${lecNo}`;
-      const lecId = addLecture(chapter.id, topicName);
+      // Pass the user-selected lecNo so storage label matches what the user
+      // picked (was auto-assigned chapterLecs.length+1 which drifted when
+      // lectures were added out-of-order or selectively).
+      const lecId = addLecture(chapter.id, topicName, undefined, lecNo);
       if (addToToday) {
         addTarget({
           date: todayKey(), subject: subject.name, activity: 'Lecture',
